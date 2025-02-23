@@ -186,6 +186,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(notification);
   });
 
+  app.delete("/api/data", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    await storage.clearData();
+    res.sendStatus(200);
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket server

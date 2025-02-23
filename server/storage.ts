@@ -91,6 +91,14 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
+  async clearData(): Promise<void> {
+    await db.delete(notifications);
+    await db.delete(measurements);
+    await db.delete(posts);
+    await db.delete(users);
+    await db.delete(teams);
+  }
+
   async createTeam(team: Team): Promise<Team> {
     const [newTeam] = await db.insert(teams).values(team).returning();
     return newTeam;
