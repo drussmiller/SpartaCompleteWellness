@@ -76,8 +76,52 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <header>
+      <header className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Create Team
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Team</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={createTeamMutation.isPending}>
+                  {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="grid md:grid-cols-2 gap-6">
