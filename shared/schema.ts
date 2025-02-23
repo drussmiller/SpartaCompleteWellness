@@ -81,7 +81,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertTeamSchema = createInsertSchema(teams);
 export const insertPostSchema = createInsertSchema(posts)
-  .omit({ 
+  .omit({
     id: true,
     createdAt: true,
     userId: true
@@ -94,9 +94,9 @@ export const insertPostSchema = createInsertSchema(posts)
   });
 
 export const insertMeasurementSchema = createInsertSchema(measurements)
-  .omit({ 
+  .omit({
     id: true,
-    date: true 
+    date: true
   })
   .extend({
     weight: z.number().min(50, "Weight must be at least 50 lbs").max(500, "Weight must be less than 500 lbs"),
@@ -105,7 +105,7 @@ export const insertMeasurementSchema = createInsertSchema(measurements)
 
 export const insertNotificationSchema = createInsertSchema(notifications);
 export const insertVideoSchema = createInsertSchema(videos)
-  .omit({ 
+  .omit({
     id: true,
     createdAt: true
   })
