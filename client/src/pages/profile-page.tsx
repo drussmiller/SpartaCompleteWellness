@@ -23,10 +23,10 @@ export default function ProfilePage() {
   });
 
   const form = useForm({
-    resolver: zodResolver(insertMeasurementSchema),
+    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
     defaultValues: {
-      weight: undefined,
-      waist: undefined,
+      weight: null,
+      waist: null,
     },
   });
 
@@ -121,23 +121,19 @@ export default function ProfilePage() {
             <Form {...form}>
               <form 
                 onSubmit={form.handleSubmit((data) => {
-                  console.log('Form submitted:', data);
-                  addMeasurementMutation.mutate(data, {
-                    onSuccess: () => {
-                      form.reset();
-                      toast({
-                        title: "Success",
-                        description: "Measurement added successfully"
-                      });
-                    },
-                    onError: (error) => {
-                      toast({
-                        title: "Error",
-                        description: error.message,
-                        variant: "destructive"
-                      });
-                    }
-                  });
+                  const measurements = {
+                    weight: data.weight ? Number(data.weight) : null,
+                    waist: data.waist ? Number(data.waist) : null
+                  };
+                  if (!measurements.weight && !measurements.waist) {
+                    toast({
+                      title: "Error",
+                      description: "Please enter at least one measurement",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  addMeasurementMutation.mutate(measurements);
                 })} 
                 className="space-y-4"
               >
