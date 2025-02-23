@@ -36,12 +36,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
+      console.log('Received post creation request:', req.body);
+
       const postData: InsertPost = {
         ...insertPostSchema.parse(req.body),
         userId: req.user.id,
       };
 
+      console.log('Validated post data:', postData);
+
       const post = await storage.createPost(postData);
+      console.log('Created post:', post);
 
       // Award points based on post type
       let points = 0;
@@ -60,20 +65,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (points > 0) {
-        await storage.updateUserPoints(req.user.id, points);
-        await sendNotification(
+        const updatedUser = await storage.updateUserPoints(req.user.id, points);
+        console.log('Updated user points:', updatedUser);
+
+        const notification = await sendNotification(
           req.user.id,
           "Points Earned!",
           `You earned ${points} points for your ${post.type} post!`
         );
+        console.log('Created notification:', notification);
       }
 
       res.status(201).json(post);
     } catch (e) {
+      console.error('Error creating post:', e);
       if (e instanceof ZodError) {
-        res.status(400).json(e.errors);
+        res.status(400).json({
+          error: 'Validation Error',
+          details: e.errors
+        });
       } else {
-        throw e;
+        console.error('Unexpected error:', e);
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: e instanceof Error ? e.message : 'Unknown error occurred'
+        });
       }
     }
   });
