@@ -9,49 +9,29 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { insertPostSchema } from "@shared/schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-type PostType = "food" | "workout" | "scripture" | "memory_verse" | "comment";
-
-interface PostForm {
-  type: PostType;
-  content?: string;
-  imageUrl?: string;
-  points?: number; // Added points field
-}
+type CreatePostForm = z.infer<typeof insertPostSchema>;
 
 export function CreatePostDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const form = useForm<PostForm>({
+
+  const form = useForm<CreatePostForm>({
+    resolver: zodResolver(insertPostSchema),
     defaultValues: {
       type: "food",
+      content: "",
+      imageUrl: "",
+      points: 0
     }
   });
 
   const createPostMutation = useMutation({
-    mutationFn: async (data: PostForm) => {
-      // Calculate points based on post type
-      let points = 0;
-      switch (data.type) {
-        case "food":
-        case "workout":
-        case "scripture":
-          points = 3;
-          break;
-        case "memory_verse":
-          points = 10;
-          break;
-        case "comment":
-          points = 1;
-          break;
-      }
-
-      const postData = {
-        ...data,
-        points, // Include points in the request
-      };
-
-      const res = await apiRequest("POST", "/api/posts", postData);
+    mutationFn: async (data: CreatePostForm) => {
+      const res = await apiRequest("POST", "/api/posts", data);
       return res.json();
     },
     onSuccess: () => {
@@ -59,8 +39,8 @@ export function CreatePostDialog() {
       setOpen(false);
       form.reset();
       toast({
-        title: "Post created",
-        description: "Your post has been created successfully.",
+        title: "Success",
+        description: "Post created successfully!",
       });
     },
     onError: (error: Error) => {

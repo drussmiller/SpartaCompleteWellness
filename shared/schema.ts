@@ -54,7 +54,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertTeamSchema = createInsertSchema(teams);
-export const insertPostSchema = createInsertSchema(posts);
+export const insertPostSchema = createInsertSchema(posts)
+  .omit({ 
+    id: true,
+    createdAt: true 
+  });
 export const insertMeasurementSchema = createInsertSchema(measurements);
 export const insertNotificationSchema = createInsertSchema(notifications);
 
@@ -64,3 +68,4 @@ export type Team = typeof teams.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type InsertPost = z.infer<typeof insertPostSchema>;
