@@ -109,6 +109,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(posts);
   });
 
+  app.delete("/api/posts/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      // First check if the post exists and belongs to the user
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, parseInt(req.params.id)));
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      await storage.deletePost(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      res.status(500).json({
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+
   // Measurements
   app.post("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
