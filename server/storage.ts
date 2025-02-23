@@ -1,5 +1,5 @@
-import { users, teams, posts, measurements, notifications } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement, Notification } from "@shared/schema";
+import { users, teams, posts, measurements, notifications, videos } from "@shared/schema";
+import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
@@ -35,7 +35,12 @@ export interface IStorage {
   createNotification(notification: Omit<Notification, 'id'>): Promise<Notification>;
   getUnreadNotifications(userId: number): Promise<Notification[]>;
   markNotificationAsRead(notificationId: number): Promise<Notification>;
-  deleteNotification(notificationId: number): Promise<void>; // New method
+  deleteNotification(notificationId: number): Promise<void>;
+
+  // Add new video operations
+  createVideo(video: InsertVideo): Promise<Video>;
+  getVideos(teamId?: number): Promise<Video[]>;
+  deleteVideo(videoId: number): Promise<void>;
 
   sessionStore: session.Store;
 }
@@ -176,6 +181,29 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNotification(notificationId: number): Promise<void> {
     await db.delete(notifications).where(eq(notifications.id, notificationId));
+  }
+
+  async createVideo(video: InsertVideo): Promise<Video> {
+    const [newVideo] = await db.insert(videos).values(video).returning();
+    return newVideo;
+  }
+
+  async getVideos(teamId?: number): Promise<Video[]> {
+    if (teamId) {
+      return await db
+        .select()
+        .from(videos)
+        .where(eq(videos.teamId, teamId))
+        .orderBy(desc(videos.createdAt));
+    }
+    return await db
+      .select()
+      .from(videos)
+      .orderBy(desc(videos.createdAt));
+  }
+
+  async deleteVideo(videoId: number): Promise<void> {
+    await db.delete(videos).where(eq(videos.id, videoId));
   }
 }
 

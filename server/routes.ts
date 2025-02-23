@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { posts, notifications } from "@shared/schema"; // Added import for notifications schema
+import { posts, notifications, videos } from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -12,7 +12,14 @@ const upload = multer({
 });
 
 import { setupAuth } from "./auth";
-import { insertMeasurementSchema, insertPostSchema, insertTeamSchema, insertNotificationSchema, type InsertPost } from "@shared/schema";
+import { 
+  insertMeasurementSchema, 
+  insertPostSchema, 
+  insertTeamSchema, 
+  insertNotificationSchema,
+  insertVideoSchema,
+  type InsertPost 
+} from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
 
@@ -252,6 +259,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     await storage.clearData();
     res.sendStatus(200);
+  });
+
+  // Add video routes
+  app.get("/api/videos", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const videos = await storage.getVideos(req.user.teamId);
+      res.json(videos);
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+      res.status(500).json({
+        message: "Failed to fetch videos",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.post("/api/videos", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const videoData = insertVideoSchema.parse(req.body);
+      const video = await storage.createVideo(videoData);
+      res.status(201).json(video);
+    } catch (e) {
+      console.error('Error creating video:', e);
+      if (e instanceof ZodError) {
+        res.status(400).json({
+          error: 'Validation Error',
+          details: e.errors
+        });
+      } else {
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: e instanceof Error ? e.message : 'Unknown error occurred'
+        });
+      }
+    }
+  });
+
+  app.delete("/api/videos/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await storage.deleteVideo(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting video:', error);
+      res.status(500).json({
+        message: "Failed to delete video",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   });
 
   const httpServer = createServer(app);
