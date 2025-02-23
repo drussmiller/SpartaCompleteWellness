@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
@@ -25,7 +25,7 @@ export function CreatePostDialog() {
       type: "food",
       content: "",
       imageUrl: "",
-      points: 1 // Default points value
+      points: 3 // Default points value
     }
   });
 
@@ -40,6 +40,7 @@ export function CreatePostDialog() {
         points
       };
 
+      console.log('Submitting post:', postData); // Debug log
       const res = await apiRequest("POST", "/api/posts", postData);
       return res.json();
     },
@@ -53,6 +54,7 @@ export function CreatePostDialog() {
       });
     },
     onError: (error: Error) => {
+      console.error('Post creation error:', error); // Debug log
       toast({
         title: "Error",
         description: error.message,
@@ -73,7 +75,13 @@ export function CreatePostDialog() {
           <DialogTitle>Create Post</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createPostMutation.mutate(data))} className="space-y-4">
+          <form 
+            onSubmit={form.handleSubmit((data) => {
+              console.log('Form submitted with data:', data); // Debug log
+              createPostMutation.mutate(data);
+            })} 
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="type"
@@ -92,6 +100,7 @@ export function CreatePostDialog() {
                       <option value="comment">Comment</option>
                     </select>
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -106,6 +115,7 @@ export function CreatePostDialog() {
                     <FormControl>
                       <Input {...field} type="url" placeholder="https://..." />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -121,6 +131,7 @@ export function CreatePostDialog() {
                     <FormControl>
                       <Textarea {...field} placeholder="Enter your text..." />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
