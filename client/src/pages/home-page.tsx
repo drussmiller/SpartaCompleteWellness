@@ -26,7 +26,7 @@ export default function HomePage() {
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="flex items-center justify-between p-4">
-          <h1 className="text-xl font-bold">Sparta Wellness</h1>
+          <h1 className="text-xl font-bold">Sparta Complete Wellness</h1>
           <CreatePostDialog />
         </div>
       </header>
