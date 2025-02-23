@@ -22,9 +22,8 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const suppliedHash = Buffer.from(supplied).toString('hex');
-  const storedHash = stored;
-  return suppliedHash === storedHash;
+  if (!stored || !supplied) return false;
+  return supplied === stored;
 }
 
 export function setupAuth(app: Express) {
