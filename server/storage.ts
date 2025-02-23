@@ -1,9 +1,12 @@
 import { users, teams, posts, measurements } from "@shared/schema";
 import type { User, InsertUser, Team, Post, Measurement } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
@@ -12,113 +15,101 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserTeam(userId: number, teamId: number): Promise<User>;
   updateUserPoints(userId: number, points: number): Promise<User>;
-  
+
   // Team operations
   createTeam(team: Team): Promise<Team>;
   getTeams(): Promise<Team[]>;
-  
+
   // Post operations
   createPost(post: Post): Promise<Post>;
   getPosts(): Promise<Post[]>;
   getPostsByTeam(teamId: number): Promise<Post[]>;
-  
+
   // Measurement operations
   createMeasurement(measurement: Measurement): Promise<Measurement>;
   getMeasurementsByUser(userId: number): Promise<Measurement[]>;
-  
+
   sessionStore: session.Store;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private teams: Map<number, Team>;
-  private posts: Map<number, Post>;
-  private measurements: Map<number, Measurement>;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
-  currentId: number;
 
   constructor() {
-    this.users = new Map();
-    this.teams = new Map();
-    this.posts = new Map();
-    this.measurements = new Map();
-    this.currentId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user = { ...insertUser, id, points: 0, isAdmin: false } as User;
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
+  }
+
   async updateUserTeam(userId: number, teamId: number): Promise<User> {
-    const user = this.users.get(userId);
-    if (!user) throw new Error("User not found");
-    const updatedUser = { ...user, teamId };
-    this.users.set(userId, updatedUser);
+    const [updatedUser] = await db
+      .update(users)
+      .set({ teamId })
+      .where(eq(users.id, userId))
+      .returning();
     return updatedUser;
   }
 
   async updateUserPoints(userId: number, points: number): Promise<User> {
-    const user = this.users.get(userId);
-    if (!user) throw new Error("User not found");
-    const updatedUser = { ...user, points: user.points + points };
-    this.users.set(userId, updatedUser);
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const [updatedUser] = await db
+      .update(users)
+      .set({ points: (user?.points || 0) + points })
+      .where(eq(users.id, userId))
+      .returning();
     return updatedUser;
   }
 
   async createTeam(team: Team): Promise<Team> {
-    const id = this.currentId++;
-    const newTeam = { ...team, id };
-    this.teams.set(id, newTeam);
+    const [newTeam] = await db.insert(teams).values(team).returning();
     return newTeam;
   }
 
   async getTeams(): Promise<Team[]> {
-    return Array.from(this.teams.values());
+    return await db.select().from(teams);
   }
 
   async createPost(post: Post): Promise<Post> {
-    const id = this.currentId++;
-    const newPost = { ...post, id };
-    this.posts.set(id, newPost);
+    const [newPost] = await db.insert(posts).values(post).returning();
     return newPost;
   }
 
   async getPosts(): Promise<Post[]> {
-    return Array.from(this.posts.values());
+    return await db.select().from(posts);
   }
 
   async getPostsByTeam(teamId: number): Promise<Post[]> {
-    const users = Array.from(this.users.values()).filter(u => u.teamId === teamId);
-    const userIds = users.map(u => u.id);
-    return Array.from(this.posts.values()).filter(p => userIds.includes(p.userId));
+    const teamUsers = await db.select().from(users).where(eq(users.teamId, teamId));
+    const userIds = teamUsers.map(u => u.id);
+    return await db.select().from(posts).where(
+      userIds.map(id => eq(posts.userId, id))
+    );
   }
 
   async createMeasurement(measurement: Measurement): Promise<Measurement> {
-    const id = this.currentId++;
-    const newMeasurement = { ...measurement, id };
-    this.measurements.set(id, newMeasurement);
+    const [newMeasurement] = await db.insert(measurements).values(measurement).returning();
     return newMeasurement;
   }
 
   async getMeasurementsByUser(userId: number): Promise<Measurement[]> {
-    return Array.from(this.measurements.values()).filter(m => m.userId === userId);
+    return await db.select().from(measurements).where(eq(measurements.userId, userId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
