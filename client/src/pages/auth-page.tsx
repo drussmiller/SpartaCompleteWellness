@@ -116,7 +116,7 @@ export default function AuthPage() {
 
       <div className="hidden md:flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground">
         <img 
-          src="/Spartans_LOGO.png"
+          src="/attached_assets/Spartans_LOGO.png"
           alt="Spartans Logo"
           className="h-32 w-auto mb-8 object-contain"
         />
