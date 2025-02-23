@@ -131,17 +131,28 @@ export default function ProfilePage() {
                     if (!file) return;
 
                     const formData = new FormData();
-                    formData.append('image', file, file.name);
-                    console.log('Uploading file:', file);
+                    formData.append('image', file);
+                    
+                    const updateImageMutation = useMutation({
+                      mutationFn: async (data: FormData) => {
+                        const res = await fetch('/api/user/image', {
+                          method: 'POST',
+                          body: data,
+                        });
+                        if (!res.ok) {
+                          throw new Error('Failed to update profile image');
+                        }
+                        return res.json();
+                      },
+                      onSuccess: () => {
+                        console.log('Profile image updated successfully');
+                      },
+                      onError: (error) => {
+                        console.error('Error updating profile image:', error);
+                      }
+                    });
 
-                    updateProfileImageMutation.mutate(formData, {
-  onSuccess: () => {
-    console.log('Profile image updated successfully');
-  },
-  onError: (error) => {
-    console.error('Error updating profile image:', error);
-  }
-});
+                    updateImageMutation.mutate(formData);
                   }}
                 />
                 <Camera className="h-6 w-6 text-white" />
