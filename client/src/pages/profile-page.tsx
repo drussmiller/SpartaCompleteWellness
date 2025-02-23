@@ -131,9 +131,17 @@ export default function ProfilePage() {
                     if (!file) return;
 
                     const formData = new FormData();
-                    formData.append('image', file);
+                    formData.append('image', file, file.name);
+                    console.log('Uploading file:', file);
 
-                    updateProfileImageMutation.mutate(formData);
+                    updateProfileImageMutation.mutate(formData, {
+  onSuccess: () => {
+    console.log('Profile image updated successfully');
+  },
+  onError: (error) => {
+    console.error('Error updating profile image:', error);
+  }
+});
                   }}
                 />
                 <Camera className="h-6 w-6 text-white" />
