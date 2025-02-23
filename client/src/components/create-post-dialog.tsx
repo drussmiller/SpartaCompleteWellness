@@ -25,13 +25,22 @@ export function CreatePostDialog() {
       type: "food",
       content: "",
       imageUrl: "",
-      points: 0
+      points: 1 // Default points value
     }
   });
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
-      const res = await apiRequest("POST", "/api/posts", data);
+      // Set points based on post type
+      const points = data.type === "memory_verse" ? 10 : 
+                    data.type === "comment" ? 1 : 3;
+
+      const postData = {
+        ...data,
+        points
+      };
+
+      const res = await apiRequest("POST", "/api/posts", postData);
       return res.json();
     },
     onSuccess: () => {
