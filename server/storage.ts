@@ -25,7 +25,7 @@ export interface IStorage {
   getPosts(): Promise<Post[]>;
   getAllPosts(): Promise<Post[]>; 
   getPostsByTeam(teamId: number): Promise<Post[]>;
-  deletePost(postId: number): Promise<void>; // New method
+  deletePost(postId: number): Promise<void>;
 
   // Measurement operations
   createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement>;
@@ -35,6 +35,7 @@ export interface IStorage {
   createNotification(notification: Omit<Notification, 'id'>): Promise<Notification>;
   getUnreadNotifications(userId: number): Promise<Notification[]>;
   markNotificationAsRead(notificationId: number): Promise<Notification>;
+  deleteNotification(notificationId: number): Promise<void>; // New method
 
   sessionStore: session.Store;
 }
@@ -171,6 +172,10 @@ export class DatabaseStorage implements IStorage {
 
   async deletePost(postId: number): Promise<void> {
     await db.delete(posts).where(eq(posts.id, postId));
+  }
+
+  async deleteNotification(notificationId: number): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, notificationId));
   }
 }
 
