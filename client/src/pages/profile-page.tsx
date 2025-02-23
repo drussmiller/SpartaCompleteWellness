@@ -266,7 +266,7 @@ export default function ProfilePage() {
                       type="monotone"
                       dataKey="weight"
                       stroke="hsl(var(--primary))"
-                      name="Weight"
+                      name="Weight (lbs)"
                       dot
                     />
                     <Line
@@ -274,7 +274,7 @@ export default function ProfilePage() {
                       type="monotone"
                       dataKey="waist"
                       stroke="hsl(var(--secondary))"
-                      name="Waist"
+                      name="Waist (inches)"
                       dot
                     />
                   </LineChart>
