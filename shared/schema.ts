@@ -58,6 +58,11 @@ export const insertPostSchema = createInsertSchema(posts)
   .omit({ 
     id: true,
     createdAt: true 
+  })
+  .extend({
+    content: z.string().nullable(),
+    imageUrl: z.string().nullable(),
+    points: z.number().default(1)
   });
 export const insertMeasurementSchema = createInsertSchema(measurements);
 export const insertNotificationSchema = createInsertSchema(notifications);
