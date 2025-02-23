@@ -6,6 +6,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
   teamId: integer("team_id"),
@@ -16,6 +17,17 @@ export const users = pgTable("users", {
   imageUrl: text("image_url"),
 });
 
+// Add password reset tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Keep existing tables
 export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -29,7 +41,7 @@ export const posts = pgTable("posts", {
   content: text("content"),
   imageUrl: text("image_url"),
   points: integer("points").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at"),
 });
 
 export const measurements = pgTable("measurements", {
@@ -49,7 +61,6 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Add new videos table
 export const videos = pgTable("videos", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -58,12 +69,13 @@ export const videos = pgTable("videos", {
   thumbnail: text("thumbnail"),
   category: text("category").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  teamId: integer("team_id"), // Optional team ID to filter videos by team
+  teamId: integer("team_id"),
 });
 
 // Keep existing schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
+  email: true,
   password: true,
 });
 
@@ -92,8 +104,6 @@ export const insertMeasurementSchema = createInsertSchema(measurements)
   });
 
 export const insertNotificationSchema = createInsertSchema(notifications);
-
-// Add new video schema
 export const insertVideoSchema = createInsertSchema(videos)
   .omit({ 
     id: true,
@@ -113,3 +123,4 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
