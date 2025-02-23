@@ -252,14 +252,18 @@ export default function ProfilePage() {
                       dataKey="date"
                       tickFormatter={(date) => new Date(date || '').toLocaleDateString()}
                     />
-                    <YAxis yAxisId="weight" />
-                    <YAxis yAxisId="waist" orientation="right" />
+                    <YAxis 
+                      yAxisId="weight"
+                      label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }} 
+                    />
+                    <YAxis 
+                      yAxisId="waist" 
+                      orientation="right"
+                      label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
+                    />
                     <Tooltip
                       labelFormatter={(date) => new Date(date || '').toLocaleDateString()}
-                      formatter={(value, name) => [
-                        value,
-                        name === "Weight (lbs)" ? "Weight (lbs)" : "Waist (inches)"
-                      ]}
+                      formatter={(value, name) => [value, name]}
                     />
                     <Line
                       yAxisId="weight"
