@@ -258,7 +258,7 @@ export default function ProfilePage() {
                       labelFormatter={(date) => new Date(date || '').toLocaleDateString()}
                       formatter={(value, name) => [
                         value,
-                        name === "weight" ? "Weight (lbs)" : "Waist (inches)"
+                        name === "Weight (lbs)" ? "Weight (lbs)" : "Waist (inches)"
                       ]}
                     />
                     <Line
