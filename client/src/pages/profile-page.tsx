@@ -32,17 +32,18 @@ export default function ProfilePage() {
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight: number | undefined; waist: number | undefined }) => {
-      console.log('Submitting measurement data:', data);
+      if (!data.weight && !data.waist) {
+        throw new Error('At least one measurement is required');
+      }
+
       const payload = {
-        weight: data.weight ? Math.round(data.weight) : undefined,
-        waist: data.waist ? Math.round(data.waist) : undefined
+        weight: data.weight ? parseInt(data.weight.toString()) : undefined,
+        waist: data.waist ? parseInt(data.waist.toString()) : undefined
       };
-      console.log('Processed payload:', payload);
 
       const res = await apiRequest("POST", "/api/measurements", payload);
       if (!res.ok) {
         const error = await res.json();
-        console.error('Measurement submission failed:', error);
         throw new Error(error.message || 'Failed to add measurement');
       }
       return res.json();
@@ -112,7 +113,9 @@ export default function ProfilePage() {
           <CardContent>
             <Form {...form}>
               <form 
-                onSubmit={form.handleSubmit(onSubmit)} 
+                onSubmit={form.handleSubmit((data) => {
+                  addMeasurementMutation.mutate(data);
+                })} 
                 className="space-y-4"
               >
                 <div className="grid grid-cols-2 gap-4">
