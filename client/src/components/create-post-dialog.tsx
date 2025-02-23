@@ -85,8 +85,8 @@ export function CreatePostDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-10 w-10">
-          <Plus className="h-5 w-5" />
+        <Button size="icon" variant="ghost" className="h-14 w-14">
+          <Plus className="h-8 w-8" />
         </Button>
       </DialogTrigger>
       <DialogContent>
