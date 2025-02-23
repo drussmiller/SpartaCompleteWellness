@@ -146,6 +146,7 @@ export default function ProfilePage() {
                       },
                       onSuccess: () => {
                         console.log('Profile image updated successfully');
+                        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
                       },
                       onError: (error) => {
                         console.error('Error updating profile image:', error);
