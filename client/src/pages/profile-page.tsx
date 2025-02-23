@@ -49,18 +49,18 @@ export default function ProfilePage() {
   const form = useForm({
     resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
     defaultValues: {
-      weight: null,
-      waist: null,
+      weight: undefined,
+      waist: undefined,
     },
   });
 
   const addMeasurementMutation = useMutation({
-    mutationFn: async (data: { weight: number | null; waist: number | null }) => {
+    mutationFn: async (data: { weight?: number; waist?: number }) => {
       if (!user) throw new Error("Not authenticated");
       const payload = {
         userId: user.id,
-        weight: data.weight,
-        waist: data.waist,
+        weight: data.weight || null,
+        waist: data.waist || null,
         date: new Date()
       };
       const res = await apiRequest("POST", "/api/measurements", payload);
@@ -91,16 +91,6 @@ export default function ProfilePage() {
   const sortedMeasurements = measurements?.sort(
     (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
   );
-
-  const onSubmit = (data: any) => {
-    console.log('Form submitted with data:', data);
-    const measurementData = {
-      weight: data.weight ? Number(data.weight) : undefined,
-      waist: data.waist ? Number(data.waist) : undefined
-    };
-    console.log('Processing measurement data:', measurementData);
-    addMeasurementMutation.mutate(measurementData);
-  };
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -133,7 +123,22 @@ export default function ProfilePage() {
                     const formData = new FormData();
                     formData.append('image', file);
 
-                    updateProfileImageMutation.mutate(formData);
+                    try {
+                      const res = await fetch('/api/user/image', {
+                        method: 'POST',
+                        body: formData,
+                      });
+
+                      if (!res.ok) {
+                        throw new Error('Failed to update profile image');
+                      }
+
+                      const updatedUser = await res.json();
+                      queryClient.setQueryData(["/api/user"], updatedUser);
+                      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                    } catch (error) {
+                      console.error('Error updating profile image:', error);
+                    }
                   }}
                 />
                 <Camera className="h-6 w-6 text-white" />
@@ -158,8 +163,8 @@ export default function ProfilePage() {
               <form 
                 onSubmit={form.handleSubmit((data) => {
                   const measurements = {
-                    weight: data.weight ? Number(data.weight) : null,
-                    waist: data.waist ? Number(data.waist) : null
+                    weight: data.weight,
+                    waist: data.waist
                   };
                   if (!measurements.weight && !measurements.waist) {
                     toast({
@@ -183,8 +188,9 @@ export default function ProfilePage() {
                         <FormControl>
                           <Input 
                             type="number" 
-                            {...field} 
-                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                           />
                         </FormControl>
                       </FormItem>
@@ -199,8 +205,9 @@ export default function ProfilePage() {
                         <FormControl>
                           <Input 
                             type="number" 
-                            {...field} 
-                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                           />
                         </FormControl>
                       </FormItem>
@@ -237,21 +244,25 @@ export default function ProfilePage() {
                       dataKey="date"
                       tickFormatter={(date) => new Date(date || '').toLocaleDateString()}
                     />
-                    <YAxis yAxisId="weight" />
-                    <YAxis yAxisId="waist" orientation="right" />
+                    <YAxis 
+                      yAxisId="weight"
+                      label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }} 
+                    />
+                    <YAxis 
+                      yAxisId="waist" 
+                      orientation="right"
+                      label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
+                    />
                     <Tooltip
                       labelFormatter={(date) => new Date(date || '').toLocaleDateString()}
-                      formatter={(value, name) => [
-                        value,
-                        name === "weight" ? "Weight (lbs)" : "Waist (inches)"
-                      ]}
+                      formatter={(value, name) => [value, name]}
                     />
                     <Line
                       yAxisId="weight"
                       type="monotone"
                       dataKey="weight"
                       stroke="hsl(var(--primary))"
-                      name="Weight"
+                      name="Weight (lbs)"
                       dot
                     />
                     <Line
@@ -259,7 +270,7 @@ export default function ProfilePage() {
                       type="monotone"
                       dataKey="waist"
                       stroke="hsl(var(--secondary))"
-                      name="Waist"
+                      name="Waist (inches)"
                       dot
                     />
                   </LineChart>
