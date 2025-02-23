@@ -110,7 +110,11 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Weight (lbs)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -123,7 +127,11 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Waist (inches)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
