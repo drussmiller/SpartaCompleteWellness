@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 
 export async function runMigrations() {
   try {
-    // Create notifications table if it doesn't exist
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
@@ -12,7 +11,7 @@ export async function runMigrations() {
         title TEXT NOT NULL,
         message TEXT NOT NULL,
         read BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
     
