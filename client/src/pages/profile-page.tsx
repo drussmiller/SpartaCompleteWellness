@@ -155,6 +155,9 @@ export default function ProfilePage() {
             <div>
               <h2 className="text-2xl font-bold">{user?.username}</h2>
               <p className="text-muted-foreground">{user?.points} points</p>
+              {user?.teamName && (
+                <div className="mt-1">Team: {user?.teamName}</div>
+              )}
             </div>
           </CardContent>
         </Card>

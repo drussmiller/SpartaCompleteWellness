@@ -409,5 +409,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // User
+  app.get("/api/user", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const user = await storage.getUserWithTeam(req.user.id);
+    res.json(user);
+  });
+
   return httpServer;
 }

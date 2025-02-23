@@ -136,6 +136,18 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(teams);
   }
 
+  async getUserWithTeam(userId: number) {
+    const [user] = await db
+      .select({
+        ...users,
+        teamName: teams.name
+      })
+      .from(users)
+      .leftJoin(teams, eq(users.teamId, teams.id))
+      .where(eq(users.id, userId));
+    return user;
+  }
+
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
   }
