@@ -269,7 +269,7 @@ export default function ProfilePage() {
                       type="monotone"
                       dataKey="weight"
                       stroke="hsl(var(--primary))"
-                      name="Weight"
+                      name="Weight (lbs)"
                       connectNulls
                       strokeWidth={2}
                       dot={{ r: 4 }}
@@ -280,7 +280,7 @@ export default function ProfilePage() {
                       type="monotone"
                       dataKey="waist"
                       stroke="hsl(var(--secondary))"
-                      name="Waist"
+                      name="Waist (inches)"
                       connectNulls
                       strokeWidth={2}
                       dot={{ r: 4 }}
