@@ -1,0 +1,92 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BottomNav } from "@/components/bottom-nav";
+import { HelpCircle, Book, Dumbbell, Cross } from "lucide-react";
+
+export default function HelpPage() {
+  return (
+    <div className="max-w-2xl mx-auto pb-20">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4">
+          <h1 className="text-xl font-bold">Help Center</h1>
+        </div>
+      </header>
+
+      <main className="p-4 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              Getting Started
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>Welcome to Sparta Complete Wellness! Here's how to get started:</p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Your administrator will assign you to a team</li>
+              <li>Start sharing your wellness journey through posts</li>
+              <li>Track your measurements in your profile</li>
+              <li>Engage with your team members</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Book className="h-5 w-5" />
+              Posting Guide
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <h3 className="font-semibold">Types of Posts:</h3>
+            <ul className="list-disc pl-6 space-y-2">
+              <li><strong>Food (3 points):</strong> Share your healthy meals with a photo</li>
+              <li><strong>Workout (3 points):</strong> Document your exercise with a photo</li>
+              <li><strong>Scripture (3 points):</strong> Share inspiring biblical verses</li>
+              <li><strong>Memory Verse (10 points):</strong> Weekly scripture memorization</li>
+              <li><strong>Comments:</strong> Engage with other posts</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5" />
+              Fitness Tracking
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>Track your fitness progress through:</p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Regular weight measurements</li>
+              <li>Waist measurements</li>
+              <li>Progress graphs in your profile</li>
+              <li>Daily activity posts</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cross className="h-5 w-5" />
+              Spiritual Growth
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>Enhance your spiritual journey by:</p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Sharing daily scripture readings</li>
+              <li>Memorizing weekly verses</li>
+              <li>Engaging in spiritual discussions</li>
+              <li>Supporting team members through prayer and encouragement</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}
