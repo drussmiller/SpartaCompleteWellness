@@ -133,27 +133,22 @@ export default function ProfilePage() {
                     const formData = new FormData();
                     formData.append('image', file);
                     
-                    const updateImageMutation = useMutation({
-                      mutationFn: async (data: FormData) => {
-                        const res = await fetch('/api/user/image', {
-                          method: 'POST',
-                          body: data,
-                        });
-                        if (!res.ok) {
-                          throw new Error('Failed to update profile image');
-                        }
-                        return res.json();
-                      },
-                      onSuccess: () => {
-                        console.log('Profile image updated successfully');
-                        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-                      },
-                      onError: (error) => {
-                        console.error('Error updating profile image:', error);
-                      }
-                    });
+                    try {
+                      const res = await fetch('/api/user/image', {
+                        method: 'POST',
+                        body: formData,
+                      });
 
-                    updateImageMutation.mutate(formData);
+                      if (!res.ok) {
+                        throw new Error('Failed to update profile image');
+                      }
+
+                      const updatedUser = await res.json();
+                      queryClient.setQueryData(["/api/user"], updatedUser);
+                      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                    } catch (error) {
+                      console.error('Error updating profile image:', error);
+                    }
                   }}
                 />
                 <Camera className="h-6 w-6 text-white" />
