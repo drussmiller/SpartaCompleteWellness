@@ -23,37 +23,35 @@ export default function ProfilePage() {
   });
 
   const form = useForm({
-    resolver: zodResolver(insertMeasurementSchema),
+    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
     defaultValues: {
-      weight: undefined,
-      waist: undefined,
+      weight: null,
+      waist: null,
     },
   });
 
   const addMeasurementMutation = useMutation({
-    mutationFn: async (data: { weight: number | undefined; waist: number | undefined }) => {
-      console.log('Submitting measurement data:', data);
+    mutationFn: async (data: { weight: number | null; waist: number | null }) => {
+      if (!user) throw new Error("Not authenticated");
       const payload = {
-        weight: data.weight ? Math.round(data.weight) : undefined,
-        waist: data.waist ? Math.round(data.waist) : undefined
+        userId: user.id,
+        weight: data.weight,
+        waist: data.waist,
+        date: new Date()
       };
-      console.log('Processed payload:', payload);
-
       const res = await apiRequest("POST", "/api/measurements", payload);
       if (!res.ok) {
         const error = await res.json();
-        console.error('Measurement submission failed:', error);
         throw new Error(error.message || 'Failed to add measurement');
       }
       return res.json();
     },
     onSuccess: () => {
-      console.log('Measurement added successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
       form.reset();
       toast({
-        title: "Measurements updated",
-        description: "Your measurements have been saved successfully.",
+        title: "Success",
+        description: "Measurement added successfully"
       });
     },
     onError: (error: Error) => {
@@ -61,9 +59,9 @@ export default function ProfilePage() {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
 
   const sortedMeasurements = measurements?.sort(
@@ -91,10 +89,42 @@ export default function ProfilePage() {
       <main className="p-4 space-y-6">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
+            <div className="relative">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} />
+              <AvatarImage src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} />
               <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
             </Avatar>
+            <Input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const res = await apiRequest('POST', '/api/user/image', formData, {
+                  headers: {}  // Let browser set correct Content-Type for FormData
+                });
+
+                if (res.ok) {
+                  queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                  toast({
+                    title: "Success",
+                    description: "Profile picture updated successfully"
+                  });
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Failed to update profile picture",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            />
+          </div>
             <div>
               <h2 className="text-2xl font-bold">{user?.username}</h2>
               <p className="text-muted-foreground">{user?.points} points</p>
@@ -112,7 +142,21 @@ export default function ProfilePage() {
           <CardContent>
             <Form {...form}>
               <form 
-                onSubmit={form.handleSubmit(onSubmit)} 
+                onSubmit={form.handleSubmit((data) => {
+                  const measurements = {
+                    weight: data.weight ? Number(data.weight) : null,
+                    waist: data.waist ? Number(data.waist) : null
+                  };
+                  if (!measurements.weight && !measurements.waist) {
+                    toast({
+                      title: "Error",
+                      description: "Please enter at least one measurement",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  addMeasurementMutation.mutate(measurements);
+                })} 
                 className="space-y-4"
               >
                 <div className="grid grid-cols-2 gap-4">

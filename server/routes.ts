@@ -1,6 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import multer from "multer";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 import { setupAuth } from "./auth";
 import { insertMeasurementSchema, insertPostSchema, insertTeamSchema, insertNotificationSchema, type InsertPost } from "@shared/schema";
 import { ZodError } from "zod";
@@ -136,6 +142,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user) return res.sendStatus(401);
     const measurements = await storage.getMeasurementsByUser(req.user.id);
     res.json(measurements);
+  });
+
+  app.post("/api/user/image", upload.single('image'), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ message: "No image provided" });
+    
+    const imageData = req.file.buffer.toString('base64');
+    const imageUrl = `data:${req.file.mimetype};base64,${imageData}`;
+    
+    try {
+      const updatedUser = await storage.updateUserImage(req.user.id, imageUrl);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update profile image" });
+    }
   });
 
   // Notification routes
