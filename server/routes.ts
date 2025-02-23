@@ -45,14 +45,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Received post creation request:', req.body);
 
-      const postData: InsertPost = {
-        ...insertPostSchema.parse(req.body),
+      // Validate the post data
+      const postData = insertPostSchema.parse(req.body);
+
+      // Create the post with the authenticated user's ID
+      const post = await storage.createPost({
+        ...postData,
         userId: req.user.id,
-      };
+        createdAt: new Date()
+      });
 
-      console.log('Validated post data:', postData);
-
-      const post = await storage.createPost(postData);
       console.log('Created post:', post);
 
       // Award points based on post type
@@ -149,9 +151,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/image", upload.single('image'), async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
-    console.log('File upload request received:', { 
+    console.log('File upload request received:', {
       file: req.file,
-      body: req.body 
+      body: req.body
     });
 
     if (!req.file) {

@@ -58,11 +58,13 @@ export const insertTeamSchema = createInsertSchema(teams);
 export const insertPostSchema = createInsertSchema(posts)
   .omit({ 
     id: true,
-    createdAt: true 
+    createdAt: true,
+    userId: true
   })
   .extend({
     content: z.string().nullable(),
     imageUrl: z.string().nullable(),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment"]),
     points: z.number().default(1)
   });
 export const insertMeasurementSchema = createInsertSchema(measurements)
