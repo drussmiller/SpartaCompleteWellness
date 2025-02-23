@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertMeasurementSchema, insertPostSchema, insertTeamSchema, insertNotificationSchema } from "@shared/schema";
+import { insertMeasurementSchema, insertPostSchema, insertTeamSchema, insertNotificationSchema, type InsertPost } from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
 
@@ -33,13 +33,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Posts
-  app.post("/api/posts", async (req: any, res: any) => {
+  app.post("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const post = await storage.createPost({
+      const postData: InsertPost = {
         ...insertPostSchema.parse(req.body),
         userId: req.user.id,
-      });
+      };
+
+      const post = await storage.createPost(postData);
 
       // Award points based on post type
       let points = 0;
@@ -52,11 +54,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "memory_verse":
           points = 10;
           break;
+        case "comment":
+          points = 1;
+          break;
       }
 
       if (points > 0) {
         await storage.updateUserPoints(req.user.id, points);
-        // Send notification about points earned
         await sendNotification(
           req.user.id,
           "Points Earned!",
