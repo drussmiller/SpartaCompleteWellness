@@ -238,8 +238,8 @@ export default function ProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Ruler className="h-5 w-5" />
-              Measurement History
+              <Scale className="h-5 w-5" />
+              Weight History
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -250,54 +250,74 @@ export default function ProfilePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis
-                      yAxisId="weight"
-                      orientation="left"
                       domain={[
                         (dataMin: number) => Math.floor((dataMin || 0) - 10),
                         (dataMax: number) => Math.ceil((dataMax || 0) + 10)
                       ]}
                       label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }}
                     />
-                    <YAxis
-                      yAxisId="waist"
-                      orientation="right"
-                      domain={[
-                        (dataMin: number) => Math.floor((dataMin || 0) - 2),
-                        (dataMax: number) => Math.ceil((dataMax || 0) + 2)
-                      ]}
-                      label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
-                    />
                     <Tooltip
-                      formatter={(value: number, name: string) => {
-                        if (name === "weight") return [`${value} lbs`, "Weight"];
-                        if (name === "waist") return [`${value} inches`, "Waist"];
-                        return [value, name];
-                      }}
+                      formatter={(value: number) => `${value} lbs`}
                     />
                     <Line
                       type="monotone"
                       dataKey="weight"
-                      yAxisId="weight"
                       stroke="hsl(var(--primary))"
-                      name="weight"
+                      name="Weight"
                       strokeWidth={2}
                       dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="waist"
-                      yAxisId="waist"
-                      stroke="hsl(var(--secondary))"
-                      name="waist"
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">
-                No measurements recorded yet
+                No weight measurements recorded yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ruler className="h-5 w-5" />
+              Waist History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chartData && chartData.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis
+                      domain={[
+                        (dataMin: number) => Math.floor((dataMin || 0) - 2),
+                        (dataMax: number) => Math.ceil((dataMax || 0) + 2)
+                      ]}
+                      label={{ value: 'Waist (inches)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => `${value} inches`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="waist"
+                      stroke="hsl(var(--secondary))"
+                      name="Waist"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">
+                No waist measurements recorded yet
               </p>
             )}
           </CardContent>
