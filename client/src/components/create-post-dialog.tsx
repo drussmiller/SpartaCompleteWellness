@@ -21,18 +21,30 @@ export function CreatePostDialog() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<CreatePostForm>({
-    resolver: zodResolver(insertPostSchema.omit({ userId: true })),
+    resolver: zodResolver(insertPostSchema),
     defaultValues: {
       type: "food",
       content: "",
-      imageUrl: "",
+      imageUrl: null,
       points: 3
     }
   });
 
   const createPostMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const res = await apiRequest("POST", "/api/posts", data);
+    mutationFn: async (data: CreatePostForm) => {
+      // Calculate points based on post type
+      const points = data.type === "memory_verse" ? 10 : 
+                    data.type === "comment" ? 1 : 3;
+
+      // Create post data
+      const postData = {
+        ...data,
+        points,
+        content: data.content || null,
+        imageUrl: imagePreview || null,
+      };
+
+      const res = await apiRequest("POST", "/api/posts", postData);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to create post');
@@ -60,26 +72,9 @@ export function CreatePostDialog() {
 
   const onSubmit = async (data: CreatePostForm) => {
     try {
-      const formData = new FormData();
-      formData.append('type', data.type);
-      formData.append('content', data.content || '');
-      formData.append('points', String(data.points));
-
-      if (imagePreview) {
-        // Convert base64 to blob
-        const response = await fetch(imagePreview);
-        const blob = await response.blob();
-        formData.append('image', blob);
-      }
-
-      createPostMutation.mutate(formData);
+      await createPostMutation.mutateAsync(data);
     } catch (error) {
       console.error('Error in form submission:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create post. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -136,7 +131,7 @@ export function CreatePostDialog() {
                             const reader = new FileReader();
                             reader.onloadend = () => {
                               setImagePreview(reader.result as string);
-                              field.onChange(file.name);
+                              field.onChange(reader.result as string);
                             };
                             reader.readAsDataURL(file);
                           }
@@ -157,7 +152,7 @@ export function CreatePostDialog() {
                           className="mt-2"
                           onClick={() => {
                             setImagePreview(null);
-                            field.onChange("");
+                            field.onChange(null);
                           }}
                         >
                           Remove Image
