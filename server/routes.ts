@@ -263,6 +263,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
+  // Add team assignment route
+  app.post("/api/users/:id/team", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
+    const { teamId } = req.body;
+    const user = await storage.updateUserTeam(userId, teamId);
+    res.json(user);
+  });
+
   // Add video routes
   app.get("/api/videos", async (req, res) => {
     if (!req.user) return res.sendStatus(401);

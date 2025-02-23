@@ -147,6 +147,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(posts).orderBy(desc(posts.createdAt));
   }
 
+  async updateUserTeam(userId: number, teamId: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ teamId })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async getPostsByTeam(teamId: number): Promise<Post[]> {
     const teamUsers = await db.select().from(users).where(eq(users.teamId, teamId));
     const userIds = teamUsers.map(u => u.id);
