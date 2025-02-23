@@ -89,12 +89,13 @@ export default function ProfilePage() {
   });
 
   const sortedMeasurements = measurements?.sort(
-    (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
   const chartData = sortedMeasurements?.map(m => ({
-    ...m,
-    date: m.date ? new Date(m.date).toISOString() : new Date().toISOString()
+    date: new Date(m.date).toLocaleDateString(),
+    weight: m.weight,
+    waist: m.waist
   }));
 
   return (
@@ -247,22 +248,20 @@ export default function ProfilePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
-                      tickFormatter={(date) => new Date(date).toLocaleDateString()}
                     />
                     <YAxis
                       yAxisId="weight"
                       orientation="left"
-                      domain={['auto', 'auto']}
+                      domain={['dataMin - 10', 'dataMax + 10']}
                       label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }}
                     />
                     <YAxis
                       yAxisId="waist"
                       orientation="right"
-                      domain={['auto', 'auto']}
+                      domain={['dataMin - 2', 'dataMax + 2']}
                       label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
                     />
                     <Tooltip
-                      labelFormatter={(date) => new Date(date).toLocaleDateString()}
                       formatter={(value, name) => [value, name === "weight" ? "Weight (lbs)" : "Waist (inches)"]}
                     />
                     <Line
@@ -272,7 +271,9 @@ export default function ProfilePage() {
                       stroke="hsl(var(--primary))"
                       name="Weight"
                       connectNulls
-                      dot
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
                     />
                     <Line
                       yAxisId="waist"
@@ -281,7 +282,9 @@ export default function ProfilePage() {
                       stroke="hsl(var(--secondary))"
                       name="Waist"
                       connectNulls
-                      dot
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
