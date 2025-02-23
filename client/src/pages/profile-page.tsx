@@ -89,10 +89,42 @@ export default function ProfilePage() {
       <main className="p-4 space-y-6">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
+            <div className="relative">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} />
+              <AvatarImage src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} />
               <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
             </Avatar>
+            <Input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const res = await apiRequest('POST', '/api/user/image', formData, {
+                  headers: {}  // Let browser set correct Content-Type for FormData
+                });
+
+                if (res.ok) {
+                  queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                  toast({
+                    title: "Success",
+                    description: "Profile picture updated successfully"
+                  });
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Failed to update profile picture",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            />
+          </div>
             <div>
               <h2 className="text-2xl font-bold">{user?.username}</h2>
               <p className="text-muted-foreground">{user?.points} points</p>

@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   weight: integer("weight"),
   waist: integer("waist"),
   createdAt: timestamp("created_at").defaultNow(),
+  imageUrl: text("image_url"),
 });
 
 export const teams = pgTable("teams", {

@@ -82,6 +82,15 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
+  async updateUserImage(userId: number, imageUrl: string): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ imageUrl })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
   async createTeam(team: Team): Promise<Team> {
     const [newTeam] = await db.insert(teams).values(team).returning();
     return newTeam;
