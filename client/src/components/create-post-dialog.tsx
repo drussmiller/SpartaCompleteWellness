@@ -16,16 +16,42 @@ interface PostForm {
   type: PostType;
   content?: string;
   imageUrl?: string;
+  points?: number; // Added points field
 }
 
 export function CreatePostDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const form = useForm<PostForm>();
+  const form = useForm<PostForm>({
+    defaultValues: {
+      type: "food",
+    }
+  });
 
   const createPostMutation = useMutation({
     mutationFn: async (data: PostForm) => {
-      const res = await apiRequest("POST", "/api/posts", data);
+      // Calculate points based on post type
+      let points = 0;
+      switch (data.type) {
+        case "food":
+        case "workout":
+        case "scripture":
+          points = 3;
+          break;
+        case "memory_verse":
+          points = 10;
+          break;
+        case "comment":
+          points = 1;
+          break;
+      }
+
+      const postData = {
+        ...data,
+        points, // Include points in the request
+      };
+
+      const res = await apiRequest("POST", "/api/posts", postData);
       return res.json();
     },
     onSuccess: () => {
