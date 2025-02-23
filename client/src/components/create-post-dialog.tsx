@@ -164,41 +164,7 @@ export function CreatePostDialog() {
 
             
 
-            {form.watch("type") === "memory_verse" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Memory Verse</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field}
-                          value={value || ""}
-                          onChange={(e) => onChange(e.target.value)}
-                          placeholder="Enter the memory verse..." 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Video URL</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="url" placeholder="Enter video URL" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
+            
 
             <Button type="submit" className="w-full" disabled={createPostMutation.isPending}>
               {createPostMutation.isPending ? "Creating..." : "Create Post"}
