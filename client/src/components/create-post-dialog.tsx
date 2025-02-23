@@ -164,19 +164,76 @@ export function CreatePostDialog() {
 
             
 
-            {(form.watch("type") === "scripture" || form.watch("type") === "memory_verse" || form.watch("type") === "comment") && (
+            {form.watch("type") === "memory_verse" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Memory Verse</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field}
+                          value={value || ""}
+                          onChange={(e) => onChange(e.target.value)}
+                          placeholder="Enter the memory verse..." 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Video URL</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="url" placeholder="Enter video URL" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+
+            {form.watch("type") === "scripture" && (
               <FormField
                 control={form.control}
                 name="content"
                 render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Content</FormLabel>
+                    <FormLabel>Scripture</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field}
                         value={value || ""}
                         onChange={(e) => onChange(e.target.value)}
-                        placeholder="Enter your text..." 
+                        placeholder="Enter the scripture..." 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {form.watch("type") === "comment" && (
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field: { value, onChange, ...field } }) => (
+                  <FormItem>
+                    <FormLabel>Comment</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field}
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder="Enter your comment..." 
                       />
                     </FormControl>
                     <FormMessage />
