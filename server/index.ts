@@ -71,6 +71,8 @@ app.use((req, res, next) => {
 async function runMigrations() {
   console.log("Running database migrations...");
   try {
+    const { runMigrations: executeMigrations } = await import("./db/migrations");
+    await executeMigrations();
     console.log("Migrations complete.");
   } catch (error) {
     console.error("Error running migrations:", error);
