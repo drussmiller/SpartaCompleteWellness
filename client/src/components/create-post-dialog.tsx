@@ -200,27 +200,6 @@ export function CreatePostDialog() {
               </>
             )}
 
-            {form.watch("type") === "comment" && (
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field: { value, onChange, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>Comment</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        value={value || ""}
-                        onChange={(e) => onChange(e.target.value)}
-                        placeholder="Enter your comment..." 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
             <Button type="submit" className="w-full" disabled={createPostMutation.isPending}>
               {createPostMutation.isPending ? "Creating..." : "Create Post"}
             </Button>
