@@ -5,10 +5,10 @@ export function Logo() {
   return (
     <div className="relative h-8 w-8">
       <img 
-        src="/attached_assets/Sparta_Logo.jpg"
+        src="/attached_assets/Sparta Logo.jpg"
         alt="Sparta Logo"
         className="h-full w-full object-contain"
-        style={{ imageRendering: 'auto' }}
+        style={{ imageRendering: '-webkit-optimize-contrast' }}
       />
     </div>
   );
