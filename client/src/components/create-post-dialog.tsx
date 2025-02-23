@@ -200,7 +200,7 @@ export function CreatePostDialog() {
               </>
             )}
 
-            {(form.watch("type") === "scripture" || form.watch("type") === "comment") && (
+            {form.watch("type") === "comment" && (
               <FormField
                 control={form.control}
                 name="content"
