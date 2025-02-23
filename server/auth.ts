@@ -22,10 +22,9 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 32)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  const suppliedBuf = Buffer.from(supplied);
+  const storedBuf = Buffer.from(stored);
+  return timingSafeEqual(suppliedBuf, storedBuf);
 }
 
 export function setupAuth(app: Express) {
