@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -81,7 +81,7 @@ export default function AdminPage() {
         <Dialog>
           <DialogTrigger asChild>
             <Button>
-              <UserPlus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" />
               Create Team
             </Button>
           </DialogTrigger>
