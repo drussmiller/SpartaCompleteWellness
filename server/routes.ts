@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           points = 10;
           break;
         case "comment":
-          points = 1;
+          points = 0;
           break;
       }
 
