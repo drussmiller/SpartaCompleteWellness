@@ -94,9 +94,11 @@ export default function ProfilePage() {
 
   const chartData = sortedMeasurements?.map(m => ({
     date: new Date(m.date).toLocaleDateString(),
-    weight: m.weight ?? null,
-    waist: m.waist ?? null
+    weight: m.weight,
+    waist: m.waist
   }));
+
+  console.log('Chart Data:', chartData);
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -250,13 +252,19 @@ export default function ProfilePage() {
                     <YAxis
                       yAxisId="weight"
                       orientation="left"
-                      domain={['dataMin - 10', 'dataMax + 10']}
+                      domain={[
+                        (dataMin: number) => Math.floor(dataMin - 10),
+                        (dataMax: number) => Math.ceil(dataMax + 10)
+                      ]}
                       label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }}
                     />
                     <YAxis
                       yAxisId="waist"
                       orientation="right"
-                      domain={['dataMin - 2', 'dataMax + 2']}
+                      domain={[
+                        (dataMin: number) => Math.floor(dataMin - 2),
+                        (dataMax: number) => Math.ceil(dataMax + 2)
+                      ]}
                       label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
                     />
                     <Tooltip
@@ -267,7 +275,7 @@ export default function ProfilePage() {
                       dataKey="weight"
                       yAxisId="weight"
                       stroke="hsl(var(--primary))"
-                      name="Weight (lbs)"
+                      name="Weight"
                       strokeWidth={2}
                       dot={{ r: 4 }}
                     />
@@ -276,7 +284,7 @@ export default function ProfilePage() {
                       dataKey="waist"
                       yAxisId="waist"
                       stroke="hsl(var(--secondary))"
-                      name="Waist (inches)"
+                      name="Waist"
                       strokeWidth={2}
                       dot={{ r: 4 }}
                     />
