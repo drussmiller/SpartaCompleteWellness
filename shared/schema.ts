@@ -38,6 +38,16 @@ export const measurements = pgTable("measurements", {
   date: timestamp("date").defaultNow(),
 });
 
+// New notifications table
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -46,9 +56,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertTeamSchema = createInsertSchema(teams);
 export const insertPostSchema = createInsertSchema(posts);
 export const insertMeasurementSchema = createInsertSchema(measurements);
+export const insertNotificationSchema = createInsertSchema(notifications);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

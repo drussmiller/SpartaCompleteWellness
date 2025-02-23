@@ -1,5 +1,5 @@
-import { users, teams, posts, measurements } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement } from "@shared/schema";
+import { users, teams, posts, measurements, notifications } from "@shared/schema";
+import type { User, InsertUser, Team, Post, Measurement, Notification } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
@@ -28,6 +28,11 @@ export interface IStorage {
   // Measurement operations
   createMeasurement(measurement: Measurement): Promise<Measurement>;
   getMeasurementsByUser(userId: number): Promise<Measurement[]>;
+
+  // Notification operations
+  createNotification(notification: Omit<Notification, 'id'>): Promise<Notification>;
+  getUnreadNotifications(userId: number): Promise<Notification[]>;
+  markNotificationAsRead(notificationId: number): Promise<Notification>;
 
   sessionStore: session.Store;
 }
@@ -109,6 +114,28 @@ export class DatabaseStorage implements IStorage {
 
   async getMeasurementsByUser(userId: number): Promise<Measurement[]> {
     return await db.select().from(measurements).where(eq(measurements.userId, userId));
+  }
+
+  async createNotification(notification: Omit<Notification, 'id'>): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async getUnreadNotifications(userId: number): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .where(eq(notifications.read, false));
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<Notification> {
+    const [updatedNotification] = await db
+      .update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.id, notificationId))
+      .returning();
+    return updatedNotification;
   }
 }
 
