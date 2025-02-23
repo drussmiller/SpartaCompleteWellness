@@ -92,6 +92,11 @@ export default function ProfilePage() {
     (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
   );
 
+  const chartData = sortedMeasurements?.map(m => ({
+    ...m,
+    date: m.date ? new Date(m.date).toISOString() : new Date().toISOString()
+  }));
+
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -105,8 +110,8 @@ export default function ProfilePage() {
           <CardContent className="flex items-center gap-4 p-6">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                <AvatarImage 
-                  src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} 
+                <AvatarImage
+                  src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`}
                   alt={user?.username}
                 />
                 <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
@@ -160,7 +165,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form 
+              <form
                 onSubmit={form.handleSubmit((data) => {
                   const measurements = {
                     weight: data.weight,
@@ -175,7 +180,7 @@ export default function ProfilePage() {
                     return;
                   }
                   addMeasurementMutation.mutate(measurements);
-                })} 
+                })}
                 className="space-y-4"
               >
                 <div className="grid grid-cols-2 gap-4">
@@ -186,8 +191,8 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Weight (lbs)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
@@ -203,8 +208,8 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Waist (inches)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
@@ -214,8 +219,8 @@ export default function ProfilePage() {
                     )}
                   />
                 </div>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full"
                   disabled={addMeasurementMutation.isPending}
                 >
@@ -235,34 +240,38 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {sortedMeasurements && sortedMeasurements.length > 0 ? (
+            {chartData && chartData.length > 0 ? (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sortedMeasurements}>
+                  <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
-                      tickFormatter={(date) => new Date(date || '').toLocaleDateString()}
+                      tickFormatter={(date) => new Date(date).toLocaleDateString()}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="weight"
-                      label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }} 
+                      orientation="left"
+                      domain={['auto', 'auto']}
+                      label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }}
                     />
-                    <YAxis 
-                      yAxisId="waist" 
+                    <YAxis
+                      yAxisId="waist"
                       orientation="right"
+                      domain={['auto', 'auto']}
                       label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
                     />
                     <Tooltip
-                      labelFormatter={(date) => new Date(date || '').toLocaleDateString()}
-                      formatter={(value, name) => [value, name]}
+                      labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                      formatter={(value, name) => [value, name === "weight" ? "Weight (lbs)" : "Waist (inches)"]}
                     />
                     <Line
                       yAxisId="weight"
                       type="monotone"
                       dataKey="weight"
                       stroke="hsl(var(--primary))"
-                      name="Weight (lbs)"
+                      name="Weight"
+                      connectNulls
                       dot
                     />
                     <Line
@@ -270,7 +279,8 @@ export default function ProfilePage() {
                       type="monotone"
                       dataKey="waist"
                       stroke="hsl(var(--secondary))"
-                      name="Waist (inches)"
+                      name="Waist"
+                      connectNulls
                       dot
                     />
                   </LineChart>
@@ -284,9 +294,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Button 
-          variant="destructive" 
-          className="w-full" 
+        <Button
+          variant="destructive"
+          className="w-full"
           onClick={() => logoutMutation.mutate()}
           disabled={logoutMutation.isPending}
         >
