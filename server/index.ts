@@ -56,7 +56,7 @@ app.use((req, res, next) => {
 
   await runMigrations();
 
-  const port = process.env.PORT || 5000;
+  const port = process.env.PORT || 3000;
   server.listen({
     port,
     host: "0.0.0.0",
