@@ -184,17 +184,21 @@ export default function AuthPage() {
       </div>
 
       <div className="hidden md:flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground">
-        <img 
-          src="/Spartans_LOGO.png"
-          alt="Spartans Logo"
-          className="h-32 w-auto mb-8 object-contain"
-        />
-        <h1 className="text-4xl font-bold mb-4">Welcome to Sparta</h1>
-        <p className="text-lg text-center max-w-md">
-          Join our community of wellness enthusiasts. Track your fitness journey, share your progress,
-          and get inspired by scripture and fellow members.
-        </p>
-      </div>
+            <img 
+              src="/Spartans_LOGO.png"
+              alt="Spartans Logo"
+              className="h-32 w-auto mb-8 object-contain"
+              onError={(e) => {
+                console.error('Error loading logo:', e);
+                e.currentTarget.src = '/fallback-logo.png';
+              }}
+            />
+            <h1 className="text-4xl font-bold mb-4">Welcome to Sparta</h1>
+            <p className="text-lg text-center max-w-md">
+              Join our community of wellness enthusiasts. Track your fitness journey, share your progress,
+              and get inspired by scripture and fellow members.
+            </p>
+          </div>
 
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
         <DialogContent>
