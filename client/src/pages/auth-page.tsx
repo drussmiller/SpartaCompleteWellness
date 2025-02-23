@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
-import { Dumbbell } from "lucide-react";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -116,7 +115,11 @@ export default function AuthPage() {
       </div>
 
       <div className="hidden md:flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground">
-        <Dumbbell className="h-24 w-24 mb-8" />
+        <img 
+          src="/Spartans_LOGO.png"
+          alt="Spartans Logo"
+          className="h-32 w-auto mb-8 object-contain"
+        />
         <h1 className="text-4xl font-bold mb-4">Welcome to Sparta</h1>
         <p className="text-lg text-center max-w-md">
           Join our community of wellness enthusiasts. Track your fitness journey, share your progress,
