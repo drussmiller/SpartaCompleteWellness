@@ -37,16 +37,23 @@ export default function ProfilePage() {
       }
 
       const payload = {
-        weight: data.weight ? parseInt(data.weight.toString()) : undefined,
-        waist: data.waist ? parseInt(data.waist.toString()) : undefined
+        weight: data.weight ? Number(data.weight) : undefined,
+        waist: data.waist ? Number(data.waist) : undefined,
+        date: new Date()
       };
 
+      console.log('Submitting measurement:', payload);
       const res = await apiRequest("POST", "/api/measurements", payload);
+      
       if (!res.ok) {
         const error = await res.json();
+        console.error('Measurement error:', error);
         throw new Error(error.message || 'Failed to add measurement');
       }
-      return res.json();
+      
+      const result = await res.json();
+      console.log('Measurement added:', result);
+      return result;
     },
     onSuccess: () => {
       console.log('Measurement added successfully');
@@ -114,7 +121,23 @@ export default function ProfilePage() {
             <Form {...form}>
               <form 
                 onSubmit={form.handleSubmit((data) => {
-                  addMeasurementMutation.mutate(data);
+                  console.log('Form submitted:', data);
+                  addMeasurementMutation.mutate(data, {
+                    onSuccess: () => {
+                      form.reset();
+                      toast({
+                        title: "Success",
+                        description: "Measurement added successfully"
+                      });
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: "Error",
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                    }
+                  });
                 })} 
                 className="space-y-4"
               >
