@@ -64,6 +64,8 @@ export function CreatePostDialog() {
       formData.append('type', data.type);
       formData.append('content', data.content || '');
       formData.append('points', String(data.points));
+      formData.append('imageUrl', ''); // Add empty imageUrl if none provided
+      formData.append('userId', '1'); // The server will override this with the actual user ID
 
       if (imagePreview) {
         // Convert base64 to blob
