@@ -253,8 +253,8 @@ export default function ProfilePage() {
                       yAxisId="weight"
                       orientation="left"
                       domain={[
-                        (dataMin: number) => Math.floor(dataMin - 10),
-                        (dataMax: number) => Math.ceil(dataMax + 10)
+                        (dataMin: number) => Math.floor((dataMin || 0) - 10),
+                        (dataMax: number) => Math.ceil((dataMax || 0) + 10)
                       ]}
                       label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft' }}
                     />
@@ -262,20 +262,24 @@ export default function ProfilePage() {
                       yAxisId="waist"
                       orientation="right"
                       domain={[
-                        (dataMin: number) => Math.floor(dataMin - 2),
-                        (dataMax: number) => Math.ceil(dataMax + 2)
+                        (dataMin: number) => Math.floor((dataMin || 0) - 2),
+                        (dataMax: number) => Math.ceil((dataMax || 0) + 2)
                       ]}
                       label={{ value: 'Waist (inches)', angle: 90, position: 'insideRight' }}
                     />
                     <Tooltip
-                      formatter={(value, name) => [value, name === "weight" ? "Weight (lbs)" : "Waist (inches)"]}
+                      formatter={(value: number, name: string) => {
+                        if (name === "weight") return [`${value} lbs`, "Weight"];
+                        if (name === "waist") return [`${value} inches`, "Waist"];
+                        return [value, name];
+                      }}
                     />
                     <Line
                       type="monotone"
                       dataKey="weight"
                       yAxisId="weight"
                       stroke="hsl(var(--primary))"
-                      name="Weight"
+                      name="weight"
                       strokeWidth={2}
                       dot={{ r: 4 }}
                     />
@@ -284,7 +288,7 @@ export default function ProfilePage() {
                       dataKey="waist"
                       yAxisId="waist"
                       stroke="hsl(var(--secondary))"
-                      name="Waist"
+                      name="waist"
                       strokeWidth={2}
                       dot={{ r: 4 }}
                     />
