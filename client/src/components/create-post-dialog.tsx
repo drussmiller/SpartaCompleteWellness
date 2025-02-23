@@ -88,11 +88,10 @@ export function CreatePostDialog() {
         </DialogHeader>
         <Form {...form}>
           <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              console.log('Form submission started');
-              form.handleSubmit(onSubmit)(e);
-            }} 
+            onSubmit={form.handleSubmit((data) => {
+              console.log('Form submitted with data:', data);
+              createPostMutation.mutate(data);
+            })} 
             className="space-y-4"
           >
             <FormField
