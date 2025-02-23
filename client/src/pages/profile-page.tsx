@@ -5,15 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { BottomNav } from "@/components/bottom-nav";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const { data: measurements } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements"],
   });
 
   const sortedMeasurements = measurements?.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
   );
 
   return (
@@ -50,11 +52,11 @@ export default function ProfilePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
-                      tickFormatter={(date) => new Date(date).toLocaleDateString()}
+                      tickFormatter={(date) => new Date(date || '').toLocaleDateString()}
                     />
                     <YAxis />
                     <Tooltip
-                      labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                      labelFormatter={(date) => new Date(date || '').toLocaleDateString()}
                     />
                     <Line
                       type="monotone"
@@ -78,6 +80,16 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        <Button 
+          variant="destructive" 
+          className="w-full" 
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          {logoutMutation.isPending ? "Logging out..." : "Logout"}
+        </Button>
       </main>
 
       <BottomNav />

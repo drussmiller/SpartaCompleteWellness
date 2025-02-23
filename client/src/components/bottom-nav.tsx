@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Library, HelpCircle, Bell } from "lucide-react";
+import { Home, Library, HelpCircle, Bell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BottomNav() {
@@ -10,6 +10,7 @@ export function BottomNav() {
     { icon: Library, label: "Library", href: "/library" },
     { icon: HelpCircle, label: "Help", href: "/help" },
     { icon: Bell, label: "Notifications", href: "/notifications" },
+    { icon: User, label: "Profile", href: "/profile" },
   ];
 
   return (
@@ -17,7 +18,7 @@ export function BottomNav() {
       <div className="flex justify-around items-center h-16">
         {items.map(({ icon: Icon, label, href }) => (
           <Link key={href} href={href}>
-            <a
+            <button
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === href
@@ -27,7 +28,7 @@ export function BottomNav() {
             >
               <Icon className="h-5 w-5" />
               <span>{label}</span>
-            </a>
+            </button>
           </Link>
         ))}
       </div>
