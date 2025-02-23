@@ -25,6 +25,7 @@ export interface IStorage {
   getPosts(): Promise<Post[]>;
   getAllPosts(): Promise<Post[]>; 
   getPostsByTeam(teamId: number): Promise<Post[]>;
+  deletePost(postId: number): Promise<void>; // New method
 
   // Measurement operations
   createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement>;
@@ -89,6 +90,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return updatedUser;
+  }
+
+  async clearData(): Promise<void> {
+    await db.delete(notifications);
+    await db.delete(measurements);
+    await db.delete(posts);
+    await db.delete(users);
+    await db.delete(teams);
   }
 
   async createTeam(team: Team): Promise<Team> {
@@ -158,6 +167,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, notificationId))
       .returning();
     return updatedNotification;
+  }
+
+  async deletePost(postId: number): Promise<void> {
+    await db.delete(posts).where(eq(posts.id, postId));
   }
 }
 
