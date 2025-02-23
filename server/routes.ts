@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { posts } from "@shared/schema";
+import { posts, notifications } from "@shared/schema"; // Added import for notifications schema
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -217,6 +217,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user) return res.sendStatus(401);
     const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
     res.json(notification);
+  });
+
+  app.delete("/api/notifications/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      // First check if the notification exists and belongs to the user
+      const [notification] = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.id, parseInt(req.params.id)));
+
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      if (notification.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this notification" });
+      }
+
+      await storage.deleteNotification(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({
+        message: "Failed to delete notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   });
 
   app.delete("/api/data", async (req, res) => {
