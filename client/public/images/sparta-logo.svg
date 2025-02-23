@@ -1,0 +1,9 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="200" version="1.1" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+ <g transform="translate(0,-30)">
+  <path d="M0 30h600v200H0z" fill="none"/>
+  <path d="m50 50h500v160H50z" fill="none"/>
+  <path d="M SPARTA COMPLETE WELLNESS" fill="#000"/>
+ </g>
+</svg>
