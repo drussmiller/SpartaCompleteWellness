@@ -18,6 +18,7 @@ type CreatePostForm = z.infer<typeof insertPostSchema>;
 export function CreatePostDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema.omit({ userId: true })),
@@ -30,20 +31,8 @@ export function CreatePostDialog() {
   });
 
   const createPostMutation = useMutation({
-    mutationFn: async (data: CreatePostForm) => {
-      const points = data.type === "memory_verse" ? 10 : 
-                    data.type === "comment" ? 1 : 3;
-
-      const postData = {
-        ...data,
-        points,
-        content: data.content || "",
-        imageUrl: data.imageUrl || "",
-        userId: 1 // This will be handled by the server through the session
-      };
-
-      console.log('Attempting to submit post:', postData);
-      const res = await apiRequest("POST", "/api/posts", postData);
+    mutationFn: async (data: FormData) => {
+      const res = await apiRequest("POST", "/api/posts", data);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to create post');
@@ -51,17 +40,16 @@ export function CreatePostDialog() {
       return res.json();
     },
     onSuccess: () => {
-      console.log('Post created successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       setOpen(false);
       form.reset();
+      setImagePreview(null);
       toast({
         title: "Success",
         description: "Post created successfully!",
       });
     },
     onError: (error: Error) => {
-      console.error('Post creation error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -70,20 +58,36 @@ export function CreatePostDialog() {
     },
   });
 
-  const onSubmit = (data: CreatePostForm) => {
-    console.log('Form submitted with data:', data);
+  const onSubmit = async (data: CreatePostForm) => {
     try {
-      createPostMutation.mutate(data);
+      const formData = new FormData();
+      formData.append('type', data.type);
+      formData.append('content', data.content || '');
+      formData.append('points', String(data.points));
+
+      if (imagePreview) {
+        // Convert base64 to blob
+        const response = await fetch(imagePreview);
+        const blob = await response.blob();
+        formData.append('image', blob);
+      }
+
+      createPostMutation.mutate(formData);
     } catch (error) {
       console.error('Error in form submission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create post. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-28 w-28">
-          <Plus className="h-16 w-16" />
+        <Button size="icon" className="h-10 w-10">
+          <Plus className="h-6 w-6" />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -91,13 +95,7 @@ export function CreatePostDialog() {
           <DialogTitle>Create Post</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form 
-            onSubmit={form.handleSubmit((data) => {
-              console.log('Form submitted with data:', data);
-              createPostMutation.mutate(data);
-            })} 
-            className="space-y-4"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="type"
@@ -135,13 +133,37 @@ export function CreatePostDialog() {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            // Create URL for preview
-                            const imageUrl = URL.createObjectURL(file);
-                            field.onChange(imageUrl);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setImagePreview(reader.result as string);
+                              field.onChange(file.name);
+                            };
+                            reader.readAsDataURL(file);
                           }
                         }}
                       />
                     </FormControl>
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="max-h-40 rounded-md"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            setImagePreview(null);
+                            field.onChange("");
+                          }}
+                        >
+                          Remove Image
+                        </Button>
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -155,18 +177,22 @@ export function CreatePostDialog() {
                 <FormItem>
                   <FormLabel>Content</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Enter post content" />
+                    <Textarea 
+                      {...field} 
+                      placeholder="Enter post content"
+                      value={field.value || ''}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            
-
-            
-
-            <Button type="submit" className="w-full" disabled={createPostMutation.isPending}>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={createPostMutation.isPending}
+            >
               {createPostMutation.isPending ? "Creating..." : "Create Post"}
             </Button>
           </form>
