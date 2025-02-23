@@ -1,8 +1,6 @@
 
-import { storage } from "../storage";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
-import { notifications } from "@shared/schema";
 
 export async function runMigrations() {
   try {
