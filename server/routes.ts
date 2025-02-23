@@ -104,16 +104,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const measurement = await storage.createMeasurement({
+      console.log('Received measurement data:', req.body);
+      const measurementData = {
         ...insertMeasurementSchema.parse(req.body),
         userId: req.user.id,
-      });
+        date: new Date()
+      };
+      console.log('Processed measurement data:', measurementData);
+
+      const measurement = await storage.createMeasurement(measurementData);
+      console.log('Created measurement:', measurement);
+
       res.status(201).json(measurement);
     } catch (e) {
+      console.error('Error creating measurement:', e);
       if (e instanceof ZodError) {
-        res.status(400).json(e.errors);
+        res.status(400).json({
+          error: 'Validation Error',
+          details: e.errors
+        });
       } else {
-        throw e;
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: e instanceof Error ? e.message : 'Unknown error occurred'
+        });
       }
     }
   });

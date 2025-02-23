@@ -64,7 +64,15 @@ export const insertPostSchema = createInsertSchema(posts)
     imageUrl: z.string().nullable(),
     points: z.number().default(1)
   });
-export const insertMeasurementSchema = createInsertSchema(measurements);
+export const insertMeasurementSchema = createInsertSchema(measurements)
+  .omit({ 
+    id: true,
+    date: true 
+  })
+  .extend({
+    weight: z.number().min(50, "Weight must be at least 50 lbs").max(500, "Weight must be less than 500 lbs"),
+    waist: z.number().min(20, "Waist must be at least 20 inches").max(100, "Waist must be less than 100 inches")
+  });
 export const insertNotificationSchema = createInsertSchema(notifications);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

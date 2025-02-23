@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { LogOut, Plus, Scale, Ruler } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -32,19 +32,23 @@ export default function ProfilePage() {
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight: number | undefined; waist: number | undefined }) => {
-      // Convert the form data to integers
+      console.log('Submitting measurement data:', data);
       const payload = {
-        weight: data.weight ? parseInt(data.weight.toString()) : undefined,
-        waist: data.waist ? parseInt(data.waist.toString()) : undefined
+        weight: data.weight ? Math.round(data.weight) : undefined,
+        waist: data.waist ? Math.round(data.waist) : undefined
       };
+      console.log('Processed payload:', payload);
+
       const res = await apiRequest("POST", "/api/measurements", payload);
       if (!res.ok) {
         const error = await res.json();
+        console.error('Measurement submission failed:', error);
         throw new Error(error.message || 'Failed to add measurement');
       }
       return res.json();
     },
     onSuccess: () => {
+      console.log('Measurement added successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
       form.reset();
       toast({
@@ -53,6 +57,7 @@ export default function ProfilePage() {
       });
     },
     onError: (error: Error) => {
+      console.error('Measurement mutation error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -64,6 +69,16 @@ export default function ProfilePage() {
   const sortedMeasurements = measurements?.sort(
     (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
   );
+
+  const onSubmit = (data: any) => {
+    console.log('Form submitted with data:', data);
+    const measurementData = {
+      weight: data.weight ? Number(data.weight) : undefined,
+      waist: data.waist ? Number(data.waist) : undefined
+    };
+    console.log('Processing measurement data:', measurementData);
+    addMeasurementMutation.mutate(measurementData);
+  };
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -97,9 +112,7 @@ export default function ProfilePage() {
           <CardContent>
             <Form {...form}>
               <form 
-                onSubmit={form.handleSubmit((data) => 
-                  addMeasurementMutation.mutate(data)
-                )} 
+                onSubmit={form.handleSubmit(onSubmit)} 
                 className="space-y-4"
               >
                 <div className="grid grid-cols-2 gap-4">
@@ -110,9 +123,12 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Weight (lbs)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -123,9 +139,12 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Waist (inches)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
