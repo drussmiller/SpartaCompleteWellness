@@ -94,8 +94,8 @@ export default function ProfilePage() {
 
   const chartData = sortedMeasurements?.map(m => ({
     date: new Date(m.date).toLocaleDateString(),
-    weight: m.weight,
-    waist: m.waist
+    weight: m.weight ?? null,
+    waist: m.waist ?? null
   }));
 
   return (
@@ -246,9 +246,7 @@ export default function ProfilePage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                    />
+                    <XAxis dataKey="date" />
                     <YAxis
                       yAxisId="weight"
                       orientation="left"
