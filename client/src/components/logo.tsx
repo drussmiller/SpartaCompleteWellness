@@ -1,5 +1,5 @@
 
-import Image from 'next/image';
+import React from 'react';
 
 export function Logo() {
   return (
@@ -8,6 +8,7 @@ export function Logo() {
         src="/attached_assets/Sparta_Logo.jpg"
         alt="Sparta Logo"
         className="h-full w-full object-contain"
+        style={{ imageRendering: 'auto' }}
       />
     </div>
   );
