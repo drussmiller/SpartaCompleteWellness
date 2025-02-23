@@ -6,9 +6,9 @@ export function TopNav() {
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <img
-            src="/public/Sparta Logo.jpg"
+            src="/Sparta_Logo.jpg"
             alt="Sparta Complete Wellness"
-            className="h-8"
+            className="h-12 object-contain"
           />
         </div>
         <CreatePostDialog />
