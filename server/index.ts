@@ -56,6 +56,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // Run database migrations before starting the server
+  await runMigrations();
+
+
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client
   const ports = [5000, 3000, 8000];
@@ -81,3 +85,18 @@ app.use((req, res, next) => {
 
   tryListen();
 })();
+
+
+// Placeholder functions - replace with your actual database migration logic
+async function runMigrations() {
+  console.log("Running database migrations...");
+  // Add your database migration code here.  This is a placeholder.
+  // For example, using a library like Sequelize or Prisma.
+  try {
+    //Example:  await sequelize.sync(); //if you use sequelize
+    console.log("Migrations complete.");
+  } catch (error) {
+    console.error("Error running migrations:", error);
+    throw error; // Re-throw the error to halt server startup
+  }
+}
