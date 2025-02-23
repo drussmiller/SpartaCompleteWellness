@@ -41,14 +41,10 @@ export function CreatePostDialog() {
         imageUrl: data.imageUrl || ""
       };
 
-        console.log('Attempting to submit post:', postData);
-        const res = await apiRequest("POST", "/api/posts", postData);
-        console.log('Post creation response:', await res.clone().json());
-        return res.json();
-      } catch (error) {
-        console.error('Error in mutation:', error);
-        throw error;
-      }
+      console.log('Attempting to submit post:', postData);
+      const res = await apiRequest("POST", "/api/posts", postData);
+      console.log('Post creation response:', await res.clone().json());
+      return res.json();
     },
     onSuccess: () => {
       console.log('Post created successfully');
