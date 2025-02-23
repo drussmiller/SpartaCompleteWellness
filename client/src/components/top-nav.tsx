@@ -6,7 +6,7 @@ export function TopNav() {
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <img
-            src="/attached_assets/Sparta Logo.jpg"
+            src="/public/Sparta Logo.jpg"
             alt="Sparta Complete Wellness"
             className="h-8"
           />
