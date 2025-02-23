@@ -5,6 +5,7 @@ import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
+import { TopNav } from "@/components/top-nav";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -31,12 +32,7 @@ export default function HomePage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center justify-between p-4">
-          <h1 className="text-2xl font-bold">Feed</h1>
-          <CreatePostDialog />
-        </div>
-      </header>
+      <TopNav />
 
       <main className="p-4 space-y-4">
         {posts?.map((post) => (
