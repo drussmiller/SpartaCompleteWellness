@@ -20,7 +20,7 @@ export function CreatePostDialog() {
   const { toast } = useToast();
 
   const form = useForm<CreatePostForm>({
-    resolver: zodResolver(insertPostSchema),
+    resolver: zodResolver(insertPostSchema.omit({ userId: true })),
     defaultValues: {
       type: "food",
       content: "",
@@ -31,27 +31,24 @@ export function CreatePostDialog() {
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
-      try {
-        // Set points based on post type
-        const points = data.type === "memory_verse" ? 10 : 
-                      data.type === "comment" ? 1 : 3;
+      const points = data.type === "memory_verse" ? 10 : 
+                    data.type === "comment" ? 1 : 3;
 
-        const postData = {
-          ...data,
-          points,
-          // Ensure these are at least empty strings, not null
-          content: data.content || "",
-          imageUrl: data.imageUrl || ""
-        };
+      const postData = {
+        ...data,
+        points,
+        content: data.content || "",
+        imageUrl: data.imageUrl || "",
+        userId: 1 // This will be handled by the server through the session
+      };
 
-        console.log('Attempting to submit post:', postData);
-        const res = await apiRequest("POST", "/api/posts", postData);
-        console.log('Post creation response:', await res.clone().json());
-        return res.json();
-      } catch (error) {
-        console.error('Error in mutation:', error);
-        throw error;
+      console.log('Attempting to submit post:', postData);
+      const res = await apiRequest("POST", "/api/posts", postData);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create post');
       }
+      return res.json();
     },
     onSuccess: () => {
       console.log('Post created successfully');
@@ -85,8 +82,8 @@ export function CreatePostDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-10 w-10">
-          <Plus className="h-5 w-5" />
+        <Button size="icon" variant="ghost" className="h-28 w-28">
+          <Plus className="h-16 w-16" />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -95,11 +92,10 @@ export function CreatePostDialog() {
         </DialogHeader>
         <Form {...form}>
           <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              console.log('Form submission started');
-              form.handleSubmit(onSubmit)(e);
-            }} 
+            onSubmit={form.handleSubmit((data) => {
+              console.log('Form submitted with data:', data);
+              createPostMutation.mutate(data);
+            })} 
             className="space-y-4"
           >
             <FormField
@@ -119,6 +115,34 @@ export function CreatePostDialog() {
                       <option value="memory_verse">Memory Verse</option>
                       <option value="comment">Comment</option>
                     </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Enter image URL" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="content"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Enter post content" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
