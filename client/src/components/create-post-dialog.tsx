@@ -20,7 +20,7 @@ export function CreatePostDialog() {
   const { toast } = useToast();
 
   const form = useForm<CreatePostForm>({
-    resolver: zodResolver(insertPostSchema),
+    resolver: zodResolver(insertPostSchema.omit({ userId: true })),
     defaultValues: {
       type: "food",
       content: "",
@@ -31,18 +31,15 @@ export function CreatePostDialog() {
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
-      try {
-        // Set points based on post type
-        const points = data.type === "memory_verse" ? 10 : 
-                      data.type === "comment" ? 1 : 3;
+      const points = data.type === "memory_verse" ? 10 : 
+                    data.type === "comment" ? 1 : 3;
 
-        const postData = {
-          ...data,
-          points,
-          // Ensure these are at least empty strings, not null
-          content: data.content || "",
-          imageUrl: data.imageUrl || ""
-        };
+      const postData = {
+        ...data,
+        points,
+        content: data.content || "",
+        imageUrl: data.imageUrl || ""
+      };
 
         console.log('Attempting to submit post:', postData);
         const res = await apiRequest("POST", "/api/posts", postData);
