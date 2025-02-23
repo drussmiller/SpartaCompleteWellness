@@ -2,7 +2,7 @@ import React from "react";
 
 export function Logo() {
   return (
-    <div className="relative h-32 w-32">
+    <div className="relative h-48 w-48">
       <img
         src="/Sparta_Logo.jpg"
         alt="Sparta Logo"
