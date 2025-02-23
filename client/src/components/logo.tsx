@@ -1,13 +1,17 @@
+
 import React from "react";
 
 export function Logo() {
   return (
-    <div className="relative h-20 w-20">
+    <div className="relative w-48 h-48">
       <img 
-        src="attached_assets/Sparta_Logo.jpg"
+        src="/attached_assets/Sparta_Logo.jpg"
         alt="Sparta Logo"
-        className="h-full w-full object-contain"
-        style={{ imageRendering: 'crisp-edges' }}
+        className="w-full h-full object-contain"
+        style={{ 
+          maxWidth: '100%',
+          maxHeight: '100%'
+        }}
       />
     </div>
   );
