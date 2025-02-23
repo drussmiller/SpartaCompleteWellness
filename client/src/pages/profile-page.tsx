@@ -265,26 +265,22 @@ export default function ProfilePage() {
                       formatter={(value, name) => [value, name === "weight" ? "Weight (lbs)" : "Waist (inches)"]}
                     />
                     <Line
-                      yAxisId="weight"
                       type="monotone"
                       dataKey="weight"
+                      yAxisId="weight"
                       stroke="hsl(var(--primary))"
                       name="Weight (lbs)"
-                      connectNulls
                       strokeWidth={2}
                       dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
                     />
                     <Line
-                      yAxisId="waist"
                       type="monotone"
                       dataKey="waist"
+                      yAxisId="waist"
                       stroke="hsl(var(--secondary))"
                       name="Waist (inches)"
-                      connectNulls
                       strokeWidth={2}
                       dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
