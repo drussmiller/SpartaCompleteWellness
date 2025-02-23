@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { posts } from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
