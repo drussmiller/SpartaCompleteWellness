@@ -206,13 +206,13 @@ export function CreatePostDialog() {
                 name="content"
                 render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Scripture</FormLabel>
+                    <FormLabel>Content</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field}
                         value={value || ""}
                         onChange={(e) => onChange(e.target.value)}
-                        placeholder="Enter the scripture..." 
+                        placeholder="Enter your content..." 
                       />
                     </FormControl>
                     <FormMessage />
