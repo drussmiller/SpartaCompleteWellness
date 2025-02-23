@@ -5,23 +5,25 @@ import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { posts, notifications, videos } from "@shared/schema";
+import { setupAuth } from "./auth";
+import {
+  insertMeasurementSchema,
+  insertPostSchema,
+  insertTeamSchema,
+  insertNotificationSchema,
+  insertVideoSchema,
+  type InsertPost
+} from "@shared/schema";
+import { ZodError } from "zod";
+import { WebSocketServer, WebSocket } from 'ws';
+import { randomBytes } from "crypto";
+import { sendPasswordResetEmail } from "./email";
 
+// Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
-
-import { setupAuth } from "./auth";
-import { 
-  insertMeasurementSchema, 
-  insertPostSchema, 
-  insertTeamSchema, 
-  insertNotificationSchema,
-  insertVideoSchema,
-  type InsertPost 
-} from "@shared/schema";
-import { ZodError } from "zod";
-import { WebSocketServer, WebSocket } from 'ws';
 
 // Keep track of connected clients
 const clients = new Map<number, WebSocket>();
@@ -309,6 +311,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to delete video",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  app.post("/api/reset-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      // Generate a reset token
+      const resetToken = randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+
+      // Store the reset token in the database
+      await storage.storeResetToken(email, resetToken, resetTokenExpiry);
+
+      // Send reset email
+      const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
+      await sendPasswordResetEmail(email, resetLink);
+
+      res.status(200).json({ message: "If an account exists with this email, you will receive password reset instructions." });
+    } catch (error) {
+      console.error('Password reset error:', error);
+      res.status(200).json({ message: "If an account exists with this email, you will receive password reset instructions." });
+    }
+  });
+
+  app.post("/api/reset-password/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { password } = req.body;
+
+      // Verify token and update password
+      const success = await storage.resetPassword(token, password);
+
+      if (success) {
+        res.status(200).json({ message: "Password updated successfully" });
+      } else {
+        res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 
