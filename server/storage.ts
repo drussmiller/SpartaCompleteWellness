@@ -1,6 +1,6 @@
 import { users, teams, posts, measurements, notifications } from "@shared/schema";
 import type { User, InsertUser, Team, Post, Measurement, Notification } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -23,7 +23,7 @@ export interface IStorage {
   // Post operations
   createPost(post: Post): Promise<Post>;
   getPosts(): Promise<Post[]>;
-  getPostsByTeam(teamId: number): Promise<Post[]>;
+  getAllPosts(): Promise<Post[]>; // Added getAllPosts function
 
   // Measurement operations
   createMeasurement(measurement: Measurement): Promise<Measurement>;
@@ -97,6 +97,10 @@ export class DatabaseStorage implements IStorage {
 
   async getPosts(): Promise<Post[]> {
     return await db.select().from(posts);
+  }
+
+  async getAllPosts(): Promise<Post[]> { // Added getAllPosts function
+    return await db.select().from(posts).orderBy(desc(posts.createdAt));
   }
 
   async getPostsByTeam(teamId: number): Promise<Post[]> {

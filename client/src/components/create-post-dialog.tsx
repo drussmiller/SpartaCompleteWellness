@@ -121,19 +121,32 @@ export function CreatePostDialog() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image URL</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Enter image URL" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {(form.watch("type") === "food" || form.watch("type") === "workout") && (
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Create URL for preview
+                            const imageUrl = URL.createObjectURL(file);
+                            field.onChange(imageUrl);
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -149,48 +162,9 @@ export function CreatePostDialog() {
               )}
             />
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout") && (
-              <FormField
-                control={form.control}
-                name="imageUrl"
-                render={({ field: { value, onChange, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field}
-                        value={value || ""}
-                        onChange={(e) => onChange(e.target.value)}
-                        type="url" 
-                        placeholder="https://..." 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            
 
-            {(form.watch("type") === "scripture" || form.watch("type") === "memory_verse" || form.watch("type") === "comment") && (
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field: { value, onChange, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>Content</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        value={value || ""}
-                        onChange={(e) => onChange(e.target.value)}
-                        placeholder="Enter your text..." 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            
 
             <Button type="submit" className="w-full" disabled={createPostMutation.isPending}>
               {createPostMutation.isPending ? "Creating..." : "Create Post"}

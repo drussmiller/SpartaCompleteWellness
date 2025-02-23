@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           points = 10;
           break;
         case "comment":
-          points = 1;
+          points = 0;
           break;
       }
 
@@ -96,8 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    if (!req.user.teamId) return res.json([]);
-    const posts = await storage.getPostsByTeam(req.user.teamId);
+    const posts = await storage.getAllPosts();
     res.json(posts);
   });
 
