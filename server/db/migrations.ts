@@ -4,6 +4,22 @@ import { sql } from "drizzle-orm";
 
 export async function runMigrations() {
   try {
+    // Drop and recreate users table to ensure correct schema
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        is_admin BOOLEAN DEFAULT false,
+        team_id INTEGER,
+        points INTEGER DEFAULT 0,
+        weight INTEGER,
+        waist INTEGER,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        image_url TEXT
+      )
+    `);
+
     // Create notifications table if it doesn't exist
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS notifications (
