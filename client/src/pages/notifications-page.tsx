@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Notification } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -28,6 +28,33 @@ export default function NotificationsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+  });
+
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (notificationId: number) => {
+      const res = await apiRequest(
+        "DELETE",
+        `/api/notifications/${notificationId}`
+      );
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete notification");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      toast({
+        title: "Success",
+        description: "Notification deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -82,16 +109,27 @@ export default function NotificationsPage() {
                       {new Date(notification.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  {!notification.read && (
+                  <div className="flex gap-2">
+                    {!notification.read && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => markAsReadMutation.mutate(notification.id)}
+                        disabled={markAsReadMutation.isPending}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => markAsReadMutation.mutate(notification.id)}
-                      disabled={markAsReadMutation.isPending}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => deleteNotificationMutation.mutate(notification.id)}
+                      disabled={deleteNotificationMutation.isPending}
                     >
-                      <Check className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
