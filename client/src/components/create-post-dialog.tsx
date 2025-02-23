@@ -25,26 +25,36 @@ export function CreatePostDialog() {
       type: "food",
       content: "",
       imageUrl: "",
-      points: 3 // Default points value
+      points: 3
     }
   });
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
-      // Set points based on post type
-      const points = data.type === "memory_verse" ? 10 : 
-                    data.type === "comment" ? 1 : 3;
+      try {
+        // Set points based on post type
+        const points = data.type === "memory_verse" ? 10 : 
+                      data.type === "comment" ? 1 : 3;
 
-      const postData = {
-        ...data,
-        points
-      };
+        const postData = {
+          ...data,
+          points,
+          // Ensure these are at least empty strings, not null
+          content: data.content || "",
+          imageUrl: data.imageUrl || ""
+        };
 
-      console.log('Submitting post:', postData); // Debug log
-      const res = await apiRequest("POST", "/api/posts", postData);
-      return res.json();
+        console.log('Attempting to submit post:', postData);
+        const res = await apiRequest("POST", "/api/posts", postData);
+        console.log('Post creation response:', await res.clone().json());
+        return res.json();
+      } catch (error) {
+        console.error('Error in mutation:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
+      console.log('Post created successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       setOpen(false);
       form.reset();
@@ -54,7 +64,7 @@ export function CreatePostDialog() {
       });
     },
     onError: (error: Error) => {
-      console.error('Post creation error:', error); // Debug log
+      console.error('Post creation error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -62,6 +72,15 @@ export function CreatePostDialog() {
       });
     },
   });
+
+  const onSubmit = (data: CreatePostForm) => {
+    console.log('Form submitted with data:', data);
+    try {
+      createPostMutation.mutate(data);
+    } catch (error) {
+      console.error('Error in form submission:', error);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -76,10 +95,11 @@ export function CreatePostDialog() {
         </DialogHeader>
         <Form {...form}>
           <form 
-            onSubmit={form.handleSubmit((data) => {
-              console.log('Form submitted with data:', data); // Debug log
-              createPostMutation.mutate(data);
-            })} 
+            onSubmit={(e) => {
+              e.preventDefault();
+              console.log('Form submission started');
+              form.handleSubmit(onSubmit)(e);
+            }} 
             className="space-y-4"
           >
             <FormField
@@ -109,11 +129,17 @@ export function CreatePostDialog() {
               <FormField
                 control={form.control}
                 name="imageUrl"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
                     <FormLabel>Image URL</FormLabel>
                     <FormControl>
-                      <Input {...field} type="url" placeholder="https://..." />
+                      <Input 
+                        {...field}
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value)}
+                        type="url" 
+                        placeholder="https://..." 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -125,11 +151,16 @@ export function CreatePostDialog() {
               <FormField
                 control={form.control}
                 name="content"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
                     <FormLabel>Content</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Enter your text..." />
+                      <Textarea 
+                        {...field}
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder="Enter your text..." 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
