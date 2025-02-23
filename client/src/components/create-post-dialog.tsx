@@ -200,28 +200,7 @@ export function CreatePostDialog() {
               </>
             )}
 
-            {form.watch("type") === "scripture" && (
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field: { value, onChange, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>Content</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field}
-                        value={value || ""}
-                        onChange={(e) => onChange(e.target.value)}
-                        placeholder="Enter your content..." 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {form.watch("type") === "comment" && (
+            {(form.watch("type") === "scripture" || form.watch("type") === "comment") && (
               <FormField
                 control={form.control}
                 name="content"
