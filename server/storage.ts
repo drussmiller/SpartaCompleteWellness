@@ -23,10 +23,11 @@ export interface IStorage {
   // Post operations
   createPost(post: Post): Promise<Post>;
   getPosts(): Promise<Post[]>;
-  getAllPosts(): Promise<Post[]>; // Added getAllPosts function
+  getAllPosts(): Promise<Post[]>; 
+  getPostsByTeam(teamId: number): Promise<Post[]>;
 
   // Measurement operations
-  createMeasurement(measurement: Measurement): Promise<Measurement>;
+  createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement>;
   getMeasurementsByUser(userId: number): Promise<Measurement[]>;
 
   // Notification operations
@@ -99,7 +100,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(posts);
   }
 
-  async getAllPosts(): Promise<Post[]> { // Added getAllPosts function
+  async getAllPosts(): Promise<Post[]> { 
     return await db.select().from(posts).orderBy(desc(posts.createdAt));
   }
 
@@ -111,8 +112,16 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async createMeasurement(measurement: Measurement): Promise<Measurement> {
-    const [newMeasurement] = await db.insert(measurements).values(measurement).returning();
+  async createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement> {
+    const [newMeasurement] = await db
+      .insert(measurements)
+      .values({
+        userId: measurement.userId,
+        weight: measurement.weight || null,
+        waist: measurement.waist || null,
+        date: measurement.date || new Date(),
+      })
+      .returning();
     return newMeasurement;
   }
 
