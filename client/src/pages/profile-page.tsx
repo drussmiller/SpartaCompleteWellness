@@ -31,37 +31,27 @@ export default function ProfilePage() {
   });
 
   const addMeasurementMutation = useMutation({
-    mutationFn: async (data: { weight: number | undefined; waist: number | undefined }) => {
-      if (!data.weight && !data.waist) {
-        throw new Error('At least one measurement is required');
-      }
-
+    mutationFn: async (data: { weight: number | null; waist: number | null }) => {
+      if (!user) throw new Error("Not authenticated");
       const payload = {
-        weight: data.weight ? Number(data.weight) : undefined,
-        waist: data.waist ? Number(data.waist) : undefined,
+        userId: user.id,
+        weight: data.weight,
+        waist: data.waist,
         date: new Date()
       };
-
-      console.log('Submitting measurement:', payload);
       const res = await apiRequest("POST", "/api/measurements", payload);
-      
       if (!res.ok) {
         const error = await res.json();
-        console.error('Measurement error:', error);
         throw new Error(error.message || 'Failed to add measurement');
       }
-      
-      const result = await res.json();
-      console.log('Measurement added:', result);
-      return result;
+      return res.json();
     },
     onSuccess: () => {
-      console.log('Measurement added successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
       form.reset();
       toast({
-        title: "Measurements updated",
-        description: "Your measurements have been saved successfully.",
+        title: "Success",
+        description: "Measurement added successfully"
       });
     },
     onError: (error: Error) => {
@@ -69,9 +59,9 @@ export default function ProfilePage() {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
 
   const sortedMeasurements = measurements?.sort(
