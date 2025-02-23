@@ -55,6 +55,8 @@ export interface IStorage {
   // Clear all data (admin only)
   clearData(): Promise<void>;
 
+  getAllUsers(): Promise<User[]>;
+
   sessionStore: session.Store;
 }
 
@@ -132,6 +134,10 @@ export class DatabaseStorage implements IStorage {
 
   async getTeams(): Promise<Team[]> {
     return await db.select().from(teams);
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   async createPost(post: Post): Promise<Post> {

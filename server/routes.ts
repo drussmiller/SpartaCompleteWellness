@@ -264,6 +264,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add team assignment route
+  app.get("/api/users", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const users = await storage.getAllUsers();
+    res.json(users);
+  });
+
   app.post("/api/users/:id/team", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     const userId = parseInt(req.params.id);
