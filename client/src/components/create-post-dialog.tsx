@@ -15,6 +15,38 @@ import { z } from "zod";
 
 type CreatePostForm = z.infer<typeof insertPostSchema>;
 
+// Function to compress image
+async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // Calculate new dimensions while maintaining aspect ratio
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress with JPEG at 70% quality
+    };
+    img.onerror = reject;
+    img.src = imageDataUrl;
+  });
+}
+
 export function CreatePostDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
@@ -125,13 +157,24 @@ export function CreatePostDialog() {
                       <Input 
                         type="file" 
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
                             const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setImagePreview(reader.result as string);
-                              field.onChange(reader.result as string);
+                            reader.onloadend = async () => {
+                              try {
+                                // Compress the image before setting preview
+                                const compressed = await compressImage(reader.result as string);
+                                setImagePreview(compressed);
+                                field.onChange(compressed);
+                              } catch (error) {
+                                console.error('Error compressing image:', error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to process image. Please try again.",
+                                  variant: "destructive",
+                                });
+                              }
                             };
                             reader.readAsDataURL(file);
                           }
