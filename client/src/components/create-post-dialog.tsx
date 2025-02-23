@@ -38,12 +38,16 @@ export function CreatePostDialog() {
         ...data,
         points,
         content: data.content || "",
-        imageUrl: data.imageUrl || ""
+        imageUrl: data.imageUrl || "",
+        userId: 1 // This will be handled by the server through the session
       };
 
       console.log('Attempting to submit post:', postData);
       const res = await apiRequest("POST", "/api/posts", postData);
-      console.log('Post creation response:', await res.clone().json());
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create post');
+      }
       return res.json();
     },
     onSuccess: () => {
