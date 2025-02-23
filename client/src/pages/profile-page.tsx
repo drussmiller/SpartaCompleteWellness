@@ -49,18 +49,18 @@ export default function ProfilePage() {
   const form = useForm({
     resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
     defaultValues: {
-      weight: null,
-      waist: null,
+      weight: undefined,
+      waist: undefined,
     },
   });
 
   const addMeasurementMutation = useMutation({
-    mutationFn: async (data: { weight: number | null; waist: number | null }) => {
+    mutationFn: async (data: { weight?: number; waist?: number }) => {
       if (!user) throw new Error("Not authenticated");
       const payload = {
         userId: user.id,
-        weight: data.weight,
-        waist: data.waist,
+        weight: data.weight || null,
+        waist: data.waist || null,
         date: new Date()
       };
       const res = await apiRequest("POST", "/api/measurements", payload);
@@ -92,16 +92,6 @@ export default function ProfilePage() {
     (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
   );
 
-  const onSubmit = (data: any) => {
-    console.log('Form submitted with data:', data);
-    const measurementData = {
-      weight: data.weight ? Number(data.weight) : undefined,
-      waist: data.waist ? Number(data.waist) : undefined
-    };
-    console.log('Processing measurement data:', measurementData);
-    addMeasurementMutation.mutate(measurementData);
-  };
-
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -132,7 +122,7 @@ export default function ProfilePage() {
 
                     const formData = new FormData();
                     formData.append('image', file);
-                    
+
                     try {
                       const res = await fetch('/api/user/image', {
                         method: 'POST',
@@ -173,8 +163,8 @@ export default function ProfilePage() {
               <form 
                 onSubmit={form.handleSubmit((data) => {
                   const measurements = {
-                    weight: data.weight ? Number(data.weight) : null,
-                    waist: data.waist ? Number(data.waist) : null
+                    weight: data.weight,
+                    waist: data.waist
                   };
                   if (!measurements.weight && !measurements.waist) {
                     toast({
@@ -198,8 +188,9 @@ export default function ProfilePage() {
                         <FormControl>
                           <Input 
                             type="number" 
-                            {...field} 
-                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                           />
                         </FormControl>
                       </FormItem>
@@ -214,8 +205,9 @@ export default function ProfilePage() {
                         <FormControl>
                           <Input 
                             type="number" 
-                            {...field} 
-                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                           />
                         </FormControl>
                       </FormItem>
