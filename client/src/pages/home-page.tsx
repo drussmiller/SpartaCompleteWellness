@@ -11,10 +11,8 @@ export default function HomePage() {
   const { user } = useAuth();
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
-    queryKey: ["/api/posts"],
-    onError: (error) => {
-      console.error('Error fetching posts:', error);
-    }
+    queryKey: ["/api/posts", user?.teamId],
+    enabled: !!user
   });
 
   if (isLoading) {
