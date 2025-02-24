@@ -64,6 +64,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(teams);
   });
 
+  app.patch("/api/teams/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      const teamId = parseInt(req.params.id);
+      const { name, description } = req.body;
+
+      // Check if team exists
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId));
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Update team
+      const [updatedTeam] = await db
+        .update(teams)
+        .set({ name, description })
+        .where(eq(teams.id, teamId))
+        .returning();
+
+      res.json(updatedTeam);
+    } catch (error) {
+      console.error('Error updating team:', error);
+      res.status(500).json({
+        message: "Failed to update team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.delete("/api/teams/:id", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
 
