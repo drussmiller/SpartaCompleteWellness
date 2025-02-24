@@ -75,7 +75,11 @@ export class DatabaseStorage implements IStorage {
         isAdmin: users.isAdmin,
         teamId: users.teamId,
         points: users.points,
-        imageUrl: users.imageUrl
+        imageUrl: users.imageUrl,
+        preferredName: users.preferredName,
+        weight: users.weight,
+        waist: users.waist,
+        createdAt: users.createdAt
       })
       .from(users)
       .where(eq(users.id, id));
@@ -92,7 +96,11 @@ export class DatabaseStorage implements IStorage {
         isAdmin: users.isAdmin,
         teamId: users.teamId,
         points: users.points,
-        imageUrl: users.imageUrl
+        imageUrl: users.imageUrl,
+        preferredName: users.preferredName,
+        weight: users.weight,
+        waist: users.waist,
+        createdAt: users.createdAt
       })
       .from(users)
       .where(eq(users.username, username));
