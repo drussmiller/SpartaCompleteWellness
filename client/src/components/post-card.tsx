@@ -141,7 +141,7 @@ export function PostCard({ post, user }: PostCardProps) {
           <img
             src={post.imageUrl}
             alt={post.type}
-            className="w-full h-64 object-cover rounded-md mb-4"
+            className="w-full h-auto object-contain rounded-md mb-4"
           />
         )}
         {post.content && (
