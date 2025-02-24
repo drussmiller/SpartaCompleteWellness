@@ -531,16 +531,16 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <Label htmlFor="workout">Workout</Label>
-              <Textarea name="workout" />
-            </div>
-            <div>
               <Label htmlFor="tasks">Tasks</Label>
               <Textarea name="tasks" />
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea name="description" />
+            </div>
+            <div>
+              <Label htmlFor="workout">Workout</Label>
+              <Textarea name="workout" />
             </div>
 
             <div className="space-y-4">
@@ -783,13 +783,6 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="workout">Workout</Label>
-                  <Textarea 
-                    name="workout" 
-                    defaultValue={editingActivity?.workout} 
-                  />
-                </div>
-                <div>
                   <Label htmlFor="tasks">Tasks</Label>
                   <Textarea 
                     name="tasks" 
@@ -801,6 +794,13 @@ export default function AdminPage() {
                   <Textarea 
                     name="description" 
                     defaultValue={editingActivity?.description} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="workout">Workout</Label>
+                  <Textarea 
+                    name="workout" 
+                    defaultValue={editingActivity?.workout} 
                   />
                 </div>
 
