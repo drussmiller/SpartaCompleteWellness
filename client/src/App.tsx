@@ -12,6 +12,7 @@ import AdminPage from "@/pages/admin-page";
 import NotificationsPage from "@/pages/notifications-page";
 import HelpPage from "@/pages/help-page";
 import LibraryPage from "@/pages/library-page";
+import ActivityPage from "@/pages/activity-page";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/library" component={LibraryPage} />
+      <ProtectedRoute path="/activity" component={ActivityPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
