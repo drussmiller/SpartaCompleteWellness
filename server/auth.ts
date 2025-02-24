@@ -58,13 +58,21 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
+    new LocalStrategy({
+      usernameField: 'email',
+      passwordField: 'password'
+    }, async (emailOrUsername, password, done) => {
       try {
-        console.log('Attempting login for username:', username);
-        const user = await storage.getUserByUsername(username);
+        console.log('Attempting login for:', emailOrUsername);
+        let user = await storage.getUserByEmail(emailOrUsername);
 
         if (!user) {
-          console.log('User not found:', username);
+          // Try username if email lookup failed
+          user = await storage.getUserByUsername(emailOrUsername);
+        }
+
+        if (!user) {
+          console.log('User not found:', emailOrUsername);
           return done(null, false);
         }
 
