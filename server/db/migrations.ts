@@ -1,6 +1,6 @@
-
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import { hashPassword } from "../auth";
 
 export async function runMigrations() {
   try {
@@ -22,6 +22,15 @@ export async function runMigrations() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         image_url TEXT
       )
+    `);
+
+    // Insert default admin if not exists with properly hashed password
+    const hashedPassword = await hashPassword('admin123');
+    await db.execute(sql`
+      INSERT INTO users (username, email, password, is_admin)
+      VALUES ('admin', 'admin@example.com', ${hashedPassword}, true)
+      ON CONFLICT (username) DO UPDATE
+      SET password = ${hashedPassword}
     `);
 
     // Create teams table
@@ -61,6 +70,14 @@ export async function runMigrations() {
     // Create notifications table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     // Create activities table
     await db.execute(sql`
@@ -77,15 +94,6 @@ export async function runMigrations() {
         description TEXT,
         is_complete BOOLEAN DEFAULT false,
         completed_at TIMESTAMP WITH TIME ZONE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        message TEXT NOT NULL,
-        read BOOLEAN DEFAULT false,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
