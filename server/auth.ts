@@ -67,7 +67,7 @@ export function setupAuth(app: Express) {
         const user = await storage.getUserByEmail(email);
 
         if (!user) {
-          console.log('User not found:', username);
+          console.log('User not found:', email);
           return done(null, false);
         }
 
