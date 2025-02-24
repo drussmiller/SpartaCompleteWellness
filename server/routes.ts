@@ -599,8 +599,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/activities/:id", requireAdmin, async (req, res) => {
     try {
       const activityId = parseInt(req.params.id);
-      const { workoutVideos, ...activityData } = req.body;
-      const parsedActivityData = insertActivitySchema.parse(activityData); // Parse activity data
+      const { workoutVideos: newWorkoutVideos, ...activityData } = req.body;
+      const parsedActivityData = insertActivitySchema.parse(activityData);
 
       // Update activity
       await db
@@ -609,24 +609,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(activities.id, activityId));
 
       // Handle workout videos
-      if (workoutVideos) {
-        // First delete existing workout videos
-        await db
-          .delete(workoutVideos)
-          .where(eq(workoutVideos.activityId, activityId));
+      // First delete existing workout videos
+      await db
+        .delete(workoutVideos)
+        .where(eq(workoutVideos.activityId, activityId));
 
-        // Then insert new ones
-        if (workoutVideos.length > 0) {
-          await db
-            .insert(workoutVideos)
-            .values(
-              workoutVideos.map((video: { url: string; description: string }) => ({
-                activityId,
-                url: video.url,
-                description: video.description
-              }))
-            );
-        }
+      // Then insert new ones if provided
+      if (newWorkoutVideos && newWorkoutVideos.length > 0) {
+        await db
+          .insert(workoutVideos)
+          .values(
+            newWorkoutVideos.map((video: { url: string; description: string }) => ({
+              activityId,
+              url: video.url,
+              description: video.description
+            }))
+          );
       }
 
       // Fetch updated activity with workout videos
