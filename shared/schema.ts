@@ -35,7 +35,6 @@ export const posts = pgTable("posts", {
   parentId: integer("parent_id"), // Add parentId for comments
 });
 
-// Keep other tables unchanged
 export const measurements = pgTable("measurements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -64,7 +63,38 @@ export const videos = pgTable("videos", {
   teamId: integer("team_id"),
 });
 
-// Update schemas
+export const activities = pgTable("activities", {
+  id: serial("id").primaryKey(),
+  week: integer("week").notNull(),
+  day: integer("day").notNull(),
+  memoryVerse: text("memory_verse").notNull(),
+  memoryVerseReference: text("memory_verse_reference").notNull(),
+  scripture: text("scripture"),
+  workout: text("workout"),
+  tasks: text("tasks"),
+  description: text("description"),
+  isComplete: boolean("is_complete").default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const workoutVideos = pgTable("workout_videos", {
+  id: serial("id").primaryKey(),
+  activityId: integer("activity_id").notNull(),
+  url: text("url").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertPostSchema = createInsertSchema(posts)
   .omit({
     id: true,
@@ -79,7 +109,6 @@ export const insertPostSchema = createInsertSchema(posts)
     parentId: z.number().optional() // Make parentId optional
   });
 
-// Keep other schemas unchanged
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -90,8 +119,18 @@ export const insertTeamSchema = createInsertSchema(teams);
 export const insertMeasurementSchema = createInsertSchema(measurements);
 export const insertNotificationSchema = createInsertSchema(notifications);
 export const insertVideoSchema = createInsertSchema(videos);
+export const insertActivitySchema = createInsertSchema(activities)
+  .extend({
+    workoutVideos: z.array(
+      z.object({
+        url: z.string(),
+        description: z.string()
+      })
+    ).optional()
+  });
 
-// Export types
+export const insertWorkoutVideoSchema = createInsertSchema(workoutVideos);
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Team = typeof teams.$inferSelect;
@@ -101,32 +140,15 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type Activity = typeof activities.$inferSelect & {
+  workoutVideos?: Array<{
+    id: number;
+    url: string;
+    description: string;
+  }>;
+};
 
-export const activities = pgTable("activities", {
-  id: serial("id").primaryKey(),
-  week: integer("week").notNull(),
-  day: integer("day").notNull(),
-  memoryVerse: text("memory_verse").notNull(),
-  memoryVerseReference: text("memory_verse_reference").notNull(),
-  scripture: text("scripture"),
-  workout: text("workout"),
-  workoutVideo: text("workout_video"),
-  tasks: text("tasks"),
-  description: text("description"),
-  isComplete: boolean("is_complete").default(false),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertActivitySchema = createInsertSchema(activities);
-export type Activity = typeof activities.$inferSelect;
-
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull(),
-  token: text("token").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  used: boolean("used").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export type WorkoutVideo = typeof workoutVideos.$inferSelect;
+export type InsertWorkoutVideo = z.infer<typeof insertWorkoutVideoSchema>;
+export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
