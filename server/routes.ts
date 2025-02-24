@@ -169,10 +169,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Determine points based on post type
+      let postPoints = 0;
+      switch (postData.type) {
+        case "food":
+        case "workout":
+        case "scripture":
+          postPoints = 3;
+          break;
+        case "memory_verse":
+          postPoints = 10;
+          break;
+        case "comment":
+          postPoints = 0;
+          break;
+      }
+
       // Create the post with the authenticated user's ID
       const post = await storage.createPost({
         ...postData,
         userId: req.user.id,
+        points: postPoints,
         createdAt: new Date()
       });
 
