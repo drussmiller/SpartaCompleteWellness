@@ -354,7 +354,7 @@ export default function AdminPage() {
               {teams.map((team) => (
                 <div
                   key={team.id}
-                  className="flex items-center justify-between p-2 rounded hover:bg-accent"
+                  className="flex items-center justify-between p-2 pr-6 rounded hover:bg-accent"
                 >
                   <div
                     className="flex-1 cursor-pointer"
