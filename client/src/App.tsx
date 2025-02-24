@@ -13,7 +13,7 @@ import NotificationsPage from "@/pages/notifications-page";
 import HelpPage from "@/pages/help-page";
 import LibraryPage from "@/pages/library-page";
 import ActivityPage from "@/pages/activity-page";
-import ActivityManagementPage from "@/pages/activity-management-page"; // Added import
+import ActivityManagementPage from "@/pages/activity-management"; // Added import
 
 
 function Router() {
