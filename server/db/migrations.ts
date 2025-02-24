@@ -89,11 +89,21 @@ export async function runMigrations() {
         memory_verse_reference TEXT NOT NULL,
         scripture TEXT,
         workout TEXT,
-        workout_video TEXT,
         tasks TEXT,
         description TEXT,
         is_complete BOOLEAN DEFAULT false,
         completed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create workout_videos table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS workout_videos (
+        id SERIAL PRIMARY KEY,
+        activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+        url TEXT NOT NULL,
+        description TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
