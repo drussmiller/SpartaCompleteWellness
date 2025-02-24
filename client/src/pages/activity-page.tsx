@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
 export default function ActivityPage() {
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
+  // Calculate current week based on current day
+  const currentWeek = Math.ceil(currentDay / 7);
+  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const [selectedDay, setSelectedDay] = useState(currentDay);
 
   const { data: activities } = useQuery({
     queryKey: ["/api/activities"],
