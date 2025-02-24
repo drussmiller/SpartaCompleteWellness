@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,7 @@ import { InsertUser, insertUserSchema } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 
-type LoginForm = Pick<InsertUser, "username" | "password">;
+type LoginForm = Pick<InsertUser, "email" | "password">;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -27,9 +26,9 @@ export default function AuthPage() {
   }, [user, setLocation]);
 
   const loginForm = useForm<LoginForm>({
-    resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
+    resolver: zodResolver(insertUserSchema.pick({ email: true, password: true })),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -64,10 +63,10 @@ export default function AuthPage() {
                   <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
                     <FormField
                       control={loginForm.control}
-                      name="username"
+                      name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel>Email</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -90,7 +89,7 @@ export default function AuthPage() {
                       {loginMutation.isPending ? "Logging in..." : "Login"}
                     </Button>
                     {loginMutation.error && (
-                      <p className="text-red-500 text-sm mt-2">Invalid username or password</p>
+                      <p className="text-red-500 text-sm mt-2">Invalid email or password</p>
                     )}
                   </form>
                 </Form>
