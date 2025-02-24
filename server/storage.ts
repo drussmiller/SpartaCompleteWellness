@@ -1,6 +1,6 @@
 import { users, teams, posts, measurements, notifications, videos } from "@shared/schema";
 import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
-import { eq, desc, and, lt, or } from "drizzle-orm";
+import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
