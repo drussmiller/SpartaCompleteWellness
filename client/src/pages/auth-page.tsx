@@ -60,14 +60,24 @@ export default function AuthPage() {
 
   const handleResetPassword = async (data: ResetPasswordForm) => {
     try {
-      const res = await apiRequest("POST", "/api/reset-password", data);
-      if (!res.ok) throw new Error("Failed to send reset email");
+      const response = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send reset email");
+      }
 
       toast({
         title: "Success",
         description: "If an account exists with this email, you will receive password reset instructions.",
       });
       setForgotPasswordOpen(false);
+      resetPasswordForm.reset();
     } catch (error) {
       toast({
         title: "Error",
