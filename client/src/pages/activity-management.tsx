@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
@@ -98,7 +97,7 @@ export default function ActivityManagementPage() {
   };
 
   return (
-    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
+    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right px-6"> {/* Added px-6 here */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Activity Management</h1>
         <Button variant="outline" onClick={() => window.history.back()}>
