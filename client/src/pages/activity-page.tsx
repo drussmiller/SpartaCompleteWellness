@@ -195,19 +195,6 @@ export default function ActivityPage() {
                         ))}
                       </div>
                     )}
-                    {currentActivity.workoutVideo && !currentActivity.workoutVideos && (
-                      <div className="mb-4">
-                        <div className="aspect-video">
-                          <iframe
-                            className="w-full h-full"
-                            src={`https://www.youtube.com/embed/${currentActivity.workoutVideo.split(/[/?]/)[3]}`}
-                            title="Workout Video"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
-                        </div>
-                      </div>
-                    )}
                     <p className="whitespace-pre-line">
                       {currentActivity.workout.split('http').map((part, i) =>
                         i === 0 ? part : (
@@ -225,31 +212,6 @@ export default function ActivityPage() {
                         )
                       )}
                     </p>
-                    {currentActivity.workoutVideo && (
-                      <div className="mt-4">
-                        <h3 className="font-semibold mb-2">Workout Video</h3>
-                        {currentActivity.workoutVideo.includes('youtube.com') || currentActivity.workoutVideo.includes('youtu.be') ? (
-                          <div className="aspect-video h-[400px]">
-                            <iframe
-                              className="w-full h-full"
-                              src={`https://www.youtube.com/embed/${currentActivity.workoutVideo.split(/[/?]/)[3]}`}
-                              title="Workout Video"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
-                          </div>
-                        ) : (
-                          <a
-                            href={currentActivity.workoutVideo}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            {currentActivity.workoutVideo}
-                          </a>
-                        )}
-                      </div>
-                    )}
                   </>
                 )}
               </div>
