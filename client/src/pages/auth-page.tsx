@@ -121,6 +121,9 @@ export default function AuthPage() {
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                       {loginMutation.isPending ? "Logging in..." : "Login"}
                     </Button>
+                    {loginMutation.error && (
+                      <p className="text-red-500 text-sm mt-2">Invalid username or password</p>
+                    )}
                     <Button
                       type="button"
                       variant="link"
@@ -175,6 +178,13 @@ export default function AuthPage() {
                     <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                       {registerMutation.isPending ? "Creating account..." : "Create Account"}
                     </Button>
+                    {registerMutation.error && (
+                      <p className="text-red-500 text-sm mt-2">
+                        {registerMutation.error instanceof Error 
+                          ? registerMutation.error.message 
+                          : "Failed to create account"}
+                      </p>
+                    )}
                   </form>
                 </Form>
               </TabsContent>
