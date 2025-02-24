@@ -527,7 +527,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map the results to include workout videos
       const mappedActivities = results.map(result => ({
         ...result.activity,
-        workoutVideos: result.workoutVideos === '[null]' ? [] : JSON.parse(result.workoutVideos)
+        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ? 
+          (typeof result.workoutVideos === 'string' ? 
+            JSON.parse(result.workoutVideos) : 
+            result.workoutVideos) 
+          : []
       }));
 
       res.json(mappedActivities);
@@ -595,46 +599,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/activities/:id", requireAdmin, async (req, res) => {
     try {
       const activityId = parseInt(req.params.id);
-      const { workoutVideos, ...activityData } = req.body;
-      const parsedActivityData = insertActivitySchema.parse(activityData); // Parse activity data
+      const { workoutVideos: newWorkoutVideos, ...activityData } = req.body;
+
+      console.log('Updating activity:', { activityId, activityData, newWorkoutVideos });
 
       // Update activity
       await db
         .update(activities)
-        .set(parsedActivityData)
+        .set(activityData)
         .where(eq(activities.id, activityId));
 
       // Handle workout videos
-      if (workoutVideos) {
-        // First delete existing workout videos
-        await db
-          .delete(workoutVideos)
-          .where(eq(workoutVideos.activityId, activityId));
+      // First delete existing workout videos
+      await db
+        .delete(workoutVideos)
+        .where(eq(workoutVideos.activityId, activityId));
 
-        // Then insert new ones
-        if (workoutVideos.length > 0) {
-          await db
-            .insert(workoutVideos)
-            .values(
-              workoutVideos.map((video: { url: string; description: string }) => ({
-                activityId,
-                url: video.url,
-                description: video.description
-              }))
-            );
-        }
+      // Then insert new ones if provided
+      if (newWorkoutVideos && newWorkoutVideos.length > 0) {
+        await db
+          .insert(workoutVideos)
+          .values(
+            newWorkoutVideos.map((video: { url: string; description: string }) => ({
+              activityId,
+              url: video.url,
+              description: video.description
+            }))
+          );
       }
 
       // Fetch updated activity with workout videos
       const [updatedActivity] = await db
         .select({
           activity: activities,
-          workoutVideos: sql<string>`json_agg(
-            json_build_object(
-              'id', ${workoutVideos}.id,
-              'url', ${workoutVideos}.url,
-              'description', ${workoutVideos}.description
-            )
+          workoutVideos: sql<string>`COALESCE(
+            json_agg(
+              json_build_object(
+                'id', ${workoutVideos}.id,
+                'url', ${workoutVideos}.url,
+                'description', ${workoutVideos}.description
+              )
+            ) FILTER (WHERE ${workoutVideos}.id IS NOT NULL),
+            '[]'::json
           )`
         })
         .from(activities)
@@ -642,16 +648,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(activities.id, activityId))
         .groupBy(activities.id);
 
+      if (!updatedActivity) {
+        return res.status(404).json({ error: "Activity not found" });
+      }
+
+      console.log('Updated activity:', updatedActivity);
+
+      // Parse the workout videos carefully
+      let parsedWorkoutVideos = [];
+      try {
+        if (updatedActivity.workoutVideos && updatedActivity.workoutVideos !== '[]') {
+          parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
+        }
+      } catch (error) {
+        console.error('Error parsing workout videos:', error);
+      }
+
       res.json({
         ...updatedActivity.activity,
-        workoutVideos: updatedActivity.workoutVideos === '[null]' ? [] : JSON.parse(updatedActivity.workoutVideos)
+        workoutVideos: parsedWorkoutVideos
       });
     } catch (error) {
       console.error('Error updating activity:', error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: 'Validation Error', details: error.errors });
       } else {
-        res.status(500).json({ error: "Failed to update activity" });
+        res.status(500).json({ 
+          error: "Failed to update activity",
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
   });
@@ -873,8 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return notification;
     } catch (error) {
-      console.error('Error sending notification:', error);
-      if (error instanceof z.ZodError) {
+      console.error('Error sending notification:', error);      if (error instanceof z.ZodError) {
         console.error('Zod error sending notification:', error.errors);
       }
       throw error;

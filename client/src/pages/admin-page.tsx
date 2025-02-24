@@ -1,3 +1,4 @@
+import React from 'react';
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Team, User, Activity } from "@shared/schema";
