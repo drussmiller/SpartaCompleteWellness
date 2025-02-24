@@ -30,27 +30,7 @@ export interface IStorage {
   markNotificationAsRead(notificationId: number): Promise<Notification>;
   deleteNotification(notificationId: number): Promise<void>;
 
-  async getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const userPosts = await db
-      .select()
-      .from(posts)
-      .where(
-        and(
-          eq(posts.userId, userId),
-          eq(posts.type, type),
-          gte(posts.createdAt!, startOfDay),
-          lte(posts.createdAt!, endOfDay)
-        )
-      );
-    
-    return userPosts.length;
-  }
+  getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number>;
 
   createVideo(video: InsertVideo): Promise<Video>;
   getVideos(teamId?: number): Promise<Video[]>;
@@ -253,6 +233,28 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVideo(videoId: number): Promise<void> {
     await db.delete(videos).where(eq(videos.id, videoId));
+  }
+
+  async getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const userPosts = await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.userId, userId),
+          eq(posts.type, type),
+          gte(posts.createdAt!, startOfDay),
+          lte(posts.createdAt!, endOfDay)
+        )
+      );
+    
+    return userPosts.length;
   }
 }
 
