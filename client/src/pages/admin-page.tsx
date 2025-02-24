@@ -201,8 +201,8 @@ export default function AdminPage() {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button size="sm" className="w-32">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button size="sm" className="w-28 px-2">
+              <Plus className="h-3 w-3 mr-1" />
               Create Team
             </Button>
           </DialogTrigger>
