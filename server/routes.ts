@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { posts, notifications, videos, users } from "@shared/schema";
+import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
   insertMeasurementSchema,
@@ -63,6 +63,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const teams = await storage.getTeams();
     res.json(teams);
   });
+
+  app.delete("/api/teams/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      const teamId = parseInt(req.params.id);
+
+      // Check if team exists
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId));
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      await storage.deleteTeam(teamId);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      res.status(500).json({
+        message: "Failed to delete team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
 
   // Posts
   app.post("/api/posts", async (req, res) => {
@@ -205,8 +233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow deleting comments from previous days, or any post type from current day
       if (isFromPreviousDay && post.type !== 'comment') {
-        return res.status(403).json({ 
-          message: "Only comments can be deleted from previous days" 
+        return res.status(403).json({
+          message: "Only comments can be deleted from previous days"
         });
       }
 

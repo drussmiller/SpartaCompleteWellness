@@ -38,6 +38,7 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number>;
   sessionStore: session.Store;
+  deleteTeam(teamId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -295,6 +296,19 @@ export class DatabaseStorage implements IStorage {
       );
 
     return weeklyPosts.length;
+  }
+
+  async deleteTeam(teamId: number): Promise<void> {
+    // First update all users in this team to have no team
+    await db
+      .update(users)
+      .set({ teamId: null })
+      .where(eq(users.teamId, teamId));
+
+    // Then delete the team
+    await db
+      .delete(teams)
+      .where(eq(teams.id, teamId));
   }
 }
 
