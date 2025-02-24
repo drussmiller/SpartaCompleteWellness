@@ -93,6 +93,8 @@ export function CreatePostDialog() {
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      // Also invalidate the user query to update points
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       setOpen(false);
       form.reset();
