@@ -528,13 +528,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user with accurate point total
       const [user] = await db
         .select({
-          ...users,
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          password: users.password,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId,
+          imageUrl: users.imageUrl,
           points: sql`COALESCE((
-            SELECT SUM(points)
-            FROM ${posts}
-            WHERE ${posts.userId} = ${users.id}
-            AND ${posts.type} != 'comment'
-          ), 0)`
+            SELECT SUM(p.points)
+            FROM ${posts} p
+            WHERE p.user_id = ${users.id}
+            AND p.type != 'comment'
+          ), 0)::integer`
         })
         .from(users)
         .where(eq(users.id, req.user.id));
