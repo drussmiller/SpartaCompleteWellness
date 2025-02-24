@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
@@ -527,8 +527,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User
   app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const user = await storage.getUserWithTeam(req.user.id);
-    res.json(user);
+    try {
+      // Get user with accurate point total
+      const [user] = await db
+        .select({
+          ...users,
+          points: sql`COALESCE((
+            SELECT SUM(points)
+            FROM ${posts}
+            WHERE ${posts.userId} = ${users.id}
+          ), 0)`
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      res.json(user);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({ error: "Failed to fetch user data" });
+    }
   });
 
   app.post("/api/register", async (req, res, next) => {
