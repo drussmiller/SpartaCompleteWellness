@@ -101,6 +101,21 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+
+export const activities = pgTable("activities", {
+  id: serial("id").primaryKey(),
+  week: integer("week").notNull(),
+  day: integer("day").notNull(),
+  memoryVerse: text("memory_verse").notNull(),
+  memoryVerseReference: text("memory_verse_reference").notNull(),
+  scripture: text("scripture"),
+  workout: text("workout"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertActivitySchema = createInsertSchema(activities);
+export type Activity = typeof activities.$inferSelect;
+
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),

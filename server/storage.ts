@@ -1,4 +1,4 @@
-import { users, teams, posts, measurements, notifications, videos } from "@shared/schema";
+import { users, teams, posts, measurements, notifications, videos, activities, passwordResetTokens } from "@shared/schema";
 import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
 import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
@@ -39,6 +39,8 @@ export interface IStorage {
   getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number>;
   sessionStore: session.Store;
   deleteTeam(teamId: number): Promise<void>;
+  getActivities(week?: number, day?: number): Promise<any>;
+  createActivity(data: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -398,6 +400,24 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(posts.createdAt));
+  }
+
+  async getActivities(week?: number, day?: number) {
+    let query = db.select().from(activities);
+    if (week !== undefined) {
+      query = query.where(eq(activities.week, week));
+      if (day !== undefined) {
+        query = query.where(and(
+          eq(activities.week, week),
+          eq(activities.day, day)
+        ));
+      }
+    }
+    return await query;
+  }
+
+  async createActivity(data: any) {
+    return await db.insert(activities).values(data).returning();
   }
 }
 

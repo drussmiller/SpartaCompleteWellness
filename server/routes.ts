@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { queryClient } from "../client/src/lib/queryClient";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
@@ -478,8 +478,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/videos", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
+  // Activities endpoints
+  app.get("/api/activities", async (req, res) => {
+    const { week, day } = req.query;
+    try {
+      const activities = await storage.getActivities(
+        week ? Number(week) : undefined,
+        day ? Number(day) : undefined
+      );
+      res.json(activities);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch activities" });
+    }
+  });
+
+  app.post("/api/activities", requireAdmin, async (req, res) => {
+    try {
+      const activity = await storage.createActivity(req.body);
+      res.status(201).json(activity); // Added 201 status code for successful creation
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create activity" });
+    }
+  });
+
+  app.post("/api/videos", requireAdmin, async (req, res) => {
     try {
       const videoData = insertVideoSchema.parse(req.body);
       const video = await storage.createVideo(videoData);
