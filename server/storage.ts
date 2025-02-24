@@ -41,6 +41,9 @@ export interface IStorage {
   deleteTeam(teamId: number): Promise<void>;
   getActivities(week?: number, day?: number): Promise<any>;
   createActivity(data: any): Promise<any>;
+  async deleteActivity(id: number): Promise<void> {
+    await db.delete(activities).where(eq(activities.id, id));
+  }
 }
 
 export class DatabaseStorage implements IStorage {
