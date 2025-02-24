@@ -41,7 +41,6 @@ export interface IStorage {
   deleteTeam(teamId: number): Promise<void>;
   getActivities(week?: number, day?: number): Promise<any>;
   createActivity(data: any): Promise<any>;
-  deleteActivity(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -213,6 +212,15 @@ export class DatabaseStorage implements IStorage {
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
+  }
+
+  async updateUserTeam(userId: number, teamId: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ teamId })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 
   async getPostsByTeam(teamId: number): Promise<Post[]> {
@@ -410,9 +418,6 @@ export class DatabaseStorage implements IStorage {
 
   async createActivity(data: any) {
     return await db.insert(activities).values(data).returning();
-  }
-  async deleteActivity(id: number): Promise<void> {
-    await db.delete(activities).where(eq(activities.id, id));
   }
 }
 

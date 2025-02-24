@@ -3,9 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
+import { queryClient } from "../client/src/lib/queryClient";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
-import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
   insertMeasurementSchema,
   insertPostSchema,
@@ -15,7 +16,6 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
-import activitiesRouter from './routes/activities';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -30,8 +30,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
-  // Use activities router first before other routes
-  app.use('/api/activities', activitiesRouter);
 
   // Teams
   app.post("/api/teams", async (req, res) => {
@@ -480,8 +478,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/videos", async (req, res) => {
+  // Activities endpoints
+  app.get("/api/activities", async (req, res) => {
+    const { week, day } = req.query;
+    try {
+      const activities = await storage.getActivities(
+        week ? Number(week) : undefined,
+        day ? Number(day) : undefined
+      );
+      res.json(activities);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch activities" });
+    }
+  });
+
+  const requireAdmin = (req: any, res: any, next: any) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
+    next();
+  };
+
+  app.post("/api/activities", requireAdmin, async (req, res) => {
+    try {
+      const activity = await storage.createActivity(req.body);
+      res.status(201).json(activity);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create activity" });
+    }
+  });
+
+  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      const activity = await db
+        .update(activities)
+        .set(req.body)
+        .where(eq(activities.id, parseInt(req.params.id)))
+        .returning();
+      res.json(activity[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update activity" });
+    }
+  });
+
+  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      await db
+        .delete(activities)
+        .where(eq(activities.id, parseInt(req.params.id)));
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete activity" });
+    }
+  });
+
+  app.post("/api/videos", requireAdmin, async (req, res) => {
     try {
       const videoData = insertVideoSchema.parse(req.body);
       const video = await storage.createVideo(videoData);
