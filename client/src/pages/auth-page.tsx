@@ -1,15 +1,17 @@
+
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, type InsertUser } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { InsertUser, insertUserSchema } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { z } from "zod";
 
 type LoginForm = Pick<InsertUser, "username" | "password">;
 
@@ -33,11 +35,14 @@ export default function AuthPage() {
   });
 
   const registerForm = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(insertUserSchema.extend({
+      preferredName: z.string().optional()
+    })),
     defaultValues: {
       username: "",
       email: "",
       password: "",
+      preferredName: "",
     },
   });
 
@@ -49,12 +54,11 @@ export default function AuthPage() {
             <CardTitle className="text-2xl font-bold">Sparta Complete Wellness</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login">
+            <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
-
               <TabsContent value="login">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
@@ -91,7 +95,6 @@ export default function AuthPage() {
                   </form>
                 </Form>
               </TabsContent>
-
               <TabsContent value="register">
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
@@ -131,6 +134,18 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={registerForm.control}
+                      name="preferredName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred Name (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                       {registerMutation.isPending ? "Creating account..." : "Create Account"}
                     </Button>
@@ -148,7 +163,6 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
-
       <div className="hidden md:flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground">
         <img 
           src="/Spartans_LOGO.png"

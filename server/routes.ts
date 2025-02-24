@@ -243,15 +243,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
         res.json(comments);
       } else {
-        // Get posts for the user's team if they have one
-        let allPosts;
-        if (req.user.teamId) {
-          allPosts = await storage.getPostsByTeam(req.user.teamId);
-        } else {
-          // Otherwise return all main posts that aren't comments
-          allPosts = await storage.getPosts();
+        // Only return posts for the user's team
+        if (!req.user.teamId) {
+          return res.json([]); // If user has no team, return empty array
         }
-        res.json(allPosts);
+        const teamPosts = await storage.getPostsByTeam(req.user.teamId);
+        res.json(teamPosts);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);

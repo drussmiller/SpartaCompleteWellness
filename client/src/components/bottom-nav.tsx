@@ -12,7 +12,6 @@ export function BottomNav() {
     { icon: Library, label: "Library", href: "/library" },
     { icon: HelpCircle, label: "Help", href: "/help" },
     { icon: Bell, label: "Notifications", href: "/notifications" },
-    { icon: User, label: "Profile", href: "/profile" },
   ];
 
   return (
@@ -48,6 +47,19 @@ export function BottomNav() {
             </button>
           </Link>
         )}
+        <Link href="/profile">
+          <button
+            className={cn(
+              "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
+              location === "/profile"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-primary transition-colors"
+            )}
+          >
+            <User className="h-5 w-5" />
+            <span>Profile</span>
+          </button>
+        </Link>
       </div>
     </nav>
   );

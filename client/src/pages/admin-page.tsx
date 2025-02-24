@@ -304,21 +304,22 @@ export default function AdminPage() {
                       Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedTeam && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam })}
-                        disabled={updateUserTeamMutation.isPending}
-                      >
-                        {updateUserTeamMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          "Assign to Team"
-                        )}
-                      </Button>
-                    )}
+                  <div className="flex flex-col gap-2 min-w-[140px]">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (selectedTeam) {
+                          updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
+                        }
+                      }}
+                      disabled={!selectedTeam || updateUserTeamMutation.isPending}
+                    >
+                      {updateUserTeamMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
