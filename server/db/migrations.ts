@@ -61,6 +61,26 @@ export async function runMigrations() {
     // Create notifications table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS notifications (
+
+    // Create activities table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS activities (
+        id SERIAL PRIMARY KEY,
+        week INTEGER NOT NULL,
+        day INTEGER NOT NULL,
+        memory_verse TEXT NOT NULL,
+        memory_verse_reference TEXT NOT NULL,
+        scripture TEXT,
+        workout TEXT,
+        workout_video TEXT,
+        tasks TEXT,
+        description TEXT,
+        is_complete BOOLEAN DEFAULT false,
+        completed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         title TEXT NOT NULL,
