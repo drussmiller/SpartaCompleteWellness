@@ -1,9 +1,34 @@
 
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BottomNav } from "@/components/bottom-nav";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 
 export default function ActivityPage() {
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(1);
+
+  const { data: activities } = useQuery({
+    queryKey: ["/api/activities"],
+  });
+
+  // Get the current day number based on user's start date
+  // For now using a simple counter, but you can modify this based on actual start date
+  const currentDay = 1; // This should be calculated based on user's start date
+
+  const currentActivity = activities?.find(
+    (a) => a.week === selectedWeek && a.day === selectedDay
+  );
+
+  const weeks = Array.from(new Set(activities?.map((a) => a.week) || [])).sort();
+  const days = activities
+    ?.filter((a) => a.week === selectedWeek)
+    .map((a) => a.day)
+    .sort() || [];
+
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -12,49 +37,84 @@ export default function ActivityPage() {
         </div>
       </header>
 
-      <main className="p-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Week 1</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose max-w-none">
-              <h2>Memory Verse</h2>
-              <blockquote>
-                Psalm 133:1 - "Behold how good and pleasant it is for brothers to dwell together in unity."
-              </blockquote>
+      <main className="p-4 space-y-4">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {weeks.map((week) => (
+            <Button
+              key={week}
+              variant={selectedWeek === week ? "default" : "outline"}
+              onClick={() => setSelectedWeek(week)}
+              disabled={week > Math.ceil(currentDay / 7)}
+            >
+              Week {week}
+            </Button>
+          ))}
+        </div>
 
-              <h2>Initial Measurements</h2>
-              <ol>
-                <li>Take front and side photos with timestamp (for personal reference)</li>
-                <li>Record your weight in pounds</li>
-                <li>Measure your waist at belly button level</li>
-              </ol>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {days.map((day) => (
+            <Button
+              key={day}
+              variant={selectedDay === day ? "default" : "outline"}
+              onClick={() => setSelectedDay(day)}
+              disabled={selectedWeek * 7 + day > currentDay}
+            >
+              Day {day}
+            </Button>
+          ))}
+        </div>
 
-              <h2>Daily Schedule</h2>
-              <ScrollArea className="h-[400px] rounded-md border p-4">
-                <div className="space-y-4">
-                  <div>
-                    <h3>Day 1</h3>
-                    <p><strong>Scripture:</strong> John 1:1-18</p>
-                    <p><strong>Workout:</strong> Initial Testing</p>
-                    <ul>
-                      <li>Squat Test</li>
-                      <li>Burpee Test</li>
-                      <li>Pull-up Test</li>
-                      <li>Reverse Lunge Test</li>
-                      <li>Push-up Test</li>
-                      <li>Sit-up Test</li>
-                      <li>Chin-up Test</li>
-                    </ul>
-                  </div>
-                  
-                  {/* Additional days can be added here as needed */}
-                </div>
-              </ScrollArea>
-            </div>
-          </CardContent>
-        </Card>
+        {currentActivity ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Week {currentActivity.week} - Day {currentActivity.day}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose max-w-none">
+                <h2>Memory Verse</h2>
+                <blockquote>
+                  {currentActivity.memoryVerseReference} - "{currentActivity.memoryVerse}"
+                </blockquote>
+
+                {currentActivity.description && (
+                  <>
+                    <h2>Description</h2>
+                    <p>{currentActivity.description}</p>
+                  </>
+                )}
+
+                {currentActivity.tasks && (
+                  <>
+                    <h2>Tasks</h2>
+                    <div dangerouslySetInnerHTML={{ __html: currentActivity.tasks }} />
+                  </>
+                )}
+
+                {currentActivity.scripture && (
+                  <>
+                    <h2>Scripture Reading</h2>
+                    <p>{currentActivity.scripture}</p>
+                  </>
+                )}
+
+                {currentActivity.workout && (
+                  <>
+                    <h2>Workout</h2>
+                    <div dangerouslySetInnerHTML={{ __html: currentActivity.workout }} />
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              No activity found for this day
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       <BottomNav />

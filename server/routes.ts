@@ -492,6 +492,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const requireAdmin = (req: any, res: any, next: any) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    next();
+  };
+
   app.post("/api/activities", requireAdmin, async (req, res) => {
     try {
       const activity = await storage.createActivity(req.body);

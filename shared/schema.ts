@@ -110,6 +110,10 @@ export const activities = pgTable("activities", {
   memoryVerseReference: text("memory_verse_reference").notNull(),
   scripture: text("scripture"),
   workout: text("workout"),
+  tasks: text("tasks"),
+  description: text("description"),
+  isComplete: boolean("is_complete").default(false),
+  completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
