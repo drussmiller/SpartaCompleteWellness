@@ -122,6 +122,21 @@ export async function runMigrations() {
       )
     `);
 
+    // Remove the redundant workout_video column if it exists
+    await db.execute(sql`
+      DO $$ 
+      BEGIN 
+        IF EXISTS (
+          SELECT 1 
+          FROM information_schema.columns 
+          WHERE table_name = 'activities' 
+          AND column_name = 'workout_video'
+        ) THEN
+          ALTER TABLE activities DROP COLUMN workout_video;
+        END IF;
+      END $$;
+    `);
+
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);
