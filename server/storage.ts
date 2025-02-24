@@ -251,7 +251,7 @@ export class DatabaseStorage implements IStorage {
   async getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number> {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
@@ -266,7 +266,7 @@ export class DatabaseStorage implements IStorage {
           lte(posts.createdAt!, endOfDay)
         )
       );
-    
+
     return userPosts.length;
   }
 }

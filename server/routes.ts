@@ -5,7 +5,7 @@ import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { posts, notifications, videos, users } from "@shared/schema";
-import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
+import { setupAuth, hashPassword } from "./auth"; // Import comparePasswords
 import {
   insertMeasurementSchema,
   insertPostSchema,
@@ -72,16 +72,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate the post data
       const postData = insertPostSchema.parse(req.body);
-      
+
       // Check daily post limits
       const currentCount = await storage.getPostCountByTypeAndDate(req.user.id, postData.type, new Date());
-      
+
       const limits: Record<string, number> = {
         food: 3,
         workout: 1,
         scripture: 1
       };
-      
+
       if (limits[postData.type] && currentCount >= limits[postData.type]) {
         return res.status(400).json({
           error: `You have reached your daily limit for ${postData.type} posts`
@@ -321,13 +321,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     const userId = parseInt(req.params.id);
     const { isAdmin } = req.body;
-    
+
     try {
       await db
         .update(users)
         .set({ isAdmin })
         .where(eq(users.id, userId));
-      
+
       const updatedUser = await storage.getUser(userId);
       res.json(updatedUser);
     } catch (error) {
