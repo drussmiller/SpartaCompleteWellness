@@ -290,6 +290,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(user);
   });
 
+  app.post("/api/users/:id/toggle-admin", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
+    const { isAdmin } = req.body;
+    
+    try {
+      await db
+        .update(users)
+        .set({ isAdmin })
+        .where(eq(users.id, userId));
+      
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update admin status" });
+    }
+  });
+
   app.delete("/api/users/:id", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     try {

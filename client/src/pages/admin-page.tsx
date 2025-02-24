@@ -237,6 +237,30 @@ export default function AdminPage() {
                       Reset Password
                     </Button>
                     <Button
+                      variant={u.isAdmin ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
+                            isAdmin: !u.isAdmin
+                          });
+                          queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                          toast({ 
+                            title: "Success", 
+                            description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "Failed to update admin status",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                    </Button>
+                    <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => {
