@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BottomNav } from "@/components/bottom-nav";
@@ -12,7 +11,7 @@ export default function ActivityPage() {
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const currentDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert Sunday (0) to 7
-  
+
   // Calculate current week based on current day
   const currentWeek = Math.ceil(currentDay / 7);
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
@@ -84,7 +83,9 @@ export default function ActivityPage() {
                 {currentActivity.description && (
                   <>
                     <h2>Description</h2>
-                    <p>{currentActivity.description}</p>
+                    <p className="whitespace-pre-line">
+                      {currentActivity.description}
+                    </p>
                   </>
                 )}
 
@@ -105,16 +106,46 @@ export default function ActivityPage() {
                 {currentActivity.workout && (
                   <>
                     <h2>Workout</h2>
-                    <div dangerouslySetInnerHTML={{ __html: currentActivity.workout }} />
+                    <p className="whitespace-pre-line">
+                      {currentActivity.workout.split('http').map((part, i) =>
+                        i === 0 ? part : (
+                          <React.Fragment key={i}>
+                            <a
+                              href={`http${part.split(/\s/)[0]}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              http{part.split(/\s/)[0]}
+                            </a>
+                            {part.split(/\s/).slice(1).join(' ')}
+                          </React.Fragment>
+                        )
+                      )}
+                    </p>
                     {currentActivity.workoutVideo && (
-                      <div className="mt-4 aspect-video">
-                        <iframe
-                          className="w-full h-full rounded-lg"
-                          src={currentActivity.workoutVideo.replace('watch?v=', 'embed/')}
-                          title="Workout Video"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
+                      <div className="mt-4">
+                        <h3 className="font-semibold mb-2">Workout Video</h3>
+                        {currentActivity.workoutVideo.includes('youtube.com') || currentActivity.workoutVideo.includes('youtu.be') ? (
+                          <div className="aspect-video">
+                            <iframe
+                              className="w-full h-full"
+                              src={`https://www.youtube.com/embed/${currentActivity.workoutVideo.split(/[/?]/)[3]}`}
+                              title="Workout Video"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : (
+                          <a
+                            href={currentActivity.workoutVideo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {currentActivity.workoutVideo}
+                          </a>
+                        )}
                       </div>
                     )}
                   </>
