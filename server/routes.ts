@@ -527,7 +527,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map the results to include workout videos
       const mappedActivities = results.map(result => ({
         ...result.activity,
-        workoutVideos: result.workoutVideos === '[null]' ? [] : JSON.parse(result.workoutVideos)
+        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ? 
+          (typeof result.workoutVideos === 'string' ? 
+            JSON.parse(result.workoutVideos) : 
+            result.workoutVideos) 
+          : []
       }));
 
       res.json(mappedActivities);
