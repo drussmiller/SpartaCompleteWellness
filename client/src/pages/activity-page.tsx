@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
 export default function ActivityPage() {
+  // Get the current day number based on Monday start
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const currentDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert Sunday (0) to 7
+  
   // Calculate current week based on current day
   const currentWeek = Math.ceil(currentDay / 7);
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
@@ -16,13 +21,6 @@ export default function ActivityPage() {
   const { data: activities } = useQuery({
     queryKey: ["/api/activities"],
   });
-
-  // Get the current day number based on user's start date
-  // For now using a simple counter, but you can modify this based on actual start date
-  // Calculate current day based on Monday start
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const currentDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert Sunday (0) to 7
 
   const currentActivity = activities?.find(
     (a) => a.week === selectedWeek && a.day === selectedDay
