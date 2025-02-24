@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Plus, Edit, Trash2 } from "lucide-react";
+import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -28,6 +28,8 @@ export default function AdminPage() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editActivityOpen, setEditActivityOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [workoutVideos, setWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
+  const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -230,6 +232,7 @@ export default function AdminPage() {
 
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
+    setEditingWorkoutVideos(activity.workoutVideos || []);
     setEditActivityOpen(true);
   };
 
@@ -238,6 +241,31 @@ export default function AdminPage() {
       deleteActivityMutation.mutate(activityId);
     }
   };
+
+  const handleAddWorkoutVideo = () => {
+    setWorkoutVideos([...workoutVideos, { url: '', description: '' }]);
+  };
+
+  const handleRemoveWorkoutVideo = (index: number) => {
+    setWorkoutVideos(workoutVideos.filter((_, i) => i !== index));
+  };
+
+  const handleWorkoutVideoChange = (index: number, field: 'url' | 'description', value: string) => {
+    const updatedVideos = [...workoutVideos];
+    updatedVideos[index][field] = value;
+    setWorkoutVideos(updatedVideos);
+  };
+
+  const handleEditWorkoutVideo = (index: number, field: 'url' | 'description', value: string) => {
+    const updatedVideos = [...editingWorkoutVideos];
+    updatedVideos[index][field] = value;
+    setEditingWorkoutVideos(updatedVideos);
+  };
+
+  const handleRemoveEditWorkoutVideo = (index: number) => {
+    setEditingWorkoutVideos(editingWorkoutVideos.filter((_, i) => i !== index));
+  };
+
 
   if (!user?.isAdmin) {
     return (
@@ -450,9 +478,9 @@ export default function AdminPage() {
               memoryVerseReference: formData.get('memoryVerseReference'),
               scripture: formData.get('scripture'),
               workout: formData.get('workout'),
-              workoutVideo: formData.get('workoutVideo'),
               tasks: formData.get('tasks'),
-              description: formData.get('description')
+              description: formData.get('description'),
+              workoutVideos
             };
 
             try {
@@ -465,6 +493,7 @@ export default function AdminPage() {
               });
 
               queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+              setWorkoutVideos([]);
               (e.target as HTMLFormElement).reset();
             } catch (error) {
               toast({
@@ -505,16 +534,54 @@ export default function AdminPage() {
               <Textarea name="workout" />
             </div>
             <div>
-              <Label htmlFor="workoutVideo">Workout Video URL</Label>
-              <Input name="workoutVideo" />
-            </div>
-            <div>
               <Label htmlFor="tasks">Tasks</Label>
               <Textarea name="tasks" />
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea name="description" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Workout Videos</Label>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddWorkoutVideo}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Video
+                </Button>
+              </div>
+
+              {workoutVideos.map((video, index) => (
+                <div key={index} className="space-y-2 p-4 border rounded-lg relative">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={() => handleRemoveWorkoutVideo(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+
+                  <div>
+                    <Label>Video Description</Label>
+                    <Textarea
+                      value={video.description}
+                      onChange={(e) => handleWorkoutVideoChange(index, 'description', e.target.value)}
+                      placeholder="Describe this workout video"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Video URL</Label>
+                    <Input
+                      value={video.url}
+                      onChange={(e) => handleWorkoutVideoChange(index, 'url', e.target.value)}
+                      placeholder="Enter video URL"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
 
             <Button type="submit">Add Activity</Button>
@@ -651,102 +718,143 @@ export default function AdminPage() {
             <DialogTitle>Edit Activity</DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-4">
-          <Form>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              const data = {
-                week: parseInt(formData.get('week') as string),
-                day: parseInt(formData.get('day') as string),
-                memoryVerse: formData.get('memoryVerse'),
-                memoryVerseReference: formData.get('memoryVerseReference'),
-                scripture: formData.get('scripture'),
-                workout: formData.get('workout'),
-                workoutVideo: formData.get('workoutVideo'),
-                tasks: formData.get('tasks'),
-                description: formData.get('description')
-              };
-              updateActivityMutation.mutate(data);
-            }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <Form>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target as HTMLFormElement);
+                const data = {
+                  week: parseInt(formData.get('week') as string),
+                  day: parseInt(formData.get('day') as string),
+                  memoryVerse: formData.get('memoryVerse'),
+                  memoryVerseReference: formData.get('memoryVerseReference'),
+                  scripture: formData.get('scripture'),
+                  workout: formData.get('workout'),
+                  tasks: formData.get('tasks'),
+                  description: formData.get('description'),
+                  workoutVideos: editingWorkoutVideos
+                };
+                updateActivityMutation.mutate(data);
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="week">Week</Label>
+                    <Input 
+                      type="number" 
+                      name="week" 
+                      defaultValue={editingActivity?.week} 
+                      required 
+                      min="1" 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="day">Day</Label>
+                    <Input 
+                      type="number" 
+                      name="day" 
+                      defaultValue={editingActivity?.day} 
+                      required 
+                      min="1" 
+                      max="7" 
+                    />
+                  </div>
+                </div>
                 <div>
-                  <Label htmlFor="week">Week</Label>
-                  <Input 
-                    type="number" 
-                    name="week" 
-                    defaultValue={editingActivity?.week} 
+                  <Label htmlFor="memoryVerse">Memory Verse</Label>
+                  <Textarea 
+                    name="memoryVerse" 
+                    defaultValue={editingActivity?.memoryVerse} 
                     required 
-                    min="1" 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="day">Day</Label>
+                  <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
                   <Input 
-                    type="number" 
-                    name="day" 
-                    defaultValue={editingActivity?.day} 
+                    name="memoryVerseReference" 
+                    defaultValue={editingActivity?.memoryVerseReference} 
                     required 
-                    min="1" 
-                    max="7" 
                   />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="memoryVerse">Memory Verse</Label>
-                <Textarea 
-                  name="memoryVerse" 
-                  defaultValue={editingActivity?.memoryVerse} 
-                  required 
-                />
-              </div>
-              <div>
-                <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
-                <Input 
-                  name="memoryVerseReference" 
-                  defaultValue={editingActivity?.memoryVerseReference} 
-                  required 
-                />
-              </div>
-              <div>
-                <Label htmlFor="scripture">Scripture Reading</Label>
-                <Input 
-                  name="scripture" 
-                  defaultValue={editingActivity?.scripture} 
-                />
-              </div>
-              <div>
-                <Label htmlFor="workout">Workout</Label>
-                <Textarea 
-                  name="workout" 
-                  defaultValue={editingActivity?.workout} 
-                />
-              </div>
-              <div>
-                <Label htmlFor="workoutVideo">Workout Video URL</Label>
-                <Input 
-                  name="workoutVideo" 
-                  defaultValue={editingActivity?.workoutVideo} 
-                />
-              </div>
-              <div>
-                <Label htmlFor="tasks">Tasks</Label>
-                <Textarea 
-                  name="tasks" 
-                  defaultValue={editingActivity?.tasks} 
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea 
-                  name="description" 
-                  defaultValue={editingActivity?.description} 
-                />
-              </div>
-              <Button type="submit" disabled={updateActivityMutation.isPending}>
-                {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
-              </Button>
-            </form>
-          </Form>
+                <div>
+                  <Label htmlFor="scripture">Scripture Reading</Label>
+                  <Input 
+                    name="scripture" 
+                    defaultValue={editingActivity?.scripture} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="workout">Workout</Label>
+                  <Textarea 
+                    name="workout" 
+                    defaultValue={editingActivity?.workout} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tasks">Tasks</Label>
+                  <Textarea 
+                    name="tasks" 
+                    defaultValue={editingActivity?.tasks} 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea 
+                    name="description" 
+                    defaultValue={editingActivity?.description} 
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Workout Videos</Label>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setEditingWorkoutVideos([...editingWorkoutVideos, { url: '', description: '' }])}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Video
+                    </Button>
+                  </div>
+
+                  {editingWorkoutVideos.map((video, index) => (
+                    <div key={index} className="space-y-2 p-4 border rounded-lg relative">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={() => handleRemoveEditWorkoutVideo(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+
+                      <div>
+                        <Label>Video Description</Label>
+                        <Textarea
+                          value={video.description}
+                          onChange={(e) => handleEditWorkoutVideo(index, 'description', e.target.value)}
+                          placeholder="Describe this workout video"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Video URL</Label>
+                        <Input
+                          value={video.url}
+                          onChange={(e) => handleEditWorkoutVideo(index, 'url', e.target.value)}
+                          placeholder="Enter video URL"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button type="submit" disabled={updateActivityMutation.isPending}>
+                  {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                </Button>
+              </form>
+            </Form>
           </ScrollArea>
         </DialogContent>
       </Dialog>
