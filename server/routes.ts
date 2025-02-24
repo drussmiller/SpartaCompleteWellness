@@ -169,61 +169,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Determine points based on post type
-      let postPoints = 0;
-      switch (postData.type) {
-        case "food":
-        case "workout":
-        case "scripture":
-          postPoints = 3;
-          break;
-        case "memory_verse":
-          postPoints = 10;
-          break;
-        case "comment":
-          postPoints = 0;
-          break;
-      }
-
       // Create the post with the authenticated user's ID
       const post = await storage.createPost({
         ...postData,
         userId: req.user.id,
-        points: postPoints,
+        points: postData.type === 'memory_verse' ? 10 : (postData.type === 'comment' ? 0 : 3),
         createdAt: new Date()
       });
 
       console.log('Created post:', post);
 
-      // Award points based on post type
-      let points = 0;
-      switch (post.type) {
-        case "food":
-        case "workout":
-        case "scripture":
-          points = 3;
-          break;
-        case "memory_verse":
-          points = 10;
-          break;
-        case "comment":
-          points = 0;
-          break;
-      }
-
-      if (points > 0) {
-        const updatedUser = await storage.updateUserPoints(req.user.id, points);
+      // Award points if not a comment
+      if (post.type !== 'comment') {
+        const updatedUser = await storage.updateUserPoints(req.user.id, post.points);
         console.log('Updated user points:', updatedUser);
 
         const notification = await sendNotification(
           req.user.id,
           "Points Earned!",
-          `You earned ${points} points for your ${post.type} post!`
+          `You earned ${post.points} points for your ${post.type} post!`
         );
         console.log('Created notification:', notification);
       }
 
-      res.status(201).json(post);
+      // Return the complete post object with all fields
+      const [createdPost] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, post.id));
+
+      res.status(201).json(createdPost);
     } catch (e) {
       console.error('Error creating post:', e);
       if (e instanceof ZodError) {
@@ -232,7 +207,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           details: e.errors
         });
       } else {
-        console.error('Unexpected error:', e);
         res.status(500).json({
           error: 'Internal Server Error',
           message: e instanceof Error ? e.message : 'Unknown error occurred'
