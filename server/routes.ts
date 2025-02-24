@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
