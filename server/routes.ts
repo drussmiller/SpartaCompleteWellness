@@ -500,9 +500,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/activities", requireAdmin, async (req, res) => {
     try {
       const activity = await storage.createActivity(req.body);
-      res.status(201).json(activity); // Added 201 status code for successful creation
+      res.status(201).json(activity);
     } catch (error) {
       res.status(500).json({ error: "Failed to create activity" });
+    }
+  });
+
+  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      const activity = await db
+        .update(activities)
+        .set(req.body)
+        .where(eq(activities.id, parseInt(req.params.id)))
+        .returning();
+      res.json(activity[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update activity" });
+    }
+  });
+
+  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      await db
+        .delete(activities)
+        .where(eq(activities.id, parseInt(req.params.id)));
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete activity" });
     }
   });
 

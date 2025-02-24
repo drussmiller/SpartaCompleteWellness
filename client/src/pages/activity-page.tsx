@@ -5,8 +5,21 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
+import { Edit, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function ActivityPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   // Get the current day number based on Monday start
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -24,6 +37,37 @@ export default function ActivityPage() {
   const currentActivity = activities?.find(
     (a) => a.week === selectedWeek && a.day === selectedDay
   );
+
+  const form = useForm();
+
+  const updateActivityMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PUT", `/api/activities/${currentActivity?.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setEditDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Activity updated successfully"
+      });
+    }
+  });
+
+  const deleteActivityMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/activities/${currentActivity?.id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      toast({
+        title: "Success",
+        description: "Activity deleted successfully"
+      });
+    }
+  });
 
   const weeks = Array.from(new Set(activities?.map((a) => a.week) || [])).sort();
   const days = activities
@@ -68,10 +112,35 @@ export default function ActivityPage() {
 
         {currentActivity ? (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
                 Week {currentActivity.week} - Day {currentActivity.day}
               </CardTitle>
+              {user?.isAdmin && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      form.reset(currentActivity);
+                      setEditDialogOpen(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to delete this activity?")) {
+                        deleteActivityMutation.mutate();
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="prose max-w-none">
@@ -161,6 +230,93 @@ export default function ActivityPage() {
           </Card>
         )}
       </main>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Activity</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => updateActivityMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="memoryVerse"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Memory Verse</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="memoryVerseReference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Memory Verse Reference</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="scripture"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Scripture Reading</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="workout"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Workout</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="workoutVideo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Workout Video URL</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={updateActivityMutation.isPending}>
+                {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
