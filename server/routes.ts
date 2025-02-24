@@ -18,6 +18,7 @@ import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "./email";
+import { hashPassword } from "./auth"; // Assuming this function exists
 
 // Configure multer for file uploads
 const upload = multer({
@@ -263,6 +264,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
+  // Add team assignment route
+  app.get("/api/users", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const users = await storage.getAllUsers();
+    res.json(users);
+  });
+
+  app.post("/api/users/:id/team", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
+    const { teamId } = req.body;
+    const user = await storage.updateUserTeam(userId, teamId);
+    res.json(user);
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await storage.deleteUser(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  app.post("/api/users/:id/reset-password", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const newPassword = req.body.password;
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
   // Add video routes
   app.get("/api/videos", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -393,6 +431,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw error;
     }
   }
+
+  // User
+  app.get("/api/user", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const user = await storage.getUserWithTeam(req.user.id);
+    res.json(user);
+  });
+
+  app.post("/api/register", async (req, res, next) => {
+    try {
+      console.log('Registration attempt:', { username: req.body.username, email: req.body.email });
+
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        console.log('Registration failed: Username exists');
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(req.body.email);
+      if (existingEmail) {
+        console.log('Registration failed: Email exists');
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      const user = await storage.createUser({
+        ...req.body,
+        password: await hashPassword(req.body.password),
+      });
+
+      console.log('User created successfully:', { id: user.id, username: user.username });
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Login error after registration:', err);
+          return next(err);
+        }
+        res.status(201).json(user);
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
 
   return httpServer;
 }

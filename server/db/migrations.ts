@@ -9,6 +9,7 @@ export async function runMigrations() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         is_admin BOOLEAN DEFAULT false,
         team_id INTEGER,

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -18,35 +18,73 @@ export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
-  const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
+  const { data: teams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
   });
 
-  const { data: users, isLoading: usersLoading } = useQuery<User[]>({
+  const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
   const updateUserTeamMutation = useMutation({
     mutationFn: async ({ userId, teamId }: { userId: number; teamId: number }) => {
       const res = await apiRequest("POST", `/api/users/${userId}/team`, { teamId });
+      if (!res.ok) throw new Error("Failed to update user team");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({
-        title: "Success",
-        description: "User team updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "User team updated successfully" });
     },
   });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`);
+      if (!res.ok) throw new Error("Failed to delete user");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "User deleted successfully" });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, { password });
+      if (!res.ok) throw new Error("Failed to reset password");
+      return res.json();
+    },
+    onSuccess: () => {
+      setResetPasswordOpen(false);
+      setNewPassword("");
+      setSelectedUserId(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ 
+        title: "Success",
+        description: "User password has been reset successfully"
+      });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reset password",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleResetPassword = (userId: number) => {
+    setSelectedUserId(userId);
+    setNewPassword("");
+    setResetPasswordOpen(true);
+  };
+
 
   const form = useForm({
     resolver: zodResolver(insertTeamSchema),
@@ -75,7 +113,7 @@ export default function AdminPage() {
     );
   }
 
-  if (teamsLoading || usersLoading) {
+  if (!teams || !users) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -85,70 +123,75 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <header>
+      <header className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Team
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Team</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={createTeamMutation.isPending}>
+                  {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </header>
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>Teams</CardTitle>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  New Team
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Team</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Team Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full" disabled={createTeamMutation.isPending}>
-                      {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                    </Button>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {teams?.map((team) => (
-                <Button
+            <div className="space-y-4">
+              {teams.map((team) => (
+                <div
                   key={team.id}
-                  variant={selectedTeam === team.id ? "default" : "outline"}
-                  className="w-full justify-start"
-                  onClick={() => setSelectedTeam(team.id)}
+                  className="flex items-center justify-between p-2 rounded hover:bg-accent cursor-pointer"
+                  onClick={() => setSelectedTeam(selectedTeam === team.id ? null : team.id)}
                 >
-                  {team.name}
-                </Button>
+                  <div>
+                    <p className="font-medium">{team.name}</p>
+                    <p className="text-sm text-muted-foreground">{team.description}</p>
+                  </div>
+                  {selectedTeam === team.id && (
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                  )}
+                </div>
               ))}
             </div>
           </CardContent>
@@ -160,12 +203,12 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {users?.map((u) => (
-                <div key={u.id} className="flex items-center justify-between">
+              {users.map((u) => (
+                <div key={u.id} className="flex items-center justify-between p-2">
                   <div>
                     <p className="font-medium">{u.username}</p>
                     <p className="text-sm text-muted-foreground">
-                      Team: {teams?.find((t) => t.id === u.teamId)?.name || "None"}
+                      Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                     </p>
                   </div>
                   {selectedTeam && (
@@ -175,15 +218,62 @@ export default function AdminPage() {
                       onClick={() => updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam })}
                       disabled={updateUserTeamMutation.isPending}
                     >
-                      Assign to Team
+                      {updateUserTeamMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Assign to Team"
+                      )}
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResetPassword(u.id)}
+                  >
+                    Reset Password
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to delete this user?")) {
+                        deleteUserMutation.mutate(u.id);
+                      }
+                    }}
+                  >
+                    Delete User
+                  </Button>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
+      <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset User Password</DialogTitle>
+          </DialogHeader>
+          <Input
+            type="password"
+            placeholder="New password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Button
+            onClick={() => {
+              if (selectedUserId) {
+                resetPasswordMutation.mutate({
+                  userId: selectedUserId,
+                  password: newPassword,
+                });
+              }
+            }}
+          >
+            Reset Password
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
