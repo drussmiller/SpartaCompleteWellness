@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
+import { queryClient } from "../client/src/lib/queryClient";
 import { eq, desc, sql } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
@@ -200,8 +201,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date()
       });
 
-      // Update user points in the database
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Update points in database directly
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      if (user) {
+        await db
+          .update(users)
+          .set({ points: user.points + post.points })
+          .where(eq(users.id, req.user.id));
+      }
 
       console.log('Created post:', post);
 
