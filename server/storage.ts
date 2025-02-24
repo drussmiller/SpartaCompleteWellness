@@ -186,7 +186,11 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(posts)
-      .where(or(...userIds.map(id => eq(posts.userId, id))));
+      .where(and(
+        or(...userIds.map(id => eq(posts.userId, id))),
+        eq(posts.parentId, null)
+      ))
+      .orderBy(desc(posts.createdAt));
   }
 
   async createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement> {

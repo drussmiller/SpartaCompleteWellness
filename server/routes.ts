@@ -246,12 +246,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
         res.json(comments);
       } else {
-        // Otherwise return all main posts that aren't comments
-        const allPosts = await db
-          .select()
-          .from(posts)
-          .where(eq(posts.parentId, null))
-          .orderBy(desc(posts.createdAt));
+        // Get posts for the user's team if they have one
+        let allPosts;
+        if (req.user.teamId) {
+          allPosts = await storage.getPostsByTeam(req.user.teamId);
+        } else {
+          // Otherwise return all main posts that aren't comments
+          allPosts = await db
+            .select()
+            .from(posts)
+            .where(eq(posts.parentId, null))
+            .orderBy(desc(posts.createdAt));
+        }
         res.json(allPosts);
       }
     } catch (error) {
