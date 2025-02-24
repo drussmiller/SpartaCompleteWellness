@@ -5,7 +5,7 @@ import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { posts, notifications, videos, users } from "@shared/schema";
-import { setupAuth, hashPassword } from "./auth"; // Import comparePasswords
+import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
   insertMeasurementSchema,
   insertPostSchema,
@@ -73,19 +73,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the post data
       const postData = insertPostSchema.parse(req.body);
 
-      // Check daily post limits
-      const currentCount = await storage.getPostCountByTypeAndDate(req.user.id, postData.type, new Date());
+      // Special handling for memory verse posts
+      if (postData.type === "memory_verse") {
+        const today = new Date();
+        // Check if it's Saturday (6 is Saturday in JavaScript's getDay())
+        if (today.getDay() !== 6) {
+          return res.status(400).json({
+            error: "Memory verse posts can only be created on Saturdays"
+          });
+        }
 
-      const limits: Record<string, number> = {
-        food: 3,
-        workout: 1,
-        scripture: 1
-      };
+        // Check weekly limit
+        const weeklyCount = await storage.getWeeklyPostCount(req.user.id, "memory_verse", today);
+        if (weeklyCount >= 1) {
+          return res.status(400).json({
+            error: "You have reached your weekly limit for memory verse posts"
+          });
+        }
+      } else {
+        // Check daily post limits for other post types
+        const currentCount = await storage.getPostCountByTypeAndDate(req.user.id, postData.type, new Date());
 
-      if (limits[postData.type] && currentCount >= limits[postData.type]) {
-        return res.status(400).json({
-          error: `You have reached your daily limit for ${postData.type} posts`
-        });
+        const limits: Record<string, number> = {
+          food: 3,
+          workout: 1,
+          scripture: 1
+        };
+
+        if (limits[postData.type] && currentCount >= limits[postData.type]) {
+          return res.status(400).json({
+            error: `You have reached your daily limit for ${postData.type} posts`
+          });
+        }
       }
 
       // Create the post with the authenticated user's ID
