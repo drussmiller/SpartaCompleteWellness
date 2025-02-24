@@ -213,6 +213,16 @@ export default function ProfilePage() {
               )}
             </div>
           </CardContent>
+          <CardContent className="pt-0">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setChangePasswordOpen(true)}
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Change Password
+            </Button>
+          </CardContent>
         </Card>
 
         <Card>
@@ -378,16 +388,6 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Add Change Password button before the Logout button */}
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => setChangePasswordOpen(true)}
-        >
-          <Lock className="w-4 h-4 mr-2" />
-          Change Password
-        </Button>
 
         <Button
           variant="destructive"
