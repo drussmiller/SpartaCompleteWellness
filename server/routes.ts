@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
+import { queryClient } from "../client/src/lib/queryClient";
 import { eq, desc, sql } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
@@ -29,20 +30,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
-  // Create initial admin user
-  const existingAdmin = await storage.getUserByUsername('admin');
-  if (!existingAdmin) {
-    await storage.createUser({
-      username: 'admin',
-      email: 'admin@sparta.com',
-      password: await hashPassword('admin123'),
-      isAdmin: true,
-      points: 0,
-      teamId: null,
-      imageUrl: null,
-    });
-    console.log('Created admin user');
-  }
 
   // Teams
   app.post("/api/teams", async (req, res) => {
@@ -199,6 +186,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         points: postData.type === 'memory_verse' ? 10 : (postData.type === 'comment' ? 0 : 3),
         createdAt: new Date()
       });
+
+      // Update points in database directly
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      if (user) {
+        await db
+          .update(users)
+          .set({ points: user.points + post.points })
+          .where(eq(users.id, req.user.id));
+      }
 
       console.log('Created post:', post);
 
@@ -544,6 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(users)
         .where(eq(users.id, req.user.id));
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
       res.json(user);
     } catch (error) {
