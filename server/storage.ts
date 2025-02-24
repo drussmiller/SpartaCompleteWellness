@@ -180,16 +180,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPostsByTeam(teamId: number): Promise<Post[]> {
+    // First get all users in this team
     const teamUsers = await db.select().from(users).where(eq(users.teamId, teamId));
     const userIds = teamUsers.map(u => u.id);
+
+    // Even if there are no users in the team, still return an empty array
     if (userIds.length === 0) return [];
+
+    // Get all non-comment posts from team members
     return await db
       .select()
       .from(posts)
-      .where(and(
-        or(...userIds.map(id => eq(posts.userId, id))),
-        eq(posts.parentId, null)
-      ))
+      .where(
+        or(...userIds.map(id => eq(posts.userId, id)))
+      )
       .orderBy(desc(posts.createdAt));
   }
 
