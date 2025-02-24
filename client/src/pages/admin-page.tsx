@@ -56,7 +56,7 @@ export default function AdminPage() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
-      const res = await apiRequest("POST", `/api/users/${userId}/resetPassword`, { password });
+      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, { password });
       if (!res.ok) throw new Error("Failed to reset password");
       return res.json();
     },
@@ -65,8 +65,18 @@ export default function AdminPage() {
       setNewPassword("");
       setSelectedUserId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Password reset successfully" });
+      toast({ 
+        title: "Success",
+        description: "User password has been reset successfully"
+      });
     },
+    onError: (error) => {
+      toast({ 
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reset password",
+        variant: "destructive"
+      });
+    }
   });
 
   const handleResetPassword = (userId: number) => {
