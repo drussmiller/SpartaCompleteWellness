@@ -377,15 +377,19 @@ export default function AdminPage() {
           </DialogHeader>
           <Form {...editTeamForm}>
             <form
-              onSubmit={editTeamForm.handleSubmit((data) => {
-                if (editingTeam) {
-                  updateTeamMutation.mutate({ 
+              onSubmit={editTeamForm.handleSubmit(async (data) => {
+                if (!editingTeam) return;
+                try {
+                  await updateTeamMutation.mutateAsync({ 
                     id: editingTeam.id, 
                     data: {
                       name: data.name,
                       description: data.description
                     }
                   });
+                  setEditTeamOpen(false);
+                } catch (error) {
+                  console.error('Error in form submission:', error);
                 }
               })}
               className="space-y-4"
