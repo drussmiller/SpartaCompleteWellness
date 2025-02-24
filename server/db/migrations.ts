@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import { hashPassword } from "../auth";
 
 export async function runMigrations() {
   try {
@@ -21,11 +22,13 @@ export async function runMigrations() {
       )
     `);
 
-    // Insert default admin if not exists
+    // Insert default admin if not exists with properly hashed password
+    const hashedPassword = await hashPassword('admin123');
     await db.execute(sql`
       INSERT INTO users (username, email, password, is_admin)
-      VALUES ('admin', 'admin@example.com', 'admin123', true)
-      ON CONFLICT (username) DO NOTHING
+      VALUES ('admin', 'admin@example.com', ${hashedPassword}, true)
+      ON CONFLICT (username) DO UPDATE
+      SET password = ${hashedPassword}
     `);
 
     // Create notifications table if it doesn't exist
