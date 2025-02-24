@@ -61,13 +61,18 @@ export function setupAuth(app: Express) {
     new LocalStrategy({
       usernameField: 'email',
       passwordField: 'password'
-    }, async (email, password, done) => {
+    }, async (emailOrUsername, password, done) => {
       try {
-        console.log('Attempting login for email:', email);
-        const user = await storage.getUserByEmail(email);
+        console.log('Attempting login for:', emailOrUsername);
+        let user = await storage.getUserByEmail(emailOrUsername);
 
         if (!user) {
-          console.log('User not found:', email);
+          // Try username if email lookup failed
+          user = await storage.getUserByUsername(emailOrUsername);
+        }
+
+        if (!user) {
+          console.log('User not found:', emailOrUsername);
           return done(null, false);
         }
 
