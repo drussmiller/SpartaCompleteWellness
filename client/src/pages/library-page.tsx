@@ -43,17 +43,14 @@ export default function LibraryPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video rounded-md overflow-hidden bg-muted">
-                    {video.thumbnail ? (
-                      <img
-                        src={video.thumbnail}
-                        alt={video.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Video className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
+                    <video 
+                      controls
+                      className="w-full h-full"
+                      poster={video.thumbnail}
+                    >
+                      <source src={video.url} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
                   </div>
                   <p className="mt-4 text-sm text-muted-foreground">
                     {video.description}
