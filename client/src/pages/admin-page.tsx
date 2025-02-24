@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTeamSchema } from "@shared/schema";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -645,10 +646,11 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Edit Activity</DialogTitle>
           </DialogHeader>
+          <ScrollArea className="max-h-[70vh] pr-4">
           <Form>
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -745,6 +747,7 @@ export default function AdminPage() {
               </Button>
             </form>
           </Form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
