@@ -1,4 +1,3 @@
-
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 
@@ -24,7 +23,7 @@ export async function runMigrations() {
     // Insert default admin if not exists
     await db.execute(sql`
       INSERT INTO users (username, email, password, is_admin)
-      VALUES ('admin', 'admin@example.com', 'admin.abc123', true)
+      VALUES ('admin', 'admin@example.com', 'admin123', true)
       ON CONFLICT (username) DO NOTHING
     `);
 
@@ -40,9 +39,19 @@ export async function runMigrations() {
       )
     `);
 
-    // Add image_url column to users table if it doesn't exist
+    // Drop and recreate posts table with parent_id
     await db.execute(sql`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS image_url TEXT
+      DROP TABLE IF EXISTS posts;
+      CREATE TABLE posts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        content TEXT,
+        image_url TEXT,
+        points INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        parent_id INTEGER REFERENCES posts(id) ON DELETE CASCADE
+      )
     `);
 
     console.log('Migrations completed successfully');
