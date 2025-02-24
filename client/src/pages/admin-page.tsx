@@ -13,6 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTeamSchema } from "@shared/schema";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -369,6 +371,82 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Activity Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const data = {
+              week: parseInt(formData.get('week') as string),
+              day: parseInt(formData.get('day') as string),
+              memoryVerse: formData.get('memoryVerse'),
+              memoryVerseReference: formData.get('memoryVerseReference'),
+              scripture: formData.get('scripture'),
+              workout: formData.get('workout')
+            };
+
+            try {
+              const res = await fetch('/api/activities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              });
+
+              if (!res.ok) throw new Error('Failed to create activity');
+
+              toast({
+                title: "Success",
+                description: "Activity created successfully"
+              });
+
+              (e.target as HTMLFormElement).reset();
+            } catch (error) {
+              toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to create activity",
+                variant: "destructive"
+              });
+            }
+          }} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="week">Week</Label>
+                <Input type="number" name="week" required min="1" />
+              </div>
+              <div>
+                <Label htmlFor="day">Day</Label>
+                <Input type="number" name="day" required min="1" max="7" />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="memoryVerse">Memory Verse</Label>
+              <Textarea name="memoryVerse" required />
+            </div>
+
+            <div>
+              <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
+              <Input name="memoryVerseReference" required />
+            </div>
+
+            <div>
+              <Label htmlFor="scripture">Scripture Reading</Label>
+              <Input name="scripture" />
+            </div>
+
+            <div>
+              <Label htmlFor="workout">Workout</Label>
+              <Textarea name="workout" />
+            </div>
+
+            <Button type="submit">Add Activity</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Edit Team Dialog */}
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
