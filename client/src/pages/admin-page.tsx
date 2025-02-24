@@ -304,7 +304,7 @@ export default function AdminPage() {
                       Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2 min-w-[140px]">
                     {selectedTeam && (
                       <Button
                         size="sm"
