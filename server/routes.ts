@@ -5,9 +5,14 @@ import multer from "multer";
 import { db } from "./db";
 import { queryClient } from "../client/src/lib/queryClient";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { posts, notifications, videos, users, teams, activities, workoutVideos } from "@shared/schema";
+import { 
+  posts, notifications, videos, users, teams, activities, workoutVideos,
+  insertTeamSchema, insertPostSchema, insertMeasurementSchema,
+  insertNotificationSchema, insertVideoSchema, insertActivitySchema
+} from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { WebSocketServer, WebSocket } from 'ws';
+import { z } from 'zod';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -28,7 +33,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
-
   // Teams
   app.post("/api/teams", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
@@ -36,10 +40,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const team = await storage.createTeam(insertTeamSchema.parse(req.body));
       res.status(201).json(team);
     } catch (e) {
-      if (e instanceof ZodError) {
+      if (e instanceof z.ZodError) {
         res.status(400).json(e.errors);
       } else {
-        throw e;
+        console.error('Error creating team:', e);
+        res.status(500).json({ error: "Failed to create team" });
       }
     }
   });
@@ -219,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(createdPost);
     } catch (e) {
       console.error('Error creating post:', e);
-      if (e instanceof ZodError) {
+      if (e instanceof z.ZodError) {
         res.status(400).json({
           error: 'Validation Error',
           details: e.errors
@@ -313,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(measurement);
     } catch (e) {
       console.error('Error creating measurement:', e);
-      if (e instanceof ZodError) {
+      if (e instanceof z.ZodError) {
         res.status(400).json({
           error: 'Validation Error',
           details: e.errors
@@ -368,8 +373,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/notifications/:id/read", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
-    res.json(notification);
+    try {
+      const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
+      res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read", error: error instanceof Error ? error.message : "Unknown error" });
+    }
   });
 
   app.delete("/api/notifications/:id", async (req, res) => {
@@ -403,8 +413,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/data", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
-    await storage.clearData();
-    res.sendStatus(200);
+    try {
+      await storage.clearData();
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      res.status(500).json({ error: "Failed to clear data" });
+    }
   });
 
   app.delete("/api/posts/all", async (req, res) => {
@@ -429,8 +444,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     const userId = parseInt(req.params.id);
     const { teamId } = req.body;
-    const user = await storage.updateUserTeam(userId, teamId);
-    res.json(user);
+    try {
+      const user = await storage.updateUserTeam(userId, teamId);
+      res.json(user);
+    } catch (error) {
+      console.error('Error updating user team:', error);
+      res.status(500).json({ error: "Failed to update user team" });
+    }
   });
 
   app.post("/api/users/:id/toggle-admin", async (req, res) => {
@@ -520,11 +540,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/activities", requireAdmin, async (req, res) => {
     try {
       const { workoutVideos, ...activityData } = req.body;
+      const parsedActivityData = insertActivitySchema.parse(activityData); // Parse activity data
 
       // First create the activity
       const [activity] = await db
         .insert(activities)
-        .values(activityData)
+        .values(parsedActivityData)
         .returning();
 
       // Then create associated workout videos if any
@@ -563,7 +584,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error creating activity:', error);
-      res.status(500).json({ error: "Failed to create activity" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation Error', details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create activity" });
+      }
     }
   });
 
@@ -571,11 +596,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const activityId = parseInt(req.params.id);
       const { workoutVideos, ...activityData } = req.body;
+      const parsedActivityData = insertActivitySchema.parse(activityData); // Parse activity data
 
       // Update activity
       await db
         .update(activities)
-        .set(activityData)
+        .set(parsedActivityData)
         .where(eq(activities.id, activityId));
 
       // Handle workout videos
@@ -622,7 +648,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error updating activity:', error);
-      res.status(500).json({ error: "Failed to update activity" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation Error', details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update activity" });
+      }
     }
   });
 
@@ -633,6 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(activities.id, parseInt(req.params.id)));
       res.sendStatus(200);
     } catch (error) {
+      console.error('Error deleting activity:', error);
       res.status(500).json({ error: "Failed to delete activity" });
     }
   });
@@ -644,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(video);
     } catch (e) {
       console.error('Error creating video:', e);
-      if (e instanceof ZodError) {
+      if (e instanceof z.ZodError) {
         res.status(400).json({
           error: 'Validation Error',
           details: e.errors
@@ -832,13 +863,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to send notification
   async function sendNotification(userId: number, title: string, message: string) {
     try {
-      const notification = await storage.createNotification({
-        userId,
-        title,
-        message,
-        read: false,
-        createdAt: new Date(),
-      });
+      const notificationData = insertNotificationSchema.parse({userId, title, message, read: false, createdAt: new Date()}); // Parse notification data
+      const notification = await storage.createNotification(notificationData);
 
       const ws = clients.get(userId);
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -848,6 +874,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return notification;
     } catch (error) {
       console.error('Error sending notification:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod error sending notification:', error.errors);
+      }
       throw error;
     }
   }
