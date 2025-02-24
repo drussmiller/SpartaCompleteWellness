@@ -224,6 +224,9 @@ export default function AuthPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter your email address to receive password reset instructions.
+            </DialogDescription>
           </DialogHeader>
           <Form {...resetPasswordForm}>
             <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4">
