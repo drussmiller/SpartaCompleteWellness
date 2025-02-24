@@ -232,9 +232,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
         res.json(comments);
       } else {
-        // Otherwise return all main posts
-        const posts = await storage.getAllPosts();
-        res.json(posts);
+        // Otherwise return all main posts that aren't comments
+        const allPosts = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.parentId, null))
+          .orderBy(desc(posts.createdAt));
+        res.json(allPosts);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
