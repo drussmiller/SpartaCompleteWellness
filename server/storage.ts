@@ -187,11 +187,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPosts(): Promise<Post[]> {
-    return await db.select().from(posts);
+    return await db
+      .select({
+        id: posts.id,
+        type: posts.type,
+        content: posts.content,
+        imageUrl: posts.imageUrl,
+        points: posts.points,
+        userId: posts.userId,
+        parentId: posts.parentId,
+        createdAt: posts.createdAt
+      })
+      .from(posts)
+      .orderBy(desc(posts.createdAt));
   }
 
   async getAllPosts(): Promise<Post[]> {
-    return await db.select().from(posts).orderBy(desc(posts.createdAt));
+    return await db
+      .select({
+        id: posts.id,
+        type: posts.type,
+        content: posts.content,
+        imageUrl: posts.imageUrl,
+        points: posts.points,
+        userId: posts.userId,
+        parentId: posts.parentId,
+        createdAt: posts.createdAt
+      })
+      .from(posts)
+      .orderBy(desc(posts.createdAt));
   }
 
   async updateUserTeam(userId: number, teamId: number): Promise<User> {
@@ -205,15 +229,31 @@ export class DatabaseStorage implements IStorage {
 
   async getPostsByTeam(teamId: number): Promise<Post[]> {
     // First get all users in this team
-    const teamUsers = await db.select().from(users).where(eq(users.teamId, teamId));
+    const teamUsers = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        teamId: users.teamId
+      })
+      .from(users)
+      .where(eq(users.teamId, teamId));
     const userIds = teamUsers.map(u => u.id);
 
     // Even if there are no users in the team, still return an empty array
     if (userIds.length === 0) return [];
 
-    // Get all non-comment posts from team members
+    // Get all posts from team members
     return await db
-      .select()
+      .select({
+        id: posts.id,
+        type: posts.type,
+        content: posts.content,
+        imageUrl: posts.imageUrl,
+        points: posts.points,
+        userId: posts.userId,
+        parentId: posts.parentId,
+        createdAt: posts.createdAt
+      })
       .from(posts)
       .where(
         or(...userIds.map(id => eq(posts.userId, id)))
