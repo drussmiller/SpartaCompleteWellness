@@ -36,6 +36,7 @@ export interface IStorage {
   deleteVideo(videoId: number): Promise<void>;
   clearData(): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number>;
   sessionStore: session.Store;
 }
 
@@ -153,7 +154,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(posts);
   }
 
-  async getAllPosts(): Promise<Post[]> { 
+  async getAllPosts(): Promise<Post[]> {
     return await db.select().from(posts).orderBy(desc(posts.createdAt));
   }
 
@@ -268,6 +269,32 @@ export class DatabaseStorage implements IStorage {
       );
 
     return userPosts.length;
+  }
+  
+  async getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
+    // Get the start of the week (Sunday)
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Get the end of the week (Saturday)
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const weeklyPosts = await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.userId, userId),
+          eq(posts.type, type),
+          gte(posts.createdAt!, startOfWeek),
+          lte(posts.createdAt!, endOfWeek)
+        )
+      );
+
+    return weeklyPosts.length;
   }
 }
 
