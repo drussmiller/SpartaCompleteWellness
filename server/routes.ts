@@ -423,30 +423,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
+      console.log('Password change attempt for user:', req.user.id);
       const { currentPassword, newPassword } = req.body;
+
       if (!currentPassword || !newPassword) {
+        console.log('Missing required password fields');
         return res.status(400).json({ error: "Both current and new passwords are required" });
       }
 
       // Get the user's current stored password
       const user = await storage.getUser(req.user.id);
       if (!user) {
+        console.log('User not found:', req.user.id);
         return res.status(404).json({ error: "User not found" });
       }
 
       // Verify current password
+      console.log('Verifying current password');
       const isValidPassword = await comparePasswords(currentPassword, user.password);
+      console.log('Password verification result:', isValidPassword);
+
       if (!isValidPassword) {
+        console.log('Invalid current password for user:', req.user.id);
         return res.status(400).json({ error: "Current password is incorrect" });
       }
 
       // Hash and update the new password
+      console.log('Hashing and updating new password');
       const hashedPassword = await hashPassword(newPassword);
       await db
         .update(users)
         .set({ password: hashedPassword })
         .where(eq(users.id, req.user.id));
 
+      console.log('Password updated successfully for user:', req.user.id);
       res.sendStatus(200);
     } catch (error) {
       console.error('Error changing password:', error);

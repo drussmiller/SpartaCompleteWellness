@@ -131,10 +131,12 @@ export default function ProfilePage() {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to change password");
       }
+      return res;
     },
     onSuccess: () => {
       toast({
@@ -145,6 +147,7 @@ export default function ProfilePage() {
       changePasswordForm.reset();
     },
     onError: (error: Error) => {
+      console.error('Password change error:', error);
       toast({
         title: "Error",
         description: error.message,
