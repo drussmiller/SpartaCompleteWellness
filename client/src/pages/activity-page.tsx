@@ -234,10 +234,11 @@ export default function ActivityPage() {
       </main>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Edit Activity</DialogTitle>
           </DialogHeader>
+          <ScrollArea className="max-h-[70vh] pr-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit((data) => updateActivityMutation.mutate(data))} className="space-y-4">
               <FormField
@@ -317,6 +318,7 @@ export default function ActivityPage() {
               </Button>
             </form>
           </Form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
