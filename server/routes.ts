@@ -5,7 +5,7 @@ import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { posts, notifications, videos, users } from "@shared/schema";
-import { setupAuth, hashPassword } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
   insertMeasurementSchema,
   insertPostSchema,
@@ -419,6 +419,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  app.post("/api/user/change-password", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Both current and new passwords are required" });
+      }
+
+      // Get the user's current stored password
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Verify current password
+      const isValidPassword = await comparePasswords(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+
+      // Hash and update the new password
+      const hashedPassword = await hashPassword(newPassword);
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, req.user.id));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
 
   const httpServer = createServer(app);
 
