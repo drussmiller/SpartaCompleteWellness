@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { usePostLimits } from "@/hooks/use-post-limits";
 
 type CreatePostForm = z.infer<typeof insertPostSchema>;
 
@@ -51,6 +52,7 @@ export function CreatePostDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { canPost, counts } = usePostLimits();
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -110,6 +112,22 @@ export function CreatePostDialog() {
     }
   };
 
+  // Get remaining posts message based on type
+  const getRemainingMessage = (type: string) => {
+    const remaining = {
+      food: 3 - counts.food,
+      workout: 1 - counts.workout,
+      scripture: 1 - counts.scripture,
+      memory_verse: 1 - counts.memory_verse
+    }[type];
+
+    if (type === 'memory_verse') {
+      return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
+    }
+
+    return remaining > 0 ? `(${remaining} remaining today)` : "(Daily limit reached)";
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -134,10 +152,18 @@ export function CreatePostDialog() {
                       {...field}
                       className="w-full rounded-md border border-input bg-background px-3 py-2"
                     >
-                      <option value="food">Food</option>
-                      <option value="workout">Workout</option>
-                      <option value="scripture">Scripture</option>
-                      <option value="memory_verse">Memory Verse</option>
+                      <option value="food" disabled={!canPost.food}>
+                        Food {getRemainingMessage('food')}
+                      </option>
+                      <option value="workout" disabled={!canPost.workout}>
+                        Workout {getRemainingMessage('workout')}
+                      </option>
+                      <option value="scripture" disabled={!canPost.scripture}>
+                        Scripture {getRemainingMessage('scripture')}
+                      </option>
+                      <option value="memory_verse" disabled={!canPost.memory_verse}>
+                        Memory Verse {getRemainingMessage('memory_verse')}
+                      </option>
                       <option value="comment">Comment</option>
                     </select>
                   </FormControl>
@@ -163,7 +189,6 @@ export function CreatePostDialog() {
                             const reader = new FileReader();
                             reader.onloadend = async () => {
                               try {
-                                // Compress the image before setting preview
                                 const compressed = await compressImage(reader.result as string);
                                 setImagePreview(compressed);
                                 field.onChange(compressed);
@@ -229,7 +254,10 @@ export function CreatePostDialog() {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={createPostMutation.isPending}
+              disabled={
+                createPostMutation.isPending || 
+                !canPost[form.watch("type") as keyof typeof canPost]
+              }
             >
               {createPostMutation.isPending ? "Creating..." : "Create Post"}
             </Button>
