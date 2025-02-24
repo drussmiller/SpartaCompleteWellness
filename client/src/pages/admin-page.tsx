@@ -85,7 +85,6 @@ export default function AdminPage() {
     setResetPasswordOpen(true);
   };
 
-
   const form = useForm({
     resolver: zodResolver(insertTeamSchema),
   });
@@ -211,38 +210,40 @@ export default function AdminPage() {
                       Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                     </p>
                   </div>
-                  {selectedTeam && (
+                  <div className="flex gap-2">
+                    {selectedTeam && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam })}
+                        disabled={updateUserTeamMutation.isPending}
+                      >
+                        {updateUserTeamMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Assign to Team"
+                        )}
+                      </Button>
+                    )}
                     <Button
-                      size="sm"
                       variant="outline"
-                      onClick={() => updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam })}
-                      disabled={updateUserTeamMutation.isPending}
+                      size="sm"
+                      onClick={() => handleResetPassword(u.id)}
                     >
-                      {updateUserTeamMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Assign to Team"
-                      )}
+                      Reset Password
                     </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleResetPassword(u.id)}
-                  >
-                    Reset Password
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this user?")) {
-                        deleteUserMutation.mutate(u.id);
-                      }
-                    }}
-                  >
-                    Delete User
-                  </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Are you sure you want to delete this user?")) {
+                          deleteUserMutation.mutate(u.id);
+                        }
+                      }}
+                    >
+                      Delete User
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -269,7 +270,11 @@ export default function AdminPage() {
                 });
               }
             }}
+            disabled={resetPasswordMutation.isPending || !newPassword}
           >
+            {resetPasswordMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
             Reset Password
           </Button>
         </DialogContent>
