@@ -17,7 +17,7 @@ const scryptAsync = promisify(scrypt);
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  const buf = (await scryptAsync(password, salt, 32)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
 }
 
@@ -26,7 +26,7 @@ async function comparePasswords(supplied: string, stored: string) {
   try {
     const [hashedPassword, salt] = stored.split('.');
     if (!hashedPassword || !salt) return false;
-    const buf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    const buf = (await scryptAsync(supplied, salt, 32)) as Buffer;
     return hashedPassword === buf.toString('hex');
   } catch (error) {
     console.error('Password comparison error:', error);
