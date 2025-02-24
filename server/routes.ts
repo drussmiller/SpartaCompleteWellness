@@ -125,6 +125,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add this endpoint after the existing teams routes
+  app.get("/api/teams/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, parseInt(req.params.id)));
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.json(team);
+    } catch (error) {
+      console.error('Error fetching team:', error);
+      res.status(500).json({
+        message: "Failed to fetch team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
 
   // Posts
   app.post("/api/posts", async (req, res) => {
