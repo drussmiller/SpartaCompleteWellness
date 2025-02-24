@@ -58,6 +58,10 @@ export default function AdminPage() {
     mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
       const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, { password });
       if (!res.ok) throw new Error("Failed to reset password");
+      toast({
+        title: "Success",
+        description: "Password has been reset successfully"
+      });
       return res.json();
     },
     onSuccess: () => {
