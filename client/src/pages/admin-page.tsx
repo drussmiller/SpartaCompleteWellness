@@ -377,9 +377,17 @@ export default function AdminPage() {
           </DialogHeader>
           <Form {...editTeamForm}>
             <form
-              onSubmit={editTeamForm.handleSubmit((data) =>
-                editingTeam && updateTeamMutation.mutate({ id: editingTeam.id, data })
-              )}
+              onSubmit={editTeamForm.handleSubmit((data) => {
+                if (editingTeam) {
+                  updateTeamMutation.mutate({ 
+                    id: editingTeam.id, 
+                    data: {
+                      name: data.name,
+                      description: data.description
+                    }
+                  });
+                }
+              })}
               className="space-y-4"
             >
               <FormField
