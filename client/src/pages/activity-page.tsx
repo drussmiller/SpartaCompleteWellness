@@ -103,6 +103,17 @@ export default function ActivityPage() {
                   <>
                     <h2>Workout</h2>
                     <div dangerouslySetInnerHTML={{ __html: currentActivity.workout }} />
+                    {currentActivity.workoutVideo && (
+                      <div className="mt-4 aspect-video">
+                        <iframe
+                          className="w-full h-full rounded-lg"
+                          src={currentActivity.workoutVideo.replace('watch?v=', 'embed/')}
+                          title="Workout Video"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
