@@ -394,6 +394,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/users/:id/reset-password", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const newPassword = req.body.password;
+      if (!newPassword) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+
+      // Hash the new password using the consistent hashing function
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update the user's password
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, parseInt(req.params.id)));
+
+      console.log('Password reset successful for user:', req.params.id);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+
   const httpServer = createServer(app);
 
   // Setup WebSocket server
