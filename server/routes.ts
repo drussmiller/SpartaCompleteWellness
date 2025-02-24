@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { posts, notifications, videos } from "@shared/schema";
+import { posts, notifications, videos, users } from "@shared/schema";
 import { setupAuth } from "./auth";
 import {
   insertMeasurementSchema,
@@ -16,9 +16,12 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
-import { randomBytes } from "crypto";
+import { randomBytes, scrypt } from "crypto";
+import { promisify } from "util";
 import { sendPasswordResetEmail } from "./email";
-import { hashPassword } from "./auth"; // Assuming this function exists
+import { hashPassword } from "./auth";
+
+const scryptAsync = promisify(scrypt);
 
 // Configure multer for file uploads
 const upload = multer({
@@ -293,10 +296,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     try {
       const newPassword = req.body.password;
-      const hashedPassword = await hashPassword(newPassword);
-      await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
+      if (!newPassword) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+
+      // Hash the new password
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      // Update the user's password
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, parseInt(req.params.id)));
+
       res.sendStatus(200);
     } catch (error) {
+      console.error('Error resetting password:', error);
       res.status(500).json({ error: "Failed to reset password" });
     }
   });
