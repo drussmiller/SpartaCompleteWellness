@@ -177,6 +177,37 @@ export default function ActivityPage() {
                 {currentActivity.workout && (
                   <>
                     <h2>Workout</h2>
+                    {currentActivity.workoutVideos && currentActivity.workoutVideos.length > 0 && (
+                      <div className="space-y-4 mb-4">
+                        {currentActivity.workoutVideos.map((video, index) => (
+                          <div key={index} className="space-y-2">
+                            <p className="font-medium">{video.description}</p>
+                            <div className="aspect-video">
+                              <iframe
+                                className="w-full h-full"
+                                src={`https://www.youtube.com/embed/${video.url.split(/[/?]/)[3]}`}
+                                title="Workout Video"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {currentActivity.workoutVideo && !currentActivity.workoutVideos && (
+                      <div className="mb-4">
+                        <div className="aspect-video">
+                          <iframe
+                            className="w-full h-full"
+                            src={`https://www.youtube.com/embed/${currentActivity.workoutVideo.split(/[/?]/)[3]}`}
+                            title="Workout Video"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      </div>
+                    )}
                     <p className="whitespace-pre-line">
                       {currentActivity.workout.split('http').map((part, i) =>
                         i === 0 ? part : (
