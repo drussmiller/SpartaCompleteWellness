@@ -33,11 +33,14 @@ export default function AuthPage() {
   });
 
   const registerForm = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(insertUserSchema.extend({
+      preferredName: z.string().optional()
+    })),
     defaultValues: {
       username: "",
       email: "",
       password: "",
+      preferredName: "",
     },
   });
 
@@ -127,6 +130,18 @@ export default function AuthPage() {
                           <FormLabel>Password</FormLabel>
                           <FormControl>
                             <Input type="password" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="preferredName" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preferred Name (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
                           </FormControl>
                         </FormItem>
                       )}
