@@ -200,6 +200,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date()
       });
 
+      // Update user points in the database
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
       console.log('Created post:', post);
 
       // Send notification about points earned
