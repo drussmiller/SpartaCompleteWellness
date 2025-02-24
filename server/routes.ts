@@ -5,16 +5,8 @@ import multer from "multer";
 import { db } from "./db";
 import { queryClient } from "../client/src/lib/queryClient";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { posts, notifications, videos, users, teams } from "@shared/schema";
-import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
-import {
-  insertMeasurementSchema,
-  insertPostSchema,
-  insertTeamSchema,
-  insertNotificationSchema,
-  insertVideoSchema
-} from "@shared/schema";
-import { ZodError } from "zod";
+import { posts, notifications, videos, users, teams, activities, workoutVideos } from "@shared/schema";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { WebSocketServer, WebSocket } from 'ws';
 
 // Configure multer for file uploads
@@ -25,6 +17,12 @@ const upload = multer({
 
 // Keep track of connected clients
 const clients = new Map<number, WebSocket>();
+
+// Admin middleware
+const requireAdmin = (req: any, res: any, next: any) => {
+  if (!req.user?.isAdmin) return res.sendStatus(403);
+  next();
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
@@ -482,39 +480,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/activities", async (req, res) => {
     const { week, day } = req.query;
     try {
-      const activities = await storage.getActivities(
-        week ? Number(week) : undefined,
-        day ? Number(day) : undefined
-      );
-      res.json(activities);
+      let query = db
+        .select({
+          activity: activities,
+          workoutVideos: sql<string>`json_agg(
+            json_build_object(
+              'id', ${workoutVideos}.id,
+              'url', ${workoutVideos}.url,
+              'description', ${workoutVideos}.description
+            )
+          )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .groupBy(activities.id);
+
+      if (week) {
+        query = query.where(eq(activities.week, Number(week)));
+      }
+      if (day) {
+        query = query.where(eq(activities.day, Number(day)));
+      }
+
+      const results = await query;
+
+      // Map the results to include workout videos
+      const mappedActivities = results.map(result => ({
+        ...result.activity,
+        workoutVideos: result.workoutVideos === '[null]' ? [] : JSON.parse(result.workoutVideos)
+      }));
+
+      res.json(mappedActivities);
     } catch (error) {
+      console.error('Error fetching activities:', error);
       res.status(500).json({ error: "Failed to fetch activities" });
     }
   });
 
-  const requireAdmin = (req: any, res: any, next: any) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    next();
-  };
-
   app.post("/api/activities", requireAdmin, async (req, res) => {
     try {
-      const activity = await storage.createActivity(req.body);
-      res.status(201).json(activity);
+      const { workoutVideos, ...activityData } = req.body;
+
+      // First create the activity
+      const [activity] = await db
+        .insert(activities)
+        .values(activityData)
+        .returning();
+
+      // Then create associated workout videos if any
+      if (workoutVideos && workoutVideos.length > 0) {
+        await db
+          .insert(workoutVideos)
+          .values(
+            workoutVideos.map((video: { url: string; description: string }) => ({
+              activityId: activity.id,
+              url: video.url,
+              description: video.description
+            }))
+          );
+      }
+
+      // Fetch the complete activity with workout videos
+      const [completeActivity] = await db
+        .select({
+          activity: activities,
+          workoutVideos: sql<string>`json_agg(
+            json_build_object(
+              'id', ${workoutVideos}.id,
+              'url', ${workoutVideos}.url,
+              'description', ${workoutVideos}.description
+            )
+          )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(eq(activities.id, activity.id))
+        .groupBy(activities.id);
+
+      res.status(201).json({
+        ...completeActivity.activity,
+        workoutVideos: completeActivity.workoutVideos === '[null]' ? [] : JSON.parse(completeActivity.workoutVideos)
+      });
     } catch (error) {
+      console.error('Error creating activity:', error);
       res.status(500).json({ error: "Failed to create activity" });
     }
   });
 
   app.put("/api/activities/:id", requireAdmin, async (req, res) => {
     try {
-      const activity = await db
+      const activityId = parseInt(req.params.id);
+      const { workoutVideos, ...activityData } = req.body;
+
+      // Update activity
+      await db
         .update(activities)
-        .set(req.body)
-        .where(eq(activities.id, parseInt(req.params.id)))
-        .returning();
-      res.json(activity[0]);
+        .set(activityData)
+        .where(eq(activities.id, activityId));
+
+      // Handle workout videos
+      if (workoutVideos) {
+        // First delete existing workout videos
+        await db
+          .delete(workoutVideos)
+          .where(eq(workoutVideos.activityId, activityId));
+
+        // Then insert new ones
+        if (workoutVideos.length > 0) {
+          await db
+            .insert(workoutVideos)
+            .values(
+              workoutVideos.map((video: { url: string; description: string }) => ({
+                activityId,
+                url: video.url,
+                description: video.description
+              }))
+            );
+        }
+      }
+
+      // Fetch updated activity with workout videos
+      const [updatedActivity] = await db
+        .select({
+          activity: activities,
+          workoutVideos: sql<string>`json_agg(
+            json_build_object(
+              'id', ${workoutVideos}.id,
+              'url', ${workoutVideos}.url,
+              'description', ${workoutVideos}.description
+            )
+          )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(eq(activities.id, activityId))
+        .groupBy(activities.id);
+
+      res.json({
+        ...updatedActivity.activity,
+        workoutVideos: updatedActivity.workoutVideos === '[null]' ? [] : JSON.parse(updatedActivity.workoutVideos)
+      });
     } catch (error) {
+      console.error('Error updating activity:', error);
       res.status(500).json({ error: "Failed to update activity" });
     }
   });
@@ -744,6 +851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw error;
     }
   }
+
 
   return httpServer;
 }
