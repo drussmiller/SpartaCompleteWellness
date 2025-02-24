@@ -1,6 +1,6 @@
 import { users, teams, posts, measurements, notifications, videos } from "@shared/schema";
 import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
-import { eq, desc, and, lt, or } from "drizzle-orm";
+import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -22,6 +22,7 @@ export interface IStorage {
   getPosts(): Promise<Post[]>;
   getAllPosts(): Promise<Post[]>;
   getPostsByTeam(teamId: number): Promise<Post[]>;
+  getPostComments(postId: number): Promise<Post[]>; // Add new method
   deletePost(postId: number): Promise<void>;
   createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement>;
   getMeasurementsByUser(userId: number): Promise<Measurement[]>;
@@ -29,6 +30,7 @@ export interface IStorage {
   getUnreadNotifications(userId: number): Promise<Notification[]>;
   markNotificationAsRead(notificationId: number): Promise<Notification>;
   deleteNotification(notificationId: number): Promise<void>;
+  getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number>;
   createVideo(video: InsertVideo): Promise<Video>;
   getVideos(teamId?: number): Promise<Video[]>;
   deleteVideo(videoId: number): Promise<void>;
@@ -45,6 +47,20 @@ export class DatabaseStorage implements IStorage {
       pool,
       createTableIfMissing: true,
     });
+  }
+
+  // Add implementation of getPostComments
+  async getPostComments(postId: number): Promise<Post[]> {
+    return await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.parentId, postId),
+          eq(posts.type, 'comment')
+        )
+      )
+      .orderBy(desc(posts.createdAt));
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -230,6 +246,28 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVideo(videoId: number): Promise<void> {
     await db.delete(videos).where(eq(videos.id, videoId));
+  }
+
+  async getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const userPosts = await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.userId, userId),
+          eq(posts.type, type),
+          gte(posts.createdAt!, startOfDay),
+          lte(posts.createdAt!, endOfDay)
+        )
+      );
+    
+    return userPosts.length;
   }
 }
 

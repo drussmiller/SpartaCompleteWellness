@@ -72,6 +72,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate the post data
       const postData = insertPostSchema.parse(req.body);
+      
+      // Check daily post limits
+      const currentCount = await storage.getPostCountByTypeAndDate(req.user.id, postData.type, new Date());
+      
+      const limits: Record<string, number> = {
+        food: 3,
+        workout: 1,
+        scripture: 1
+      };
+      
+      if (limits[postData.type] && currentCount >= limits[postData.type]) {
+        return res.status(400).json({
+          error: `You have reached your daily limit for ${postData.type} posts`
+        });
+      }
 
       // Create the post with the authenticated user's ID
       const post = await storage.createPost({
@@ -130,8 +145,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const posts = await storage.getAllPosts();
-    res.json(posts);
+    try {
+      // If parentId is provided, return comments for that post
+      if (req.query.parentId) {
+        const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
+        res.json(comments);
+      } else {
+        // Otherwise return all main posts
+        const posts = await storage.getAllPosts();
+        res.json(posts);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      res.status(500).json({ error: "Failed to fetch posts" });
+    }
   });
 
   app.delete("/api/posts/:id", async (req, res) => {
@@ -288,6 +315,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { teamId } = req.body;
     const user = await storage.updateUserTeam(userId, teamId);
     res.json(user);
+  });
+
+  app.post("/api/users/:id/toggle-admin", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
+    const { isAdmin } = req.body;
+    
+    try {
+      await db
+        .update(users)
+        .set({ isAdmin })
+        .where(eq(users.id, userId));
+      
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update admin status" });
+    }
   });
 
   app.delete("/api/users/:id", async (req, res) => {
