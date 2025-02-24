@@ -603,32 +603,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Updating activity:', { activityId, activityData, newWorkoutVideos });
 
-      // Update activity
-      await db
-        .update(activities)
-        .set(activityData)
-        .where(eq(activities.id, activityId));
+      // Start transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        // Update activity
+        await tx
+          .update(activities)
+          .set(activityData)
+          .where(eq(activities.id, activityId));
 
-      // Handle workout videos
-      // First delete existing workout videos
-      await db
-        .delete(workoutVideos)
-        .where(eq(workoutVideos.activityId, activityId));
+        // Handle workout videos within transaction
+        await tx
+          .delete(workoutVideos)
+          .where(eq(workoutVideos.activityId, activityId));
 
-      // Then insert new ones if provided
-      if (newWorkoutVideos && newWorkoutVideos.length > 0) {
-        await db
-          .insert(workoutVideos)
-          .values(
-            newWorkoutVideos.map((video: { url: string; description: string }) => ({
-              activityId,
-              url: video.url,
-              description: video.description
-            }))
-          );
-      }
+        if (newWorkoutVideos && newWorkoutVideos.length > 0) {
+          await tx
+            .insert(workoutVideos)
+            .values(
+              newWorkoutVideos.map((video: { url: string; description: string }) => ({
+                activityId,
+                url: video.url,
+                description: video.description
+              }))
+            );
+        }
+      });
 
-      // Fetch updated activity with workout videos
+      // Fetch updated activity with workout videos after transaction completes
       const [updatedActivity] = await db
         .select({
           activity: activities,
@@ -662,6 +663,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (error) {
         console.error('Error parsing workout videos:', error);
+        return res.status(500).json({ 
+          error: "Failed to parse workout videos",
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
 
       res.json({
@@ -896,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ws.send(JSON.stringify(notification));
       }
 
-      return notification;
+            return notification;
     } catch (error) {
       console.error('Error sending notification:', error);      if (error instanceof z.ZodError) {
         console.error('Zod error sending notification:', error.errors);
