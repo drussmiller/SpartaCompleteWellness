@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Library, HelpCircle, Bell, User, Shield } from "lucide-react";
+import { Home, Calendar, HelpCircle, Bell, User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -9,7 +9,7 @@ export function BottomNav() {
 
   const items = [
     { icon: Home, label: "Home", href: "/" },
-    { icon: Library, label: "Library", href: "/library" },
+    { icon: Calendar, label: "Activity", href: "/activity" },
     { icon: HelpCircle, label: "Help", href: "/help" },
     { icon: Bell, label: "Notifications", href: "/notifications" },
   ];
