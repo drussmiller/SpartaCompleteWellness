@@ -147,7 +147,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPost(post: Post): Promise<Post> {
-    const [newPost] = await db.insert(posts).values(post).returning();
+    // Ensure parentId is set to null if not provided
+    const postData = {
+      ...post,
+      parentId: post.parentId || null,
+      createdAt: new Date(),
+    };
+
+    const [newPost] = await db
+      .insert(posts)
+      .values(postData)
+      .returning();
+
     return newPost;
   }
 
@@ -271,7 +282,7 @@ export class DatabaseStorage implements IStorage {
 
     return userPosts.length;
   }
-  
+
   async getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
     // Get the start of the week (Sunday)
     const startOfWeek = new Date(date);
