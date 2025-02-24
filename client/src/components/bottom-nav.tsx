@@ -1,9 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Home, Library, HelpCircle, Bell, User } from "lucide-react";
+import { Home, Library, HelpCircle, Bell, User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 export function BottomNav() {
   const [location] = useLocation();
+  const { user } = useAuth();
 
   const items = [
     { icon: Home, label: "Home", href: "/" },
@@ -31,6 +33,21 @@ export function BottomNav() {
             </button>
           </Link>
         ))}
+        {user?.isAdmin && (
+          <Link href="/admin">
+            <button
+              className={cn(
+                "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
+                location === "/admin"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary transition-colors"
+              )}
+            >
+              <Shield className="h-5 w-5" />
+              <span>Admin</span>
+            </button>
+          </Link>
+        )}
       </div>
     </nav>
   );
