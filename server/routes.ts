@@ -521,11 +521,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
     try {
-      await db
-        .delete(activities)
-        .where(eq(activities.id, parseInt(req.params.id)));
+      await storage.deleteActivity(parseInt(req.params.id));
       res.sendStatus(200);
     } catch (error) {
+      console.error('Error deleting activity:', error);
       res.status(500).json({ error: "Failed to delete activity" });
     }
   });
