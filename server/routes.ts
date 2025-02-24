@@ -30,20 +30,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
-  // Create initial admin user
-  const existingAdmin = await storage.getUserByUsername('admin');
-  if (!existingAdmin) {
-    await storage.createUser({
-      username: 'admin',
-      email: 'admin@sparta.com',
-      password: await hashPassword('admin123'),
-      isAdmin: true,
-      points: 0,
-      teamId: null,
-      imageUrl: null,
-    });
-    console.log('Created admin user');
-  }
 
   // Teams
   app.post("/api/teams", async (req, res) => {
@@ -558,6 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(users)
         .where(eq(users.id, req.user.id));
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
       res.json(user);
     } catch (error) {
