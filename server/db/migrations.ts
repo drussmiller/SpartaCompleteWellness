@@ -97,17 +97,6 @@ export async function runMigrations() {
       )
     `);
 
-    // Create workout_videos table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS workout_videos (
-        id SERIAL PRIMARY KEY,
-        activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
-        url TEXT NOT NULL,
-        description TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
     // Create videos table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS videos (
@@ -122,20 +111,6 @@ export async function runMigrations() {
       )
     `);
 
-    // Remove the redundant workout_video column if it exists
-    await db.execute(sql`
-      DO $$ 
-      BEGIN 
-        IF EXISTS (
-          SELECT 1 
-          FROM information_schema.columns 
-          WHERE table_name = 'activities' 
-          AND column_name = 'workout_video'
-        ) THEN
-          ALTER TABLE activities DROP COLUMN workout_video;
-        END IF;
-      END $$;
-    `);
 
     console.log('Migrations completed successfully');
   } catch (error) {

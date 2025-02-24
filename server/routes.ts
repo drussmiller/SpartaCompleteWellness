@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { posts, notifications, videos, users, teams, activities, workoutVideos } from "@shared/schema";
+import { posts, notifications, videos, users, teams, activities } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import {
   insertMeasurementSchema,
@@ -478,6 +478,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Activities endpoints
+  app.post("/api/activities", requireAdmin, async (req, res) => {
+    try {
+      const activity = await storage.createActivity(req.body);
+      res.status(201).json(activity);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create activity" });
+    }
+  });
+
+  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      const activity = await db
+        .update(activities)
+        .set(req.body)
+        .where(eq(activities.id, parseInt(req.params.id)))
+        .returning();
+      res.json(activity[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update activity" });
+    }
+  });
+
+  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      const activityId = parseInt(req.params.id);
+      await db
+        .delete(activities)
+        .where(eq(activities.id, activityId));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      res.status(500).json({ error: "Failed to delete activity" });
+    }
+  });
+
   app.get("/api/activities", async (req, res) => {
     const { week, day } = req.query;
     try {
@@ -496,103 +531,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  app.post("/api/activities", requireAdmin, async (req, res) => {
-    try {
-      const activity = await storage.createActivity(req.body);
-
-      // Handle workout videos if provided
-      if (req.body.workoutVideos && Array.isArray(req.body.workoutVideos)) {
-        const workoutVideoPromises = req.body.workoutVideos.map(video =>
-          db.insert(workoutVideos).values({
-            activityId: activity.id,
-            url: video.url,
-            description: video.description
-          })
-        );
-        await Promise.all(workoutVideoPromises);
-      }
-
-      res.status(201).json(activity);
-    } catch (error) {
-      console.error('Error creating activity:', error);
-      res.status(500).json({ error: "Failed to create activity" });
-    }
-  });
-
-  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
-    try {
-      const activityId = parseInt(req.params.id);
-
-      // Update activity data
-      const [activity] = await db
-        .update(activities)
-        .set(req.body)
-        .where(eq(activities.id, activityId))
-        .returning();
-
-      // Handle workout videos update
-      if (req.body.workoutVideos && Array.isArray(req.body.workoutVideos)) {
-        // Delete existing workout videos
-        await db
-          .delete(workoutVideos)
-          .where(eq(workoutVideos.activityId, activityId));
-
-        // Insert new workout videos
-        const workoutVideoPromises = req.body.workoutVideos.map(video =>
-          db.insert(workoutVideos).values({
-            activityId: activity.id,
-            url: video.url,
-            description: video.description
-          })
-        );
-        await Promise.all(workoutVideoPromises);
-      }
-
-      res.json(activity);
-    } catch (error) {
-      console.error('Error updating activity:', error);
-      res.status(500).json({ error: "Failed to update activity" });
-    }
-  });
-
-  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
-    try {
-      const activityId = parseInt(req.params.id);
-      console.log('Attempting to delete activity:', activityId);
-
-      // Check if activity exists
-      const [activity] = await db
-        .select()
-        .from(activities)
-        .where(eq(activities.id, activityId));
-
-      if (!activity) {
-        console.log('Activity not found:', activityId);
-        return res.status(404).json({ error: "Activity not found" });
-      }
-
-      // First delete associated workout videos
-      await db
-        .delete(workoutVideos)
-        .where(eq(workoutVideos.activityId, activityId));
-
-      console.log('Successfully deleted workout videos for activity:', activityId);
-
-      // Then delete the activity
-      await db
-        .delete(activities)
-        .where(eq(activities.id, activityId));
-
-      console.log('Successfully deleted activity:', activityId);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting activity:', error);
-      res.status(500).json({
-        message: "Failed to delete activity",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   app.post("/api/videos", requireAdmin, async (req, res) => {
     try {
