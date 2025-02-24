@@ -600,12 +600,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const activityId = parseInt(req.params.id);
       const { workoutVideos: newWorkoutVideos, ...activityData } = req.body;
-      const parsedActivityData = insertActivitySchema.parse(activityData);
+
+      console.log('Updating activity:', { activityId, activityData, newWorkoutVideos });
 
       // Update activity
       await db
         .update(activities)
-        .set(parsedActivityData)
+        .set(activityData)
         .where(eq(activities.id, activityId));
 
       // Handle workout videos
@@ -631,12 +632,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [updatedActivity] = await db
         .select({
           activity: activities,
-          workoutVideos: sql<string>`json_agg(
-            json_build_object(
-              'id', ${workoutVideos}.id,
-              'url', ${workoutVideos}.url,
-              'description', ${workoutVideos}.description
-            )
+          workoutVideos: sql<string>`COALESCE(
+            json_agg(
+              json_build_object(
+                'id', ${workoutVideos}.id,
+                'url', ${workoutVideos}.url,
+                'description', ${workoutVideos}.description
+              )
+            ) FILTER (WHERE ${workoutVideos}.id IS NOT NULL),
+            '[]'::json
           )`
         })
         .from(activities)
@@ -644,16 +648,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(activities.id, activityId))
         .groupBy(activities.id);
 
+      if (!updatedActivity) {
+        return res.status(404).json({ error: "Activity not found" });
+      }
+
+      console.log('Updated activity:', updatedActivity);
+
+      // Parse the workout videos carefully
+      let parsedWorkoutVideos = [];
+      try {
+        if (updatedActivity.workoutVideos && updatedActivity.workoutVideos !== '[]') {
+          parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
+        }
+      } catch (error) {
+        console.error('Error parsing workout videos:', error);
+      }
+
       res.json({
         ...updatedActivity.activity,
-        workoutVideos: updatedActivity.workoutVideos === '[null]' ? [] : JSON.parse(updatedActivity.workoutVideos)
+        workoutVideos: parsedWorkoutVideos
       });
     } catch (error) {
       console.error('Error updating activity:', error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: 'Validation Error', details: error.errors });
       } else {
-        res.status(500).json({ error: "Failed to update activity" });
+        res.status(500).json({ 
+          error: "Failed to update activity",
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
   });
@@ -875,8 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return notification;
     } catch (error) {
-      console.error('Error sending notification:', error);
-      if (error instanceof z.ZodError) {
+      console.error('Error sending notification:', error);      if (error instanceof z.ZodError) {
         console.error('Zod error sending notification:', error.errors);
       }
       throw error;
