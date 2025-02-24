@@ -14,10 +14,11 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
+const KEY_LENGTH = 64; // Consistent key length for both hashing and comparison
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 32)) as Buffer;
+  const buf = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
 }
 
@@ -26,7 +27,7 @@ async function comparePasswords(supplied: string, stored: string) {
     const [hashed, salt] = stored.split(".");
     if (!hashed || !salt) return false;
     const hashedBuf = Buffer.from(hashed, "hex");
-    const suppliedBuf = (await scryptAsync(supplied, salt, 32)) as Buffer;
+    const suppliedBuf = (await scryptAsync(supplied, salt, KEY_LENGTH)) as Buffer;
     return timingSafeEqual(hashedBuf, suppliedBuf);
   } catch (error) {
     console.error('Password comparison error:', error);
