@@ -13,6 +13,7 @@ import { insertPostSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { usePostLimits } from "@/hooks/use-post-limits";
+import { useAuth } from "@/hooks/use-auth";
 
 type CreatePostForm = z.infer<typeof insertPostSchema>;
 
@@ -53,6 +54,7 @@ export function CreatePostDialog() {
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { canPost, counts } = usePostLimits();
+  const { user } = useAuth();
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -86,7 +88,12 @@ export function CreatePostDialog() {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both team-specific and general post queries
+      if (user?.teamId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+
       setOpen(false);
       form.reset();
       setImagePreview(null);
@@ -115,10 +122,10 @@ export function CreatePostDialog() {
   // Get remaining posts message based on type
   const getRemainingMessage = (type: string) => {
     const remaining = {
-      food: 3 - counts.food,
-      workout: 1 - counts.workout,
-      scripture: 1 - counts.scripture,
-      memory_verse: 1 - counts.memory_verse
+      food: 3 - (counts.food || 0),
+      workout: 1 - (counts.workout || 0),
+      scripture: 1 - (counts.scripture || 0),
+      memory_verse: 1 - (counts.memory_verse || 0)
     }[type];
 
     if (type === 'memory_verse') {
