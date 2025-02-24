@@ -273,46 +273,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<boolean> {
-    // Get token and check if it's valid
-    const [resetToken] = await db
-      .select()
-      .from(passwordResetTokens)
-      .where(
-        and(
-          eq(passwordResetTokens.token, token),
-          eq(passwordResetTokens.used, false),
-          lt(passwordResetTokens.expiresAt, new Date())
-        )
-      );
+    try {
+      // Get token and check if it's valid
+      const [resetToken] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.token, token),
+            eq(passwordResetTokens.used, false),
+            lt(new Date(), passwordResetTokens.expiresAt) 
+          )
+        );
 
-    if (!resetToken) {
+      if (!resetToken) {
+        console.log('Invalid or expired reset token');
+        return false;
+      }
+
+      // Mark token as used
+      await db
+        .update(passwordResetTokens)
+        .set({ used: true })
+        .where(eq(passwordResetTokens.id, resetToken.id));
+
+      // Get user and update password
+      const user = await this.getUserByEmail(resetToken.email);
+      if (!user) {
+        console.log('User not found for email:', resetToken.email);
+        return false;
+      }
+
+      // Hash new password
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      // Update user password
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, user.id));
+
+      return true;
+    } catch (error) {
+      console.error('Error in resetPassword:', error);
       return false;
     }
-
-    // Mark token as used
-    await db
-      .update(passwordResetTokens)
-      .set({ used: true })
-      .where(eq(passwordResetTokens.id, resetToken.id));
-
-    // Get user and update password
-    const user = await this.getUserByEmail(resetToken.email);
-    if (!user) {
-      return false;
-    }
-
-    // Hash new password
-    const salt = randomBytes(16).toString("hex");
-    const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
-    const hashedPassword = `${buf.toString("hex")}.${salt}`;
-
-    // Update user password
-    await db
-      .update(users)
-      .set({ password: hashedPassword })
-      .where(eq(users.id, user.id));
-
-    return true;
   }
 }
 
