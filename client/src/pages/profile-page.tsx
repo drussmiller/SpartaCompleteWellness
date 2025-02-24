@@ -8,15 +8,31 @@ import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { LogOut, Plus, Scale, Ruler, Camera } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LogOut, Plus, Scale, Ruler, Camera, Lock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { z } from "zod";
+
+// Add password change schema
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your new password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const { data: measurements } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements"],
@@ -99,6 +115,43 @@ export default function ProfilePage() {
   }));
 
   console.log('Chart Data:', chartData);
+
+  const changePasswordForm = useForm<ChangePasswordForm>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: Omit<ChangePasswordForm, "confirmPassword">) => {
+      const res = await apiRequest("POST", "/api/user/change-password", {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to change password");
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password changed successfully",
+      });
+      setChangePasswordOpen(false);
+      changePasswordForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -326,6 +379,16 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Add Change Password button before the Logout button */}
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => setChangePasswordOpen(true)}
+        >
+          <Lock className="w-4 h-4 mr-2" />
+          Change Password
+        </Button>
+
         <Button
           variant="destructive"
           className="w-full"
@@ -336,6 +399,67 @@ export default function ProfilePage() {
           {logoutMutation.isPending ? "Logging out..." : "Logout"}
         </Button>
       </main>
+
+      <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+          </DialogHeader>
+          <Form {...changePasswordForm}>
+            <form
+              onSubmit={changePasswordForm.handleSubmit((data) => {
+                const { confirmPassword, ...rest } = data;
+                changePasswordMutation.mutate(rest);
+              })}
+              className="space-y-4"
+            >
+              <FormField
+                control={changePasswordForm.control}
+                name="currentPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={changePasswordForm.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={changePasswordForm.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm New Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={changePasswordMutation.isPending}
+              >
+                {changePasswordMutation.isPending ? "Changing Password..." : "Change Password"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
