@@ -18,6 +18,21 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
       <div className="flex justify-around items-center h-16">
+        {user?.isAdmin && (
+          <Link href="/admin">
+            <button
+              className={cn(
+                "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
+                location === "/admin"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary transition-colors"
+              )}
+            >
+              <Shield className="h-5 w-5" />
+              <span>Admin</span>
+            </button>
+          </Link>
+        )}
         {items.map(({ icon: Icon, label, href }) => (
           <Link key={href} href={href}>
             <button
@@ -33,7 +48,6 @@ export function BottomNav() {
             </button>
           </Link>
         ))}
-        {user?.isAdmin && (
           <Link href="/admin">
             <button
               className={cn(
