@@ -202,11 +202,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Created post:', post);
 
-      // Award points if not a comment
+      // Send notification about points earned
       if (post.type !== 'comment') {
-        const updatedUser = await storage.updateUserPoints(req.user.id, post.points);
-        console.log('Updated user points:', updatedUser);
-
         const notification = await sendNotification(
           req.user.id,
           "Points Earned!",
@@ -536,6 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             SELECT SUM(points)
             FROM ${posts}
             WHERE ${posts.userId} = ${users.id}
+            AND ${posts.type} != 'comment'
           ), 0)`
         })
         .from(users)
