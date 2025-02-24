@@ -201,9 +201,9 @@ export default function AdminPage() {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Team
+            <Button size="sm" className="w-28 px-2">
+              <Plus className="h-3 w-3 mr-1" />
+              New Team
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -377,9 +377,21 @@ export default function AdminPage() {
           </DialogHeader>
           <Form {...editTeamForm}>
             <form
-              onSubmit={editTeamForm.handleSubmit((data) =>
-                editingTeam && updateTeamMutation.mutate({ id: editingTeam.id, data })
-              )}
+              onSubmit={editTeamForm.handleSubmit(async (data) => {
+                if (!editingTeam) return;
+                try {
+                  await updateTeamMutation.mutateAsync({ 
+                    id: editingTeam.id, 
+                    data: {
+                      name: data.name,
+                      description: data.description
+                    }
+                  });
+                  setEditTeamOpen(false);
+                } catch (error) {
+                  console.error('Error in form submission:', error);
+                }
+              })}
               className="space-y-4"
             >
               <FormField
