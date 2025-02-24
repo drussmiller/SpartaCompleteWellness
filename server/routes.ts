@@ -30,6 +30,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
+  // Use activities router first before other routes
+  app.use('/api/activities', activitiesRouter);
 
   // Teams
   app.post("/api/teams", async (req, res) => {
@@ -478,16 +480,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Use activities router
-  app.use('/api/activities', activitiesRouter);
-
-  const requireAdmin = (req: any, res: any, next: any) => {
+  app.post("/api/videos", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
-    next();
-  };
-
-
-  app.post("/api/videos", requireAdmin, async (req, res) => {
     try {
       const videoData = insertVideoSchema.parse(req.body);
       const video = await storage.createVideo(videoData);
