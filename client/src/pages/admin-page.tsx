@@ -18,6 +18,9 @@ export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -38,6 +41,40 @@ export default function AdminPage() {
       toast({ title: "User team updated successfully" });
     },
   });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`);
+      if (!res.ok) throw new Error("Failed to delete user");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "User deleted successfully" });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/resetPassword`, { password });
+      if (!res.ok) throw new Error("Failed to reset password");
+      return res.json();
+    },
+    onSuccess: () => {
+      setResetPasswordOpen(false);
+      setNewPassword("");
+      setSelectedUserId(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Password reset successfully" });
+    },
+  });
+
+  const handleResetPassword = (userId: number) => {
+    setSelectedUserId(userId);
+    setNewPassword("");
+    setResetPasswordOpen(true);
+  };
+
 
   const form = useForm({
     resolver: zodResolver(insertTeamSchema),
@@ -178,12 +215,55 @@ export default function AdminPage() {
                       )}
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResetPassword(u.id)}
+                  >
+                    Reset Password
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to delete this user?")) {
+                        deleteUserMutation.mutate(u.id);
+                      }
+                    }}
+                  >
+                    Delete User
+                  </Button>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
+      <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset User Password</DialogTitle>
+          </DialogHeader>
+          <Input
+            type="password"
+            placeholder="New password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Button
+            onClick={() => {
+              if (selectedUserId) {
+                resetPasswordMutation.mutate({
+                  userId: selectedUserId,
+                  password: newPassword,
+                });
+              }
+            }}
+          >
+            Reset Password
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

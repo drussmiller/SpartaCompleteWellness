@@ -279,6 +279,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(user);
   });
 
+  app.delete("/api/users/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await storage.deleteUser(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  app.post("/api/users/:id/reset-password", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const newPassword = req.body.password;
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserPassword(parseInt(req.params.id), hashedPassword);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
   // Add video routes
   app.get("/api/videos", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
