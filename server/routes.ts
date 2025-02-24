@@ -399,6 +399,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
+  app.delete("/api/posts/all", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await db.delete(posts);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting posts:', error);
+      res.status(500).json({ error: "Failed to delete posts" });
+    }
+  });
+
   // Add team assignment route
   app.get("/api/users", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
