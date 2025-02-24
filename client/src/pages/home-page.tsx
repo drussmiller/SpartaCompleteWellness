@@ -12,6 +12,9 @@ export default function HomePage() {
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
+    onError: (error) => {
+      console.error('Error fetching posts:', error);
+    }
   });
 
   if (isLoading) {
@@ -25,7 +28,7 @@ export default function HomePage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen text-destructive">
-        Error loading posts: {error.message}
+        Error loading posts: {error instanceof Error ? error.message : 'Unknown error'}
       </div>
     );
   }
