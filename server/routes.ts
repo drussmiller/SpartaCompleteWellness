@@ -249,11 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           allPosts = await storage.getPostsByTeam(req.user.teamId);
         } else {
           // Otherwise return all main posts that aren't comments
-          allPosts = await db
-            .select()
-            .from(posts)
-            .where(eq(posts.parentId, null))
-            .orderBy(desc(posts.createdAt));
+          allPosts = await storage.getPosts();
         }
         res.json(allPosts);
       }
