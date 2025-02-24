@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { posts, notifications, videos, users, teams, activities } from "@shared/schema";
+import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import {
   insertMeasurementSchema,
@@ -15,6 +15,7 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
+import activitiesRouter from './routes/activities';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -477,54 +478,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Activities endpoints
-  app.post("/api/activities", requireAdmin, async (req, res) => {
-    try {
-      const activity = await storage.createActivity(req.body);
-      res.status(201).json(activity);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create activity" });
-    }
-  });
-
-  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
-    try {
-      const activity = await db
-        .update(activities)
-        .set(req.body)
-        .where(eq(activities.id, parseInt(req.params.id)))
-        .returning();
-      res.json(activity[0]);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update activity" });
-    }
-  });
-
-  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
-    try {
-      const activityId = parseInt(req.params.id);
-      await db
-        .delete(activities)
-        .where(eq(activities.id, activityId));
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting activity:', error);
-      res.status(500).json({ error: "Failed to delete activity" });
-    }
-  });
-
-  app.get("/api/activities", async (req, res) => {
-    const { week, day } = req.query;
-    try {
-      const activities = await storage.getActivities(
-        week ? Number(week) : undefined,
-        day ? Number(day) : undefined
-      );
-      res.json(activities);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch activities" });
-    }
-  });
+  // Use activities router
+  app.use('/api/activities', activitiesRouter);
 
   const requireAdmin = (req: any, res: any, next: any) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
