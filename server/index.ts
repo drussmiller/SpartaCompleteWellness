@@ -57,7 +57,7 @@ app.use((req, res, next) => {
   await runMigrations();
 
   // Always use port 5000 as specified in the development guidelines
-  const port = 5000;
+  const port = process.env.PORT || 5000;
   server.listen({
     port,
     host: "0.0.0.0",

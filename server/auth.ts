@@ -23,7 +23,16 @@ export async function hashPassword(password: string) {
 
 async function comparePasswords(supplied: string, stored: string) {
   if (!stored || !supplied) return false;
-  return supplied === stored;
+  try {
+    if (stored === supplied) return true; // For the default admin account
+    const [hashedPassword, salt] = stored.split('.');
+    if (!hashedPassword || !salt) return false;
+    const buf = (await scryptAsync(supplied, salt, 32)) as Buffer;
+    return hashedPassword === buf.toString('hex');
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {

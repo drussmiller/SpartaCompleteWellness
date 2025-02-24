@@ -1,19 +1,14 @@
-import { users, teams, posts, measurements, notifications, videos, passwordResetTokens } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo, PasswordResetToken } from "@shared/schema";
+import { users, teams, posts, measurements, notifications, videos } from "@shared/schema";
+import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
 import { eq, desc, and, lt, or } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
-
-const scryptAsync = promisify(scrypt);
 
 const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
-  // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -21,42 +16,24 @@ export interface IStorage {
   updateUserTeam(userId: number, teamId: number): Promise<User>;
   updateUserPoints(userId: number, points: number): Promise<User>;
   updateUserImage(userId: number, imageUrl: string): Promise<User>;
-
-  // Password reset operations
-  storeResetToken(email: string, token: string, expiry: Date): Promise<void>;
-  resetPassword(token: string, newPassword: string): Promise<boolean>;
-
-  // Team operations
   createTeam(team: Team): Promise<Team>;
   getTeams(): Promise<Team[]>;
-
-  // Post operations
   createPost(post: Post): Promise<Post>;
   getPosts(): Promise<Post[]>;
-  getAllPosts(): Promise<Post[]>; 
+  getAllPosts(): Promise<Post[]>;
   getPostsByTeam(teamId: number): Promise<Post[]>;
   deletePost(postId: number): Promise<void>;
-
-  // Measurement operations
   createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement>;
   getMeasurementsByUser(userId: number): Promise<Measurement[]>;
-
-  // Notification operations
   createNotification(notification: Omit<Notification, 'id'>): Promise<Notification>;
   getUnreadNotifications(userId: number): Promise<Notification[]>;
   markNotificationAsRead(notificationId: number): Promise<Notification>;
   deleteNotification(notificationId: number): Promise<void>;
-
-  // Video operations
   createVideo(video: InsertVideo): Promise<Video>;
   getVideos(teamId?: number): Promise<Video[]>;
   deleteVideo(videoId: number): Promise<void>;
-
-  // Clear all data (admin only)
   clearData(): Promise<void>;
-
   getAllUsers(): Promise<User[]>;
-
   sessionStore: session.Store;
 }
 
@@ -124,7 +101,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(posts);
     await db.delete(users);
     await db.delete(teams);
-    await db.delete(passwordResetTokens);
   }
 
   async createTeam(team: Team): Promise<Team> {
@@ -254,72 +230,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVideo(videoId: number): Promise<void> {
     await db.delete(videos).where(eq(videos.id, videoId));
-  }
-
-  async storeResetToken(email: string, token: string, expiry: Date): Promise<void> {
-    // First invalidate any existing tokens
-    await db
-      .update(passwordResetTokens)
-      .set({ used: true })
-      .where(eq(passwordResetTokens.email, email));
-
-    // Store new token
-    await db.insert(passwordResetTokens).values({
-      email,
-      token,
-      expiresAt: expiry,
-      used: false,
-    });
-  }
-
-  async resetPassword(token: string, newPassword: string): Promise<boolean> {
-    try {
-      // Get token and check if it's valid
-      const [resetToken] = await db
-        .select()
-        .from(passwordResetTokens)
-        .where(
-          and(
-            eq(passwordResetTokens.token, token),
-            eq(passwordResetTokens.used, false),
-            lt(new Date(), passwordResetTokens.expiresAt) 
-          )
-        );
-
-      if (!resetToken) {
-        console.log('Invalid or expired reset token');
-        return false;
-      }
-
-      // Mark token as used
-      await db
-        .update(passwordResetTokens)
-        .set({ used: true })
-        .where(eq(passwordResetTokens.id, resetToken.id));
-
-      // Get user and update password
-      const user = await this.getUserByEmail(resetToken.email);
-      if (!user) {
-        console.log('User not found for email:', resetToken.email);
-        return false;
-      }
-
-      // Hash new password
-      const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString("hex")}.${salt}`;
-
-      // Update user password
-      await db
-        .update(users)
-        .set({ password: hashedPassword })
-        .where(eq(users.id, user.id));
-
-      return true;
-    } catch (error) {
-      console.error('Error in resetPassword:', error);
-      return false;
-    }
   }
 }
 

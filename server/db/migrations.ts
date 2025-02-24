@@ -21,6 +21,13 @@ export async function runMigrations() {
       )
     `);
 
+    // Insert default admin if not exists
+    await db.execute(sql`
+      INSERT INTO users (username, email, password, is_admin)
+      VALUES ('admin', 'admin@example.com', 'admin.abc123', true)
+      ON CONFLICT (username) DO NOTHING
+    `);
+
     // Create notifications table if it doesn't exist
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS notifications (

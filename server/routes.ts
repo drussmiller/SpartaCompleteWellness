@@ -16,12 +16,9 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
-import { randomBytes, scrypt } from "crypto";
+import { randomBytes } from "crypto";
 import { promisify } from "util";
-import { sendPasswordResetEmail } from "./email";
-import { hashPassword } from "./auth";
-
-const scryptAsync = promisify(scrypt);
+import { hashPassword } from './auth'; // Added import for hashPassword
 
 // Configure multer for file uploads
 const upload = multer({
@@ -292,32 +289,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users/:id/reset-password", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const newPassword = req.body.password;
-      if (!newPassword) {
-        return res.status(400).json({ error: "Password is required" });
-      }
-
-      // Hash the new password
-      const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString("hex")}.${salt}`;
-
-      // Update the user's password
-      await db
-        .update(users)
-        .set({ password: hashedPassword })
-        .where(eq(users.id, parseInt(req.params.id)));
-
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      res.status(500).json({ error: "Failed to reset password" });
-    }
-  });
-
   // Add video routes
   app.get("/api/videos", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -369,86 +340,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/reset-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-
-      // Generate a reset token
-      const resetToken = randomBytes(32).toString('hex');
-      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
-
-      // Store the reset token in the database
-      await storage.storeResetToken(email, resetToken, resetTokenExpiry);
-
-      // Send reset email
-      const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
-      await sendPasswordResetEmail(email, resetLink);
-
-      res.status(200).json({ message: "If an account exists with this email, you will receive password reset instructions." });
-    } catch (error) {
-      console.error('Password reset error:', error);
-      res.status(200).json({ message: "If an account exists with this email, you will receive password reset instructions." });
-    }
-  });
-
-  app.post("/api/reset-password/:token", async (req, res) => {
-    try {
-      const { token } = req.params;
-      const { password } = req.body;
-
-      // Verify token and update password
-      const success = await storage.resetPassword(token, password);
-
-      if (success) {
-        res.status(200).json({ message: "Password updated successfully" });
-      } else {
-        res.status(400).json({ message: "Invalid or expired reset token" });
-      }
-    } catch (error) {
-      console.error('Password reset error:', error);
-      res.status(500).json({ message: "Failed to reset password" });
-    }
-  });
-
-  const httpServer = createServer(app);
-
-  // Setup WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  wss.on('connection', (ws, req) => {
-    const userId = req.url?.split('userId=')[1];
-    if (userId) {
-      clients.set(parseInt(userId), ws);
-
-      ws.on('close', () => {
-        clients.delete(parseInt(userId));
-      });
-    }
-  });
-
-  // Helper function to send notification
-  async function sendNotification(userId: number, title: string, message: string) {
-    try {
-      const notification = await storage.createNotification({
-        userId,
-        title,
-        message,
-        read: false,
-        createdAt: new Date(),
-      });
-
-      const ws = clients.get(userId);
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(notification));
-      }
-
-      return notification;
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      throw error;
-    }
-  }
-
   // User
   app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -491,6 +382,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to create user" });
     }
   });
+
+  const httpServer = createServer(app);
+
+  // Setup WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+
+  wss.on('connection', (ws, req) => {
+    const userId = req.url?.split('userId=')[1];
+    if (userId) {
+      clients.set(parseInt(userId), ws);
+
+      ws.on('close', () => {
+        clients.delete(parseInt(userId));
+      });
+    }
+  });
+
+  // Helper function to send notification
+  async function sendNotification(userId: number, title: string, message: string) {
+    try {
+      const notification = await storage.createNotification({
+        userId,
+        title,
+        message,
+        read: false,
+        createdAt: new Date(),
+      });
+
+      const ws = clients.get(userId);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(notification));
+      }
+
+      return notification;
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      throw error;
+    }
+  }
 
   return httpServer;
 }
