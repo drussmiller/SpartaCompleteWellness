@@ -207,14 +207,14 @@ export default function AdminPage() {
           <CardContent>
             <div className="space-y-4">
               {users.map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-2">
-                  <div>
+                <div key={u.id} className="flex flex-wrap items-center justify-between p-2 gap-2">
+                  <div className="min-w-[150px]">
                     <p className="font-medium">{u.username}</p>
                     <p className="text-sm text-muted-foreground">
                       Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {selectedTeam && (
                       <Button
                         size="sm"
