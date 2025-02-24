@@ -62,7 +62,7 @@ export default function AdminPage() {
         title: "Success",
         description: "Password has been reset successfully"
       });
-      return res.json();
+      return { success: true };
     },
     onSuccess: () => {
       setResetPasswordOpen(false);
