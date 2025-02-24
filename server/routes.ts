@@ -11,14 +11,10 @@ import {
   insertPostSchema,
   insertTeamSchema,
   insertNotificationSchema,
-  insertVideoSchema,
-  type InsertPost
+  insertVideoSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { WebSocketServer, WebSocket } from 'ws';
-import { randomBytes } from "crypto";
-import { promisify } from "util";
-import { hashPassword } from './auth'; // Added import for hashPassword
 
 // Configure multer for file uploads
 const upload = multer({
@@ -30,6 +26,7 @@ const upload = multer({
 const clients = new Map<number, WebSocket>();
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication first
   setupAuth(app);
 
   // Teams
@@ -150,7 +147,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-
 
   // Measurements
   app.post("/api/measurements", async (req, res) => {
