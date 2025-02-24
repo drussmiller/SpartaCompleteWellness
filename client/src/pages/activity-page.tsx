@@ -1,6 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { BottomNav } from "@/components/bottom-nav";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -78,6 +79,7 @@ export default function ActivityPage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
+      <ScrollArea className="h-[calc(100vh-80px)]">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
           <h1 className="text-xl font-bold">Daily Activity</h1>
@@ -197,7 +199,7 @@ export default function ActivityPage() {
                       <div className="mt-4">
                         <h3 className="font-semibold mb-2">Workout Video</h3>
                         {currentActivity.workoutVideo.includes('youtube.com') || currentActivity.workoutVideo.includes('youtu.be') ? (
-                          <div className="aspect-video">
+                          <div className="aspect-video h-[400px]">
                             <iframe
                               className="w-full h-full"
                               src={`https://www.youtube.com/embed/${currentActivity.workoutVideo.split(/[/?]/)[3]}`}
@@ -319,6 +321,7 @@ export default function ActivityPage() {
         </DialogContent>
       </Dialog>
 
+      </ScrollArea>
       <BottomNav />
     </div>
   );
