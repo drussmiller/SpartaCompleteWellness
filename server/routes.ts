@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { posts, notifications, videos, users, teams } from "@shared/schema";
 import { setupAuth, hashPassword, comparePasswords } from "./auth"; // Import comparePasswords
 import {
@@ -232,9 +232,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
         res.json(comments);
       } else {
-        // Otherwise return all main posts
-        const posts = await storage.getAllPosts();
-        res.json(posts);
+        // Otherwise return all main posts that aren't comments
+        const allPosts = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.parentId, null))
+          .orderBy(desc(posts.createdAt));
+        res.json(allPosts);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -393,6 +397,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     await storage.clearData();
     res.sendStatus(200);
+  });
+
+  app.delete("/api/posts/all", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await db.delete(posts);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting posts:', error);
+      res.status(500).json({ error: "Failed to delete posts" });
+    }
   });
 
   // Add team assignment route
