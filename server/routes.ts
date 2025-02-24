@@ -145,8 +145,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const posts = await storage.getAllPosts();
-    res.json(posts);
+    try {
+      // If parentId is provided, return comments for that post
+      if (req.query.parentId) {
+        const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
+        res.json(comments);
+      } else {
+        // Otherwise return all main posts
+        const posts = await storage.getAllPosts();
+        res.json(posts);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      res.status(500).json({ error: "Failed to fetch posts" });
+    }
   });
 
   app.delete("/api/posts/:id", async (req, res) => {

@@ -22,6 +22,7 @@ export interface IStorage {
   getPosts(): Promise<Post[]>;
   getAllPosts(): Promise<Post[]>;
   getPostsByTeam(teamId: number): Promise<Post[]>;
+  getPostComments(postId: number): Promise<Post[]>; // Add new method
   deletePost(postId: number): Promise<void>;
   createMeasurement(measurement: Omit<Measurement, 'id'>): Promise<Measurement>;
   getMeasurementsByUser(userId: number): Promise<Measurement[]>;
@@ -29,9 +30,7 @@ export interface IStorage {
   getUnreadNotifications(userId: number): Promise<Notification[]>;
   markNotificationAsRead(notificationId: number): Promise<Notification>;
   deleteNotification(notificationId: number): Promise<void>;
-
   getPostCountByTypeAndDate(userId: number, type: string, date: Date): Promise<number>;
-
   createVideo(video: InsertVideo): Promise<Video>;
   getVideos(teamId?: number): Promise<Video[]>;
   deleteVideo(videoId: number): Promise<void>;
@@ -48,6 +47,20 @@ export class DatabaseStorage implements IStorage {
       pool,
       createTableIfMissing: true,
     });
+  }
+
+  // Add implementation of getPostComments
+  async getPostComments(postId: number): Promise<Post[]> {
+    return await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.parentId, postId),
+          eq(posts.type, 'comment')
+        )
+      )
+      .orderBy(desc(posts.createdAt));
   }
 
   async getUser(id: number): Promise<User | undefined> {
