@@ -198,6 +198,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
+      // Check if post is from a previous day
+      const postDate = new Date(post.createdAt!);
+      const today = new Date();
+      const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
+
+      // Only allow deleting comments from previous days, or any post type from current day
+      if (isFromPreviousDay && post.type !== 'comment') {
+        return res.status(403).json({ 
+          message: "Only comments can be deleted from previous days" 
+        });
+      }
+
       await storage.deletePost(parseInt(req.params.id));
       res.sendStatus(200);
     } catch (error) {

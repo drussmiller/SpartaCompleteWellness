@@ -28,12 +28,24 @@ export function PostCard({ post, user }: PostCardProps) {
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
 
+  // Add function to check if post can be deleted
+  const canDeletePost = () => {
+    if (!currentUser || currentUser.id !== post.userId) return false;
+
+    const postDate = new Date(post.createdAt!);
+    const today = new Date();
+    const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
+
+    // Only allow deleting comments from previous days, or any post type from current day
+    return !isFromPreviousDay || post.type === 'comment';
+  };
+
   // Get comments for this post
   const { data: comments } = useQuery<Post[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    queryFn: () => 
+    queryFn: () =>
       apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`)
-        .then(res => res.json()),
+        .then((res) => res.json()),
     enabled: showComments,
   });
 
@@ -43,7 +55,7 @@ export function PostCard({ post, user }: PostCardProps) {
       type: "comment",
       content: "",
       points: 1,
-    }
+    },
   });
 
   const addCommentMutation = useMutation({
@@ -54,7 +66,7 @@ export function PostCard({ post, user }: PostCardProps) {
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || 'Failed to add comment');
+        throw new Error(error.message || "Failed to add comment");
       }
       return res.json();
     },
@@ -112,7 +124,7 @@ export function PostCard({ post, user }: PostCardProps) {
             <p className="text-sm text-muted-foreground">{user.points} points</p>
           </div>
         </div>
-        {currentUser?.id === post.userId && (
+        {currentUser?.id === post.userId && canDeletePost() && (
           <Button
             variant="ghost"
             size="icon"
@@ -126,9 +138,9 @@ export function PostCard({ post, user }: PostCardProps) {
       </CardHeader>
       <CardContent className="p-4 pt-0">
         {post.imageUrl && (
-          <img 
-            src={post.imageUrl} 
-            alt={post.type} 
+          <img
+            src={post.imageUrl}
+            alt={post.type}
             className="w-full h-64 object-cover rounded-md mb-4"
           />
         )}
@@ -136,7 +148,7 @@ export function PostCard({ post, user }: PostCardProps) {
           <p className="text-sm">{post.content}</p>
         )}
         <div className="mt-4 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground capitalize">{post.type.replace('_', ' ')}</span>
+          <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
           <span className="text-xs text-muted-foreground">•</span>
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
@@ -155,7 +167,7 @@ export function PostCard({ post, user }: PostCardProps) {
         {showComments && (
           <div className="mt-4 space-y-4">
             <Form {...form}>
-              <form 
+              <form
                 onSubmit={form.handleSubmit((data) => addCommentMutation.mutate(data))}
                 className="flex items-center gap-2"
               >
@@ -165,18 +177,16 @@ export function PostCard({ post, user }: PostCardProps) {
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormControl>
-                        <Input 
-                          placeholder="Add a comment..." 
-                          {...field} 
+                        <Input
+                          placeholder="Add a comment..."
+                          {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit"
-                  disabled={addCommentMutation.isPending}
-                >
+                <Button type="submit" disabled={addCommentMutation.isPending}>
                   {addCommentMutation.isPending ? "Adding..." : "Comment"}
                 </Button>
               </form>
