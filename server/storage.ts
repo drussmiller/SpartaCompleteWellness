@@ -51,20 +51,6 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // Add implementation of getPostComments
-  async getPostComments(postId: number): Promise<Post[]> {
-    return await db
-      .select()
-      .from(posts)
-      .where(
-        and(
-          eq(posts.parentId, postId),
-          eq(posts.type, 'comment')
-        )
-      )
-      .orderBy(desc(posts.createdAt));
-  }
-
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db
       .select({
@@ -76,10 +62,6 @@ export class DatabaseStorage implements IStorage {
         teamId: users.teamId,
         points: users.points,
         imageUrl: users.imageUrl,
-        preferredName: users.preferredName,
-        weight: users.weight,
-        waist: users.waist,
-        createdAt: users.createdAt
       })
       .from(users)
       .where(eq(users.id, id));
@@ -97,10 +79,6 @@ export class DatabaseStorage implements IStorage {
         teamId: users.teamId,
         points: users.points,
         imageUrl: users.imageUrl,
-        preferredName: users.preferredName,
-        weight: users.weight,
-        waist: users.waist,
-        createdAt: users.createdAt
       })
       .from(users)
       .where(eq(users.username, username));
@@ -400,6 +378,18 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(teams)
       .where(eq(teams.id, teamId));
+  }
+  async getPostComments(postId: number): Promise<Post[]> {
+    return await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.parentId, postId),
+          eq(posts.type, 'comment')
+        )
+      )
+      .orderBy(desc(posts.createdAt));
   }
 }
 

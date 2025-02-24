@@ -531,10 +531,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isAdmin: users.isAdmin,
           teamId: users.teamId,
           imageUrl: users.imageUrl,
-          preferredName: users.preferredName,
-          weight: users.weight,
-          waist: users.waist,
-          createdAt: users.createdAt,
           points: sql`COALESCE((
             SELECT SUM(p.points)
             FROM ${posts} p
