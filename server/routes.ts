@@ -72,6 +72,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate the post data
       const postData = insertPostSchema.parse(req.body);
+      
+      // Check daily post limits
+      const currentCount = await storage.getPostCountByTypeAndDate(req.user.id, postData.type, new Date());
+      
+      const limits: Record<string, number> = {
+        food: 3,
+        workout: 1,
+        scripture: 1
+      };
+      
+      if (limits[postData.type] && currentCount >= limits[postData.type]) {
+        return res.status(400).json({
+          error: `You have reached your daily limit for ${postData.type} posts`
+        });
+      }
 
       // Create the post with the authenticated user's ID
       const post = await storage.createPost({
