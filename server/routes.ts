@@ -5,7 +5,7 @@ import multer from "multer";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { posts, notifications, videos, users } from "@shared/schema";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 import {
   insertMeasurementSchema,
   insertPostSchema,
@@ -28,6 +28,21 @@ const clients = new Map<number, WebSocket>();
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
+
+  // Create initial admin user
+  const existingAdmin = await storage.getUserByUsername('admin');
+  if (!existingAdmin) {
+    await storage.createUser({
+      username: 'admin',
+      email: 'admin@sparta.com',
+      password: await hashPassword('admin123'),
+      isAdmin: true,
+      points: 0,
+      teamId: null,
+      imageUrl: null,
+    });
+    console.log('Created admin user');
+  }
 
   // Teams
   app.post("/api/teams", async (req, res) => {
