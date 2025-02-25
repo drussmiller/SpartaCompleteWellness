@@ -87,7 +87,7 @@ function CommentThread({
   );
 }
 
-export function PostCard({ post, user }: { post: Post; user: User }) {
+export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
@@ -226,12 +226,12 @@ export function PostCard({ post, user }: { post: Post; user: User }) {
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
-            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`} />
-            <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${post.author.username}`} />
+            <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold">{user.username}</p>
-            <p className="text-sm text-muted-foreground">{user.points} points</p>
+            <p className="font-semibold">{post.author.username}</p>
+            <p className="text-sm text-muted-foreground">{post.author.points} points</p>
           </div>
         </div>
         {currentUser?.id === post.userId && canDeletePost() && (
@@ -290,11 +290,11 @@ export function PostCard({ post, user }: { post: Post; user: User }) {
                     <Card className="mb-6">
                       <CardHeader className="flex flex-row items-center p-4">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`} />
-                          <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${post.author.username}`} />
+                          <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="ml-3">
-                          <p className="text-sm font-semibold">{user.username}</p>
+                          <p className="text-sm font-semibold">{post.author.username}</p>
                           <p className="text-xs text-muted-foreground">{new Date(post.createdAt!).toLocaleDateString()}</p>
                         </div>
                       </CardHeader>

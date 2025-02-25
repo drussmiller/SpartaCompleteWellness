@@ -31,8 +31,13 @@ export default function ProfilePage() {
 
   // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
-    queryKey: ["/api/measurements"],
-    enabled: !!authUser,
+    queryKey: ["/api/measurements", user?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/measurements?userId=${user?.id}`);
+      if (!response.ok) throw new Error('Failed to fetch measurements');
+      return response.json();
+    },
+    enabled: !!user?.id,
   });
 
   useEffect(() => {

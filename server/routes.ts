@@ -356,7 +356,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json([]); // If user has no team, return empty array
         }
         console.log('Fetching posts for team:', req.user.teamId);
-        const teamPosts = await storage.getPostsByTeam(req.user.teamId);
+
+        // Join with users table to get author information
+        const teamPosts = await db
+          .select({
+            id: posts.id,
+            type: posts.type,
+            content: posts.content,
+            imageUrl: posts.imageUrl,
+            points: posts.points,
+            userId: posts.userId,
+            parentId: posts.parentId,
+            createdAt: posts.createdAt,
+            depth: posts.depth,
+            author: {
+              id: users.id,
+              username: users.username,
+              imageUrl: users.imageUrl,
+              points: users.points
+            }
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(eq(users.teamId, req.user.teamId))
+          .orderBy(desc(posts.createdAt));
+
         console.log('Posts found:', teamPosts.length);
         res.json(teamPosts);
       }
@@ -511,8 +535,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const measurements = await storage.getMeasurementsByUser(req.user.id);
-    res.json(measurements);
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      // Only allow admins to view other users' measurements
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.sendStatus(403);
+      }
+      const measurements = await storage.getMeasurementsByUser(userId);
+      res.json(measurements);
+    } catch (error) {
+      console.error('Error fetching measurements:', error);
+      res.status(500).json({ error: 'Failed to fetch measurements' });
+    }
   });
 
   // User Image Upload
@@ -900,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to delete video",
         error: error instanceof Error ? error.message : "Unknown error"
       });
-    }
+}
   });
 
   // User
