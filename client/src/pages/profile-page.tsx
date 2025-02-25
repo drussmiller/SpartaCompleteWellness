@@ -4,18 +4,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, Lock } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Camera, Lock } from "lucide-react";
-import { z } from "zod";
 import { useState, useEffect } from "react";
-
+import { z } from "zod";
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(1)
+  newPassword: z.string().min(8),
 });
 
 type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
@@ -50,6 +46,10 @@ export default function ProfilePage() {
     });
   };
 
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -64,7 +64,6 @@ export default function ProfilePage() {
           </Button>
         </div>
       </header>
-
       <main className="p-4 space-y-6">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
@@ -98,15 +97,12 @@ export default function ProfilePage() {
                         throw new Error('Failed to update profile image');
                       }
 
-                      const updatedUser = await res.json();
-                      queryClient.setQueryData(["/api/user"], updatedUser);
-                      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                      await refetchUser();
                       toast({
                         title: "Success",
-                        description: "Profile picture updated successfully"
+                        description: "Profile image updated successfully"
                       });
                     } catch (error) {
-                      console.error('Error updating profile image:', error);
                       toast({
                         title: "Error",
                         description: "Failed to update profile image",
@@ -118,37 +114,20 @@ export default function ProfilePage() {
                 <Camera className="h-6 w-6 text-white" />
               </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold">{user?.username}</h2>
-              <p className="text-muted-foreground">{user?.points} points</p>
-              {user?.teamName && (
-                <div className="mt-1">Team: {user?.teamName}</div>
-              )}
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold">{user?.username}</h2>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
-          </CardContent>
-          <CardContent className="pt-0">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setChangePasswordOpen(true)}
-            >
-              <Lock className="w-4 h-4 mr-2" />
-              Change Password
+            <Button variant="outline" size="icon" onClick={() => setChangePasswordOpen(true)}>
+              <Lock className="h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
-        <Button
-          variant="destructive"
-          className="w-full"
-          onClick={() => logoutMutation.mutate()}
-          disabled={logoutMutation.isPending}
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          {logoutMutation.isPending ? "Logging out..." : "Logout"}
-        </Button>
 
+        <Button variant="destructive" onClick={handleLogout}>
+          Logout
+        </Button>
       </main>
-      <BottomNav/>
     </div>
   );
 }
