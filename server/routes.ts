@@ -319,7 +319,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // If parentId is provided, return comments for that post
       if (req.query.parentId) {
-        const comments = await storage.getPostComments(parseInt(req.query.parentId as string));
+        const comments = await db
+          .select({
+            id: posts.id,
+            type: posts.type,
+            content: posts.content,
+            imageUrl: posts.imageUrl,
+            points: posts.points,
+            userId: posts.userId,
+            parentId: posts.parentId,
+            createdAt: posts.createdAt,
+            depth: posts.depth,
+            author: {
+              id: users.id,
+              username: users.username,
+              imageUrl: users.imageUrl
+            }
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              eq(posts.parentId, parseInt(req.query.parentId as string)),
+              eq(posts.type, 'comment')
+            )
+          )
+          .orderBy(desc(posts.createdAt));
+
         res.json(comments);
       } else {
         // Get all posts for the user's team
@@ -464,7 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Measurement created:', measurement);
 
-      res.status(201).json(measurement);
+      res.json(measurement);
     } catch (e) {
       console.error('Error creating measurement:', e);
       if (e instanceof z.ZodError) {
