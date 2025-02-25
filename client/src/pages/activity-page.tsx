@@ -119,8 +119,7 @@ export default function ActivityPage() {
                 Week {currentActivity.week} - Day {currentActivity.day}
               </CardTitle>
               {user?.isAdmin && (
-                <div className="flex gap-2">
-                  <Button
+                <div className="flex gap-2
                     variant="ghost"
                     size="icon"
                     onClick={() => {
@@ -151,12 +150,10 @@ export default function ActivityPage() {
                   {currentActivity.memoryVerseReference} - "{currentActivity.memoryVerse}"
                 </blockquote>
 
-                {currentActivity.description && (
+                {currentActivity.scripture && (
                   <>
-                    <h2>Description</h2>
-                    <p className="whitespace-pre-line">
-                      {currentActivity.description}
-                    </p>
+                    <h2>Scripture Reading</h2>
+                    <p>{currentActivity.scripture}</p>
                   </>
                 )}
 
@@ -167,10 +164,12 @@ export default function ActivityPage() {
                   </>
                 )}
 
-                {currentActivity.scripture && (
+                {currentActivity.description && (
                   <>
-                    <h2>Scripture Reading</h2>
-                    <p>{currentActivity.scripture}</p>
+                    <h2>Description</h2>
+                    <p className="whitespace-pre-line">
+                      {currentActivity.description}
+                    </p>
                   </>
                 )}
 
