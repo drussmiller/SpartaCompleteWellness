@@ -238,30 +238,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create the post with the authenticated user's ID
-      const post = await storage.createPost({
-        ...postData,
-        userId: req.user.id,
-        points: postData.type === 'memory_verse' ? 10 : (postData.type === 'comment' ? 0 : 3),
-        createdAt: new Date()
+      const post = await db.transaction(async (tx) => {
+        // Create the post first
+        const [newPost] = await tx
+          .insert(posts)
+          .values({
+            ...postData,
+            userId: req.user.id,
+            points: postData.type === 'memory_verse' ? 10 : (postData.type === 'comment' ? 0 : 3),
+            createdAt: new Date()
+          })
+          .returning();
+
+        // Update user points
+        if (newPost.points > 0) {
+          await tx
+            .update(users)
+            .set({ 
+              points: sql`COALESCE(points, 0) + ${newPost.points}`
+            })
+            .where(eq(users.id, req.user.id));
+        }
+
+        return newPost;
       });
-
-      // Update points in database directly
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id));
-
-      if (user) {
-        await db
-          .update(users)
-          .set({ points: user.points + post.points })
-          .where(eq(users.id, req.user.id));
-      }
-
 
       // Send notification about points earned
       if (post.type !== 'comment') {
-        const notification = await sendNotification(
+        await sendNotification(
           req.user.id,
           "Points Earned!",
           `You earned ${post.points} points for your ${post.type} post!`
@@ -817,7 +821,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: users.id,
           username: users.username,
           email: users.email,
-          password: users.password,
           isAdmin: users.isAdmin,
           teamId: users.teamId,
           imageUrl: users.imageUrl,
@@ -835,10 +838,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Ensure points is returned as a number, not null
+      // Always return points as a number
       const sanitizedUser = {
         ...user,
-        points: user.points || 0
+        points: typeof user.points === 'number' ? user.points : 0
       };
 
       res.json(sanitizedUser);
@@ -909,12 +912,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { currentPassword, newPassword } = req.body;
 
       if (!currentPassword || !newPassword) {
-        return res.status(400).json({ error: "Both current and new passwords are required" });
+        return res.status(40).json({ error: "Both current and new passwords are required" });
       }
 
       // Get the user's current stored password
-      const user = await storage.getUser(req.user.id);
-      if (!user) {
+      const user = await storage.getUser(req.user.id);      if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
