@@ -99,9 +99,10 @@ export default function ProfilePage() {
     onError: (error: Error) => {
       console.error('Error adding measurement:', error);
       toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+        title: "Unable to Update",
+        description: "There was a problem updating your measurements. Please try again.",
+        variant: "default",
+        className: "bg-orange-100 text-orange-900 border-orange-200",
       });
     },
   });

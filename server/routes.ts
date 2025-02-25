@@ -68,13 +68,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByUsername(username);
       if (!user) {
         console.log('User not found:', username);
-        return res.status(401).json({ error: "Invalid username or password" });
+        return res.status(401).json({ message: "Authentication failed" });
       }
 
       const isValidPassword = await comparePasswords(password, user.password);
       if (!isValidPassword) {
         console.log('Invalid password for user:', username);
-        return res.status(401).json({ error: "Invalid username or password" });
+        return res.status(401).json({ message: "Authentication failed" });
       }
 
       req.login(user, (err) => {
@@ -949,7 +949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Password is required" });
       }
 
-      
+
 
       // Hash the new password using the consistent hashing function
       const hashedPassword = await hashPassword(newPassword);

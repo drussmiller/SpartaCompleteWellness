@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X } from "lucide-react";
+import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -286,63 +286,64 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center">
+      <header>
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => window.history.back()}>
-            Back
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Back</span>
           </Button>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => window.location.href = '/activity-management'}>
+        <div className="flex gap-2 mt-4 justify-center">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="default" className="px-4">
+                <Plus className="h-4 w-4 mr-2" />
+                New Team
+              </Button>
+            </DialogTrigger>
+            <DialogContent aria-describedby="new-team-description">
+              <p id="new-team-description" className="sr-only">Create a new team form</p>
+              <DialogHeader>
+                <DialogTitle>Create New Team</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={createTeamMutation.isPending}>
+                    {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+          <Button onClick={() => window.location.href = '/activity-management'} size="default" className="ml-2">
             Manage Activities
           </Button>
-          </div>
-          <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm" className="w-28 px-2">
-              <Plus className="h-3 w-3 mr-1" />
-              New Team
-            </Button>
-          </DialogTrigger>
-          <DialogContent aria-describedby="new-team-description">
-            <p id="new-team-description" className="sr-only">Create a new team form</p>
-            <DialogHeader>
-              <DialogTitle>Create New Team</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={createTeamMutation.isPending}>
-                  {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        </div>
       </header>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -471,7 +472,7 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      
+
 
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
         <DialogContent>

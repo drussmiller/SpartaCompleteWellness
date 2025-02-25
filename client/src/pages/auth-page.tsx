@@ -89,7 +89,9 @@ export default function AuthPage() {
                       {loginMutation.isPending ? "Logging in..." : "Login"}
                     </Button>
                     {loginMutation.error && (
-                      <p className="text-red-500 text-sm mt-2">Invalid email or password</p>
+                      <p className="bg-orange-100 text-orange-900 border-orange-200 text-sm mt-2">
+                        Unable to Login. Please check your email and password and try again.
+                      </p>
                     )}
                   </form>
                 </Form>
