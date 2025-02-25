@@ -302,13 +302,11 @@ export default function AdminPage() {
                 New Team
               </Button>
             </DialogTrigger>
+          </Dialog>
           <Button onClick={() => window.location.href = '/activity-management'} className="ml-2">
             Manage Activities
           </Button>
         </div>
-          <DialogTrigger asChild>
-            <Button size="sm" className="w-28 px-2">
-              <Plus className="h-3 w-3 mr-1" />
               New Team
             </Button>
           </DialogTrigger>
