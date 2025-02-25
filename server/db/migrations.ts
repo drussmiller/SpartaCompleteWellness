@@ -121,6 +121,12 @@ export async function runMigrations() {
       )
     `);
 
+    // Add depth column to posts table
+    await db.execute(sql`
+      ALTER TABLE posts
+      ADD COLUMN IF NOT EXISTS depth INTEGER DEFAULT 0
+    `);
+
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);

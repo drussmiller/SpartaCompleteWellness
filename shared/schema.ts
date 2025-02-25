@@ -32,7 +32,8 @@ export const posts = pgTable("posts", {
   imageUrl: text("image_url"),
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  parentId: integer("parent_id"), // Add parentId for comments
+  parentId: integer("parent_id"), // Reference to parent post/comment
+  depth: integer("depth").default(0), // New field for comment nesting level
 });
 
 export const measurements = pgTable("measurements", {
@@ -106,7 +107,8 @@ export const insertPostSchema = createInsertSchema(posts)
     imageUrl: z.string().nullable(),
     type: z.enum(["food", "workout", "scripture", "memory_verse", "comment"]),
     points: z.number().default(1),
-    parentId: z.number().optional() // Make parentId optional
+    parentId: z.number().optional(), // Make parentId optional
+    depth: z.number().default(0) //Added depth field to insert schema
   });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -152,3 +154,13 @@ export type WorkoutVideo = typeof workoutVideos.$inferSelect;
 export type InsertWorkoutVideo = z.infer<typeof insertWorkoutVideoSchema>;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Add a new type for structured comments
+export type CommentWithAuthor = Post & {
+  author: {
+    id: number;
+    username: string;
+    imageUrl?: string;
+  };
+  replies?: CommentWithAuthor[];
+};

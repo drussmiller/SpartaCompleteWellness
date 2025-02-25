@@ -3,18 +3,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Post, User } from "@shared/schema";
+import { Post, User, CommentWithAuthor } from "@shared/schema";
 import { Trash2, MessageCircle } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPostSchema } from "@shared/schema";
 import { z } from "zod";
 import { Drawer } from "vaul";
+import { cn } from "@/lib/utils";
 
 interface PostCardProps {
   post: Post;
@@ -23,10 +24,81 @@ interface PostCardProps {
 
 type CommentForm = z.infer<typeof insertPostSchema>;
 
+function CommentThread({
+  comment,
+  postAuthorId,
+  currentUser,
+  onReply,
+  depth = 0
+}: {
+  comment: CommentWithAuthor;
+  postAuthorId: number;
+  currentUser: User;
+  onReply: (parentId: number) => void;
+  depth?: number;
+}) {
+  const isAuthor = comment.userId === postAuthorId;
+  const maxDepth = 3; // Maximum nesting level
+
+  return (
+    <div className={cn(
+      "flex flex-col gap-4",
+      depth > 0 && "ml-6 pl-4 border-l border-border"
+    )}>
+      <div className={cn(
+        "flex items-start gap-3 p-3 rounded-lg",
+        isAuthor ? "bg-primary/10" : "bg-muted/50"
+      )}>
+        <Avatar className="h-6 w-6">
+          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
+          <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">
+              {comment.author.username}
+              {isAuthor && (
+                <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded-full">
+                  Author
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(comment.createdAt!).toLocaleDateString()}
+            </p>
+          </div>
+          <p className="text-sm mt-1">{comment.content}</p>
+          {depth < maxDepth && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => onReply(comment.id)}
+            >
+              Reply
+            </Button>
+          )}
+        </div>
+      </div>
+      {comment.replies?.map((reply) => (
+        <CommentThread
+          key={reply.id}
+          comment={reply}
+          postAuthorId={postAuthorId}
+          currentUser={currentUser}
+          onReply={onReply}
+          depth={depth + 1}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function PostCard({ post, user }: PostCardProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
+  const [replyToId, setReplyToId] = useState<number | null>(null);
 
   const canDeletePost = () => {
     if (!currentUser || currentUser.id !== post.userId) return false;
@@ -38,13 +110,36 @@ export function PostCard({ post, user }: PostCardProps) {
     return !isFromPreviousDay || post.type === 'comment';
   };
 
-  const { data: comments } = useQuery<Post[]>({
+  const { data: comments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: () =>
       apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`)
         .then((res) => res.json()),
     enabled: showComments,
   });
+
+  const commentTree = useMemo(() => {
+    if (!comments) return [];
+
+    const commentMap = new Map<number, CommentWithAuthor>();
+    const roots: CommentWithAuthor[] = [];
+
+    comments.forEach(comment => {
+      commentMap.set(comment.id, { ...comment, replies: [] });
+    });
+
+    comments.forEach(comment => {
+      if (comment.parentId === post.id) {
+        roots.push(commentMap.get(comment.id)!);
+      } else if (comment.parentId && commentMap.has(comment.parentId)) {
+        const parent = commentMap.get(comment.parentId)!;
+        if (!parent.replies) parent.replies = [];
+        parent.replies.push(commentMap.get(comment.id)!);
+      }
+    });
+
+    return roots;
+  }, [comments, post.id]);
 
   const form = useForm<CommentForm>({
     resolver: zodResolver(insertPostSchema),
@@ -59,7 +154,7 @@ export function PostCard({ post, user }: PostCardProps) {
     mutationFn: async (data: CommentForm) => {
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
-        parentId: post.id,
+        parentId: replyToId || post.id,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -74,6 +169,7 @@ export function PostCard({ post, user }: PostCardProps) {
         title: "Success",
         description: "Comment added successfully",
       });
+      setReplyToId(null);
     },
     onError: (error: Error) => {
       toast({
@@ -180,74 +276,15 @@ export function PostCard({ post, user }: PostCardProps) {
                       </Drawer.Close>
                     </div>
 
-                    {/* Original Post */}
-                    <Card className="mb-6">
-                      <CardHeader className="flex flex-row items-center p-4">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`} />
-                          <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="ml-3">
-                          <p className="text-sm font-semibold">{user.username}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(post.createdAt!).toLocaleDateString()}</p>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0">
-                        {post.content && (
-                          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-                        )}
-                        {post.imageUrl && (
-                          <img
-                            src={post.imageUrl}
-                            alt={post.type}
-                            className="w-full h-auto object-contain rounded-md mt-2"
-                          />
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* Comment Form */}
-                    <Form {...form}>
-                      <form
-                        onSubmit={form.handleSubmit((data) => addCommentMutation.mutate(data))}
-                        className="flex items-center gap-2 mb-6"
-                      >
-                        <FormField
-                          control={form.control}
-                          name="content"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormControl>
-                                <Input
-                                  placeholder="Add a comment..."
-                                  {...field}
-                                  value={field.value || ""}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" disabled={addCommentMutation.isPending}>
-                          {addCommentMutation.isPending ? "Adding..." : "Comment"}
-                        </Button>
-                      </form>
-                    </Form>
-
-                    {/* Comments List */}
                     <div className="space-y-4">
-                      {comments?.map((comment) => (
-                        <div key={comment.id} className="flex items-start gap-3 p-3 rounded bg-muted/50">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.userId}`} />
-                            <AvatarFallback>{comment.userId}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm">{comment.content}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(comment.createdAt!).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
+                      {commentTree.map((comment) => (
+                        <CommentThread
+                          key={comment.id}
+                          comment={comment}
+                          postAuthorId={post.userId}
+                          currentUser={currentUser!}
+                          onReply={setReplyToId}
+                        />
                       ))}
                     </div>
                   </div>
