@@ -225,20 +225,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`Checking post limits for user ${req.user.id}, type ${postData.type}`);
 
-        // Count only non-deleted posts for today for the current user
-        const [result] = await db
-          .select({ count: sql<number>`count(*)` })
+        // Get today's count for this user and post type
+        const [{ count }] = await db
+          .select({ 
+            count: sql<number>`count(*)::int` 
+          })
           .from(posts)
           .where(
             and(
               eq(posts.userId, req.user.id),
               eq(posts.type, postData.type),
-              sql`date_trunc('day', ${posts.createdAt}) = date_trunc('day', CURRENT_TIMESTAMP)`
+              sql`date_trunc('day', created_at) = date_trunc('day', now())`
             )
           );
 
-        const currentCount = Number(result?.count) || 0;
-        console.log(`Current post count for user ${req.user.id}, type ${postData.type}:`, currentCount);
+        console.log(`Found ${count} posts of type ${postData.type} for user ${req.user.id} today`);
 
         const limits: Record<string, number> = {
           food: 3,
@@ -246,14 +247,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scripture: 1
         };
 
-        if (limits[postData.type] && currentCount >= limits[postData.type]) {
+        if (limits[postData.type] && count >= limits[postData.type]) {
           return res.status(400).json({
-            error: `You have reached your daily limit for ${postData.type} posts (${currentCount}/${limits[postData.type]})`
+            error: `You have reached your daily limit for ${postData.type} posts (${count}/${limits[postData.type]})`
           });
         }
       }
 
-      // Create the post with the authenticated user's ID
+      // Create the post
       const post = await db.transaction(async (tx) => {
         // Create the post first
         const [newPost] = await tx
