@@ -68,25 +68,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByUsername(username);
       if (!user) {
         console.log('User not found:', username);
-        return res.status(401).json({ message: "Authentication failed" });
+        return res.status(401).json({ message: "Invalid username or password" });
       }
 
       const isValidPassword = await comparePasswords(password, user.password);
       if (!isValidPassword) {
         console.log('Invalid password for user:', username);
-        return res.status(401).json({ message: "Authentication failed" });
+        return res.status(401).json({ message: "Invalid username or password" });
       }
 
       req.login(user, (err) => {
         if (err) {
           console.error('Login error:', err);
-          return res.status(500).json({ error: "Login failed" });
+          return res.status(500).json({ message: "An error occurred during login" });
         }
         res.json(user);
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: "Login failed" });
+      res.status(500).json({ message: "An error occurred during login" });
     }
   });
 
@@ -949,8 +949,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Password is required" });
       }
 
-
-
       // Hash the new password using the consistent hashing function
       const hashedPassword = await hashPassword(newPassword);
 
@@ -966,7 +964,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to reset password" });
     }
   });
-
 
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
