@@ -376,28 +376,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use transaction to ensure both operations succeed or fail together
       await db.transaction(async (tx) => {
-        // If post has points, remove them from user's total
-        if (post.points > 0) {
-          const [user] = await tx
-            .select()
-            .from(users)
-            .where(eq(users.id, post.userId));
+        // Delete the post first
+        await tx
+          .delete(posts)
+          .where(eq(posts.id, postId));
 
-          if (user) {
-            await tx
-              .update(users)
-              .set({ 
-                points: user.points - post.points 
-              })
-              .where(eq(users.id, post.userId));
-          }
-        }
-
-        // Delete the post
-        await tx.delete(posts).where(eq(posts.id, postId));
+        // Update user's points to reflect the accurate sum
+        await tx
+          .update(users)
+          .set({ 
+            points: sql`COALESCE((
+              SELECT CAST(SUM(points) AS INTEGER)
+              FROM ${posts}
+              WHERE user_id = ${users.id}
+              AND type != 'comment'
+            ), 0)`
+          })
+          .where(eq(users.id, post.userId));
       });
 
-      res.sendStatus(200);
+      // Get updated user data to return
+      const [updatedUser] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId,
+          imageUrl: users.imageUrl,
+          points: sql`COALESCE((
+            SELECT CAST(SUM(points) AS INTEGER)
+            FROM ${posts}
+            WHERE user_id = ${users.id}
+            AND type != 'comment'
+          ), 0)`
+        })
+        .from(users)
+        .where(eq(users.id, post.userId));
+
+      res.json({ success: true, user: updatedUser });
+
     } catch (error) {
       console.error('Error deleting post:', error);
       res.status(500).json({
@@ -906,7 +924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newPassword = req.body.password;
       if (!newPassword) {
         return res.status(400).json({ error: "Password is required" });
-      }
+}
 
       // Hash the new password using the consistent hashing function
       const hashedPassword = await hashPassword(newPassword);
