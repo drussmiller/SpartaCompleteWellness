@@ -220,7 +220,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // Check daily post limits for other post types
-        const currentCount = await storage.getPostCountByTypeAndDate(req.user.id, postData.type, new Date());
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const [currentCount] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, req.user.id),
+              eq(posts.type, postData.type),
+              sql`${posts.createdAt} >= ${today}`,
+              sql`${posts.createdAt} < ${tomorrow}`
+            )
+          );
 
         const limits: Record<string, number> = {
           food: 3,
@@ -228,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scripture: 1
         };
 
-        if (limits[postData.type] && currentCount >= limits[postData.type]) {
+        if (limits[postData.type] && currentCount.count >= limits[postData.type]) {
           return res.status(400).json({
             error: `You have reached your daily limit for ${postData.type} posts`
           });
@@ -934,7 +949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to delete video",
         error: error instanceof Error ? error.message : "Unknown error"
       });
-}
+    }
   });
 
   // User
