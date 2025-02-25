@@ -161,6 +161,7 @@ export function PostCard({ post, user }: PostCardProps) {
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         parentId: replyToId || post.id,
+        depth: replyToId ? 1 : 0,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -171,11 +172,11 @@ export function PostCard({ post, user }: PostCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
       form.reset();
+      setReplyToId(null);
       toast({
         title: "Success",
         description: "Comment added successfully",
       });
-      setReplyToId(null);
     },
     onError: (error: Error) => {
       toast({
