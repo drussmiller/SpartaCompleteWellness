@@ -20,7 +20,6 @@ interface PostCardProps {
   user: User;
 }
 
-// Add comment form type
 type CommentForm = z.infer<typeof insertPostSchema>;
 
 export function PostCard({ post, user }: PostCardProps) {
@@ -28,7 +27,6 @@ export function PostCard({ post, user }: PostCardProps) {
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
 
-  // Add function to check if post can be deleted
   const canDeletePost = () => {
     if (!currentUser || currentUser.id !== post.userId) return false;
 
@@ -36,11 +34,9 @@ export function PostCard({ post, user }: PostCardProps) {
     const today = new Date();
     const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
 
-    // Only allow deleting comments from previous days, or any post type from current day
     return !isFromPreviousDay || post.type === 'comment';
   };
 
-  // Get comments for this post
   const { data: comments } = useQuery<Post[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: () =>
@@ -97,9 +93,15 @@ export function PostCard({ post, user }: PostCardProps) {
       return res.json();
     },
     onSuccess: (data) => {
-      // Invalidate both posts and user queries to refresh the UI
+      // Force invalidate both user and posts queries
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.setQueryData(["/api/user"], data.user);
+
+      // Update the user data in cache with the new points
+      if (data.user) {
+        queryClient.setQueryData(["/api/user"], data.user);
+      }
+
       toast({
         title: "Success",
         description: "Post deleted successfully",
@@ -127,7 +129,7 @@ export function PostCard({ post, user }: PostCardProps) {
             <p className="text-sm text-muted-foreground">{user.points} points</p>
           </div>
         </div>
-        {currentUser?.id === post.userId && (
+        {currentUser?.id === post.userId && canDeletePost() && (
           <Button
             variant="ghost"
             size="icon"

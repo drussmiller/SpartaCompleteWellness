@@ -376,6 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use transaction to ensure both operations succeed or fail together
       await db.transaction(async (tx) => {
+        console.log('Starting delete transaction for post:', postId);
         // Delete the post first
         await tx.delete(posts).where(eq(posts.id, postId));
 
@@ -391,6 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ), 0)`
           })
           .where(eq(users.id, post.userId));
+        console.log('Transaction complete for post deletion:', postId);
       });
 
       // Get the updated user with accurate points
@@ -417,6 +419,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...updatedUser,
         points: typeof updatedUser.points === 'number' ? updatedUser.points : 0
       };
+
+      console.log('Updated user points after deletion:', sanitizedUser.points);
 
       // Return success along with updated user data
       res.json({ 

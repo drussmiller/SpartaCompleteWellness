@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 
 // Add password change schema
@@ -30,13 +30,37 @@ const changePasswordSchema = z.object({
 type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
-  const { user, logoutMutation } = useAuth();
+  const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  const { data: measurements } = useQuery<Measurement[]>({
-    queryKey: ["/api/measurements"],
+  // Force refetch user data when component mounts or when posts change
+  const { data: user, refetch: refetchUser } = useQuery({
+    queryKey: ["/api/user"],
+    staleTime: 0, // Don't cache the data
+    enabled: !!authUser, // Only fetch if user is authenticated
   });
+
+  // Log user data updates
+  useEffect(() => {
+    console.log('Profile page user data updated:', user);
+  }, [user]);
+
+  // Refetch user data when component mounts
+  useEffect(() => {
+    console.log('Refetching user data');
+    refetchUser();
+  }, [refetchUser]);
+
+  // Add debug refresh button handler
+  const handleRefresh = async () => {
+    console.log('Manual refresh requested');
+    await refetchUser();
+    toast({
+      title: "Refreshed",
+      description: "Profile data has been refreshed"
+    });
+  };
 
   const updateProfileImageMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -60,14 +84,6 @@ export default function ProfilePage() {
         variant: "destructive"
       });
     }
-  });
-
-  const form = useForm({
-    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
-    defaultValues: {
-      weight: undefined,
-      waist: undefined,
-    },
   });
 
   const addMeasurementMutation = useMutation({
@@ -156,11 +172,32 @@ export default function ProfilePage() {
     },
   });
 
+  const { data: measurements } = useQuery<Measurement[]>({
+    queryKey: ["/api/measurements"],
+  });
+
+  const form = useForm({
+    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
+    defaultValues: {
+      weight: undefined,
+      waist: undefined,
+    },
+  });
+
+
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4">
+        <div className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">Profile</h1>
+          {/* Add debug refresh button */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh}
+          >
+            Refresh Data
+          </Button>
         </div>
       </header>
 
