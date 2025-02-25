@@ -9,6 +9,12 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import { insertMeasurementSchema } from "@shared/schema";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
@@ -47,6 +53,40 @@ export default function ProfilePage() {
   const handleLogout = () => {
     logoutMutation.mutate();
   };
+
+  // Add measurement form
+  const form = useForm({
+    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
+    defaultValues: {
+      weight: undefined,
+      waist: undefined,
+    },
+  });
+
+  const addMeasurementMutation = useMutation({
+    mutationFn: async (data: { weight?: number; waist?: number }) => {
+      const res = await apiRequest("POST", "/api/measurements", data);
+      if (!res.ok) {
+        throw new Error("Failed to add measurement");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Measurement added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -131,6 +171,53 @@ export default function ProfilePage() {
         <Card>
           <CardContent>
             <h3 className="text-lg font-semibold mb-4">Measurements</h3>
+
+            {/* Add measurement form */}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit((data) => addMeasurementMutation.mutate(data))} className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight (lbs)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="Enter weight" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="waist"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Waist (inches)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="Enter waist" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Button type="submit" disabled={addMeasurementMutation.isPending}>
+                  {addMeasurementMutation.isPending ? "Adding..." : "Add Measurement"}
+                </Button>
+              </form>
+            </Form>
+
+            {/* Existing measurements display */}
             {measurementsLoading ? (
               <div className="flex items-center justify-center p-4">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
