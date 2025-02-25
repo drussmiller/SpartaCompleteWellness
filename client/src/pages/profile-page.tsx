@@ -28,6 +28,15 @@ export default function ProfilePage() {
     enabled: !!authUser,
   });
 
+  const { data: measurements, isLoading: measurementsLoading } = useQuery({
+    queryKey: ['/api/measurements'],
+    queryFn: async () => {
+      const res = await fetch('/api/measurements');
+      if (!res.ok) throw new Error('Failed to fetch measurements');
+      return res.json();
+    }
+  });
+
   useEffect(() => {
     console.log('Profile page user data updated:', user);
   }, [user]);
@@ -124,8 +133,25 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        {measurementsLoading ? (
+          <p>Loading measurements...</p>
+        ) : measurements && (
+          <Card>
+            <CardContent>
+              <h3>Measurements</h3>
+              <ul>
+                {measurements.map((measurement) => (
+                  <li key={measurement.id}>{measurement.name}: {measurement.value} {measurement.unit}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+
         <Button variant="destructive" onClick={handleLogout}>
           Logout
+          <LogOut className="ml-2 h-4 w-4"/>
         </Button>
       </main>
     </div>
