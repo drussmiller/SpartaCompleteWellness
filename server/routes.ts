@@ -225,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`Checking post limits for user ${req.user.id}, type ${postData.type}`);
 
-        // Count only non-deleted posts for today
+        // Count only non-deleted posts for today for the current user
         const [result] = await db
           .select({ count: sql<number>`count(*)` })
           .from(posts)
@@ -237,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             )
           );
 
-        const currentCount = result?.count || 0;
+        const currentCount = Number(result?.count) || 0;
         console.log(`Current post count for user ${req.user.id}, type ${postData.type}:`, currentCount);
 
         const limits: Record<string, number> = {
