@@ -66,9 +66,18 @@ export default function ProfilePage() {
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number; waist?: number }) => {
-      const res = await apiRequest("POST", "/api/measurements", data);
+      // Only send fields that have values
+      const payload = {
+        ...(data.weight !== undefined && { weight: data.weight }),
+        ...(data.waist !== undefined && { waist: data.waist })
+      };
+
+      console.log('Submitting measurement:', payload);
+      const res = await apiRequest("POST", "/api/measurements", payload);
+
       if (!res.ok) {
-        throw new Error("Failed to add measurement");
+        const error = await res.json();
+        throw new Error(error.message || "Failed to add measurement");
       }
       return res.json();
     },
@@ -81,6 +90,7 @@ export default function ProfilePage() {
       });
     },
     onError: (error: Error) => {
+      console.error('Error adding measurement:', error);
       toast({
         title: "Error",
         description: error.message,

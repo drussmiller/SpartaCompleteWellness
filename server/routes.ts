@@ -447,7 +447,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: new Date()
       };
 
+      console.log('Creating measurement:', measurementData);
+
       const measurement = await storage.createMeasurement(measurementData);
+
+      console.log('Measurement created:', measurement);
 
       res.status(201).json(measurement);
     } catch (e) {
@@ -926,8 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: "Failed to create user" });
-    }
+      res.status(500).json({ error: "Failed to create user" });    }
   });
 
   app.post("/api/users/:id/reset-password", async (req, res) => {
