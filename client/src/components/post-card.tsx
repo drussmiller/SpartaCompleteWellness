@@ -102,14 +102,19 @@ export function PostCard({ post, user }: PostCardProps) {
 
   const { data: comments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    queryFn: () =>
-      apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`)
-        .then((res) => res.json()),
+    queryFn: async () => {
+      console.log('Fetching comments for post:', post.id);
+      const res = await apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`);
+      const data = await res.json();
+      console.log('Comments received:', data);
+      return data;
+    },
     enabled: showComments,
   });
 
   const commentTree = useMemo(() => {
     if (!comments) return [];
+    console.log('Building comment tree from:', comments);
 
     const commentMap = new Map<number, CommentWithAuthor>();
     const roots: CommentWithAuthor[] = [];
@@ -128,6 +133,7 @@ export function PostCard({ post, user }: PostCardProps) {
       }
     });
 
+    console.log('Generated comment tree:', roots);
     return roots;
   }, [comments, post.id]);
 
