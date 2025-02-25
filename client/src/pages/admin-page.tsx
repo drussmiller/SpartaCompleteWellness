@@ -294,7 +294,7 @@ export default function AdminPage() {
           </Button>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         </div>
-        <div className="flex gap-2 mt-4 ml-12">
+        <div className="flex gap-2 mt-4 justify-center">
           <Dialog>
             <DialogTrigger asChild>
               <Button size="default" className="px-4">
