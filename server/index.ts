@@ -57,8 +57,8 @@ app.use((req, res, next) => {
 
     await runMigrations();
 
-    // Always use port 5000 as specified in the development guidelines
-    const port = process.env.PORT || 5000;
+    // Use port 3000 by default
+    const port = process.env.PORT || 3000;
 
     // Handle server shutdown gracefully
     let shuttingDown = false;
