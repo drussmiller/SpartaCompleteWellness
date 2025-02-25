@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
+import { Measurement } from "@shared/schema";
+import { Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
@@ -15,6 +17,12 @@ export default function ProfilePage() {
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
     staleTime: 0,
+    enabled: !!authUser,
+  });
+
+  // Add measurements query
+  const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
+    queryKey: ["/api/measurements"],
     enabled: !!authUser,
   });
 
@@ -112,11 +120,53 @@ export default function ProfilePage() {
 
         <Card>
           <CardContent>
-            <h3>My Stats</h3>
+            <h3 className="text-lg font-semibold mb-4">My Stats</h3>
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">Points</p>
               <p className="text-xl font-semibold">{user?.points || 0}</p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <h3 className="text-lg font-semibold mb-4">Measurements</h3>
+            {measurementsLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : measurementsError ? (
+              <p className="text-sm text-destructive">Failed to load measurements</p>
+            ) : !measurements?.length ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground">No measurements recorded yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Record your measurements to track your progress</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {measurements.map((measurement) => (
+                  <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
+                    <div className="space-y-2">
+                      {measurement.weight !== null && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Weight</span>
+                          <span className="text-sm font-medium">{measurement.weight} lbs</span>
+                        </div>
+                      )}
+                      {measurement.waist !== null && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Waist</span>
+                          <span className="text-sm font-medium">{measurement.waist} inches</span>
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground pt-2 border-t border-border">
+                        {measurement.date ? new Date(measurement.date).toLocaleDateString() : 'Date not recorded'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

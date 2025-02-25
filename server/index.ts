@@ -57,8 +57,8 @@ app.use((req, res, next) => {
 
     await runMigrations();
 
-    // Use port 3000 by default
-    const port = process.env.PORT || 3000;
+    // ALWAYS serve the app on port 5000
+    const port = 5000;
 
     // Handle server shutdown gracefully
     let shuttingDown = false;
@@ -87,6 +87,7 @@ app.use((req, res, next) => {
     const startServer = async (retries = 3, delay = 1000) => {
       try {
         return await new Promise((resolve, reject) => {
+          console.log(`Attempting to start server on port ${port}...`);
           const serverInstance = server.listen({
             port,
             host: "0.0.0.0",
