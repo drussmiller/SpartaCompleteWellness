@@ -377,9 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use transaction to ensure both operations succeed or fail together
       await db.transaction(async (tx) => {
         // Delete the post first
-        await tx
-          .delete(posts)
-          .where(eq(posts.id, postId));
+        await tx.delete(posts).where(eq(posts.id, postId));
 
         // Update user's points to reflect the accurate sum
         await tx
@@ -414,7 +412,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(users)
         .where(eq(users.id, post.userId));
 
-      res.json({ success: true, user: updatedUser });
+      // Always return points as a number
+      const sanitizedUser = {
+        ...updatedUser,
+        points: typeof updatedUser.points === 'number' ? updatedUser.points : 0
+      };
+
+      res.json({ success: true, user: sanitizedUser });
 
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -924,7 +928,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newPassword = req.body.password;
       if (!newPassword) {
         return res.status(400).json({ error: "Password is required" });
-}
+      }
+
+      
 
       // Hash the new password using the consistent hashing function
       const hashedPassword = await hashPassword(newPassword);
