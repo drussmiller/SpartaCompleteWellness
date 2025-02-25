@@ -231,15 +231,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(posts)
           .where(
             and(
-              eq(posts.userId, req.user!.id),
+              eq(posts.userId, req.user!.id), // Only count this user's posts
               eq(posts.type, postData.type),
-              sql`${posts.createdAt} >= ${today}`,
-              sql`${posts.createdAt} < ${tomorrow}`,
-              sql`deleted_at IS NULL`
+              sql`${posts.createdAt}::date = ${today}::date`
             )
           );
 
-        console.log(`Current post count for user ${req.user!.id} and type ${postData.type}:`, currentCount.count);
+        console.log(`User ${req.user!.id} has made ${currentCount.count} ${postData.type} posts today`);
 
         const limits: Record<string, number> = {
           food: 3,
@@ -937,7 +935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         res.status(500).json({
-          error: 'Internal Server Error',
+          error: 'Internal ServerError',
           message: e instanceof Error ? e.message : 'Unknown error occurred'
         });
       }
