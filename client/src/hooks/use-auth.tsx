@@ -36,7 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
       if (!res.ok) {
-        throw new Error("Invalid email or password"); //Improved error message
+        const error = await res.json();
+        throw new Error(error.message || "Invalid username or password"); //Improved error message
       }
       return await res.json();
     },
@@ -44,17 +45,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Login error:', error);
+      // Don't show the toast for login errors, let the UI handle it
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
       const res = await apiRequest("POST", "/api/register", credentials);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Registration failed");
+      }
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
