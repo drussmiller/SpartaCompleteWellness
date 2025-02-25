@@ -294,12 +294,18 @@ export default function AdminPage() {
           </Button>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => window.location.href = '/activity-management'}>
+        <div className="flex gap-2 mt-4">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" className="w-28 px-2">
+                <Plus className="h-3 w-3 mr-1" />
+                New Team
+              </Button>
+            </DialogTrigger>
+          <Button onClick={() => window.location.href = '/activity-management'} className="ml-2">
             Manage Activities
           </Button>
-          </div>
-          <Dialog>
+        </div>
           <DialogTrigger asChild>
             <Button size="sm" className="w-28 px-2">
               <Plus className="h-3 w-3 mr-1" />
