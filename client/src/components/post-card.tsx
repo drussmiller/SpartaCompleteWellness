@@ -93,6 +93,15 @@ export function PostCard({ post, user }: { post: Post; user: User }) {
   const [showComments, setShowComments] = useState(false);
   const [replyToId, setReplyToId] = useState<number | null>(null);
 
+  const form = useForm<z.infer<typeof insertPostSchema>>({
+    resolver: zodResolver(insertPostSchema),
+    defaultValues: {
+      type: "comment",
+      content: "",
+      points: 0,
+    },
+  });
+
   const { data: comments, error } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
@@ -139,15 +148,6 @@ export function PostCard({ post, user }: { post: Post; user: User }) {
     console.log('Generated comment tree:', roots);
     return roots;
   }, [comments, post.id]);
-
-  const form = useForm<z.infer<typeof insertPostSchema>>({
-    resolver: zodResolver(insertPostSchema),
-    defaultValues: {
-      type: "comment",
-      content: "",
-      points: 0,
-    },
-  });
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
