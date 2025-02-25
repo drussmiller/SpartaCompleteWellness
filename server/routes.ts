@@ -308,11 +308,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
 
-      // Only allow deleting comments from previous days, or any post type from current day
-      if (isFromPreviousDay && post.type !== 'comment') {
+      // Only allow deleting posts from the same day they were created
+      if (isFromPreviousDay) {
         return res.status(403).json({
-          message: "Only comments can be deleted from previous days"
+          message: "Posts can only be deleted on the same day they were created"
         });
+      }
+
+      // If post has points, remove them from user's total
+      if (post.points > 0) {
+        await db
+          .update(users)
+          .set({ 
+            points: sql`points - ${post.points}` 
+          })
+          .where(eq(users.id, post.userId));
       }
 
       await storage.deletePost(parseInt(req.params.id));
