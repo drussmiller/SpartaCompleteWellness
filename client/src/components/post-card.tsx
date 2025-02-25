@@ -142,15 +142,15 @@ export function PostCard({ post, user }: PostCardProps) {
         )}
       </CardHeader>
       <CardContent className="p-4 pt-0">
+        {post.content && (
+          <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
+        )}
         {post.imageUrl && (
           <img
             src={post.imageUrl}
             alt={post.type}
             className="w-full h-auto object-contain rounded-md mb-4"
           />
-        )}
-        {post.content && (
-          <p className="text-sm">{post.content}</p>
         )}
         <div className="mt-4 flex items-center gap-2">
           <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
