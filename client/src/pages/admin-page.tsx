@@ -302,52 +302,48 @@ export default function AdminPage() {
                 New Team
               </Button>
             </DialogTrigger>
+            <DialogContent aria-describedby="new-team-description">
+              <p id="new-team-description" className="sr-only">Create a new team form</p>
+              <DialogHeader>
+                <DialogTitle>Create New Team</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={createTeamMutation.isPending}>
+                    {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
           </Dialog>
           <Button onClick={() => window.location.href = '/activity-management'} className="ml-2">
             Manage Activities
           </Button>
         </div>
-              New Team
-            </Button>
-          </DialogTrigger>
-          <DialogContent aria-describedby="new-team-description">
-            <p id="new-team-description" className="sr-only">Create a new team form</p>
-            <DialogHeader>
-              <DialogTitle>Create New Team</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={createTeamMutation.isPending}>
-                  {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </header>
 
       <div className="grid md:grid-cols-2 gap-6">
