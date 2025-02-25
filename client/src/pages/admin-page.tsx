@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X } from "lucide-react";
+import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -288,8 +288,9 @@ export default function AdminPage() {
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <header className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => window.history.back()}>
-            Back
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Back</span>
           </Button>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         </div>
@@ -471,7 +472,7 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      
+
 
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
         <DialogContent>
