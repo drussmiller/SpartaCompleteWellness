@@ -143,8 +143,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      console.log('Received post creation request:', req.body);
-
       // Validate the post data
       const postData = insertPostSchema.parse(req.body);
 
@@ -203,7 +201,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(users.id, req.user.id));
       }
 
-      console.log('Created post:', post);
 
       // Send notification about points earned
       if (post.type !== 'comment') {
@@ -212,7 +209,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Points Earned!",
           `You earned ${post.points} points for your ${post.type} post!`
         );
-        console.log('Created notification:', notification);
       }
 
       // Return the complete post object with all fields
@@ -304,16 +300,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      console.log('Received measurement data:', req.body);
       const measurementData = {
         ...insertMeasurementSchema.parse(req.body),
         userId: req.user.id,
         date: new Date()
       };
-      console.log('Processed measurement data:', measurementData);
 
       const measurement = await storage.createMeasurement(measurementData);
-      console.log('Created measurement:', measurement);
 
       res.status(201).json(measurement);
     } catch (e) {
@@ -342,13 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/image", upload.single('image'), async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
-    console.log('File upload request received:', {
-      file: req.file,
-      body: req.body
-    });
-
     if (!req.file) {
-      console.log('No file received in the request');
       return res.status(400).json({ message: "No image provided" });
     }
 
@@ -601,31 +588,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activityId = parseInt(req.params.id);
       const { workoutVideos: newWorkoutVideos, ...activityData } = req.body;
 
-      console.log('Updating activity:', { activityId, activityData, newWorkoutVideos });
-
       // Start transaction to ensure data consistency
       await db.transaction(async (tx) => {
-        // Update activity
-        await tx
-          .update(activities)
-          .set(activityData)
-          .where(eq(activities.id, activityId));
-
-        // Handle workout videos within transaction
-        await tx
-          .delete(workoutVideos)
-          .where(eq(workoutVideos.activityId, activityId));
-
-        if (newWorkoutVideos && newWorkoutVideos.length > 0) {
+        try {
+          // Update activity
           await tx
-            .insert(workoutVideos)
-            .values(
-              newWorkoutVideos.map((video: { url: string; description: string }) => ({
-                activityId,
-                url: video.url,
-                description: video.description
-              }))
-            );
+            .update(activities)
+            .set(activityData)
+            .where(eq(activities.id, activityId));
+
+          // Handle workout videos within transaction
+          await tx
+            .delete(workoutVideos)
+            .where(eq(workoutVideos.activityId, activityId));
+
+          if (newWorkoutVideos && newWorkoutVideos.length > 0) {
+            await tx
+              .insert(workoutVideos)
+              .values(
+                newWorkoutVideos.map((video: { url: string; description: string }) => ({
+                  activityId,
+                  url: video.url,
+                  description: video.description
+                }))
+              );
+          }
+        } catch (error) {
+          // Rollback on error
+          throw error;
         }
       });
 
@@ -653,14 +643,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Activity not found" });
       }
 
-      console.log('Updated activity:', updatedActivity);
-
       // Parse the workout videos carefully
       let parsedWorkoutVideos = [];
       try {
-        if (updatedActivity.workoutVideos && updatedActivity.workoutVideos !== '[]') {
-          parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
-        }
+        parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
       } catch (error) {
         console.error('Error parsing workout videos:', error);
         return res.status(500).json({ 
@@ -770,17 +756,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      console.log('Registration attempt:', { username: req.body.username, email: req.body.email });
-
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        console.log('Registration failed: Username exists');
         return res.status(400).json({ error: "Username already exists" });
       }
 
       const existingEmail = await storage.getUserByEmail(req.body.email);
       if (existingEmail) {
-        console.log('Registration failed: Email exists');
         return res.status(400).json({ error: "Email already exists" });
       }
 
@@ -788,8 +770,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         password: await hashPassword(req.body.password),
       });
-
-      console.log('User created successfully:', { id: user.id, username: user.username });
 
       req.login(user, (err) => {
         if (err) {
@@ -821,7 +801,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .set({ password: hashedPassword })
         .where(eq(users.id, parseInt(req.params.id)));
 
-      console.log('Password reset successful for user:', req.params.id);
       res.sendStatus(200);
     } catch (error) {
       console.error('Error resetting password:', error);
@@ -833,40 +812,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      console.log('Password change attempt for user:', req.user.id);
       const { currentPassword, newPassword } = req.body;
 
       if (!currentPassword || !newPassword) {
-        console.log('Missing required password fields');
         return res.status(400).json({ error: "Both current and new passwords are required" });
       }
 
       // Get the user's current stored password
       const user = await storage.getUser(req.user.id);
       if (!user) {
-        console.log('User not found:', req.user.id);
         return res.status(404).json({ error: "User not found" });
       }
 
       // Verify current password
-      console.log('Verifying current password');
       const isValidPassword = await comparePasswords(currentPassword, user.password);
-      console.log('Password verification result:', isValidPassword);
 
       if (!isValidPassword) {
-        console.log('Invalid current password for user:', req.user.id);
         return res.status(400).json({ error: "Current password is incorrect" });
       }
 
       // Hash and update the new password
-      console.log('Hashing and updating new password');
       const hashedPassword = await hashPassword(newPassword);
       await db
         .update(users)
         .set({ password: hashedPassword })
         .where(eq(users.id, req.user.id));
 
-      console.log('Password updated successfully for user:', req.user.id);
       res.sendStatus(200);
     } catch (error) {
       console.error('Error changing password:', error);
