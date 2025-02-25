@@ -305,7 +305,8 @@ export default function AdminPage() {
               New Team
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent aria-describedby="new-team-description">
+            <p id="new-team-description" className="sr-only">Create a new team form</p>
             <DialogHeader>
               <DialogTitle>Create New Team</DialogTitle>
             </DialogHeader>
