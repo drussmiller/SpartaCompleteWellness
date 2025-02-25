@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPostSchema } from "@shared/schema";
 import { z } from "zod";
+import { Drawer } from "vaul";
 
 interface PostCardProps {
   post: Post;
@@ -93,11 +94,9 @@ export function PostCard({ post, user }: PostCardProps) {
       return res.json();
     },
     onSuccess: (data) => {
-      // Force invalidate both user and posts queries
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
 
-      // Update the user data in cache with the new points
       if (data.user) {
         queryClient.setQueryData(["/api/user"], data.user);
       }
@@ -158,63 +157,105 @@ export function PostCard({ post, user }: PostCardProps) {
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setShowComments(!showComments)}
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            {comments?.length || 0} Comments
-          </Button>
-        </div>
-
-        {showComments && (
-          <div className="mt-4 space-y-4">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit((data) => addCommentMutation.mutate(data))}
-                className="flex items-center gap-2"
+          <Drawer.Root open={showComments} onOpenChange={setShowComments}>
+            <Drawer.Trigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
               >
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormControl>
-                        <Input
-                          placeholder="Add a comment..."
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={addCommentMutation.isPending}>
-                  {addCommentMutation.isPending ? "Adding..." : "Comment"}
-                </Button>
-              </form>
-            </Form>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                {comments?.length || 0} Comments
+              </Button>
+            </Drawer.Trigger>
+            <Drawer.Portal>
+              <Drawer.Overlay className="fixed inset-0 bg-black/40" />
+              <Drawer.Content className="bg-background flex flex-col rounded-t-[10px] h-[80vh] mt-24 fixed bottom-0 left-0 right-0">
+                <div className="p-4 rounded-t-[10px] flex-1 overflow-y-auto">
+                  <div className="max-w-2xl mx-auto">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-semibold">Comments</h2>
+                      <Drawer.Close asChild>
+                        <Button variant="ghost" size="sm">Close</Button>
+                      </Drawer.Close>
+                    </div>
 
-            <div className="space-y-2">
-              {comments?.map((comment) => (
-                <div key={comment.id} className="flex items-start gap-2 p-2 rounded bg-muted/50">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.userId}`} />
-                    <AvatarFallback>{comment.userId}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm">{comment.content}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(comment.createdAt!).toLocaleDateString()}
-                    </p>
+                    {/* Original Post */}
+                    <Card className="mb-6">
+                      <CardHeader className="flex flex-row items-center p-4">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`} />
+                          <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="ml-3">
+                          <p className="text-sm font-semibold">{user.username}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(post.createdAt!).toLocaleDateString()}</p>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        {post.content && (
+                          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                        )}
+                        {post.imageUrl && (
+                          <img
+                            src={post.imageUrl}
+                            alt={post.type}
+                            className="w-full h-auto object-contain rounded-md mt-2"
+                          />
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Comment Form */}
+                    <Form {...form}>
+                      <form
+                        onSubmit={form.handleSubmit((data) => addCommentMutation.mutate(data))}
+                        className="flex items-center gap-2 mb-6"
+                      >
+                        <FormField
+                          control={form.control}
+                          name="content"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input
+                                  placeholder="Add a comment..."
+                                  {...field}
+                                  value={field.value || ""}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={addCommentMutation.isPending}>
+                          {addCommentMutation.isPending ? "Adding..." : "Comment"}
+                        </Button>
+                      </form>
+                    </Form>
+
+                    {/* Comments List */}
+                    <div className="space-y-4">
+                      {comments?.map((comment) => (
+                        <div key={comment.id} className="flex items-start gap-3 p-3 rounded bg-muted/50">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.userId}`} />
+                            <AvatarFallback>{comment.userId}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="text-sm">{comment.content}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(comment.createdAt!).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        </div>
       </CardContent>
     </Card>
   );
