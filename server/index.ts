@@ -38,35 +38,66 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  let server;
+  try {
+    server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error('Express error handler:', err);
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+    });
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+    await runMigrations();
 
-  await runMigrations();
+    // Always use port 5000 as specified in the development guidelines
+    const port = process.env.PORT || 5000;
 
-  // Always use port 5000 as specified in the development guidelines
-  const port = process.env.PORT || 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`serving on port ${port}`);
-  }).on('error', (e) => {
-    console.error('Server error:', e);
+    // Handle server shutdown gracefully
+    const gracefulShutdown = () => {
+      console.log('Received shutdown signal. Closing HTTP server...');
+      server?.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+      });
+
+      // Force close after 10s
+      setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+      }, 10000);
+    };
+
+    // Handle various shutdown signals
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+
+    server.listen({
+      port,
+      host: "0.0.0.0",
+    }, () => {
+      log(`Server listening on port ${port}`);
+    }).on('error', (e: any) => {
+      if (e.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use. Please make sure no other instance is running.`);
+      } else {
+        console.error('Server error:', e);
+      }
+      // Exit with error to trigger restart
+      process.exit(1);
+    });
+
+  } catch (error) {
+    console.error("Failed to start server:", error);
     process.exit(1);
-  });
+  }
 })();
 
 async function runMigrations() {
