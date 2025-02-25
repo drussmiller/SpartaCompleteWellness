@@ -297,8 +297,8 @@ export default function AdminPage() {
         <div className="flex gap-2 mt-4 ml-12">
           <Dialog>
             <DialogTrigger asChild>
-              <Button size="sm" className="w-28 px-2">
-                <Plus className="h-3 w-3 mr-1" />
+              <Button size="default" className="px-4">
+                <Plus className="h-4 w-4 mr-2" />
                 New Team
               </Button>
             </DialogTrigger>
@@ -340,7 +340,7 @@ export default function AdminPage() {
               </Form>
             </DialogContent>
           </Dialog>
-          <Button onClick={() => window.location.href = '/activity-management'} className="ml-2">
+          <Button onClick={() => window.location.href = '/activity-management'} size="default" className="ml-2">
             Manage Activities
           </Button>
         </div>
