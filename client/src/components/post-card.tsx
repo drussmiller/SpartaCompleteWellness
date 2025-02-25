@@ -100,16 +100,6 @@ export function PostCard({ post, user }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [replyToId, setReplyToId] = useState<number | null>(null);
 
-  const canDeletePost = () => {
-    if (!currentUser || currentUser.id !== post.userId) return false;
-
-    const postDate = new Date(post.createdAt!);
-    const today = new Date();
-    const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
-
-    return !isFromPreviousDay || post.type === 'comment';
-  };
-
   const { data: comments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: () =>
@@ -211,6 +201,16 @@ export function PostCard({ post, user }: PostCardProps) {
     },
   });
 
+  const canDeletePost = () => {
+    if (!currentUser || currentUser.id !== post.userId) return false;
+
+    const postDate = new Date(post.createdAt!);
+    const today = new Date();
+    const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
+
+    return !isFromPreviousDay || post.type === 'comment';
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between p-4">
@@ -275,6 +275,68 @@ export function PostCard({ post, user }: PostCardProps) {
                         <Button variant="ghost" size="sm">Close</Button>
                       </Drawer.Close>
                     </div>
+
+                    {/* Original Post */}
+                    <Card className="mb-6">
+                      <CardHeader className="flex flex-row items-center p-4">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`} />
+                          <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="ml-3">
+                          <p className="text-sm font-semibold">{user.username}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(post.createdAt!).toLocaleDateString()}</p>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        {post.content && (
+                          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                        )}
+                        {post.imageUrl && (
+                          <img
+                            src={post.imageUrl}
+                            alt={post.type}
+                            className="w-full h-auto object-contain rounded-md mt-2"
+                          />
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Comment Form */}
+                    <Form {...form}>
+                      <form
+                        onSubmit={form.handleSubmit((data) => addCommentMutation.mutate(data))}
+                        className="flex items-center gap-2 mb-6"
+                      >
+                        <FormField
+                          control={form.control}
+                          name="content"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input
+                                  placeholder={replyToId ? "Write a reply..." : "Add a comment..."}
+                                  {...field}
+                                  value={field.value || ""}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={addCommentMutation.isPending}>
+                          {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+                        </Button>
+                        {replyToId && (
+                          <Button 
+                            variant="ghost"
+                            type="button"
+                            onClick={() => setReplyToId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </form>
+                    </Form>
 
                     <div className="space-y-4">
                       {commentTree.map((comment) => (
