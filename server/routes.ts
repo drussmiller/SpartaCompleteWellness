@@ -225,15 +225,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
+        // Count only non-deleted posts for today
         const [currentCount] = await db
           .select({ count: sql<number>`count(*)` })
           .from(posts)
           .where(
             and(
-              eq(posts.userId, req.user.id),
+              eq(posts.userId, req.user!.id),
               eq(posts.type, postData.type),
               sql`${posts.createdAt} >= ${today}`,
-              sql`${posts.createdAt} < ${tomorrow}`
+              sql`${posts.createdAt} < ${tomorrow}`,
+              sql`deleted_at IS NULL` //add this line to check for deleted posts
             )
           );
 
@@ -242,6 +244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workout: 1,
           scripture: 1
         };
+
+        console.log(`Current post count for ${postData.type}:`, currentCount.count);
 
         if (limits[postData.type] && currentCount.count >= limits[postData.type]) {
           return res.status(400).json({
