@@ -933,11 +933,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always return points as a number
       const sanitizedUser = {
         ...user,
-        points: typeof user.points === 'number' ? user.points : 0
+        points: typeof user.points ==='number' ? user.points : 0
       };
 
       res.json(sanitizedUser);
-        } catch (error) {
+    } catch (error) {
       console.error('Error fetching user:', error);
       res.status(500).json({ error: "Failed to fetch user data" });
     }
