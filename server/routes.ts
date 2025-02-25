@@ -260,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .insert(posts)
           .values({
             ...postData,
-            userId: req.user.id,
+            userId: req.user!.id,
             points: postData.type === 'memory_verse' ? 10 : (postData.type === 'comment' ? 0 : 3),
             createdAt: new Date()
           })
