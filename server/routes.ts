@@ -225,17 +225,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`Checking post limits for user ${req.user.id}, type ${postData.type}`);
 
-        // Get today's count for this user and post type
+        // Get today's count for this specific user and post type
         const [{ count }] = await db
           .select({ 
-            count: sql<number>`count(*)::int` 
+            count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
           })
           .from(posts)
           .where(
             and(
-              eq(posts.userId, req.user.id),
+              eq(posts.userId, req.user.id), // Explicitly filter by current user's ID
               eq(posts.type, postData.type),
-              sql`date_trunc('day', created_at) = date_trunc('day', now())`
+              sql`DATE(created_at) = CURRENT_DATE` // Simpler date comparison
             )
           );
 
@@ -926,8 +926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const videoData = insertVideoSchema.parse(req.body);
       const video = await storage.createVideo(videoData);
       res.status(201).json(video);
-    } catch (e) {
-      console.error('Error creating video:', e);
+    } catch (e) {      console.error('Error creating video:', e);
       if (e instanceof z.ZodError) {
         res.status(400).json({
           error: 'Validation Error',
