@@ -233,9 +233,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(posts)
           .where(
             and(
-              eq(posts.userId, req.user.id), // Explicitly filter by current user's ID
+              eq(posts.userId, req.user.id),
               eq(posts.type, postData.type),
-              sql`DATE(created_at) = CURRENT_DATE` // Simpler date comparison
+              sql`DATE(created_at AT TIME ZONE 'UTC') = CURRENT_DATE`
             )
           );
 
