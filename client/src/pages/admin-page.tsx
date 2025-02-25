@@ -286,7 +286,7 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center">
+      <header>
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ChevronLeft className="h-4 w-4" />
@@ -294,7 +294,7 @@ export default function AdminPage() {
           </Button>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         </div>
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-4 ml-12">
           <Dialog>
             <DialogTrigger asChild>
               <Button size="sm" className="w-28 px-2">
