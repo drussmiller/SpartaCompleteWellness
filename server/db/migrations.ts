@@ -29,8 +29,7 @@ export async function runMigrations() {
     await db.execute(sql`
       INSERT INTO users (username, email, password, is_admin)
       VALUES ('admin', 'admin@example.com', ${hashedPassword}, true)
-      ON CONFLICT (username) DO UPDATE
-      SET password = ${hashedPassword}
+      ON CONFLICT DO NOTHING
     `);
 
     // Create teams table

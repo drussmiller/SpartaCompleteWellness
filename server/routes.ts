@@ -33,6 +33,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
+  app.post("/api/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      console.log('Login attempt for:', username);
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        console.log('User not found:', username);
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      const isValidPassword = await comparePasswords(password, user.password);
+      if (!isValidPassword) {
+        console.log('Invalid password for user:', username);
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Login error:', err);
+          return res.status(500).json({ error: "Login failed" });
+        }
+        res.json(user);
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
   // Teams
   app.post("/api/teams", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
