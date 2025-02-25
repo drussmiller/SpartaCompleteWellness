@@ -4,8 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Camera, Lock, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Camera, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 
