@@ -88,9 +88,6 @@ export default function AuthPage() {
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                       {loginMutation.isPending ? "Logging in..." : "Login"}
                     </Button>
-                    {loginMutation.error && (
-                      <p className="text-red-500 text-sm mt-2">Invalid email or password</p>
-                    )}
                   </form>
                 </Form>
               </TabsContent>
