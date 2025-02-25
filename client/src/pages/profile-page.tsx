@@ -1,40 +1,21 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, Lock, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
-import { z } from "zod";
-
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(8),
-});
-
-type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
     staleTime: 0,
     enabled: !!authUser,
-  });
-
-  const { data: measurements, isLoading: measurementsLoading } = useQuery({
-    queryKey: ['/api/measurements'],
-    queryFn: async () => {
-      const res = await fetch('/api/measurements');
-      if (!res.ok) throw new Error('Failed to fetch measurements');
-      return res.json();
-    }
   });
 
   useEffect(() => {
@@ -120,37 +101,27 @@ export default function ProfilePage() {
                     }
                   }}
                 />
-                <Camera className="h-6 w-6 text-white" />
               </div>
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-semibold">{user?.username}</h2>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
-            <Button variant="outline" size="icon" onClick={() => setChangePasswordOpen(true)}>
-              <Lock className="h-4 w-4" />
-            </Button>
           </CardContent>
         </Card>
 
-        {measurementsLoading ? (
-          <p>Loading measurements...</p>
-        ) : measurements && (
-          <Card>
-            <CardContent>
-              <h3>Measurements</h3>
-              <ul>
-                {measurements.map((measurement) => (
-                  <li key={measurement.id}>{measurement.name}: {measurement.value} {measurement.unit}</li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardContent>
+            <h3>My Stats</h3>
+            <div className="mt-4">
+              <p className="text-sm text-muted-foreground">Points</p>
+              <p className="text-xl font-semibold">{user?.points || 0}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-
-        <Button variant="destructive" onClick={handleLogout}>
-          Logout
+        <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending}>
+          {logoutMutation.isPending ? "Logging out..." : "Logout"}
           <LogOut className="ml-2 h-4 w-4"/>
         </Button>
       </main>
