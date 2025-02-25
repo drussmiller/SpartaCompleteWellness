@@ -17,13 +17,6 @@ import { z } from "zod";
 import { Drawer } from "vaul";
 import { cn } from "@/lib/utils";
 
-interface PostCardProps {
-  post: Post;
-  user: User;
-}
-
-type CommentForm = z.infer<typeof insertPostSchema>;
-
 function CommentThread({
   comment,
   postAuthorId,
@@ -94,7 +87,7 @@ function CommentThread({
   );
 }
 
-export function PostCard({ post, user }: PostCardProps) {
+export function PostCard({ post, user }: { post: Post; user: User }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
@@ -147,7 +140,7 @@ export function PostCard({ post, user }: PostCardProps) {
     return roots;
   }, [comments, post.id]);
 
-  const form = useForm<CommentForm>({
+  const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
       type: "comment",
@@ -157,7 +150,7 @@ export function PostCard({ post, user }: PostCardProps) {
   });
 
   const addCommentMutation = useMutation({
-    mutationFn: async (data: CommentForm) => {
+    mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         parentId: replyToId || post.id,
