@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
@@ -230,29 +231,87 @@ export default function ProfilePage() {
                 <p className="text-xs text-muted-foreground mt-1">Record your measurements to track your progress</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {measurements.map((measurement) => (
-                  <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
-                    <div className="space-y-2">
-                      {measurement.weight !== null && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Weight</span>
-                          <span className="text-sm font-medium">{measurement.weight} lbs</span>
+              <>
+                {/* Measurement Graphs */}
+                <div className="space-y-6 mb-6">
+                  <div className="h-[300px]">
+                    <h4 className="text-sm font-medium mb-4">Weight Progress</h4>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={measurements
+                          .filter(m => m.weight !== null)
+                          .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
+                        }
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(date) => new Date(date).toLocaleDateString()}
+                        />
+                        <YAxis unit=" lbs" domain={['auto', 'auto']} />
+                        <Tooltip
+                          labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                          formatter={(value) => [`${value} lbs`, 'Weight']}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="weight" stroke="#2563eb" name="Weight" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="h-[300px]">
+                    <h4 className="text-sm font-medium mb-4">Waist Progress</h4>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={measurements
+                          .filter(m => m.waist !== null)
+                          .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
+                        }
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(date) => new Date(date).toLocaleDateString()}
+                        />
+                        <YAxis unit=" in" domain={['auto', 'auto']} />
+                        <Tooltip
+                          labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                          formatter={(value) => [`${value} inches`, 'Waist']}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="waist" stroke="#16a34a" name="Waist" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Measurement History List */}
+                <div className="space-y-4">
+                  {measurements.map((measurement) => (
+                    <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
+                      <div className="space-y-2">
+                        {measurement.weight !== null && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Weight</span>
+                            <span className="text-sm font-medium">{measurement.weight} lbs</span>
+                          </div>
+                        )}
+                        {measurement.waist !== null && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Waist</span>
+                            <span className="text-sm font-medium">{measurement.waist} inches</span>
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground pt-2 border-t border-border">
+                          {measurement.date ? new Date(measurement.date).toLocaleDateString() : 'Date not recorded'}
                         </div>
-                      )}
-                      {measurement.waist !== null && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Waist</span>
-                          <span className="text-sm font-medium">{measurement.waist} inches</span>
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                        {measurement.date ? new Date(measurement.date).toLocaleDateString() : 'Date not recorded'}
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
