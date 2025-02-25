@@ -29,6 +29,33 @@ const requireAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
+// Helper function to send notification
+async function sendNotification(userId: number, title: string, message: string) {
+  try {
+    const notificationData = insertNotificationSchema.parse({
+      userId, 
+      title, 
+      message, 
+      read: false, 
+      createdAt: new Date()
+    });
+    const notification = await storage.createNotification(notificationData);
+
+    const ws = clients.get(userId);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(notification));
+    }
+
+    return notification;
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    if (error instanceof z.ZodError) {
+      console.error('Zod error sending notification:', error.errors);
+    }
+    throw error;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
@@ -289,43 +316,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user) return res.sendStatus(401);
 
     try {
-      // First check if the post exists and belongs to the user
+      const postId = parseInt(req.params.id);
+
+      // First check if the post exists
       const [post] = await db
         .select()
         .from(posts)
-        .where(eq(posts.id, parseInt(req.params.id)));
+        .where(eq(posts.id, postId));
 
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
 
-      if (post.userId !== req.user.id) {
+      // Allow users to delete their own posts or if they are admin
+      if (post.userId !== req.user.id && !req.user.isAdmin) {
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Check if post is from a previous day
-      const postDate = new Date(post.createdAt!);
-      const today = new Date();
-      const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
+      // If not admin, check if post is from today
+      if (!req.user.isAdmin) {
+        const postDate = new Date(post.createdAt!);
+        const today = new Date();
 
-      // Only allow deleting posts from the same day they were created
-      if (isFromPreviousDay) {
-        return res.status(403).json({
-          message: "Posts can only be deleted on the same day they were created"
-        });
+        // Compare only the date part
+        const isFromPreviousDay = 
+          postDate.getFullYear() !== today.getFullYear() ||
+          postDate.getMonth() !== today.getMonth() ||
+          postDate.getDate() !== today.getDate();
+
+        if (isFromPreviousDay) {
+          return res.status(403).json({
+            message: "Posts can only be deleted on the same day they were created"
+          });
+        }
       }
 
-      // If post has points, remove them from user's total
-      if (post.points > 0) {
-        await db
-          .update(users)
-          .set({ 
-            points: sql`points - ${post.points}` 
-          })
-          .where(eq(users.id, post.userId));
-      }
+      // Use transaction to ensure both operations succeed or fail together
+      await db.transaction(async (tx) => {
+        // If post has points, remove them from user's total
+        if (post.points > 0) {
+          const [user] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.id, post.userId));
 
-      await storage.deletePost(parseInt(req.params.id));
+          if (user) {
+            await tx
+              .update(users)
+              .set({ 
+                points: user.points - post.points 
+              })
+              .where(eq(users.id, post.userId));
+          }
+        }
+
+        // Delete the post
+        await tx.delete(posts).where(eq(posts.id, postId));
+      });
+
       res.sendStatus(200);
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -763,7 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      // Get user with accurate point total
+      // Get user with accurate point total by only counting existing posts
       const [user] = await db
         .select({
           id: users.id,
@@ -774,11 +822,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           teamId: users.teamId,
           imageUrl: users.imageUrl,
           points: sql`COALESCE((
-            SELECT SUM(p.points)
-            FROM ${posts} p
-            WHERE p.user_id = ${users.id}
-            AND p.type != 'comment'
-          ), 0)::integer`
+            SELECT CAST(SUM(points) AS INTEGER)
+            FROM ${posts}
+            WHERE user_id = ${users.id}
+            AND type != 'comment'
+          ), 0)`
         })
         .from(users)
         .where(eq(users.id, req.user.id));
@@ -787,7 +835,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      res.json(user);
+      // Ensure points is returned as a number, not null
+      const sanitizedUser = {
+        ...user,
+        points: user.points || 0
+      };
+
+      res.json(sanitizedUser);
     } catch (error) {
       console.error('Error fetching user:', error);
       res.status(500).json({ error: "Failed to fetch user data" });
@@ -873,7 +927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Hash and update the new password
       const hashedPassword = await hashPassword(newPassword);
-      await db
+            await db
         .update(users)
         .set({ password: hashedPassword })
         .where(eq(users.id, req.user.id));
@@ -900,27 +954,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-
-  // Helper function to send notification
-  async function sendNotification(userId: number, title: string, message: string) {
-    try {
-      const notificationData = insertNotificationSchema.parse({userId, title, message, read: false, createdAt: new Date()}); // Parse notification data
-      const notification = await storage.createNotification(notificationData);
-
-      const ws = clients.get(userId);
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(notification));
-      }
-
-            return notification;
-    } catch (error) {
-      console.error('Error sending notification:', error);      if (error instanceof z.ZodError) {
-        console.error('Zod error sending notification:', error.errors);
-      }
-      throw error;
-    }
-  }
-
 
   return httpServer;
 }
