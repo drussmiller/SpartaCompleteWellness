@@ -94,9 +94,12 @@ export function PostCard({ post, user }: PostCardProps) {
         const error = await res.json();
         throw new Error(error.message || "Failed to delete post");
       }
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Invalidate both posts and user queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Success",
         description: "Post deleted successfully",
