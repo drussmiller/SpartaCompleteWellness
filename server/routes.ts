@@ -346,6 +346,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
           .orderBy(desc(posts.createdAt));
 
+        console.log('Comments found:', comments.length);
+        console.log('Sample comment:', comments[0]);
         res.json(comments);
       } else {
         // Get all posts for the user's team
@@ -935,7 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       res.json(sanitizedUser);
-    } catch (error) {
+        } catch (error) {
       console.error('Error fetching user:', error);
       res.status(500).json({ error: "Failed to fetch user data" });
     }
