@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(users.id, post.userId));
       });
 
-      // Get updated user data to return
+      // Get the updated user with accurate points
       const [updatedUser] = await db
         .select({
           id: users.id,
@@ -418,7 +418,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         points: typeof updatedUser.points === 'number' ? updatedUser.points : 0
       };
 
-      res.json({ success: true, user: sanitizedUser });
+      // Return success along with updated user data
+      res.json({ 
+        success: true, 
+        user: sanitizedUser 
+      });
 
     } catch (error) {
       console.error('Error deleting post:', error);
