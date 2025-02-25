@@ -100,14 +100,24 @@ export function PostCard({ post, user }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [replyToId, setReplyToId] = useState<number | null>(null);
 
-  const { data: comments } = useQuery<CommentWithAuthor[]>({
+  const { data: comments, error } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
       console.log('Fetching comments for post:', post.id);
-      const res = await apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`);
-      const data = await res.json();
-      console.log('Comments received:', data);
-      return data;
+      try {
+        const res = await apiRequest("GET", `/api/posts?parentId=${post.id}`);
+        const data = await res.json();
+        console.log('Comments received:', data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load comments",
+          variant: "destructive",
+        });
+        return []; // Return empty array on error
+      }
     },
     enabled: showComments,
   });
