@@ -57,7 +57,7 @@ export default function ProfilePage() {
 
   // Add measurement form
   const form = useForm({
-    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true })),
+    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true, date: true })),
     defaultValues: {
       weight: undefined,
       waist: undefined,
@@ -65,7 +65,12 @@ export default function ProfilePage() {
   });
 
   const addMeasurementMutation = useMutation({
-    mutationFn: async (data: { weight?: number; waist?: number }) => {
+    mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
+      // Ensure we're sending at least one measurement
+      if (data.weight === undefined && data.waist === undefined) {
+        throw new Error("Please enter at least one measurement");
+      }
+
       // Only send fields that have values
       const payload = {
         ...(data.weight !== undefined && { weight: data.weight }),
@@ -198,7 +203,7 @@ export default function ProfilePage() {
                             type="number" 
                             placeholder="Enter weight" 
                             {...field}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                           />
                         </FormControl>
                       </FormItem>
@@ -215,7 +220,7 @@ export default function ProfilePage() {
                             type="number" 
                             placeholder="Enter waist" 
                             {...field}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                           />
                         </FormControl>
                       </FormItem>

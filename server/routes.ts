@@ -441,11 +441,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const measurementData = {
-        ...insertMeasurementSchema.parse(req.body),
+      // Ensure at least one measurement is provided
+      if (req.body.weight === undefined && req.body.waist === undefined) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Please provide at least one measurement'
+        });
+      }
+
+      const measurementData = insertMeasurementSchema.parse({
+        ...req.body,
         userId: req.user.id,
         date: new Date()
-      };
+      });
 
       console.log('Creating measurement:', measurementData);
 
