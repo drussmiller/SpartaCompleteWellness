@@ -3,10 +3,10 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-// Increase body parser limits for handling larger files
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// Add request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -61,38 +61,65 @@ app.use((req, res, next) => {
     const port = process.env.PORT || 5000;
 
     // Handle server shutdown gracefully
+    let shuttingDown = false;
     const gracefulShutdown = () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+
       console.log('Received shutdown signal. Closing HTTP server...');
       server?.close(() => {
         console.log('HTTP server closed');
         process.exit(0);
       });
 
-      // Force close after 10s
+      // Force close after 5s
       setTimeout(() => {
         console.error('Could not close connections in time, forcefully shutting down');
         process.exit(1);
-      }, 10000);
+      }, 5000);
     };
 
     // Handle various shutdown signals
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
 
-    server.listen({
-      port,
-      host: "0.0.0.0",
-    }, () => {
-      log(`Server listening on port ${port}`);
-    }).on('error', (e: any) => {
-      if (e.code === 'EADDRINUSE') {
-        console.error(`Port ${port} is already in use. Please make sure no other instance is running.`);
-      } else {
-        console.error('Server error:', e);
+    // Try to start the server with retries and increasing delays
+    const startServer = async (retries = 3, delay = 1000) => {
+      try {
+        return await new Promise((resolve, reject) => {
+          const serverInstance = server.listen({
+            port,
+            host: "0.0.0.0",
+          }, () => {
+            log(`Server listening on port ${port}`);
+            resolve(serverInstance);
+          });
+
+          serverInstance.on('error', (e: any) => {
+            if (e.code === 'EADDRINUSE' && retries > 0) {
+              console.log(`Port ${port} is in use, retrying in ${delay}ms...`);
+              serverInstance.close();
+              setTimeout(() => {
+                startServer(retries - 1, delay * 2)
+                  .then(resolve)
+                  .catch(reject);
+              }, delay);
+            } else {
+              reject(e);
+            }
+          });
+        });
+      } catch (error) {
+        if (retries > 0) {
+          console.log('Retrying server start after error:', error);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return startServer(retries - 1, delay * 2);
+        }
+        throw error;
       }
-      // Exit with error to trigger restart
-      process.exit(1);
-    });
+    };
+
+    await startServer();
 
   } catch (error) {
     console.error("Failed to start server:", error);
