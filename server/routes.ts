@@ -234,8 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               eq(posts.userId, req.user!.id),
               eq(posts.type, postData.type),
               sql`${posts.createdAt} >= ${today}`,
-              sql`${posts.createdAt} < ${tomorrow}`,
-              sql`deleted_at IS NULL`
+              sql`${posts.createdAt} < ${tomorrow}`
             )
           );
 
