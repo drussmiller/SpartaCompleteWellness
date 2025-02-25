@@ -119,7 +119,8 @@ export default function ActivityPage() {
                 Week {currentActivity.week} - Day {currentActivity.day}
               </CardTitle>
               {user?.isAdmin && (
-                <div className="flex gap-2
+                <div className="flex gap-2">
+                  <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => {
