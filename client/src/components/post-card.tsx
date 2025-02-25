@@ -124,7 +124,7 @@ export function PostCard({ post, user }: PostCardProps) {
             <p className="text-sm text-muted-foreground">{user.points} points</p>
           </div>
         </div>
-        {currentUser?.id === post.userId && canDeletePost() && (
+        {currentUser?.id === post.userId && (
           <Button
             variant="ghost"
             size="icon"
