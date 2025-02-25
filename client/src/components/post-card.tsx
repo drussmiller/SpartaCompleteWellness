@@ -145,7 +145,7 @@ export function PostCard({ post, user }: { post: Post; user: User }) {
     defaultValues: {
       type: "comment",
       content: "",
-      points: 1,
+      points: 0,
     },
   });
 
