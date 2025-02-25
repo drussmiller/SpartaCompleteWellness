@@ -206,14 +206,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Special handling for memory verse posts
       if (postData.type === "memory_verse") {
         const today = new Date();
-        // Check if it's Saturday (6 is Saturday in JavaScript's getDay())
         if (today.getDay() !== 6) {
           return res.status(400).json({
             error: "Memory verse posts can only be created on Saturdays"
           });
         }
 
-        // Check weekly limit
         const weeklyCount = await storage.getWeeklyPostCount(req.user.id, "memory_verse", today);
         if (weeklyCount >= 1) {
           return res.status(400).json({
@@ -250,15 +248,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .returning();
 
-        // Update user points
-        if (newPost.points > 0) {
-          await tx
-            .update(users)
-            .set({ 
-              points: sql`COALESCE(points, 0) + ${newPost.points}`
-            })
-            .where(eq(users.id, req.user.id));
-        }
+        // Update user points atomically
+        await tx
+          .update(users)
+          .set({ 
+            points: sql`COALESCE((
+              SELECT CAST(SUM(points) AS INTEGER)
+              FROM ${posts}
+              WHERE user_id = ${users.id}
+              AND type != 'comment'
+            ), 0)`
+          })
+          .where(eq(users.id, req.user.id));
 
         return newPost;
       });
@@ -272,13 +273,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      // Return the complete post object with all fields
-      const [createdPost] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, post.id));
+      // Get the updated user with accurate points
+      const [updatedUser] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId,
+          imageUrl: users.imageUrl,
+          points: sql`COALESCE((
+            SELECT CAST(SUM(points) AS INTEGER)
+            FROM ${posts}
+            WHERE user_id = ${users.id}
+            AND type != 'comment'
+          ), 0)`
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
 
-      res.status(201).json(createdPost);
+      // Return both post and updated user data
+      res.status(201).json({ 
+        post,
+        user: updatedUser
+      });
+
     } catch (e) {
       console.error('Error creating post:', e);
       if (e instanceof z.ZodError) {
