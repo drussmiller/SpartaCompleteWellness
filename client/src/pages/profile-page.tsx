@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
@@ -16,10 +16,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useLocation } from "wouter";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
@@ -108,7 +110,16 @@ export default function ProfilePage() {
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold">Profile</h1>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setLocation("/")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold">Profile</h1>
+          </div>
           <Button 
             variant="outline" 
             size="sm"
