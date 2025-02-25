@@ -355,6 +355,7 @@ export function PostCard({ post, user }: PostCardProps) {
                       </form>
                     </Form>
 
+                    {/* Comments List */}
                     <div className="space-y-4">
                       {commentTree.map((comment) => (
                         <CommentThread
