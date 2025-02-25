@@ -511,8 +511,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const measurements = await storage.getMeasurementsByUser(req.user.id);
-    res.json(measurements);
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      // Only allow admins to view other users' measurements
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.sendStatus(403);
+      }
+      const measurements = await storage.getMeasurementsByUser(userId);
+      res.json(measurements);
+    } catch (error) {
+      console.error('Error fetching measurements:', error);
+      res.status(500).json({ error: 'Failed to fetch measurements' });
+    }
   });
 
   // User Image Upload
