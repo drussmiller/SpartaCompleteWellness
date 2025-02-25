@@ -85,14 +85,14 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
+                    {loginMutation.error && (
+                      <p className="text-red-500 text-sm mb-2">
+                        Please check your email and password and try again.
+                      </p>
+                    )}
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                       {loginMutation.isPending ? "Logging in..." : "Login"}
                     </Button>
-                    {loginMutation.error && (
-                      <p className="bg-orange-100 text-orange-900 border-orange-200 text-sm mt-2">
-                        Unable to Login. Please check your email and password and try again.
-                      </p>
-                    )}
                   </form>
                 </Form>
               </TabsContent>
