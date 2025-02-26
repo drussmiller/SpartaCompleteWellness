@@ -484,6 +484,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
 
+      console.log(`\n=== Checking post limits for user ${req.user.id} ===`);
+      console.log('Current UTC time:', today.toISOString());
+
       const limits = {
         food: 3,
         workout: 1,
@@ -495,23 +498,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [{ count }] = await db
           .select({ count: sql<number>`CAST(COUNT(*) AS INTEGER)` })
           .from(posts)
-          .where(and(eq(posts.userId, req.user.id), eq(posts.type, type),
+          .where(and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, type),
             sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24 * 60 * 60 * 1000)}`
           ));
+
+        console.log(`Found ${count || 0} ${type} posts for today`);
         return { type, count: count || 0 };
       }));
 
       const counts = {};
       results.forEach(result => counts[result.type] = result.count);
 
-
-      res.json({
+      const response = {
         counts,
         canPost: Object.keys(limits).reduce((acc, type) => {
           acc[type] = counts[type] < limits[type];
           return acc;
         }, {})
-      });
+      };
+
+      console.log('Sending response:', response);
+      console.log('===============================\n');
+
+      res.json(response);
     } catch (error) {
       console.error('Error fetching post limits:', error);
       res.status(500).json({ error: "Failed to fetch post limits" });
