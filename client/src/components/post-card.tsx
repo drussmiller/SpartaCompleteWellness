@@ -16,7 +16,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     queryKey: ["/api/posts", post.id, "comment-count"],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/posts?parentId=${post.id}`);
+        const res = await apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`);
         const comments = await res.json();
         return comments.length;
       } catch (error) {
