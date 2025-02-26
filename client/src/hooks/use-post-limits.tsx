@@ -14,26 +14,26 @@ export function usePostLimits() {
   const { user } = useAuth();
   const { data: posts } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
+    enabled: !!user
   });
 
   // Get start of current UTC day
   const today = new Date();
-  const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  today.setUTCHours(0, 0, 0, 0);
 
   // Only count posts from the current user for today
   const todaysPosts = posts?.filter(post => {
     if (!user || post.userId !== user.id) return false;
     const postDate = new Date(post.createdAt!);
-    return postDate >= startOfDay;
+    return postDate >= today;
   }) || [];
 
   console.log('Current user ID:', user?.id);
   console.log('Today\'s posts for current user:', todaysPosts);
 
+  // Count posts by type
   const dailyCounts = todaysPosts.reduce((acc, post) => {
-    if (post.type in acc) {
-      acc[post.type as keyof PostLimits]++;
-    }
+    acc[post.type as keyof PostLimits] = (acc[post.type as keyof PostLimits] || 0) + 1;
     return acc;
   }, {
     food: 0,
@@ -52,8 +52,8 @@ export function usePostLimits() {
 
   const weeklyMemoryVerses = posts?.filter(post => 
     post.type === 'memory_verse' && 
-    new Date(post.createdAt!) >= startOfWeek &&
-    post.userId === user?.id
+    post.userId === user?.id &&
+    new Date(post.createdAt!) >= startOfWeek
   ).length || 0;
 
   console.log('Daily counts:', dailyCounts);
