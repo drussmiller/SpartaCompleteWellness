@@ -13,8 +13,8 @@ import NotificationsPage from "@/pages/notifications-page";
 import HelpPage from "@/pages/help-page";
 import LibraryPage from "@/pages/library-page";
 import ActivityPage from "@/pages/activity-page";
-import ActivityManagementPage from "@/pages/activity-management"; // Added import
-
+import ActivityManagementPage from "@/pages/activity-management";
+import CommentsPage from "@/pages/comments-page";
 
 function Router() {
   return (
@@ -26,7 +26,8 @@ function Router() {
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/library" component={LibraryPage} />
       <ProtectedRoute path="/activity" component={ActivityPage} />
-      <ProtectedRoute path="/activity-management" component={ActivityManagementPage} /> {/* Added route */}
+      <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
+      <ProtectedRoute path="/posts/:id/comments" component={CommentsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
