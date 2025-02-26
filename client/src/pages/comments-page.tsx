@@ -108,7 +108,7 @@ export default function CommentsPage() {
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/posts?parentId=${postId}`);
+        const res = await apiRequest("GET", `/api/posts/${postId}/comments`);
         const data = await res.json();
         return data;
       } catch (error) {
