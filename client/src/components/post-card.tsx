@@ -152,6 +152,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
+      console.log('Submitting comment with data:', data);
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         parentId: replyToId || post.id,
@@ -181,15 +182,17 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof insertPostSchema>) => {
-    console.log('Submitting form with data:', data);
-    addCommentMutation.mutate(data);
+  const handleSubmit = async (data: z.infer<typeof insertPostSchema>) => {
+    console.log('Handling submit with data:', data);
+    await addCommentMutation.mutateAsync(data);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      form.handleSubmit(onSubmit)();
+      const formData = form.getValues();
+      console.log('Submitting via Enter key:', formData);
+      handleSubmit(formData);
     }
   };
 
@@ -252,7 +255,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
                 <Form {...form}>
                   <form
-                    onSubmit={form.handleSubmit(onSubmit)}
+                    onSubmit={form.handleSubmit(handleSubmit)}
                     className="space-y-4"
                   >
                     <FormField
