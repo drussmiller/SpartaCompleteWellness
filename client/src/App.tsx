@@ -2,11 +2,8 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/hooks/use-auth";
-import { ProtectedRoute } from "./lib/protected-route";
-import NotFound from "@/pages/not-found";
-import AuthPage from "@/pages/auth-page";
+import { AuthProvider } from "./hooks/use-auth";
+import { Toaster } from "./components/ui/toaster";
 import HomePage from "@/pages/home-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
@@ -16,6 +13,9 @@ import LibraryPage from "@/pages/library-page";
 import ActivityPage from "@/pages/activity-page";
 import ActivityManagementPage from "@/pages/activity-management";
 import CommentsPage from "@/pages/comments-page";
+import AuthPage from "@/pages/auth-page";
+import NotFound from "@/pages/not-found";
+import ProtectedRoute from "@/components/protected-route";
 
 export default function App() {
   return (
