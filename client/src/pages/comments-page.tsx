@@ -1,3 +1,7 @@
+
+<script src="https://cdn.jsdelivr.net/npm/@emoji-mart/data"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emoji-mart/react"></script>
+
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -245,25 +249,40 @@ export default function CommentsPage() {
                   <div className="relative">
                     <Textarea
                       {...field}
-                      placeholder={replyToId ? "Write a reply..." : "Write a comment..."}
-                      className="min-h-[100px] pr-20"
+                      placeholder={replyToId ? "Write a reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
+                      className="min-h-[80px] pr-20"
                       value={field.value || ''}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          form.handleSubmit((data) => addCommentMutation.mutateAsync(data))();
+                        }
+                      }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const emojiPicker = new window.EmojiMart.Picker({
+                          onEmojiSelect: (emoji) => {
+                            field.onChange(field.value + emoji.native);
+                          }
+                        });
+                        emojiPicker.togglePicker(e.target);
+                      }}
+                      className="absolute right-2 bottom-2 p-2 text-muted-foreground hover:text-foreground"
+                    >
+                      😊
+                    </button>
                   </div>
                 </FormControl>
               </FormItem>
             )}
           />
-          <div className="flex gap-2">
-            <Button type="submit" disabled={addCommentMutation.isPending}>
-              {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+          {replyToId && (
+            <Button variant="ghost" onClick={() => setReplyToId(null)}>
+              Cancel Reply
             </Button>
-            {replyToId && (
-              <Button variant="ghost" onClick={() => setReplyToId(null)}>
-                Cancel Reply
-              </Button>
-            )}
-          </div>
+          )}
         </form>
       </Form>
 
