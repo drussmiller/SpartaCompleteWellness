@@ -218,41 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: "You have reached your weekly limit for memory verse posts"
           });
         }
-      } else {
-        // Check daily post limits for other post types
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
-
-        console.log(`Checking post limits for user ${req.user.id}, type ${postData.type}`);
-
-        // Get today's count for this specific user and post type
-        const [{ count }] = await db
-          .select({ 
-            count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
-          })
-          .from(posts)
-          .where(
-            and(
-              eq(posts.userId, req.user.id),
-              eq(posts.type, postData.type),
-              sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24*60*60*1000)}`
-            )
-          );
-
-        console.log(`Found ${count} posts of type ${postData.type} for user ${req.user.id} today`);
-
-        const limits: Record<string, number> = {
-          food: 3,
-          workout: 1,
-          scripture: 1
-        };
-
-        if (limits[postData.type] && count >= limits[postData.type]) {
-          return res.status(400).json({
-            error: `You have reached your daily limit for ${postData.type} posts (${count}/${limits[postData.type]})`
-          });
-        }
-      }
+      } 
 
       // Create the post
       const post = await db.transaction(async (tx) => {
@@ -518,63 +484,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
 
-      console.log(`Checking post limits for user ${req.user.id} at ${today.toISOString()}`);
-
-      // Get counts for each post type for today
-      const results = await Promise.all(['food', 'workout', 'scripture'].map(async (type) => {
-        const [{ count }] = await db
-          .select({ 
-            count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
-          })
-          .from(posts)
-          .where(
-            and(
-              eq(posts.userId, req.user!.id),
-              eq(posts.type, type),
-              sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24*60*60*1000)}`
-            )
-          );
-
-        // Add debug logging
-        console.log(`User ${req.user.id} has ${count} ${type} posts today`);
-        return { type, count };
-      }));
-
-      // Get memory verse count for current week
-      const startOfWeek = new Date();
-      startOfWeek.setUTCHours(0, 0, 0, 0);
-      startOfWeek.setUTCDate(startOfWeek.getUTCDate() - startOfWeek.getUTCDay()); // Go to Sunday
-
-      const [{ count: memoryVerseCount }] = await db
-        .select({ 
-          count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            eq(posts.type, 'memory_verse'),
-            sql`${posts.createdAt} >= ${startOfWeek}`
-          )
-        );
-
-      const counts = {
-        food: results.find(r => r.type === 'food')?.count || 0,
-        workout: results.find(r => r.type === 'workout')?.count || 0,
-        scripture: results.find(r => r.type === 'scripture')?.count || 0,
-        memory_verse: memoryVerseCount
+      const limits = {
+        food: 3,
+        workout: 1,
+        scripture: 1,
+        memory_verse: 1
       };
 
-      console.log('Post limits for user', req.user.id, ':', counts);
+      const results = await Promise.all(Object.keys(limits).map(async (type) => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`CAST(COUNT(*) AS INTEGER)` })
+          .from(posts)
+          .where(and(eq(posts.userId, req.user.id), eq(posts.type, type),
+            sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24 * 60 * 60 * 1000)}`
+          ));
+        return { type, count: count || 0 };
+      }));
+
+      const counts = {};
+      results.forEach(result => counts[result.type] = result.count);
+
 
       res.json({
         counts,
-        canPost: {
-          food: counts.food < 3,
-          workout: counts.workout < 1,
-          scripture: counts.scripture < 1,
-          memory_verse: today.getUTCDay() === 6 && counts.memory_verse < 1 // Only on Saturday
-        }
+        canPost: Object.keys(limits).reduce((acc, type) => {
+          acc[type] = counts[type] < limits[type];
+          return acc;
+        }, {})
       });
     } catch (error) {
       console.error('Error fetching post limits:', error);
@@ -920,7 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   description: video.description
                 }))
               );
-                    }
+          }
         } catch (error) {
           // Rollback on error
           throw error;
