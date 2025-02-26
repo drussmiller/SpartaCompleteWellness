@@ -112,7 +112,8 @@ export default function CommentsPage() {
       content: "",
       imageUrl: null,
       points: 1,
-      parentId: parseInt(postId!)
+      parentId: parseInt(postId!),
+      depth: replyToId ? 1 : 0
     }
   });
 
@@ -121,7 +122,12 @@ export default function CommentsPage() {
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
-      return res.json();
+      const comments = await res.json();
+      // Ensure each comment has a replies array
+      return comments.map((comment: CommentWithAuthor) => ({
+        ...comment,
+        replies: []
+      }));
     },
     enabled: !!postId && !!currentUser
   });
@@ -132,7 +138,8 @@ export default function CommentsPage() {
         ...data,
         type: "comment",
         parentId: replyToId || parseInt(postId!),
-        points: 1
+        points: 1,
+        depth: replyToId ? 1 : 0
       });
 
       if (!res.ok) {
@@ -183,13 +190,24 @@ export default function CommentsPage() {
   // Build comment tree
   const commentTree = comments?.reduce((acc: CommentWithAuthor[], comment) => {
     if (!comment.parentId || comment.parentId === parseInt(postId!)) {
-      acc.push({ ...comment, replies: [] });
+      // Top-level comments
+      acc.push(comment);
     } else {
-      const parent = acc.find(c => c.id === comment.parentId);
-      if (parent) {
-        if (!parent.replies) parent.replies = [];
-        parent.replies.push(comment);
-      }
+      // Find the parent comment
+      const findParentAndAddReply = (comments: CommentWithAuthor[], reply: CommentWithAuthor): boolean => {
+        for (const c of comments) {
+          if (c.id === reply.parentId) {
+            if (!c.replies) c.replies = [];
+            c.replies.push(reply);
+            return true;
+          }
+          if (c.replies && c.replies.length > 0) {
+            if (findParentAndAddReply(c.replies, reply)) return true;
+          }
+        }
+        return false;
+      };
+      findParentAndAddReply(acc, comment);
     }
     return acc;
   }, []) || [];
