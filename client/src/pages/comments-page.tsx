@@ -25,20 +25,13 @@ function CommentThread({
   depth?: number;
   onReply: (parentId: number) => void;
 }) {
+  console.log(`Rendering CommentThread for comment ID ${comment.id}`, {
+    comment,
+    depth,
+    hasReplies: comment.replies?.length || 0
+  });
+
   const maxDepth = 3;
-
-  // Format timestamp to show relative time
-  const getRelativeTime = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) {
-      return `${days}d`;
-    }
-    return `${hours}h`;
-  };
 
   return (
     <div className={cn(
@@ -52,15 +45,15 @@ function CommentThread({
         </Avatar>
         <div className="flex-1">
           <div className="bg-muted/50 rounded-lg px-3 py-2">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium">{comment.author.username}</span>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{comment.author.username}</p>
               <span className="text-xs text-muted-foreground">
-                {getRelativeTime(new Date(comment.createdAt!))}
+                {new Date(comment.createdAt!).toLocaleDateString()}
               </span>
             </div>
-            <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+            <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
           </div>
-          <div className="flex items-center gap-4 mt-1">
+          <div className="flex items-center gap-2 mt-1">
             <Button
               variant="ghost"
               size="sm"
@@ -74,17 +67,19 @@ function CommentThread({
         </div>
       </div>
 
-      {/* Always render replies if they exist and we haven't reached max depth */}
       {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
         <div className="space-y-2">
-          {comment.replies.map((reply) => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              onReply={onReply}
-            />
-          ))}
+          {comment.replies.map((reply) => {
+            console.log(`Rendering reply ${reply.id} to comment ${comment.id}`, reply);
+            return (
+              <CommentThread
+                key={reply.id}
+                comment={reply}
+                depth={depth + 1}
+                onReply={onReply}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -128,7 +123,12 @@ export default function CommentsPage() {
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
-      // Calculate proper depth based on parent comment
+      console.log("Adding new comment/reply:", {
+        replyToId,
+        data,
+        parentComment: replyToId ? comments?.find(c => c.id === replyToId) : null
+      });
+
       const parentComment = replyToId ? comments?.find(c => c.id === replyToId) : null;
       const newDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
 
@@ -185,8 +185,9 @@ export default function CommentsPage() {
     );
   }
 
-  // Build comment tree more robustly
   const buildCommentTree = (comments: CommentWithAuthor[]) => {
+    console.log("Building comment tree from comments:", comments);
+
     const commentMap: Record<number, CommentWithAuthor> = {};
     const rootComments: CommentWithAuthor[] = [];
 
@@ -194,6 +195,8 @@ export default function CommentsPage() {
     comments.forEach(comment => {
       commentMap[comment.id] = { ...comment, replies: [] };
     });
+
+    console.log("Comment map created:", commentMap);
 
     // Second pass: build the tree structure
     comments.forEach(comment => {
@@ -206,11 +209,14 @@ export default function CommentsPage() {
         if (parent) {
           if (!parent.replies) parent.replies = [];
           parent.replies.push(processedComment);
+          console.log(`Added reply ${comment.id} to parent ${parent.id}`);
+        } else {
+          console.log(`Warning: Parent ${comment.parentId} not found for comment ${comment.id}`);
         }
       }
     });
 
-    console.log("Built comment tree:", rootComments);
+    console.log("Final comment tree structure:", rootComments);
     return rootComments;
   };
 
