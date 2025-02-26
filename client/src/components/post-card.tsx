@@ -337,7 +337,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                           {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
                         </Button>
                         {replyToId && (
-                          <Button 
+                          <Button
                             variant="ghost"
                             type="button"
                             onClick={() => setReplyToId(null)}

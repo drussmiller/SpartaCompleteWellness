@@ -200,8 +200,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      // Validate the post data
       const postData = insertPostSchema.parse(req.body);
+
+      // If it's a comment, verify the parent post exists and calculate depth
+      if (postData.type === 'comment' && postData.parentId) {
+        const [parentPost] = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postData.parentId));
+
+        if (!parentPost) {
+          return res.status(404).json({ error: "Parent post not found" });
+        }
+
+        // Calculate comment depth
+        const depth = parentPost.type === 'comment' ? (parentPost.depth || 0) + 1 : 1;
+
+        // Create the comment
+        const [comment] = await db
+          .insert(posts)
+          .values({
+            ...postData,
+            userId: req.user.id,
+            depth,
+            createdAt: new Date()
+          })
+          .returning();
+
+        return res.status(201).json(comment);
+      }
 
       // Special handling for memory verse posts
       if (postData.type === "memory_verse") {
