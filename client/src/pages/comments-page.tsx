@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPostSchema, type CommentWithAuthor, type Post } from "@shared/schema";
+import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
 import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -19,28 +19,6 @@ export default function CommentsPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
-  // First fetch the original post
-  const { data: post, isLoading: isLoadingPost } = useQuery<Post>({
-    queryKey: ["/api/posts", postId],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) throw new Error("Failed to fetch post");
-      return res.json();
-    },
-    enabled: !!postId && !!currentUser
-  });
-
-  // Then fetch the comments
-  const { data: comments, isLoading: isLoadingComments } = useQuery<CommentWithAuthor[]>({
-    queryKey: ["/api/posts", postId, "comments"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts?parentId=${postId}&type=comment`);
-      if (!res.ok) throw new Error("Failed to fetch comments");
-      return res.json();
-    },
-    enabled: !!postId && !!currentUser
-  });
-
   const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
@@ -50,6 +28,16 @@ export default function CommentsPage() {
       points: 1,
       parentId: parseInt(postId!)
     }
+  });
+
+  const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
+    queryKey: ["/api/posts", postId, "comments"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      return res.json();
+    },
+    enabled: !!postId && !!currentUser
   });
 
   const addCommentMutation = useMutation({
@@ -97,18 +85,10 @@ export default function CommentsPage() {
     );
   }
 
-  if (isLoadingPost || isLoadingComments) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!post) {
-    return (
-      <div className="flex items-center justify-center min-h-screen text-destructive">
-        Post not found
       </div>
     );
   }
@@ -136,6 +116,7 @@ export default function CommentsPage() {
                     {...field}
                     placeholder="Write a comment..."
                     className="min-h-[100px]"
+                    value={field.value || ''}
                   />
                 </FormControl>
               </FormItem>
