@@ -296,7 +296,16 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                 isDrawerOpen ? "translate-x-0" : "translate-x-full"
               )}>
                 <div className="h-full flex flex-col p-4">
-                  <h3 className="text-lg font-semibold mb-4">Comments</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Comments</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsDrawerOpen(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <div className="flex-1 overflow-y-auto">
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
