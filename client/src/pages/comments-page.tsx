@@ -185,38 +185,39 @@ export default function CommentsPage() {
     );
   }
 
-  const buildCommentTree = (comments: CommentWithAuthor[]) => {
-    console.log("Building comment tree from comments:", comments);
-
-    const commentMap: Record<number, CommentWithAuthor> = {};
+  // Build the comment tree based on parent-child relationships
+  const buildCommentTree = (comments: CommentWithAuthor[]): CommentWithAuthor[] => {
+    // First, create a map of comments by their IDs
+    const commentMap = new Map<number, CommentWithAuthor>();
     const rootComments: CommentWithAuthor[] = [];
 
-    // First pass: create a map of all comments
+    // Initialize the map with all comments
     comments.forEach(comment => {
-      commentMap[comment.id] = { ...comment, replies: [] };
+      commentMap.set(comment.id, { ...comment, replies: [] });
     });
 
-    console.log("Comment map created:", commentMap);
-
-    // Second pass: build the tree structure
+    // Build the tree structure
     comments.forEach(comment => {
-      const processedComment = commentMap[comment.id];
+      const processedComment = commentMap.get(comment.id)!;
 
-      if (!comment.parentId || comment.parentId === parseInt(postId!)) {
-        rootComments.push(processedComment);
-      } else {
-        const parent = commentMap[comment.parentId];
-        if (parent) {
-          if (!parent.replies) parent.replies = [];
-          parent.replies.push(processedComment);
-          console.log(`Added reply ${comment.id} to parent ${parent.id}`);
-        } else {
-          console.log(`Warning: Parent ${comment.parentId} not found for comment ${comment.id}`);
+      // If it's a reply to another comment
+      if (comment.parentId && comment.parentId !== parseInt(postId!)) {
+        const parentComment = commentMap.get(comment.parentId);
+        if (parentComment) {
+          if (!parentComment.replies) parentComment.replies = [];
+          parentComment.replies.push(processedComment);
         }
+      } else {
+        // It's a top-level comment
+        rootComments.push(processedComment);
       }
     });
 
-    console.log("Final comment tree structure:", rootComments);
+    console.log("Root comments:", rootComments);
+    rootComments.forEach(comment => {
+      console.log(`Comment ${comment.id} has ${comment.replies?.length || 0} replies`);
+    });
+
     return rootComments;
   };
 
