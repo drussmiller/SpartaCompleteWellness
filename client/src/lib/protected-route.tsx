@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
@@ -32,7 +31,11 @@ export function ProtectedRoute({
 
   // Allow admin access to all pages
   if (user.isAdmin) {
-    return <Component />;
+    return (
+      <Route path={path}>
+        <Component />
+      </Route>
+    );
   }
 
   // For non-admin users without a team, only allow access to profile and help pages
@@ -44,5 +47,9 @@ export function ProtectedRoute({
     );
   }
 
-  return <Component />;
+  return (
+    <Route path={path}>
+      <Component />
+    </Route>
+  );
 }
