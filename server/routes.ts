@@ -360,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .orderBy(desc(posts.createdAt));
 
         console.log('Comments found:', comments.length);
-        console.log('Sample comment:', comments[0]);
+        console.log('Sample comment data:', comments[0] || 'No comments found'); //Added more robust logging
         res.json(comments);
         return;
       } else {
