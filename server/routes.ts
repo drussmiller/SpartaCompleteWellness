@@ -518,6 +518,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
 
+      console.log(`Checking post limits for user ${req.user.id} at ${today.toISOString()}`);
+
       // Get counts for each post type for today
       const results = await Promise.all(['food', 'workout', 'scripture'].map(async (type) => {
         const [{ count }] = await db
@@ -532,6 +534,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24*60*60*1000)}`
             )
           );
+
+        // Add debug logging
+        console.log(`User ${req.user.id} has ${count} ${type} posts today`);
         return { type, count };
       }));
 
