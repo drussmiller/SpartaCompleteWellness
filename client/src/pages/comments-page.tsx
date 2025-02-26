@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
 import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -19,16 +19,15 @@ import { cn } from "@/lib/utils";
 function CommentThread({
   comment,
   depth = 0,
-  onReply
+  onReply,
 }: {
   comment: CommentWithAuthor;
   depth?: number;
   onReply: (parentId: number) => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const maxDepth = 3;
 
-  // Format timestamp to show relative time like "14h", "2d", etc.
+  // Format timestamp to show relative time
   const getRelativeTime = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -43,7 +42,7 @@ function CommentThread({
 
   return (
     <div className={cn(
-      "flex flex-col",
+      "flex flex-col gap-2",
       depth > 0 && "ml-8 pl-4 border-l border-border mt-2"
     )}>
       <div className="flex items-start gap-3">
@@ -53,13 +52,13 @@ function CommentThread({
         </Avatar>
         <div className="flex-1">
           <div className="bg-muted/50 rounded-lg px-3 py-2">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">{comment.author.username}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium">{comment.author.username}</span>
               <span className="text-xs text-muted-foreground">
                 {getRelativeTime(new Date(comment.createdAt!))}
               </span>
             </div>
-            <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
+            <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
           </div>
           <div className="flex items-center gap-4 mt-1">
             <Button
@@ -68,13 +67,16 @@ function CommentThread({
               className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => onReply(comment.id)}
             >
+              <MessageSquare className="h-3 w-3 mr-1" />
               Reply
             </Button>
           </div>
         </div>
       </div>
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2">
+
+      {/* Always render replies if they exist and we haven't reached max depth */}
+      {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
+        <div className="space-y-2">
           {comment.replies.map((reply) => (
             <CommentThread
               key={reply.id}
@@ -111,11 +113,10 @@ export default function CommentsPage() {
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       try {
-        // Get all comments for this post
         const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
         if (!res.ok) throw new Error("Failed to fetch comments");
         const comments = await res.json();
-        console.log("Fetched comments:", comments); // Debug log
+        console.log("Raw comments from API:", comments);
         return comments;
       } catch (error) {
         console.error("Error fetching comments:", error);
@@ -127,8 +128,8 @@ export default function CommentsPage() {
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
-      // When replying, update depth based on parent comment's depth
-      const parentComment = comments?.find(c => c.id === replyToId);
+      // Calculate proper depth based on parent comment
+      const parentComment = replyToId ? comments?.find(c => c.id === replyToId) : null;
       const newDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
 
       const res = await apiRequest("POST", "/api/posts", {
@@ -184,32 +185,36 @@ export default function CommentsPage() {
     );
   }
 
-  // Build comment tree
-  const commentTree = comments?.reduce((acc: CommentWithAuthor[], comment) => {
-    if (!comment.parentId || comment.parentId === parseInt(postId!)) {
-      // Top-level comments
-      acc.push({ ...comment, replies: [] });
-    } else {
-      // Find parent and add reply
-      const findParent = (items: CommentWithAuthor[]): boolean => {
-        for (let i = 0; i < items.length; i++) {
-          if (items[i].id === comment.parentId) {
-            if (!items[i].replies) items[i].replies = [];
-            items[i].replies.push({ ...comment, replies: [] });
-            return true;
-          }
-          if (items[i].replies?.length) {
-            if (findParent(items[i].replies)) return true;
-          }
-        }
-        return false;
-      };
-      findParent(acc);
-    }
-    return acc;
-  }, []) || [];
+  // Build comment tree more robustly
+  const buildCommentTree = (comments: CommentWithAuthor[]) => {
+    const commentMap: Record<number, CommentWithAuthor> = {};
+    const rootComments: CommentWithAuthor[] = [];
 
-  console.log("Built comment tree:", commentTree); // Debug log
+    // First pass: create a map of all comments
+    comments.forEach(comment => {
+      commentMap[comment.id] = { ...comment, replies: [] };
+    });
+
+    // Second pass: build the tree structure
+    comments.forEach(comment => {
+      const processedComment = commentMap[comment.id];
+
+      if (!comment.parentId || comment.parentId === parseInt(postId!)) {
+        rootComments.push(processedComment);
+      } else {
+        const parent = commentMap[comment.parentId];
+        if (parent) {
+          if (!parent.replies) parent.replies = [];
+          parent.replies.push(processedComment);
+        }
+      }
+    });
+
+    console.log("Built comment tree:", rootComments);
+    return rootComments;
+  };
+
+  const commentTree = buildCommentTree(comments || []);
 
   return (
     <div className="container max-w-3xl mx-auto py-6">
