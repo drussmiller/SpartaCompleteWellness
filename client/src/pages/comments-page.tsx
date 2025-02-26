@@ -120,26 +120,33 @@ export default function CommentsPage() {
   const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
-      if (!res.ok) throw new Error("Failed to fetch comments");
-      const comments = await res.json();
-      // Ensure each comment has a replies array
-      return comments.map((comment: CommentWithAuthor) => ({
-        ...comment,
-        replies: []
-      }));
+      try {
+        // Get all comments for this post
+        const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
+        if (!res.ok) throw new Error("Failed to fetch comments");
+        const comments = await res.json();
+        console.log("Fetched comments:", comments); // Debug log
+        return comments;
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        throw error;
+      }
     },
     enabled: !!postId && !!currentUser
   });
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
+      // When replying, update depth based on parent comment's depth
+      const parentComment = comments?.find(c => c.id === replyToId);
+      const newDepth = parentComment ? parentComment.depth + 1 : 0;
+
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         type: "comment",
         parentId: replyToId || parseInt(postId!),
         points: 1,
-        depth: replyToId ? 1 : 0
+        depth: newDepth
       });
 
       if (!res.ok) {
@@ -191,26 +198,28 @@ export default function CommentsPage() {
   const commentTree = comments?.reduce((acc: CommentWithAuthor[], comment) => {
     if (!comment.parentId || comment.parentId === parseInt(postId!)) {
       // Top-level comments
-      acc.push(comment);
+      acc.push({ ...comment, replies: [] });
     } else {
-      // Find the parent comment
-      const findParentAndAddReply = (comments: CommentWithAuthor[], reply: CommentWithAuthor): boolean => {
-        for (const c of comments) {
-          if (c.id === reply.parentId) {
-            if (!c.replies) c.replies = [];
-            c.replies.push(reply);
+      // Find parent and add reply
+      const findParent = (items: CommentWithAuthor[]): boolean => {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].id === comment.parentId) {
+            if (!items[i].replies) items[i].replies = [];
+            items[i].replies.push({ ...comment, replies: [] });
             return true;
           }
-          if (c.replies && c.replies.length > 0) {
-            if (findParentAndAddReply(c.replies, reply)) return true;
+          if (items[i].replies?.length) {
+            if (findParent(items[i].replies)) return true;
           }
         }
         return false;
       };
-      findParentAndAddReply(acc, comment);
+      findParent(acc);
     }
     return acc;
   }, []) || [];
+
+  console.log("Built comment tree:", commentTree); // Debug log
 
   return (
     <div className="container max-w-3xl mx-auto py-6">
