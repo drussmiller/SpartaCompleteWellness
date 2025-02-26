@@ -385,9 +385,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                     )}
                   </div>
                 </div>
-              </Drawer.Content>
-            </Drawer.Portal>
-          </Drawer.Root>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
