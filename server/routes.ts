@@ -481,11 +481,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/posts/limits", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      // Calculate start of user's local day in UTC
+      const now = new Date();
+      const today = new Date(now.getTime() - tzOffset * 60000);
+      today.setUTCHours(0, 0, 0, 0);
+
+      // Calculate end of user's local day in UTC
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
       console.log(`\n=== Checking post limits for user ${req.user.id} ===`);
-      console.log('Current UTC time:', today.toISOString());
+      console.log('User timezone offset:', tzOffset, 'minutes');
+      console.log('Local day start (UTC):', today.toISOString());
+      console.log('Local day end (UTC):', tomorrow.toISOString());
 
       const limits = {
         food: 3,
@@ -501,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(and(
             eq(posts.userId, req.user.id),
             eq(posts.type, type),
-            sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24 * 60 * 60 * 1000)}`
+            sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${tomorrow}`
           ));
 
         console.log(`Found ${count || 0} ${type} posts for today`);
@@ -911,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({
-        ...updatedActivity.activity,
+        ...completeActivity.activity,
         workoutVideos: parsedWorkoutVideos
       });
     } catch (error) {

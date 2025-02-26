@@ -26,7 +26,10 @@ export function usePostLimits() {
     enabled: !!user,
     queryFn: async () => {
       console.log('Fetching post limits for user:', user?.id);
-      const res = await apiRequest("GET", "/api/posts/limits");
+
+      // Get local timezone offset in minutes
+      const tzOffset = new Date().getTimezoneOffset();
+      const res = await apiRequest("GET", `/api/posts/limits?tzOffset=${tzOffset}`);
       const data = await res.json();
       console.log('Post limits response:', data);
       return data;
