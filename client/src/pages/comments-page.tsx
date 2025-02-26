@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
 import { z } from "zod";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -100,8 +100,9 @@ export default function CommentsPage() {
       type: "comment",
       content: "",
       imageUrl: null,
-      points: 0
-    },
+      points: 1,
+      parentId: null
+    }
   });
 
   const { data: comments, refetch: refetchComments } = useQuery<CommentWithAuthor[]>({
@@ -109,8 +110,10 @@ export default function CommentsPage() {
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", `/api/posts/${postId}/comments`);
-        const data = await res.json();
-        return data;
+        if (!res.ok) {
+          throw new Error("Failed to fetch comments");
+        }
+        return res.json();
       } catch (error) {
         console.error("Error fetching comments:", error);
         toast({
@@ -149,13 +152,11 @@ export default function CommentsPage() {
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
       const parentId = replyToId || parseInt(postId!);
-      console.log('Submitting comment with parentId:', parentId);
 
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         type: "comment",
         parentId,
-        imageUrl: null,
         points: 1
       });
 
@@ -185,7 +186,10 @@ export default function CommentsPage() {
   });
 
   const handleSubmit = async (data: z.infer<typeof insertPostSchema>) => {
-    await addCommentMutation.mutateAsync(data);
+    await addCommentMutation.mutateAsync({
+      ...data,
+      parentId: replyToId || parseInt(postId!)
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -260,6 +264,9 @@ export default function CommentsPage() {
               Cancel Reply
             </Button>
           )}
+          <Button type="submit" disabled={addCommentMutation.isPending}>
+            {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+          </Button>
         </form>
       </Form>
 

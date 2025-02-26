@@ -107,8 +107,8 @@ export const insertPostSchema = createInsertSchema(posts)
     imageUrl: z.string().nullable(),
     type: z.enum(["food", "workout", "scripture", "memory_verse", "comment"]),
     points: z.number().default(1),
-    parentId: z.number().optional(), // Make parentId optional
-    depth: z.number().default(0) //Added depth field to insert schema
+    parentId: z.number().optional().nullable(),
+    depth: z.number().default(0)
   });
 
 export const insertUserSchema = createInsertSchema(users).pick({
