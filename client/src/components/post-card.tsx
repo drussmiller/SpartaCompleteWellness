@@ -99,7 +99,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     defaultValues: {
       type: "comment",
       content: "",
-      points: 0,
+      imageUrl: null,
+      points: 0
     },
   });
 
@@ -156,6 +157,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         parentId: replyToId || post.id,
+        type: "comment",
+        imageUrl: null
       });
       if (!res.ok) {
         const error = await res.json();
@@ -184,7 +187,11 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
   const handleSubmit = async (data: z.infer<typeof insertPostSchema>) => {
     console.log('Handling submit with data:', data);
-    await addCommentMutation.mutateAsync(data);
+    await addCommentMutation.mutateAsync({
+      ...data,
+      type: "comment",
+      imageUrl: null
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -192,7 +199,11 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       e.preventDefault();
       const formData = form.getValues();
       console.log('Submitting via Enter key:', formData);
-      handleSubmit(formData);
+      handleSubmit({
+        ...formData,
+        type: "comment",
+        imageUrl: null
+      });
     }
   };
 
