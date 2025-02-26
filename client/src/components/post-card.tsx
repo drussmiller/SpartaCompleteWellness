@@ -1,20 +1,20 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Post, User, CommentWithAuthor } from "@shared/schema";
 import { Trash2, MessageCircle, ArrowLeft } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPostSchema } from "@shared/schema";
 import { z } from "zod";
-import { Drawer } from "vaul";
 import { cn } from "@/lib/utils";
 import EmojiPicker from 'emoji-picker-react';
 
@@ -182,47 +182,6 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     },
   });
 
-  const deletePostMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("DELETE", `/api/posts/${post.id}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete post");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-
-      if (data.user) {
-        queryClient.setQueryData(["/api/user"], data.user);
-      }
-
-      toast({
-        title: "Success",
-        description: "Post deleted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const canDeletePost = () => {
-    if (!currentUser || currentUser.id !== post.userId) return false;
-
-    const postDate = new Date(post.createdAt!);
-    const today = new Date();
-    const isFromPreviousDay = postDate.toDateString() !== today.toDateString();
-
-    return !isFromPreviousDay || post.type === 'comment';
-  };
-
   const onSubmit = (data: z.infer<typeof insertPostSchema>) => {
     console.log('Submitting form with data:', data);
     addCommentMutation.mutate(data);
@@ -248,17 +207,6 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             <p className="text-sm text-muted-foreground">{post.author.points} points</p>
           </div>
         </div>
-        {currentUser?.id === post.userId && canDeletePost() && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => deletePostMutation.mutate()}
-            disabled={deletePostMutation.isPending}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
       </CardHeader>
       <CardContent className="p-4 pt-0">
         {post.content && (
@@ -290,7 +238,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                 <MessageCircle className="h-4 w-4 mr-2" />
                 {comments?.length || 0} Comments
               </Button>
-              
+
               <div className={cn(
                 "fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg transform transition-transform duration-300 ease-in-out z-50",
                 isDrawerOpen ? "translate-x-0" : "translate-x-full"
