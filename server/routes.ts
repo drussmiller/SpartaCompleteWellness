@@ -511,6 +511,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add new endpoint after existing post routes
+  app.get("/api/posts/limits", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
+
+      // Get counts for each post type for today
+      const results = await Promise.all(['food', 'workout', 'scripture'].map(async (type) => {
+        const [{ count }] = await db
+          .select({ 
+            count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
+          })
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, req.user!.id),
+              eq(posts.type, type),
+              sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24*60*60*1000)}`
+            )
+          );
+        return { type, count };
+      }));
+
+      // Get memory verse count for current week
+      const startOfWeek = new Date();
+      startOfWeek.setUTCHours(0, 0, 0, 0);
+      startOfWeek.setUTCDate(startOfWeek.getUTCDate() - startOfWeek.getUTCDay()); // Go to Sunday
+
+      const [{ count: memoryVerseCount }] = await db
+        .select({ 
+          count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, 'memory_verse'),
+            sql`${posts.createdAt} >= ${startOfWeek}`
+          )
+        );
+
+      const counts = {
+        food: results.find(r => r.type === 'food')?.count || 0,
+        workout: results.find(r => r.type === 'workout')?.count || 0,
+        scripture: results.find(r => r.type === 'scripture')?.count || 0,
+        memory_verse: memoryVerseCount
+      };
+
+      console.log('Post limits for user', req.user.id, ':', counts);
+
+      res.json({
+        counts,
+        canPost: {
+          food: counts.food < 3,
+          workout: counts.workout < 1,
+          scripture: counts.scripture < 1,
+          memory_verse: today.getUTCDay() === 6 && counts.memory_verse < 1 // Only on Saturday
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching post limits:', error);
+      res.status(500).json({ error: "Failed to fetch post limits" });
+    }
+  });
+
   // Measurements
   app.post("/api/measurements", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -849,7 +915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   description: video.description
                 }))
               );
-          }
+                    }
         } catch (error) {
           // Rollback on error
           throw error;
