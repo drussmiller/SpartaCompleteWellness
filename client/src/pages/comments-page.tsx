@@ -148,12 +148,17 @@ export default function CommentsPage() {
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
+      const parentId = replyToId || parseInt(postId!);
+      console.log('Submitting comment with parentId:', parentId);
+
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
-        parentId: replyToId || parseInt(postId!),
         type: "comment",
-        imageUrl: null
+        parentId,
+        imageUrl: null,
+        points: 1
       });
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Failed to add comment");
@@ -180,22 +185,14 @@ export default function CommentsPage() {
   });
 
   const handleSubmit = async (data: z.infer<typeof insertPostSchema>) => {
-    await addCommentMutation.mutateAsync({
-      ...data,
-      type: "comment",
-      imageUrl: null
-    });
+    await addCommentMutation.mutateAsync(data);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       const formData = form.getValues();
-      handleSubmit({
-        ...formData,
-        type: "comment",
-        imageUrl: null
-      });
+      handleSubmit(formData);
     }
   };
 

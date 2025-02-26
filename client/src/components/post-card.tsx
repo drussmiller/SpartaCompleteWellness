@@ -16,9 +16,11 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     queryKey: ["/api/posts", post.id, "comment-count"],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/posts?parentId=${post.id}`);
+        if (!post.id) return 0;
+        const res = await apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`);
+        if (!res.ok) throw new Error("Failed to fetch comments");
         const comments = await res.json();
-        return comments.length;
+        return Array.isArray(comments) ? comments.length : 0;
       } catch (error) {
         console.error("Error fetching comment count:", error);
         return 0;
