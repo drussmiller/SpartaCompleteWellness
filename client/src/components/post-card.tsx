@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Post, User, CommentWithAuthor } from "@shared/schema";
-import { Trash2, MessageCircle } from "lucide-react";
+import { Trash2, MessageCircle, ArrowLeft } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,9 @@ import { insertPostSchema } from "@shared/schema";
 import { z } from "zod";
 import { Drawer } from "vaul";
 import { cn } from "@/lib/utils";
+import EmojiPicker from 'emoji-picker-react';
+
+// Rest of the imports remain unchanged
 
 function CommentThread({
   comment,
@@ -92,6 +95,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const { toast } = useToast();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [replyToId, setReplyToId] = useState<number | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
@@ -222,9 +226,16 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   };
 
   const onSubmit = (data: z.infer<typeof insertPostSchema>) => {
+    console.log('Submitting form with data:', data);
     addCommentMutation.mutate(data);
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.handleSubmit(onSubmit)();
+    }
+  };
 
   return (
     <Card>
@@ -285,66 +296,88 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             </Drawer.Trigger>
             <Drawer.Portal>
               <Drawer.Overlay className="fixed inset-0 bg-black/40" />
-              <Drawer.Content className="bg-background flex flex-col rounded-t-[10px] h-[96vh] mt-24 fixed bottom-0 left-0 right-0">
-                <div className="p-4 rounded-t-[10px] flex-1 overflow-y-auto">
-                  <div className="max-w-2xl mx-auto">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="font-semibold">Comments</h2>
-                      <Drawer.Close asChild>
-                        <Button variant="ghost" size="sm">Close</Button>
-                      </Drawer.Close>
-                    </div>
+              <Drawer.Content className="bg-background flex flex-col fixed right-0 top-0 h-full w-[400px] border-l animate-slide-in-from-right">
+                <div className="p-4 flex-1 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-semibold">Comments</h2>
+                    <Drawer.Close asChild>
+                      <Button variant="ghost" size="icon">
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                    </Drawer.Close>
+                  </div>
 
-                    <Form {...form}>
-                      <form
-                        onSubmit={form.handleSubmit(onSubmit)}
-                        className="flex items-center gap-2 mt-6"
-                      >
-                        <FormField
-                          control={form.control}
-                          name="content"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormControl>
+                  <Form {...form}>
+                    <form
+                      onSubmit={form.handleSubmit(onSubmit)}
+                      className="flex items-center gap-2 mt-6"
+                    >
+                      <FormField
+                        control={form.control}
+                        name="content"
+                        render={({ field }) => (
+                          <FormItem className="flex-1 relative">
+                            <FormControl>
+                              <div className="relative">
                                 <Input
                                   placeholder={replyToId ? "Write a reply..." : "Add a comment..."}
                                   {...field}
                                   value={field.value || ""}
+                                  onKeyPress={handleKeyPress}
                                 />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" disabled={addCommentMutation.isPending}>
-                          {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
-                        </Button>
-                        {replyToId && (
-                          <Button
-                            variant="ghost"
-                            type="button"
-                            onClick={() => setReplyToId(null)}
-                          >
-                            Cancel
-                          </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                >
+                                  😊
+                                </Button>
+                              </div>
+                            </FormControl>
+                            {showEmojiPicker && (
+                              <div className="absolute bottom-full right-0 z-50">
+                                <EmojiPicker
+                                  onEmojiClick={(emojiData) => {
+                                    field.onChange((field.value || '') + emojiData.emoji);
+                                    setShowEmojiPicker(false);
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </FormItem>
                         )}
-                      </form>
-                    </Form>
-
-                    <div className="space-y-4">
-                      {comments && comments.length > 0 ? (
-                        commentTree.map((comment) => (
-                          <CommentThread
-                            key={comment.id}
-                            comment={comment}
-                            postAuthorId={post.userId}
-                            currentUser={currentUser!}
-                            onReply={setReplyToId}
-                          />
-                        ))
-                      ) : (
-                        <p className="text-center text-muted-foreground">No comments yet</p>
+                      />
+                      <Button type="submit" disabled={addCommentMutation.isPending}>
+                        {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+                      </Button>
+                      {replyToId && (
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          onClick={() => setReplyToId(null)}
+                        >
+                          Cancel
+                        </Button>
                       )}
-                    </div>
+                    </form>
+                  </Form>
+
+                  <div className="space-y-4 mt-6">
+                    {comments && comments.length > 0 ? (
+                      commentTree.map((comment) => (
+                        <CommentThread
+                          key={comment.id}
+                          comment={comment}
+                          postAuthorId={post.userId}
+                          currentUser={currentUser!}
+                          onReply={setReplyToId}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground">No comments yet</p>
+                    )}
                   </div>
                 </div>
               </Drawer.Content>
