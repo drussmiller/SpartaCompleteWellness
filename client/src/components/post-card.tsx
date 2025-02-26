@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+import { MessageCircle } from "lucide-react";
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
@@ -57,8 +58,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
           <Link href={`/comments/${post.id}`}>
-            <Button variant="ghost" size="sm">
-              {commentCount || 0} comments
+            <Button variant="ghost" size="sm" className="gap-1.5">
+              <MessageCircle className="h-4 w-4" />
+              {commentCount || 0}
             </Button>
           </Link>
         </div>
