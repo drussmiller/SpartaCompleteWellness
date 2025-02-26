@@ -16,13 +16,19 @@ export function usePostLimits() {
     queryKey: ["/api/posts"],
   });
 
+  // Get start of current UTC day
   const today = new Date();
-  const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+  const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
-  const todaysPosts = posts?.filter(post => 
-    new Date(post.createdAt!) >= startOfDay && 
-    post.userId === user?.id
-  ) || [];
+  // Only count posts from the current user for today
+  const todaysPosts = posts?.filter(post => {
+    if (!user || post.userId !== user.id) return false;
+    const postDate = new Date(post.createdAt!);
+    return postDate >= startOfDay;
+  }) || [];
+
+  console.log('Current user ID:', user?.id);
+  console.log('Today\'s posts for current user:', todaysPosts);
 
   const dailyCounts = todaysPosts.reduce((acc, post) => {
     if (post.type in acc) {
@@ -49,6 +55,8 @@ export function usePostLimits() {
     new Date(post.createdAt!) >= startOfWeek &&
     post.userId === user?.id
   ).length || 0;
+
+  console.log('Daily counts:', dailyCounts);
 
   const canPost = {
     food: dailyCounts.food < 3,
