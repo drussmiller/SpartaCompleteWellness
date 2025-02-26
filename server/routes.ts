@@ -928,7 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             '[]'::json
           )`
         })
-        .from(activities)
+                .from(activities)
         .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
         .where(eq(activities.id, activityId))
         .groupBy(activities.id);
@@ -1151,34 +1151,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws.on('close', () => {
         clients.delete(parseInt(userId));
       });
-    }
-  });
-
-  // Add new endpoint for comment count
-  app.get("/api/posts/count", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-
-    try {
-      const parentId = parseInt(req.query.parentId as string);
-
-      // Count total comments (including replies) for this post
-      const [{ count }] = await db
-        .select({ 
-          count: sql<number>`CAST(COUNT(*) AS INTEGER)` 
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.type, 'comment'),
-            eq(posts.parentId, parentId)
-          )
-        );
-
-      console.log(`Found ${count} total comments for post ${parentId}`);
-      res.json(count || 0);
-    } catch (error) {
-      console.error('Error fetching comment count:', error);
-      res.status(500).json({ error: "Failed to fetch comment count" });
     }
   });
 
