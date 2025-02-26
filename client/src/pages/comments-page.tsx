@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
+import { insertPostSchema, type CommentWithAuthor, type Post } from "@shared/schema";
 import { z } from "zod";
 import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +16,6 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EmojiPicker from 'emoji-picker-react';
 import { Link } from "wouter";
-import React from 'react';
 import { Loader2 } from "lucide-react";
 
 function CommentThread({
@@ -106,7 +105,18 @@ export default function CommentsPage() {
       content: "",
       imageUrl: null,
       points: 1,
-      parentId: null
+      parentId: null,
+      depth: 0
+    }
+  });
+
+  // Fetch the original post first
+  const { data: post } = useQuery<Post>({
+    queryKey: ["/api/posts", postId],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/posts/${postId}`);
+      if (!res.ok) throw new Error("Failed to fetch post");
+      return res.json();
     }
   });
 
@@ -291,7 +301,7 @@ export default function CommentsPage() {
             <CommentThread
               key={comment.id}
               comment={comment}
-              postAuthorId={parseInt(postId!)}
+              postAuthorId={post?.userId || 0}
               currentUser={currentUser!}
               onReply={setReplyToId}
             />
