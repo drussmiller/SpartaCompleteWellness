@@ -306,12 +306,12 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(data => addCommentMutation.mutate(data))} className="space-y-4">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                           <FormField
                             control={form.control}
                             name="content"
                             render={({ field }) => (
-                              <FormItem className="relative">
+                              <FormItem>
                                 <FormControl>
                                   <div className="relative">
                                     <textarea
@@ -321,38 +321,12 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                                       onKeyDown={(e) => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
                                           e.preventDefault();
-                                          const content = field.value.trim();
-                                          if (content) {
-                                            addCommentMutation.mutate({ type: 'comment', content });
-                                            field.onChange('');
-                                          }
+                                          form.handleSubmit(onSubmit)();
                                         }
                                       }}
                                     />
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="absolute right-2 top-2"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        setShowEmojiPicker(!showEmojiPicker);
-                                      }}
-                                    >
-                                      😊
-                                    </Button>
                                   </div>
                                 </FormControl>
-                                {showEmojiPicker && (
-                                  <div className="absolute top-full left-0 z-50">
-                                    <EmojiPicker
-                                      onEmojiClick={(emojiData) => {
-                                        field.onChange((field.value || '') + emojiData.emoji);
-                                        setShowEmojiPicker(false);
-                                      }}
-                                    />
-                                  </div>
-                                )}
                               </FormItem>
                             )}
                           />
@@ -376,6 +350,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                       </div>
                     </div>
                   </div>
+                </div>
               )}
           </div>
         </div>
