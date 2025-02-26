@@ -31,15 +31,18 @@ export default function HomePage() {
     );
   }
 
+  // Filter out comments from the posts
+  const nonCommentPosts = posts?.filter(post => post.type !== "comment");
+
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <TopNav />
 
       <main className="p-4 space-y-4">
-        {posts?.map((post) => (
-          <PostCard key={post.id} post={post} user={user!} />
+        {nonCommentPosts?.map((post) => (
+          <PostCard key={post.id} post={post} />
         ))}
-        {posts?.length === 0 && (
+        {nonCommentPosts?.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
             No posts yet. Be the first to share!
           </p>
