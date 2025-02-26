@@ -33,12 +33,23 @@ function CommentThread({
 
   const maxDepth = 3;
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   const deleteCommentMutation = useMutation({
-    mutationFn: () => {
-        //Implementation for deleting comment would go here
-        return Promise.resolve();
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
+      if (!res.ok) {
+        throw new Error("Failed to delete comment");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Comment deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", comment.postId, "comments"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
-  })
+  });
 
   return (
     <div className={cn(
