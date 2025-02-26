@@ -124,7 +124,8 @@ export default function CommentsPage() {
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/posts/${postId}/comments`);
+        // Get all comments where parentId matches the current post ID
+        const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
         if (!res.ok) {
           throw new Error("Failed to fetch comments");
         }
