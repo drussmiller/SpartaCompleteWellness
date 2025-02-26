@@ -1,7 +1,4 @@
 
-<script src="https://cdn.jsdelivr.net/npm/@emoji-mart/data"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emoji-mart/react"></script>
-
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -262,12 +259,7 @@ export default function CommentsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const emojiPicker = new window.EmojiMart.Picker({
-                          onEmojiSelect: (emoji) => {
-                            field.onChange(field.value + emoji.native);
-                          }
-                        });
-                        emojiPicker.togglePicker(e.target);
+                        field.onChange(field.value + "😊");
                       }}
                       className="absolute right-2 bottom-2 p-2 text-muted-foreground hover:text-foreground"
                     >
