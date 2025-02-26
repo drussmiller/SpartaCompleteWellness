@@ -155,7 +155,6 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         parentId: replyToId || post.id,
-        depth: replyToId ? 1 : 0,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -232,7 +231,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               className="ml-auto"
               onClick={() => {
                 console.log('Opening comments drawer');
-                setIsDrawerOpen(!isDrawerOpen);
+                setIsDrawerOpen(true);
               }}
             >
               <MessageCircle className="h-4 w-4 mr-2" />
@@ -276,6 +275,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                                 className="absolute right-2 top-2"
                                 onClick={(e) => {
                                   e.preventDefault();
+                                  e.stopPropagation();
                                   setShowEmojiPicker(!showEmojiPicker);
                                 }}
                               >
@@ -287,7 +287,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                             <div className="absolute top-full right-0 z-50">
                               <EmojiPicker
                                 onEmojiClick={(emojiData) => {
-                                  field.onChange((field.value || '') + emojiData.emoji);
+                                  const newValue = (field.value || '') + emojiData.emoji;
+                                  field.onChange(newValue);
                                   setShowEmojiPicker(false);
                                 }}
                               />
