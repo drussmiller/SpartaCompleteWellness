@@ -25,10 +25,24 @@ export function usePostLimits() {
     queryKey: ["/api/posts/limits"],
     enabled: !!user,
     queryFn: async () => {
+      console.log('Fetching post limits for user:', user?.id);
       const res = await apiRequest("GET", "/api/posts/limits");
-      return res.json();
+      const data = await res.json();
+      console.log('Post limits response:', data);
+      return data;
     }
   });
+
+  // Log the current state
+  if (data) {
+    console.log('Current post counts for user', user?.id, ':', data.counts);
+    console.log('Can post status:', data.canPost);
+
+    // Log each type of post count
+    Object.entries(data.counts).forEach(([type, count]) => {
+      console.log(`${type} posts: ${count} used`);
+    });
+  }
 
   return {
     counts: data?.counts || {
