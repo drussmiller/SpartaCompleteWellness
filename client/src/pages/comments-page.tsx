@@ -55,6 +55,9 @@ function CommentThread({
           <div className="bg-muted/50 rounded-lg px-3 py-2">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium">{comment.author.username}</p>
+              <span className="text-xs text-muted-foreground">
+                {getRelativeTime(new Date(comment.createdAt!))}
+              </span>
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
           </div>
@@ -67,23 +70,10 @@ function CommentThread({
             >
               Reply
             </Button>
-            <span className="text-xs text-muted-foreground">
-              {getRelativeTime(new Date(comment.createdAt!))}
-            </span>
-            {comment.replies && comment.replies.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setIsExpanded(!isExpanded)}
-              >
-                {isExpanded ? "Hide replies" : `Show ${comment.replies.length} replies`}
-              </Button>
-            )}
           </div>
         </div>
       </div>
-      {isExpanded && comment.replies && depth < maxDepth && (
+      {comment.replies && comment.replies.length > 0 && (
         <div className="mt-2">
           {comment.replies.map((reply) => (
             <CommentThread
@@ -113,7 +103,7 @@ export default function CommentsPage() {
       imageUrl: null,
       points: 1,
       parentId: parseInt(postId!),
-      depth: replyToId ? 1 : 0
+      depth: 0
     }
   });
 
@@ -139,7 +129,7 @@ export default function CommentsPage() {
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
       // When replying, update depth based on parent comment's depth
       const parentComment = comments?.find(c => c.id === replyToId);
-      const newDepth = parentComment ? parentComment.depth + 1 : 0;
+      const newDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
 
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
