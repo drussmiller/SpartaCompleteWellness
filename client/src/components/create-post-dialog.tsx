@@ -68,11 +68,9 @@ export function CreatePostDialog() {
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
-      // Calculate points based on post type
-      const points = data.type === "memory_verse" ? 10 : 
+      const points = data.type === "memory_verse" ? 10 :
                     data.type === "comment" ? 1 : 3;
 
-      // Create post data
       const postData = {
         ...data,
         points,
@@ -88,12 +86,11 @@ export function CreatePostDialog() {
       return res.json();
     },
     onSuccess: () => {
-      // Invalidate both team-specific and general post queries
       if (user?.teamId) {
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      // Also invalidate the user query to update points
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/limits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       setOpen(false);
@@ -113,31 +110,32 @@ export function CreatePostDialog() {
     },
   });
 
-  const onSubmit = async (data: CreatePostForm) => {
-    try {
-      await createPostMutation.mutateAsync(data);
-    } catch (error) {
-      console.error('Error in form submission:', error);
-    }
-  };
-
-  // Get remaining posts message based on type
-  const getRemainingMessage = (type: string) => {
+  // Modified getRemainingMessage function to correctly show remaining posts
+  function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    const limits = {
+    // Get the daily limit for each type
+    const postLimits = {
       food: 3,
       workout: 1,
       scripture: 1
     };
 
-    const used = counts[type as keyof typeof counts] || 0;
-    const limit = limits[type as keyof typeof limits];
-    const remaining = limit - used;
+    // Get the current count for this type
+    const used = counts[type as keyof typeof counts];
+    const limit = postLimits[type as keyof typeof postLimits];
 
+    if (limit === undefined) return "";
+
+    console.log(`Post type ${type}: Used ${used}/${limit}`);
+    const remaining = limit - used;
     return remaining > 0 ? `(${remaining} remaining today)` : "(Daily limit reached)";
+  }
+
+  const onSubmit = (data: CreatePostForm) => {
+    createPostMutation.mutate(data);
   };
 
   return (
@@ -192,8 +190,8 @@ export function CreatePostDialog() {
                   <FormItem>
                     <FormLabel>Image</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="file" 
+                      <Input
+                        type="file"
                         accept="image/*"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
@@ -220,9 +218,9 @@ export function CreatePostDialog() {
                     </FormControl>
                     {imagePreview && (
                       <div className="mt-2">
-                        <img 
-                          src={imagePreview} 
-                          alt="Preview" 
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
                           className="max-h-40 rounded-md"
                         />
                         <Button
@@ -252,8 +250,8 @@ export function CreatePostDialog() {
                 <FormItem>
                   <FormLabel>Content</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      {...field} 
+                    <Textarea
+                      {...field}
                       placeholder="Enter post content"
                       value={field.value || ''}
                     />
@@ -263,11 +261,11 @@ export function CreatePostDialog() {
               )}
             />
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={
-                createPostMutation.isPending || 
+                createPostMutation.isPending ||
                 !canPost[form.watch("type") as keyof typeof canPost]
               }
             >
