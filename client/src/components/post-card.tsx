@@ -123,7 +123,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         return [];
       }
     },
-    enabled: isDrawerOpen, // Only fetch when drawer is open
+    enabled: isDrawerOpen,
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0  // Don't cache the data
   });
 
   const commentTree = useMemo(() => {
@@ -167,6 +169,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       return res.json();
     },
     onSuccess: async () => {
+      // Force immediate refetch of comments
       await refetchComments();
       form.reset();
       setReplyToId(null);
