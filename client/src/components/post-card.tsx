@@ -385,7 +385,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                     )}
                   </div>
                 </div>
-            </div>
+              </div>
           </div>
         </div>
       </CardContent>

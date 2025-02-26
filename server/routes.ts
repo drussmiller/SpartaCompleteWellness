@@ -360,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .orderBy(desc(posts.createdAt));
 
         console.log('Comments found:', comments.length);
-        console.log('Sample comment data:', comments[0] || 'No comments found'); //Added more robust logging
+        console.log('Sample comment data:', comments[0] || 'No comments found');
         res.json(comments);
         return;
       } else {
@@ -928,7 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             '[]'::json
           )`
         })
-        .from(activities)
+                .from(activities)
         .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
         .where(eq(activities.id, activityId))
         .groupBy(activities.id);
