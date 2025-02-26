@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Check daily post limits for other post types
         const today = new Date();
-        today.setUTCDate(today.getUTCDate()); //added to set date to UTC
+        today.setUTCHours(0, 0, 0, 0);  // Set to start of UTC day
 
         console.log(`Checking post limits for user ${req.user.id}, type ${postData.type}`);
 
@@ -235,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             and(
               eq(posts.userId, req.user.id),
               eq(posts.type, postData.type),
-              sql`DATE(created_at AT TIME ZONE 'UTC') = CURRENT_DATE`
+              sql`${posts.createdAt} >= ${today} AND ${posts.createdAt} < ${new Date(today.getTime() + 24*60*60*1000)}`
             )
           );
 
