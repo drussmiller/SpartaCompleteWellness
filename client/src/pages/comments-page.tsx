@@ -47,9 +47,10 @@ function CommentThread({
           <div className="bg-muted/50 rounded-lg px-3 py-2">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium">{comment.author.username}</p>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">•</span>
+              <p className="text-xs text-muted-foreground">
                 {new Date(comment.createdAt!).toLocaleDateString()}
-              </span>
+              </p>
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
           </div>
@@ -69,17 +70,14 @@ function CommentThread({
 
       {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
         <div className="space-y-2">
-          {comment.replies.map((reply) => {
-            console.log(`Rendering reply ${reply.id} to comment ${comment.id}`, reply);
-            return (
+          {comment.replies.map((reply) => (
               <CommentThread
                 key={reply.id}
                 comment={reply}
                 depth={depth + 1}
                 onReply={onReply}
               />
-            );
-          })}
+            ))}
         </div>
       )}
     </div>
@@ -104,11 +102,13 @@ export default function CommentsPage() {
     }
   });
 
+  // Modified query to fetch all comments related to this post
   const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
+        // Modified query to fetch all comments in the thread
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) throw new Error("Failed to fetch comments");
         const comments = await res.json();
         console.log("Raw comments from API:", comments);
@@ -185,7 +185,7 @@ export default function CommentsPage() {
     );
   }
 
-  // Build the comment tree based on parent-child relationships
+  // Build comment tree based on parent-child relationships
   const buildCommentTree = (comments: CommentWithAuthor[]): CommentWithAuthor[] => {
     // First, create a map of comments by their IDs
     const commentMap = new Map<number, CommentWithAuthor>();

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { queryClient } from "../client/src/lib/queryClient";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import { 
   posts, notifications, videos, users, teams, activities, workoutVideos,
   insertTeamSchema, insertPostSchema, insertMeasurementSchema,
@@ -506,7 +506,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add new endpoint after existing post routes
+  // Add new comment thread endpoint after existing post routes
+  app.get("/api/posts/comments/:postId", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      console.log('Fetching comment thread for post:', req.params.postId);
+
+      // First get all comments related to this post
+      const comments = await db
+        .select({
+          id: posts.id,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          userId: posts.userId,
+          parentId: posts.parentId,
+          createdAt: posts.createdAt,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(
+          and(
+            eq(posts.type, 'comment'),
+            // Get both direct replies and nested replies
+            or(
+              eq(posts.parentId, parseInt(req.params.postId)),
+              sql`${posts.id} IN (
+                WITH RECURSIVE comment_tree AS (
+                  -- Base case: direct replies to the post
+                  SELECT id FROM ${posts}
+                  WHERE parent_id = ${parseInt(req.params.postId)}
+                  AND type = 'comment'
+
+                  UNION ALL
+
+                  -- Recursive case: replies to comments
+                  SELECT p.id
+                  FROM ${posts} p
+                  INNER JOIN comment_tree ct ON p.parent_id = ct.id
+                  WHERE p.type = 'comment'
+                )
+                SELECT id FROM comment_tree
+              )`
+            )
+          )
+        )
+        .orderBy(posts.createdAt);
+
+      console.log('Comments found:', comments.length);
+      console.log('Sample comment data:', comments[0] || 'No comments found');
+      res.json(comments);
+    } catch (error) {
+      console.error('Error fetching comment thread:', error);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
   app.get("/api/posts/limits", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
@@ -859,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )`
         })
         .from(activities)
-        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .leftJoin(workoutVideos, eq(activities.id, workout.activityId))
         .where(eq(activities.id, activity.id))
         .groupBy(activities.id);
 
@@ -1103,38 +1165,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user/change-password", async (req, res) => {
+  app.post("/api/user/password", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const { currentPassword, newPassword } = req.body;
 
-      if (!currentPassword || !newPassword) {
-        return res.status(40).json({ error: "Both current and new passwords are required" });
-      }
-
-      // Get the user's current stored password
-      const user = await storage.getUser(req.user.id);      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
       // Verify current password
-      const isValidPassword = await comparePasswords(currentPassword, user.password);
-
-      if (!isValidPassword) {
-        return res.status(400).json({ error: "Current password is incorrect" });
+      const user = await storage.getUser(req.user.id);
+      if (!user || !(await comparePasswords(currentPassword, user.password))) {
+        return res.status(400).json({ message: "Current password is incorrect" });
       }
 
       // Hash and update the new password
       const hashedPassword = await hashPassword(newPassword);
-            await db
+      await db
         .update(users)
         .set({ password: hashedPassword })
         .where(eq(users.id, req.user.id));
 
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error changing password:', error);
-      res.status(500).json({ error: "Failed to change password" });
+      console.error('Error updating password:', error);
+      res.status(500).json({ message: "Failed to update password" });
     }
   });
 
