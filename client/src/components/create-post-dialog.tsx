@@ -56,6 +56,9 @@ export function CreatePostDialog() {
   const { canPost, counts } = usePostLimits();
   const { user } = useAuth();
 
+  console.log('Current post counts:', counts);
+  console.log('Can post status:', canPost);
+
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
@@ -78,10 +81,11 @@ export function CreatePostDialog() {
         imageUrl: imagePreview || null,
       };
 
+      console.log('Creating post with data:', postData);
       const res = await apiRequest("POST", "/api/posts", postData);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || 'Failed to create post');
+        throw new Error(error.message || error.error || 'Failed to create post');
       }
       return res.json();
     },
@@ -102,6 +106,7 @@ export function CreatePostDialog() {
       });
     },
     onError: (error: Error) => {
+      console.error('Post creation error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -110,31 +115,29 @@ export function CreatePostDialog() {
     },
   });
 
-  // Modified getRemainingMessage function to correctly show remaining posts
   function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    // Get the daily limit for each type
-    const postLimits = {
+    // Post limits
+    const limits = {
       food: 3,
       workout: 1,
       scripture: 1
     };
 
-    // Get the current count for this type
-    const used = counts[type as keyof typeof counts];
-    const limit = postLimits[type as keyof typeof postLimits];
+    const used = counts[type as keyof typeof counts] || 0;
+    const limit = limits[type as keyof typeof limits];
 
-    if (limit === undefined) return "";
+    if (!limit) return "";
 
-    console.log(`Post type ${type}: Used ${used}/${limit}`);
-    const remaining = limit - used;
-    return remaining > 0 ? `(${remaining} remaining today)` : "(Daily limit reached)";
+    console.log(`Post type ${type}: ${used}/${limit} used`);
+    return used >= limit ? "(Daily limit reached)" : `(${limit - used} remaining today)`;
   }
 
   const onSubmit = (data: CreatePostForm) => {
+    console.log('Submitting form with data:', data);
     createPostMutation.mutate(data);
   };
 
