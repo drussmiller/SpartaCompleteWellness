@@ -38,36 +38,39 @@ function CommentThread({
   return (
     <div className={cn(
       "flex flex-col gap-4",
-      depth > 0 && "ml-6 pl-4 border-l border-border"
+      depth > 0 && "ml-8 pl-4 border-l border-border"
     )}>
-      <div className={cn(
-        "flex items-start gap-3 p-3 rounded-lg",
-        isAuthor ? "bg-primary/10" : "bg-muted/50"
-      )}>
-        <Avatar className="h-6 w-6">
+      <div className="flex items-start gap-3">
+        <Avatar className="h-8 w-8">
           <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
           <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">
-              {comment.author.username}
-              {isAuthor && (
-                <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded-full">
-                  Author
-                </span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {new Date(comment.createdAt!).toLocaleDateString()}
-            </p>
+          <div className="bg-muted/50 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">
+                {comment.author.username}
+                {isAuthor && (
+                  <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded-full">
+                    Author
+                  </span>
+                )}
+              </p>
+              <span className="text-muted-foreground">•</span>
+              <p className="text-xs text-muted-foreground">
+                {new Date(comment.createdAt!).toLocaleDateString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+            <p className="text-sm mt-1">{comment.content}</p>
           </div>
-          <p className="text-sm mt-1">{comment.content}</p>
           {depth < maxDepth && (
             <Button
               variant="ghost"
               size="sm"
-              className="mt-2"
+              className="mt-1 h-7 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => onReply(comment.id)}
             >
               Reply
@@ -234,9 +237,10 @@ export default function CommentsPage() {
                   <div className="relative">
                     <Textarea
                       {...field}
-                      placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
+                      placeholder={replyToId ? "Write a reply..." : "Write a comment..."}
                       value={field.value || ''}
                       onKeyDown={handleKeyPress}
+                      className="min-h-[100px] resize-none"
                     />
                     <Button
                       type="button"
