@@ -123,18 +123,21 @@ export function CreatePostDialog() {
 
   // Get remaining posts message based on type
   const getRemainingMessage = (type: string) => {
-    const remaining = {
-      food: 3 - (counts.food || 0),
-      workout: 1 - (counts.workout || 0),
-      scripture: 1 - (counts.scripture || 0),
-      memory_verse: 1 - (counts.memory_verse || 0)
-    }[type] || 0;
-
     if (type === 'memory_verse') {
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    return remaining > 0 ? `(${remaining} remaining today)` : "(Daily limit reached)";
+    if (!canPost[type as keyof typeof canPost]) {
+      return "(Daily limit reached)";
+    }
+
+    const remaining = {
+      food: 3 - (counts.food || 0),
+      workout: 1 - (counts.workout || 0),
+      scripture: 1 - (counts.scripture || 0),
+    }[type] || 0;
+
+    return `(${remaining} remaining today)`;
   };
 
   return (
