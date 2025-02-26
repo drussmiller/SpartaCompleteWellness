@@ -10,12 +10,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EmojiPicker from 'emoji-picker-react';
 import { Link } from "wouter";
+import React from 'react';
+import { Loader2 } from "lucide-react";
 
 function CommentThread({
   comment,
@@ -105,7 +107,7 @@ export default function CommentsPage() {
     }
   });
 
-  const { data: comments, refetch: refetchComments } = useQuery<CommentWithAuthor[]>({
+  const { data: comments, isLoading, refetch: refetchComments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       try {
@@ -173,7 +175,7 @@ export default function CommentsPage() {
       setShowEmojiPicker(false);
       toast({
         title: "Success",
-        description: "Comment added successfully",
+        description: "Comment added successfully!",
       });
     },
     onError: (error: Error) => {
@@ -199,6 +201,14 @@ export default function CommentsPage() {
       handleSubmit(formData);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-3xl mx-auto py-6">
@@ -245,8 +255,7 @@ export default function CommentsPage() {
                   <div className="absolute top-full right-0 z-50">
                     <EmojiPicker
                       onEmojiClick={(emojiData) => {
-                        const newValue = (field.value || '') + emojiData.emoji;
-                        field.onChange(newValue);
+                        field.onChange((field.value || '') + emojiData.emoji);
                         setShowEmojiPicker(false);
                       }}
                     />
