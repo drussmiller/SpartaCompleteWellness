@@ -291,91 +291,90 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                 {comments?.length || 0} Comments
               </Button>
 
-              <div className={cn(
-                "fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg transform transition-transform duration-300 ease-in-out z-50",
-                isDrawerOpen ? "translate-x-0" : "translate-x-full"
-              )}>
-                <div className="h-full flex flex-col p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Comments</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsDrawerOpen(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="content"
-                          render={({ field }) => (
-                            <FormItem className="relative">
-                              <FormControl>
-                                <div className="relative">
-                                  <textarea
-                                    className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                    placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
-                                    {...field}
-                                    value={field.value || ""}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
+              {isDrawerOpen && (
+                <div className="fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg z-50">
+                  <div className="h-full flex flex-col p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold">Comments</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsDrawerOpen(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(data => addCommentMutation.mutate(data))} className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="content"
+                            render={({ field }) => (
+                              <FormItem className="relative">
+                                <FormControl>
+                                  <div className="relative">
+                                    <textarea
+                                      className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                      placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
+                                      {...field}
+                                      value={field.value || ""}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                          e.preventDefault();
+                                          form.handleSubmit(onSubmit)();
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="absolute right-2 top-2"
+                                      onClick={(e) => {
                                         e.preventDefault();
-                                        form.handleSubmit(onSubmit)();
-                                      }
-                                    }}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-2 top-2"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setShowEmojiPicker(!showEmojiPicker);
-                                    }}
-                                  >
-                                    😊
-                                  </Button>
-                                </div>
-                              </FormControl>
-                              {showEmojiPicker && (
-                                <div className="absolute top-full left-0 z-50">
-                                  <EmojiPicker
-                                    onEmojiClick={(emojiData) => {
-                                      field.onChange((field.value || '') + emojiData.emoji);
-                                      setShowEmojiPicker(false);
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            </FormItem>
-                          )}
-                        />
-                      </form>
-                    </Form>
-
-                    <div className="space-y-4 mt-6">
-                      {comments && comments.length > 0 ? (
-                        commentTree.map((comment) => (
-                          <CommentThread
-                            key={comment.id}
-                            comment={comment}
-                            postAuthorId={post.userId}
-                            currentUser={currentUser!}
-                            onReply={setReplyToId}
+                                        setShowEmojiPicker(!showEmojiPicker);
+                                      }}
+                                    >
+                                      😊
+                                    </Button>
+                                  </div>
+                                </FormControl>
+                                {showEmojiPicker && (
+                                  <div className="absolute top-full left-0 z-50">
+                                    <EmojiPicker
+                                      onEmojiClick={(emojiData) => {
+                                        field.onChange((field.value || '') + emojiData.emoji);
+                                        setShowEmojiPicker(false);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </FormItem>
+                            )}
                           />
-                        ))
-                      ) : (
-                        <p className="text-center text-muted-foreground">No comments yet</p>
-                      )}
+                        </form>
+                      </Form>
+
+                      <div className="space-y-4 mt-6">
+                        {comments && comments.length > 0 ? (
+                          commentTree.map((comment) => (
+                            <CommentThread
+                              key={comment.id}
+                              comment={comment}
+                              postAuthorId={post.userId}
+                              currentUser={currentUser!}
+                              onReply={setReplyToId}
+                            />
+                          ))
+                        ) : (
+                          <p className="text-center text-muted-foreground">No comments yet</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
           </div>
         </div>
       </CardContent>
