@@ -277,32 +277,30 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
-          <Drawer.Root open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-            <Drawer.Trigger asChild>
+          <div className="relative">
               <Button
                 variant="ghost"
                 size="sm"
                 className="ml-auto"
                 onClick={() => {
                   console.log('Opening comments drawer');
-                  setIsDrawerOpen(true);
+                  setIsDrawerOpen(!isDrawerOpen);
                 }}
               >
                 <MessageCircle className="h-4 w-4 mr-2" />
                 {comments?.length || 0} Comments
               </Button>
-            </Drawer.Trigger>
-            <Drawer.Portal>
-              <Drawer.Overlay className="fixed inset-0 bg-black/40" />
-              <Drawer.Content className="bg-background flex flex-col fixed right-0 top-0 h-full w-[400px] border-l animate-slide-in-from-right">
-                <div className="p-4 flex-1 overflow-y-auto">
+              
+              <div className={cn(
+                "fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg transform transition-transform duration-300 ease-in-out z-50",
+                isDrawerOpen ? "translate-x-0" : "translate-x-full"
+              )}>
+                <div className="p-4 flex-1 h-full overflow-y-auto">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="font-semibold">Comments</h2>
-                    <Drawer.Close asChild>
-                      <Button variant="ghost" size="icon">
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </Drawer.Close>
+                    <Button variant="ghost" size="icon" onClick={() => setIsDrawerOpen(false)}>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
                   </div>
 
                   <Form {...form}>
@@ -317,17 +315,23 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                           <FormItem className="relative">
                             <FormControl>
                               <div className="relative">
-                                <Input
-                                  placeholder={replyToId ? "Write a reply..." : "Add a comment..."}
+                                <textarea
+                                  className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
                                   {...field}
                                   value={field.value || ""}
-                                  onKeyPress={handleKeyPress}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      form.handleSubmit(onSubmit)();
+                                    }
+                                  }}
                                 />
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                                  className="absolute right-2 top-2"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     setShowEmojiPicker(!showEmojiPicker);
@@ -381,9 +385,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                     )}
                   </div>
                 </div>
-              </Drawer.Content>
-            </Drawer.Portal>
-          </Drawer.Root>
+              </div>
+          </div>
         </div>
       </CardContent>
     </Card>
