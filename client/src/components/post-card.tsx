@@ -123,7 +123,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         return [];
       }
     },
-    enabled: isDrawerOpen,
+    enabled: isDrawerOpen, // Only fetch when drawer is open
   });
 
   const commentTree = useMemo(() => {
