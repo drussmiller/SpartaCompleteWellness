@@ -98,7 +98,7 @@ export default function CommentsPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Fetch the original post first
-  const { data: post, isLoading: isLoadingPost } = useQuery<Post>({
+  const { data: post, isLoading: isLoadingPost } = useQuery<Post & { author: any }>({
     queryKey: ["/api/posts", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/${postId}`);
@@ -182,10 +182,7 @@ export default function CommentsPage() {
   });
 
   const handleSubmit = async (data: z.infer<typeof insertPostSchema>) => {
-    await addCommentMutation.mutateAsync({
-      ...data,
-      parentId: replyToId || parseInt(postId!)
-    });
+    await addCommentMutation.mutateAsync(data);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
