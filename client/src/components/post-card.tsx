@@ -90,7 +90,7 @@ function CommentThread({
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const [showComments, setShowComments] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [replyToId, setReplyToId] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof insertPostSchema>>({
@@ -121,7 +121,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         return []; // Return empty array on error
       }
     },
-    enabled: showComments,
+    enabled: isDrawerOpen,
   });
 
   const commentTree = useMemo(() => {
@@ -221,6 +221,11 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     return !isFromPreviousDay || post.type === 'comment';
   };
 
+  const onSubmit = (data: z.infer<typeof insertPostSchema>) => {
+    addCommentMutation.mutate(data);
+  };
+
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between p-4">
@@ -263,12 +268,16 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
-          <Drawer.Root open={showComments} onOpenChange={setShowComments}>
+          <Drawer.Root open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
             <Drawer.Trigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="ml-auto"
+                onClick={() => {
+                  console.log('Opening comments drawer');
+                  setIsDrawerOpen(true);
+                }}
               >
                 <MessageCircle className="h-4 w-4 mr-2" />
                 {comments?.length || 0} Comments
@@ -276,7 +285,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             </Drawer.Trigger>
             <Drawer.Portal>
               <Drawer.Overlay className="fixed inset-0 bg-black/40" />
-              <Drawer.Content className="bg-background flex flex-col rounded-t-[10px] h-[80vh] mt-24 fixed bottom-0 left-0 right-0">
+              <Drawer.Content className="bg-background flex flex-col rounded-t-[10px] h-[96vh] mt-24 fixed bottom-0 left-0 right-0">
                 <div className="p-4 rounded-t-[10px] flex-1 overflow-y-auto">
                   <div className="max-w-2xl mx-auto">
                     <div className="flex items-center justify-between mb-4">
@@ -286,37 +295,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                       </Drawer.Close>
                     </div>
 
-                    {/* Original Post */}
-                    <Card className="mb-6">
-                      <CardHeader className="flex flex-row items-center p-4">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${post.author.username}`} />
-                          <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="ml-3">
-                          <p className="text-sm font-semibold">{post.author.username}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(post.createdAt!).toLocaleDateString()}</p>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0">
-                        {post.content && (
-                          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-                        )}
-                        {post.imageUrl && (
-                          <img
-                            src={post.imageUrl}
-                            alt={post.type}
-                            className="w-full h-auto object-contain rounded-md mt-2"
-                          />
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* Comment Form */}
                     <Form {...form}>
                       <form
-                        onSubmit={form.handleSubmit((data) => addCommentMutation.mutate(data))}
-                        className="flex items-center gap-2 mb-6"
+                        onSubmit={form.handleSubmit(onSubmit)}
+                        className="flex items-center gap-2 mt-6"
                       >
                         <FormField
                           control={form.control}
@@ -348,17 +330,20 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                       </form>
                     </Form>
 
-                    {/* Comments List */}
                     <div className="space-y-4">
-                      {commentTree.map((comment) => (
-                        <CommentThread
-                          key={comment.id}
-                          comment={comment}
-                          postAuthorId={post.userId}
-                          currentUser={currentUser!}
-                          onReply={setReplyToId}
-                        />
-                      ))}
+                      {comments && comments.length > 0 ? (
+                        commentTree.map((comment) => (
+                          <CommentThread
+                            key={comment.id}
+                            comment={comment}
+                            postAuthorId={post.userId}
+                            currentUser={currentUser!}
+                            onReply={setReplyToId}
+                          />
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground">No comments yet</p>
+                      )}
                     </div>
                   </div>
                 </div>

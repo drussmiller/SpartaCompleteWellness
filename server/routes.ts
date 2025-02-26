@@ -331,6 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // If parentId is provided, return comments for that post
       if (req.query.parentId) {
+        console.log('Fetching comments for post:', req.query.parentId);
         const comments = await db
           .select({
             id: posts.id,
@@ -361,6 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Comments found:', comments.length);
         console.log('Sample comment:', comments[0]);
         res.json(comments);
+        return;
       } else {
         // Get all posts for the user's team
         if (!req.user.teamId) {
@@ -918,7 +920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workoutVideos: sql<string>`COALESCE(
             json_agg(
               json_build_object(
-                'id', ${workoutVideos}.id,
+                                'id', ${workoutVideos}.id,
                 'url', ${workoutVideos}.url,
                 'description', ${workoutVideos}.description
               )
