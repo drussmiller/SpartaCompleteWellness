@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
-import { Redirect, Route } from "wouter";
+import { Route, useLocation } from "wouter";
 
 export function ProtectedRoute({
   path,
@@ -10,6 +10,7 @@ export function ProtectedRoute({
   component: () => React.JSX.Element;
 }) {
   const { user, isLoading } = useAuth();
+  const [, navigate] = useLocation();
 
   if (isLoading) {
     return (
@@ -22,29 +23,8 @@ export function ProtectedRoute({
   }
 
   if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
-  }
-
-  // Allow admin access to all pages
-  if (user.isAdmin) {
-    return (
-      <Route path={path}>
-        <Component />
-      </Route>
-    );
-  }
-
-  // For non-admin users without a team, only allow access to profile and help pages
-  if (!user.teamId && !path.match(/^\/(profile|help)$/)) {
-    return (
-      <Route path={path}>
-        <Redirect to="/profile" />
-      </Route>
-    );
+    navigate("/auth");
+    return null;
   }
 
   return (
