@@ -921,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )`
         })
         .from(activities)
-        .leftJoin(workoutVideos, eq(activities.id, workout.activityId))
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
         .where(eq(activities.id, activity.id))
         .groupBy(activities.id);
 
