@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Check daily post limits for other post types
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setUTCDate(today.getUTCDate()); //added to set date to UTC
 
         console.log(`Checking post limits for user ${req.user.id}, type ${postData.type}`);
 
@@ -437,9 +437,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Compare only the date part
         const isFromPreviousDay = 
-          postDate.getFullYear() !== today.getFullYear() ||
-          postDate.getMonth() !== today.getMonth() ||
-          postDate.getDate() !== today.getDate();
+          postDate.getUTCFullYear() !== today.getUTCFullYear() ||
+          postDate.getUTCMonth() !== today.getUTCMonth() ||
+          postDate.getUTCDate() !== today.getUTCDate();
 
         if (isFromPreviousDay) {
           return res.status(403).json({
@@ -927,8 +927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const video = await storage.createVideo(videoData);
       res.status(201).json(video);
     } catch (e) {      console.error('Error creating video:', e);
-      if (e instanceof z.ZodError) {
-        res.status(400).json({
+      if (e instanceof z.ZodError) {        res.status(400).json({
           error: 'Validation Error',
           details: e.errors        });
       } else {
