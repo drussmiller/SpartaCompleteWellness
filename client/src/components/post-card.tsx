@@ -290,7 +290,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                 <MessageCircle className="h-4 w-4 mr-2" />
                 {comments?.length || 0} Comments
               </Button>
-              
+
               <div className={cn(
                 "fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg transform transition-transform duration-300 ease-in-out z-50",
                 isDrawerOpen ? "translate-x-0" : "translate-x-full"
@@ -314,63 +314,33 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                         render={({ field }) => (
                           <FormItem className="relative">
                             <FormControl>
-                              <div className="flex flex-col gap-4">
-                                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                                  {comments?.map((comment) => (
-                                    <div key={comment.id} className="flex items-start gap-2">
-                                      <Avatar className="h-6 w-6">
-                                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
-                                        <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
-                                      </Avatar>
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-sm font-medium">{comment.author.username}</span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {new Date(comment.createdAt!).toLocaleString()}
-                                          </span>
-                                        </div>
-                                        <p className="text-sm mt-1">{comment.content}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="relative">
-                                  <textarea
-                                    className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                    placeholder={replyToId ? "Write a reply... (Press Enter to send)" : "Add a comment... (Press Enter to send)"}
-                                    {...field}
-                                    value={field.value || ""}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        form.handleSubmit(onSubmit)();
-                                      }
-                                    }}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-2 top-2"
-                                    onClick={(e) => {
+                              <div className="relative">
+                                <textarea
+                                  className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
+                                  {...field}
+                                  value={field.value || ""}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
                                       e.preventDefault();
-                                      setShowEmojiPicker(!showEmojiPicker);
+                                      form.handleSubmit(onSubmit)();
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-2 top-2"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowEmojiPicker(!showEmojiPicker);
                                   }}
                                 >
                                   😊
                                 </Button>
                               </div>
                             </FormControl>
-                            {showEmojiPicker && (
-                              <div className="absolute top-full left-0 z-50">
-                                <EmojiPicker
-                                  onEmojiClick={(emojiData) => {
-                                    field.onChange((field.value || '') + emojiData.emoji);
-                                    setShowEmojiPicker(false);
-                                  }}
-                                />
-                              </div>
-                            )}
                           </FormItem>
                         )}
                       />
