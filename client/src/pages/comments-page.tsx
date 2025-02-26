@@ -1,4 +1,3 @@
-
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -33,6 +32,13 @@ function CommentThread({
   });
 
   const maxDepth = 3;
+  const { user: currentUser } = useAuth();
+  const deleteCommentMutation = useMutation({
+    mutationFn: () => {
+        //Implementation for deleting comment would go here
+        return Promise.resolve();
+    }
+  })
 
   return (
     <div className={cn(
@@ -65,6 +71,17 @@ function CommentThread({
               <MessageSquare className="h-3 w-3 mr-1" />
               Reply
             </Button>
+            {currentUser?.id === comment.userId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteCommentMutation.mutate()}
+                disabled={deleteCommentMutation.isPending}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>
