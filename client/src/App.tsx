@@ -15,7 +15,7 @@ import ActivityManagementPage from "@/pages/activity-management";
 import CommentsPage from "@/pages/comments-page";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
-import ProtectedRoute from "@/components/protected-route";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 export default function App() {
   return (
