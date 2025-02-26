@@ -30,10 +30,16 @@ export function usePostLimits() {
       // Get local timezone offset in minutes
       const tzOffset = new Date().getTimezoneOffset();
       const res = await apiRequest("GET", `/api/posts/limits?tzOffset=${tzOffset}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch post limits');
+      }
       const data = await res.json();
       console.log('Post limits response:', data);
       return data;
-    }
+    },
+    staleTime: 30000, // Refetch after 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   // Log the current state
