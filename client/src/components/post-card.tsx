@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Post, User, CommentWithAuthor } from "@shared/schema";
-import { Trash2, MessageCircle, ArrowLeft } from "lucide-react";
+import { Trash2, MessageCircle, ArrowLeft, X } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
