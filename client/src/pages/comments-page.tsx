@@ -12,11 +12,10 @@ import { insertPostSchema, type CommentWithAuthor, type Post } from "@shared/sch
 import { z } from "zod";
 import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EmojiPicker from 'emoji-picker-react';
 import { Link } from "wouter";
-import { Loader2 } from "lucide-react";
 
 function CommentThread({
   comment,
@@ -98,34 +97,23 @@ export default function CommentsPage() {
   const [replyToId, setReplyToId] = useState<number | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  const form = useForm<z.infer<typeof insertPostSchema>>({
-    resolver: zodResolver(insertPostSchema),
-    defaultValues: {
-      type: "comment",
-      content: "",
-      imageUrl: null,
-      points: 1,
-      parentId: null,
-      depth: 0
-    }
-  });
-
   // Fetch the original post first
-  const { data: post } = useQuery<Post>({
+  const { data: post, isLoading: isLoadingPost } = useQuery<Post>({
     queryKey: ["/api/posts", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch post");
       return res.json();
-    }
+    },
+    enabled: !!postId // Only run if we have a postId
   });
 
   const { data: comments, isLoading, refetch: refetchComments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", postId, "comments"],
     queryFn: async () => {
       try {
-        // Get all comments where parentId matches the current post ID
-        const res = await apiRequest("GET", `/api/posts?type=comment&parentId=${postId}`);
+        if (!postId) return [];
+        const res = await apiRequest("GET", `/api/posts?parentId=${postId}&type=comment`);
         if (!res.ok) {
           throw new Error("Failed to fetch comments");
         }
@@ -140,30 +128,20 @@ export default function CommentsPage() {
         return [];
       }
     },
+    enabled: !!postId
   });
 
-  const commentTree = useMemo(() => {
-    if (!comments) return [];
-
-    const commentMap = new Map<number, CommentWithAuthor>();
-    const roots: CommentWithAuthor[] = [];
-
-    comments.forEach(comment => {
-      commentMap.set(comment.id, { ...comment, replies: [] });
-    });
-
-    comments.forEach(comment => {
-      if (comment.parentId === parseInt(postId!)) {
-        roots.push(commentMap.get(comment.id)!);
-      } else if (comment.parentId && commentMap.has(comment.parentId)) {
-        const parent = commentMap.get(comment.parentId)!;
-        if (!parent.replies) parent.replies = [];
-        parent.replies.push(commentMap.get(comment.id)!);
-      }
-    });
-
-    return roots;
-  }, [comments, postId]);
+  const form = useForm<z.infer<typeof insertPostSchema>>({
+    resolver: zodResolver(insertPostSchema),
+    defaultValues: {
+      type: "comment",
+      content: "",
+      imageUrl: null,
+      points: 1,
+      parentId: null,
+      depth: 0
+    }
+  });
 
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
@@ -218,13 +196,44 @@ export default function CommentsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingPost) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
+
+  if (!post) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-destructive">
+        Post not found
+      </div>
+    );
+  }
+
+  const commentTree = useMemo(() => {
+    if (!comments) return [];
+
+    const commentMap = new Map<number, CommentWithAuthor>();
+    const roots: CommentWithAuthor[] = [];
+
+    comments.forEach(comment => {
+      commentMap.set(comment.id, { ...comment, replies: [] });
+    });
+
+    comments.forEach(comment => {
+      if (comment.parentId === parseInt(postId!)) {
+        roots.push(commentMap.get(comment.id)!);
+      } else if (comment.parentId && commentMap.has(comment.parentId)) {
+        const parent = commentMap.get(comment.parentId)!;
+        if (!parent.replies) parent.replies = [];
+        parent.replies.push(commentMap.get(comment.id)!);
+      }
+    });
+
+    return roots;
+  }, [comments, postId]);
 
   return (
     <div className="container max-w-3xl mx-auto py-6">
@@ -302,7 +311,7 @@ export default function CommentsPage() {
             <CommentThread
               key={comment.id}
               comment={comment}
-              postAuthorId={post?.userId || 0}
+              postAuthorId={post.userId}
               currentUser={currentUser!}
               onReply={setReplyToId}
             />
