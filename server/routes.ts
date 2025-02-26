@@ -930,8 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (e instanceof z.ZodError) {
         res.status(400).json({
           error: 'Validation Error',
-          details: e.errors
-        });
+          details: e.errors        });
       } else {
         res.status(500).json({
           error: 'Internal ServerError',
