@@ -18,8 +18,6 @@ import { Drawer } from "vaul";
 import { cn } from "@/lib/utils";
 import EmojiPicker from 'emoji-picker-react';
 
-// Rest of the imports remain unchanged
-
 function CommentThread({
   comment,
   postAuthorId,
@@ -310,13 +308,13 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                   <Form {...form}>
                     <form
                       onSubmit={form.handleSubmit(onSubmit)}
-                      className="flex items-center gap-2 mt-6"
+                      className="space-y-4"
                     >
                       <FormField
                         control={form.control}
                         name="content"
                         render={({ field }) => (
-                          <FormItem className="flex-1 relative">
+                          <FormItem className="relative">
                             <FormControl>
                               <div className="relative">
                                 <Input
@@ -330,14 +328,17 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                                   variant="ghost"
                                   size="sm"
                                   className="absolute right-2 top-1/2 -translate-y-1/2"
-                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowEmojiPicker(!showEmojiPicker);
+                                  }}
                                 >
                                   😊
                                 </Button>
                               </div>
                             </FormControl>
                             {showEmojiPicker && (
-                              <div className="absolute bottom-full right-0 z-50">
+                              <div className="absolute top-full left-0 z-50">
                                 <EmojiPicker
                                   onEmojiClick={(emojiData) => {
                                     field.onChange((field.value || '') + emojiData.emoji);
@@ -349,18 +350,18 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" disabled={addCommentMutation.isPending}>
-                        {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
-                      </Button>
                       {replyToId && (
                         <Button
                           variant="ghost"
                           type="button"
                           onClick={() => setReplyToId(null)}
                         >
-                          Cancel
+                          Cancel Reply
                         </Button>
                       )}
+                      <Button type="submit" disabled={addCommentMutation.isPending}>
+                        {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+                      </Button>
                     </form>
                   </Form>
 
