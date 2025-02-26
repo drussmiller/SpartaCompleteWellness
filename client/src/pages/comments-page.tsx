@@ -159,17 +159,19 @@ export default function CommentsPage() {
         ...data,
         type: "comment",
         parentId,
-        points: 1
+        points: 1,
+        imageUrl: null
       });
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to add comment");
+        throw new Error(error.message || error.error || 'Failed to create comment');
       }
       return res.json();
     },
     onSuccess: async () => {
       await refetchComments();
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
       form.reset();
       setReplyToId(null);
       setShowEmojiPicker(false);
