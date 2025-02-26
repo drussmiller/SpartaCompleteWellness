@@ -103,7 +103,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     },
   });
 
-  const { data: comments, error } = useQuery<CommentWithAuthor[]>({
+  const { data: comments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
       console.log('Fetching comments for post:', post.id);
@@ -119,7 +119,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           description: "Failed to load comments",
           variant: "destructive",
         });
-        return []; // Return empty array on error
+        return [];
       }
     },
     enabled: isDrawerOpen,
@@ -167,6 +167,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
       form.reset();
       setReplyToId(null);
+      setShowEmojiPicker(false);
       toast({
         title: "Success",
         description: "Comment added successfully",
@@ -225,108 +226,108 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
           <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto"
-                onClick={() => {
-                  console.log('Opening comments drawer');
-                  setIsDrawerOpen(!isDrawerOpen);
-                }}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                {comments?.length || 0} Comments
-              </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
+              onClick={() => {
+                console.log('Opening comments drawer');
+                setIsDrawerOpen(!isDrawerOpen);
+              }}
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              {comments?.length || 0} Comments
+            </Button>
 
-              <div className={cn(
-                "fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg transform transition-transform duration-300 ease-in-out z-50",
-                isDrawerOpen ? "translate-x-0" : "translate-x-full"
-              )}>
-                <div className="p-4 flex-1 h-full overflow-y-auto">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-semibold">Comments</h2>
-                    <Button variant="ghost" size="icon" onClick={() => setIsDrawerOpen(false)}>
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                  </div>
+            <div className={cn(
+              "fixed inset-y-0 right-0 w-[400px] bg-background border-l shadow-lg transform transition-transform duration-300 ease-in-out z-50",
+              isDrawerOpen ? "translate-x-0" : "translate-x-full"
+            )}>
+              <div className="p-4 flex-1 h-full overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold">Comments</h2>
+                  <Button variant="ghost" size="icon" onClick={() => setIsDrawerOpen(false)}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                </div>
 
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-4"
-                    >
-                      <FormField
-                        control={form.control}
-                        name="content"
-                        render={({ field }) => (
-                          <FormItem className="relative">
-                            <FormControl>
-                              <div className="relative">
-                                <Textarea
-                                  {...field}
-                                  placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
-                                  value={field.value || ''}
-                                  onKeyDown={handleKeyPress}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="absolute right-2 top-2"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setShowEmojiPicker(!showEmojiPicker);
-                                  }}
-                                >
-                                  😊
-                                </Button>
-                              </div>
-                            </FormControl>
-                            {showEmojiPicker && (
-                              <div className="absolute top-full left-0 z-50">
-                                <EmojiPicker
-                                  onEmojiClick={(emojiData) => {
-                                    field.onChange((field.value || '') + emojiData.emoji);
-                                    setShowEmojiPicker(false);
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </FormItem>
-                        )}
-                      />
-                      {replyToId && (
-                        <Button
-                          variant="ghost"
-                          type="button"
-                          onClick={() => setReplyToId(null)}
-                        >
-                          Cancel Reply
-                        </Button>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="content"
+                      render={({ field }) => (
+                        <FormItem className="relative">
+                          <FormControl>
+                            <div className="relative">
+                              <Textarea
+                                {...field}
+                                placeholder={replyToId ? "Write a reply..." : "Add a comment... (Press Enter to send)"}
+                                value={field.value || ''}
+                                onKeyDown={handleKeyPress}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-2 top-2"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setShowEmojiPicker(!showEmojiPicker);
+                                }}
+                              >
+                                😊
+                              </Button>
+                            </div>
+                          </FormControl>
+                          {showEmojiPicker && (
+                            <div className="absolute top-full right-0 z-50">
+                              <EmojiPicker
+                                onEmojiClick={(emojiData) => {
+                                  field.onChange((field.value || '') + emojiData.emoji);
+                                  setShowEmojiPicker(false);
+                                }}
+                              />
+                            </div>
+                          )}
+                        </FormItem>
                       )}
-                      <Button type="submit" disabled={addCommentMutation.isPending}>
-                        {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+                    />
+                    {replyToId && (
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        onClick={() => setReplyToId(null)}
+                      >
+                        Cancel Reply
                       </Button>
-                    </form>
-                  </Form>
-
-                  <div className="space-y-4 mt-6">
-                    {comments && comments.length > 0 ? (
-                      commentTree.map((comment) => (
-                        <CommentThread
-                          key={comment.id}
-                          comment={comment}
-                          postAuthorId={post.userId}
-                          currentUser={currentUser!}
-                          onReply={setReplyToId}
-                        />
-                      ))
-                    ) : (
-                      <p className="text-center text-muted-foreground">No comments yet</p>
                     )}
-                  </div>
+                    <Button type="submit" disabled={addCommentMutation.isPending}>
+                      {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+                    </Button>
+                  </form>
+                </Form>
+
+                <div className="space-y-4 mt-6">
+                  {comments && comments.length > 0 ? (
+                    commentTree.map((comment) => (
+                      <CommentThread
+                        key={comment.id}
+                        comment={comment}
+                        postAuthorId={post.userId}
+                        currentUser={currentUser!}
+                        onReply={setReplyToId}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground">No comments yet</p>
+                  )}
                 </div>
               </div>
+            </div>
           </div>
         </div>
       </CardContent>
