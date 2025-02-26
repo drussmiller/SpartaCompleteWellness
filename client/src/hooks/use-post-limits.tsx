@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 interface PostLimits {
   food: number;
@@ -10,6 +11,7 @@ interface PostLimits {
 }
 
 export function usePostLimits() {
+  const { user } = useAuth();
   const { data: posts } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
   });
@@ -18,7 +20,8 @@ export function usePostLimits() {
   const startOfDay = new Date(today.setHours(0, 0, 0, 0));
 
   const todaysPosts = posts?.filter(post => 
-    new Date(post.createdAt!) >= startOfDay
+    new Date(post.createdAt!) >= startOfDay && 
+    post.userId === user?.id
   ) || [];
 
   const dailyCounts = todaysPosts.reduce((acc, post) => {
@@ -43,7 +46,8 @@ export function usePostLimits() {
 
   const weeklyMemoryVerses = posts?.filter(post => 
     post.type === 'memory_verse' && 
-    new Date(post.createdAt!) >= startOfWeek
+    new Date(post.createdAt!) >= startOfWeek &&
+    post.userId === user?.id
   ).length || 0;
 
   const canPost = {
