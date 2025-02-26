@@ -31,7 +31,7 @@ function CommentThread({
   depth?: number;
 }) {
   const isAuthor = comment.userId === postAuthorId;
-  const maxDepth = 3; // Maximum nesting level
+  const maxDepth = 3;
 
   return (
     <div className={cn(
@@ -104,7 +104,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     },
   });
 
-  const { data: comments } = useQuery<CommentWithAuthor[]>({
+  const { data: comments, refetch: refetchComments } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
       console.log('Fetching comments for post:', post.id);
@@ -166,8 +166,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
+    onSuccess: async () => {
+      await refetchComments();
       form.reset();
       setReplyToId(null);
       setShowEmojiPicker(false);
