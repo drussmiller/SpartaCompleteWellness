@@ -52,8 +52,8 @@ export function usePostLimits() {
 
   const weeklyMemoryVerses = posts?.filter(post => 
     post.type === 'memory_verse' && 
-    new Date(post.createdAt!) >= startOfWeek &&
-    post.userId === user?.id
+    post.userId === user?.id &&
+    new Date(post.createdAt!) >= startOfWeek
   ).length || 0;
 
   console.log('Daily counts:', dailyCounts);
