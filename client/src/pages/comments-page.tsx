@@ -13,11 +13,97 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+function CommentThread({
+  comment,
+  depth = 0,
+  onReply
+}: {
+  comment: CommentWithAuthor;
+  depth?: number;
+  onReply: (parentId: number) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const maxDepth = 3;
+
+  // Format timestamp to show relative time like "14h", "2d", etc.
+  const getRelativeTime = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) {
+      return `${days}d`;
+    }
+    return `${hours}h`;
+  };
+
+  return (
+    <div className={cn(
+      "flex flex-col",
+      depth > 0 && "ml-8 pl-4 border-l border-border mt-2"
+    )}>
+      <div className="flex items-start gap-3">
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
+          <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <div className="bg-muted/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{comment.author.username}</p>
+            </div>
+            <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
+          </div>
+          <div className="flex items-center gap-4 mt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => onReply(comment.id)}
+            >
+              Reply
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {getRelativeTime(new Date(comment.createdAt!))}
+            </span>
+            {comment.replies && comment.replies.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                {isExpanded ? "Hide replies" : `Show ${comment.replies.length} replies`}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+      {isExpanded && comment.replies && depth < maxDepth && (
+        <div className="mt-2">
+          {comment.replies.map((reply) => (
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              onReply={onReply}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CommentsPage() {
   const { postId } = useParams();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const [replyToId, setReplyToId] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
@@ -45,7 +131,7 @@ export default function CommentsPage() {
       const res = await apiRequest("POST", "/api/posts", {
         ...data,
         type: "comment",
-        parentId: parseInt(postId!),
+        parentId: replyToId || parseInt(postId!),
         points: 1
       });
 
@@ -58,6 +144,7 @@ export default function CommentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
       form.reset();
+      setReplyToId(null);
       toast({
         title: "Success",
         description: "Comment added successfully",
@@ -93,6 +180,20 @@ export default function CommentsPage() {
     );
   }
 
+  // Build comment tree
+  const commentTree = comments?.reduce((acc: CommentWithAuthor[], comment) => {
+    if (!comment.parentId || comment.parentId === parseInt(postId!)) {
+      acc.push({ ...comment, replies: [] });
+    } else {
+      const parent = acc.find(c => c.id === comment.parentId);
+      if (parent) {
+        if (!parent.replies) parent.replies = [];
+        parent.replies.push(comment);
+      }
+    }
+    return acc;
+  }, []) || [];
+
   return (
     <div className="container max-w-3xl mx-auto py-6">
       <div className="flex items-center gap-4 mb-6">
@@ -112,40 +213,38 @@ export default function CommentsPage() {
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <Textarea
-                    {...field}
-                    placeholder="Write a comment..."
-                    className="min-h-[100px]"
-                    value={field.value || ''}
-                  />
+                  <div className="relative">
+                    <Textarea
+                      {...field}
+                      placeholder={replyToId ? "Write a reply..." : "Write a comment..."}
+                      className="min-h-[100px] pr-20"
+                      value={field.value || ''}
+                    />
+                  </div>
                 </FormControl>
               </FormItem>
             )}
           />
-          <Button type="submit" disabled={addCommentMutation.isPending}>
-            {addCommentMutation.isPending ? "Adding..." : "Comment"}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={addCommentMutation.isPending}>
+              {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+            </Button>
+            {replyToId && (
+              <Button variant="ghost" onClick={() => setReplyToId(null)}>
+                Cancel Reply
+              </Button>
+            )}
+          </div>
         </form>
       </Form>
 
-      <div className="space-y-4">
-        {comments?.map((comment) => (
-          <div key={comment.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
-              <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">{comment.author.username}</p>
-                <span className="text-muted-foreground">•</span>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(comment.createdAt!).toLocaleDateString()}
-                </p>
-              </div>
-              <p className="text-sm mt-1">{comment.content}</p>
-            </div>
-          </div>
+      <div className="space-y-6">
+        {commentTree.map((comment) => (
+          <CommentThread
+            key={comment.id}
+            comment={comment}
+            onReply={setReplyToId}
+          />
         ))}
         {!comments?.length && (
           <p className="text-center text-muted-foreground">No comments yet</p>
