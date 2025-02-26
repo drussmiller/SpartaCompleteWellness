@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
+import { insertPostSchema, type CommentWithAuthor, type Post } from "@shared/schema";
 import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -19,6 +19,28 @@ export default function CommentsPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
+  // First fetch the original post
+  const { data: post, isLoading: isLoadingPost } = useQuery<Post>({
+    queryKey: ["/api/posts", postId],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/posts/${postId}`);
+      if (!res.ok) throw new Error("Failed to fetch post");
+      return res.json();
+    },
+    enabled: !!postId && !!currentUser
+  });
+
+  // Then fetch the comments
+  const { data: comments, isLoading: isLoadingComments } = useQuery<CommentWithAuthor[]>({
+    queryKey: ["/api/posts", postId, "comments"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/posts?parentId=${postId}&type=comment`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      return res.json();
+    },
+    enabled: !!postId && !!currentUser
+  });
+
   const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
@@ -28,26 +50,6 @@ export default function CommentsPage() {
       points: 1,
       parentId: parseInt(postId!)
     }
-  });
-
-  const { data: comments, isLoading, error } = useQuery<CommentWithAuthor[]>({
-    queryKey: ["/api/posts", postId, "comments"],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", `/api/posts?parentId=${postId}&type=comment`);
-        if (!res.ok) throw new Error("Failed to fetch comments");
-        return res.json();
-      } catch (error) {
-        console.error("Error fetching comments:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load comments",
-          variant: "destructive",
-        });
-        return [];
-      }
-    },
-    enabled: !!postId
   });
 
   const addCommentMutation = useMutation({
@@ -65,7 +67,7 @@ export default function CommentsPage() {
       }
       return res.json();
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
       form.reset();
       toast({
@@ -82,7 +84,20 @@ export default function CommentsPage() {
     },
   });
 
-  if (isLoading) {
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Please log in to view comments</p>
+          <Link href="/auth">
+            <Button>Log In</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingPost || isLoadingComments) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -90,10 +105,10 @@ export default function CommentsPage() {
     );
   }
 
-  if (error) {
+  if (!post) {
     return (
       <div className="flex items-center justify-center min-h-screen text-destructive">
-        Error loading comments: {error instanceof Error ? error.message : 'Unknown error'}
+        Post not found
       </div>
     );
   }
@@ -139,7 +154,7 @@ export default function CommentsPage() {
               <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
               <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium">{comment.author.username}</p>
                 <span className="text-muted-foreground">•</span>
