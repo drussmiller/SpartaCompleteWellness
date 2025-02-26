@@ -128,7 +128,7 @@ export function CreatePostDialog() {
       workout: 1 - (counts.workout || 0),
       scripture: 1 - (counts.scripture || 0),
       memory_verse: 1 - (counts.memory_verse || 0)
-    }[type];
+    }[type] || 0;
 
     if (type === 'memory_verse') {
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
