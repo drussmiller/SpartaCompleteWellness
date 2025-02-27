@@ -12,14 +12,15 @@ import { MessageCircle } from "lucide-react";
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
 
-  const { data: commentCount } = useQuery<number>({
+  const { data: commentCount = 0 } = useQuery<number>({
     queryKey: ["/api/posts", post.id, "comment-count"],
     queryFn: async () => {
       try {
         if (!post.id) return 0;
         const res = await apiRequest("GET", `/api/posts/comments/${post.id}?count=true`);
         if (!res.ok) throw new Error("Failed to fetch comments");
-        return res.json();
+        const count = await res.json();
+        return count || 0;
       } catch (error) {
         console.error("Error fetching comment count:", error);
         return 0;
@@ -54,14 +55,14 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         )}
         <div className="mt-4 flex items-center gap-2">
           <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
-          <span className="text.xs text-muted-foreground">•</span>
+          <span className="text-xs text-muted-foreground">•</span>
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
           <Link href={`/comments/${post.id}`}>
             <Button variant="ghost" size="sm" className="gap-1.5">
               <MessageCircle className="h-4 w-4" />
-              {commentCount || 0}
+              {commentCount}
             </Button>
           </Link>
         </div>
