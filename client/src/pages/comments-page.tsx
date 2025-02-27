@@ -72,47 +72,48 @@ function CommentThread({
     });
   };
 
+  const handleReply = () => {
+    onReply(comment.id); //Added this line
+    setDrawerOpen(false);
+  };
+
+  const handleCopyText = () => {
+    handleCopyComment();
+    setDrawerOpen(false);
+  };
+
+
   return (
     <div className={cn(
       "flex flex-col gap-2",
       depth > 0 && "ml-8 pl-4 border-l border-border mt-2"
     )}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3" onClick={handleCommentClick}>
         <Avatar className="h-8 w-8">
           <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
           <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div 
-            className="bg-muted/50 rounded-lg px-3 py-2 relative cursor-pointer active:bg-muted"
-            onClick={handleCommentClick}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setDrawerOpen(true);
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">{comment.author.username}</p>
-              <span className="text-xs text-muted-foreground">•</span>
-              <p className="text-xs text-muted-foreground">
-                {new Date(comment.createdAt!).toLocaleDateString()}
-              </p>
-            </div>
-            <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
+          <div className="flex items-center justify-between">
+            <p className="font-medium">{comment.author.username}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(comment.createdAt!).toLocaleDateString()}
+            </p>
           </div>
-          {/* Comment interaction drawer */}
-          <CommentActionDrawer 
-            isOpen={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-            onReply={() => onReply(comment.id)}
-            onDelete={() => deleteCommentMutation.mutate()}
-            onCopy={handleCopyComment}
-            canDelete={currentUser?.id === comment.userId}
-            commentId={comment.id}
-            commentContent={comment.content || ''}
-          />
+          <div className="mt-1 text-sm whitespace-pre-wrap">{comment.content}</div>
         </div>
       </div>
+
+      <CommentActionDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onReply={handleReply}
+        onDelete={() => deleteCommentMutation.mutate()}
+        onCopy={handleCopyText}
+        canDelete={currentUser?.id === comment.userId}
+        commentId={comment.id}
+        commentContent={comment.content || ""}
+      />
 
       {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
         <div className="space-y-2">
