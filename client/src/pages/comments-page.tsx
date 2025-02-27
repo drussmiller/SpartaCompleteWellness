@@ -404,7 +404,7 @@ function CommentActionDrawer({
               onReply();
               onClose();
             }}
-            className="flex items-center gap-3 w-full p-3 text-left hover:bg-accent rounded-md"
+            className="flex items-center justify-center gap-3 w-full p-3 text-center hover:bg-accent rounded-md text-base font-medium"
           >
             <Reply className="h-5 w-5" />
             <span>Reply</span>
@@ -415,7 +415,7 @@ function CommentActionDrawer({
               onCopy();
               onClose();
             }}
-            className="flex items-center gap-3 w-full p-3 text-left hover:bg-accent rounded-md"
+            className="flex items-center justify-center gap-3 w-full p-3 text-center hover:bg-accent rounded-md text-base font-medium"
           >
             <Copy className="h-5 w-5" />
             <span>Copy Text</span>
@@ -428,7 +428,7 @@ function CommentActionDrawer({
                 // Don't close manually - let the mutation handler close it
                 // to prevent potential race conditions
               }}
-              className="flex items-center gap-3 w-full p-3 text-left text-destructive hover:bg-destructive/10 rounded-md"
+              className="flex items-center justify-center gap-3 w-full p-3 text-center text-destructive hover:bg-destructive/10 rounded-md text-base font-medium"
             >
               <Trash2 className="h-5 w-5" />
               <span>Delete</span>
