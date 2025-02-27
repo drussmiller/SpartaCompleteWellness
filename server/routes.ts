@@ -1088,7 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({
-        ...completeActivity.activity,
+        ...updatedActivity.activity,
         workoutVideos: parsedWorkoutVideos
       });
     } catch (error) {

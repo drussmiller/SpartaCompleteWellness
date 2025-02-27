@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,7 +6,6 @@ import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { BottomNav } from "@/components/bottom-nav";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +26,7 @@ function CommentThread({
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const { postId } = useParams();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showActions, setShowActions] = useState(false); // Added state for drawer
 
   // Simpler deletion mutation
   const deleteCommentMutation = useMutation({
@@ -37,9 +36,6 @@ function CommentThread({
         const error = await res.json().catch(() => ({ message: "Failed to delete comment" }));
         throw new Error(error.message || "Failed to delete comment");
       }
-    },
-    onMutate: () => {
-      setDrawerOpen(false); // Close drawer immediately
     },
     onSuccess: () => {
       toast({ description: "Comment deleted successfully" });
@@ -56,6 +52,7 @@ function CommentThread({
   const handleDeleteClick = async () => {
     try {
       await deleteCommentMutation.mutateAsync();
+      setShowActions(false); // Close drawer after delete
     } catch (error) {
       // Error is already handled in onError
     }
@@ -64,8 +61,15 @@ function CommentThread({
   return (
     <div className={`pl-${depth > 0 ? 4 : 0}`}>
       <div 
-        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors"
-        onClick={() => setDrawerOpen(true)}
+        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer relative" // Added relative for positioning
+        onClick={(e) => {
+          // If clicking on the comment body (not on a button/link), open reply action
+          if (e.target === e.currentTarget || 
+              (e.target as HTMLElement).classList.contains('comment-body') ||
+              (e.target as HTMLElement).parentElement === e.currentTarget) {
+            setShowActions(!showActions); // Toggle drawer
+          }
+        }}
       >
         <Avatar className="h-8 w-8">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -78,52 +82,81 @@ function CommentThread({
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
-          <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
+          <p className="text-sm whitespace-pre-wrap break-words comment-body">{comment.content}</p>
         </div>
-      </div>
+        {/* Action Drawer */}
+        {showActions && (
+          <div className="fixed inset-0 bg-black/20 z-50 flex items-end justify-center" onClick={() => setShowActions(false)}>
+            <div className="bg-white w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="divide-y">
+                {/* Reply option */}
+                <button
+                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  onClick={() => {
+                    setShowActions(false);
+                    onReply(comment.id);
+                  }}
+                >
+                  Reply
+                </button>
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerTrigger asChild>
-          <div className="hidden" />
-        </DrawerTrigger>
-        <DrawerContent className="p-0">
-          <div className="flex flex-col divide-y divide-border">
-            <Button 
-              variant="ghost" 
-              className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
-              onClick={() => {
-                onReply(comment.id);
-                setDrawerOpen(false);
-              }}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Reply
-            </Button>
-            {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
-              <Button 
-                variant="ghost" 
-                className="justify-center rounded-none py-6 text-red-500 text-base font-normal"
-                onClick={handleDeleteClick}
-                disabled={deleteCommentMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {deleteCommentMutation.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="justify-center rounded-none py-6 text-base font-normal"
-              onClick={() => {
-                navigator.clipboard.writeText(comment.content || '');
-                toast({ description: "Comment copied to clipboard" });
-                setDrawerOpen(false);
-              }}
-            >
-              Copy
-            </Button>
+                {/* Edit option - only for user's own comments */}
+                {currentUser?.id === comment.author.id && (
+                  <button
+                    className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                    onClick={() => {
+                      setShowActions(false);
+                      // Edit functionality would go here
+                      toast({ description: "Edit functionality not implemented yet" });
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
+
+                {/* Delete option - for user's own comments or admin */}
+                {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
+                  <button
+                    className="w-full p-4 text-red-500 font-semibold flex justify-center hover:bg-gray-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick();
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+
+                {/* Copy option */}
+                <button
+                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  onClick={() => {
+                    navigator.clipboard.writeText(comment.content);
+                    setShowActions(false);
+                    toast({ description: "Comment copied to clipboard" });
+                  }}
+                >
+                  Copy
+                </button>
+
+                {/* Cancel button */}
+                <button
+                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  onClick={() => setShowActions(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* Bottom handle bar */}
+              <div className="flex justify-center p-2">
+                <div className="w-16 h-1 bg-gray-300 rounded-full"></div>
+              </div>
+            </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        )}
+        {/* End Action Drawer */}
+      </div>
 
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
         <div className="ml-8 mt-2 space-y-2">
@@ -174,7 +207,8 @@ export default function CommentsPage() {
         type: "comment",
         content: comment.trim(),
         parentId: replyTo || parseInt(postId!),
-        depth: newDepth
+        depth: newDepth,
+        imageUrl: null, // Add the required imageUrl field
       });
 
       if (!res.ok) {
@@ -201,14 +235,45 @@ export default function CommentsPage() {
 
   const handleReply = (parentId: number) => {
     setReplyTo(parentId);
-    if (commentInputRef.current) {
-      commentInputRef.current.focus();
-    }
+    // Focus on the textarea after a short delay to ensure state is updated
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+    }, 50);
   };
 
-  const handleSubmitComment = () => {
+  // Effect to focus the input when the page loads and when replyTo changes
+  useEffect(() => {
+    // Set focus to the comment input whenever replyTo changes or when the page opens
+    const timer = setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+    }, 300); // Increased timeout for better reliability
+
+    return () => clearTimeout(timer);
+  }, [replyTo]);
+
+  // Additional effect to focus when the component mounts
+  useEffect(() => {
+    const focusTimer = setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+    }, 500);
+
+    return () => clearTimeout(focusTimer);
+  }, []);
+
+  const handleSubmitComment = async () => {
     if (!comment.trim()) return;
-    createCommentMutation.mutate();
+
+    try {
+      await createCommentMutation.mutateAsync();
+    } catch (error) {
+      // Error handling is already done in the mutation
+    }
   };
 
   if (isPostLoading || areCommentsLoading) {
@@ -220,8 +285,8 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="pb-20">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
+    <div className="flex flex-col h-screen bg-gray-50">
+      <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="p-4 flex items-center">
           <Button
             variant="ghost"
@@ -235,37 +300,40 @@ export default function CommentsPage() {
         </div>
       </header>
 
-      <main className="p-4">
+      <main className="flex-1 overflow-auto p-4 pb-28">
         {originalPost && (
-          <div className="mb-6 p-4 border rounded-lg">
-            <div className="flex items-start gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
-                <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{originalPost.author?.username}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(originalPost.createdAt!).toLocaleString()}
+          <div className="mb-6">
+            {/* Assuming PostCard component exists */}
+            <div className="mb-6 p-4 border rounded-lg">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
+                  <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{originalPost.author?.username}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(originalPost.createdAt!).toLocaleString()}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                    {originalPost.content}
                   </p>
+                  {originalPost.imageUrl && (
+                    <img
+                      src={originalPost.imageUrl}
+                      alt="Post"
+                      className="mt-2 rounded-md max-h-[300px] w-auto"
+                    />
+                  )}
                 </div>
-                <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                  {originalPost.content}
-                </p>
-                {originalPost.imageUrl && (
-                  <img
-                    src={originalPost.imageUrl}
-                    alt="Post"
-                    className="mt-2 rounded-md max-h-[300px] w-auto"
-                  />
-                )}
               </div>
             </div>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-1">
           {comments.map((comment) => (
             <CommentThread
               key={comment.id}
@@ -275,47 +343,50 @@ export default function CommentsPage() {
             />
           ))}
           {comments.length === 0 && (
-            <p className="text-center text-muted-foreground py-6">
-              No comments yet. Be the first to comment!
-            </p>
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <p className="text-center text-muted-foreground py-6">
+                No comments yet. Be the first to comment!
+              </p>
+            </div>
           )}
-        </div>
-
-        <div className="sticky bottom-20 z-10 bg-background pt-2">
-          <div className="flex flex-col mb-2">
-            <Textarea
-              ref={commentInputRef}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitComment();
-                }
-              }}
-              placeholder={replyTo ? "Write your reply..." : "Write a comment..."}
-              className="resize-none"
-            />
-            {replyTo && (
-              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                <span>
-                  Replying to comment #{replyTo}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-auto py-0 px-1"
-                  onClick={() => setReplyTo(null)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-          </div>
         </div>
       </main>
 
-      <BottomNav />
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg"> {/* Fixed position comment input that overlays the nav */}
+        <div className="flex flex-col w-full">
+          <Textarea
+            ref={commentInputRef}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitComment();
+              }
+            }}
+            placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
+            className="resize-none w-full border-0 rounded-none px-4 pt-3"
+          />
+          {replyTo && (
+            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+              <span>
+                Replying to comment #{replyTo}
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-auto py-0 px-1"
+                onClick={() => setReplyTo(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="pb-20">
+        <BottomNav />
+      </div>
     </div>
   );
 }
