@@ -88,9 +88,7 @@ function CommentThread({
         {showActions && (
           <div
             className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
-            onClick={(e) => {
-              setShowActions(false);
-            }}
+            onClick={() => setShowActions(false)}
           >
             <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
             <div 
@@ -98,18 +96,21 @@ function CommentThread({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col">
-                <button
-                  className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted"
-                  onClick={() => {
-                    onReply(comment.id);
-                    setShowActions(false);
-                  }}
-                >
-                  Reply
-                </button>
+                {depth < maxDepth && (
+                  <button
+                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted"
+                    onClick={() => {
+                      onReply(comment.id);
+                      setShowActions(false);
+                    }}
+                  >
+                    Reply
+                  </button>
+                )}
                 {currentUser?.id === comment.author.id && (
                   <button
-                    className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
+                    onClick={handleDeleteClick}
                     onClick={() => {
                       setShowActions(false);
                       toast({ description: "Edit functionality not implemented yet" });
