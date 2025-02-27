@@ -57,8 +57,8 @@ app.use((req, res, next) => {
 
     await runMigrations();
 
-    // Using port 5001 instead of 5000 to avoid conflicts
-    const port = 5001;
+    // ALWAYS serve the app on port 5000
+    const port = 5000;
 
     // Handle server shutdown gracefully
     let shuttingDown = false;
