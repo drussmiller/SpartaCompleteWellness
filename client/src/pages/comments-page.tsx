@@ -78,17 +78,17 @@ function CommentThread({
     if (!editText.trim()) {
       return;
     }
-    
+
     try {
       const res = await apiRequest("PATCH", `/api/comments/${comment.id}`, {
         content: editText.trim()
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Failed to update comment");
       }
-      
+
       setIsEditing(false);
       setShowActions(false); // Hide the drawer after saving edits
       toast({ description: "Comment updated successfully" });
@@ -217,7 +217,7 @@ function CommentThread({
                   Cancel
                 </button>
               </div>
-              </div>
+            </div>
           </div>
         )}
       </div>
