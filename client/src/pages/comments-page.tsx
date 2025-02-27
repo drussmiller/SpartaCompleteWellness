@@ -44,7 +44,7 @@ function CommentThread({
         const errorText = await res.text();
         throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
       }
-      
+
       // The server just returns a 200 status code with no content for successful deletion
       // No need to parse any response body
       return {};
@@ -67,7 +67,7 @@ function CommentThread({
   });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  
+
   const handleCommentClick = () => {
     setDrawerOpen(true);
   };
@@ -125,13 +125,13 @@ function CommentThread({
       {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
         <div className="space-y-2">
           {comment.replies.map((reply) => (
-              <CommentThread
-                key={reply.id}
-                comment={reply}
-                depth={depth + 1}
-                onReply={onReply}
-              />
-            ))}
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              onReply={onReply}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -347,7 +347,7 @@ export default function CommentsPage() {
   );
 }
 
-// Comment Action Drawer Component
+// Add CommentActionDrawer component at the bottom of the file
 function CommentActionDrawer({
   isOpen,
   onClose,

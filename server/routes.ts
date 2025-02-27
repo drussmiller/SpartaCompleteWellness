@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delete the comment
       await db.delete(posts).where(eq(posts.id, commentId));
-      
+
       res.sendStatus(200);
     } catch (error) {
       console.error('Error deleting comment:', error);
@@ -930,8 +930,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First create the activity
       const [activity] = await db
         .insert(activities)
-        .values(parsedActivityData)
-        .returning();
+          .values(parsedActivityData)
+          .returning();
 
       // Then create associated workout videos if any
       if (workoutVideos && workoutVideos.length > 0) {
