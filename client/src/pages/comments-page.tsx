@@ -128,11 +128,29 @@ function CommentThread({
             </div>
           </div>
           {isEditing ? (
-            <Textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              className="text-sm mt-1"
-            />
+            <div>
+              <Textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="text-sm mt-1"
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEditCancel}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleEditSave}
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
           ) : (
             <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
           )}
@@ -197,13 +215,7 @@ function CommentThread({
                   Cancel
                 </button>
               </div>
-              {isEditing && (
-                <div className="flex justify-end p-2">
-                  <Button onClick={handleEditSave}>Save</Button>
-                  <Button variant="ghost" onClick={handleEditCancel}>Cancel</Button>
-                </div>
-              )}
-            </div>
+              </div>
           </div>
         )}
       </div>
