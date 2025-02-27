@@ -361,13 +361,13 @@ export default function CommentsPage() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if ((e.key === 'Enter' && !e.shiftKey) && !e.ctrlKey) {
                 e.preventDefault();
                 handleSubmitComment();
               }
             }}
-            placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-            className="resize-none w-full border-0 rounded-none px-4 pt-3"
+            placeholder={replyTo ? "Write your reply... (Enter to submit, Ctrl+Enter for new line)" : "Write a comment... (Enter to submit, Ctrl+Enter for new line)"}
+            className="resize-none w-full border-0 rounded-none px-4 pt-3 text-base min-h-[50px] overflow-hidden whitespace-nowrap text-ellipsis focus:whitespace-normal"
           />
           {replyTo && (
             <div className="mt-1 flex justify-between text-xs text-muted-foreground">
