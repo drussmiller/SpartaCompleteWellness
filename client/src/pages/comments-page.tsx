@@ -59,7 +59,7 @@ function CommentThread({
   });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  
+
   const handleCommentClick = () => {
     setDrawerOpen(true);
   };
@@ -193,7 +193,7 @@ export default function CommentsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId ? parseInt(postId) : undefined] });
       form.reset();
       setReplyToId(null);
       toast({
