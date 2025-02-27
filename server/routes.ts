@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { queryClient } from "../client/src/lib/queryClient";
-import { eq, and, desc, sql, or } from "drizzle-orm";
+import { eq, and, desc, sql, or, gte, lte } from "drizzle-orm";
 import { 
   posts, notifications, videos, users, teams, activities, workoutVideos,
   insertTeamSchema, insertPostSchema, insertMeasurementSchema,
@@ -54,6 +54,42 @@ async function sendNotification(userId: number, title: string, message: string) 
     }
     throw error;
   }
+}
+
+// Add week start/end date calculation helper
+function getWeekBounds(date: Date) {
+  const curr = new Date(date);
+  // Adjust to Monday start (1) and Sunday end (0)
+  const day = curr.getDay();
+  const diff = curr.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+
+  const weekStart = new Date(curr.setDate(diff));
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return { weekStart, weekEnd };
+}
+
+// Update weekly post count function in routes.ts
+async function getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
+  const { weekStart, weekEnd } = getWeekBounds(date);
+
+  const weeklyPosts = await db
+    .select()
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        eq(posts.type, type),
+        gte(posts.createdAt!, weekStart),
+        lte(posts.createdAt!, weekEnd)
+      )
+    );
+
+  return weeklyPosts.length;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -202,54 +238,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postData = insertPostSchema.parse(req.body);
 
-      // If it's a comment, verify the parent post exists and calculate depth
-      if (postData.type === 'comment' && postData.parentId) {
-        const [parentPost] = await db
-          .select()
-          .from(posts)
-          .where(eq(posts.id, postData.parentId));
-
-        if (!parentPost) {
-          return res.status(404).json({ error: "Parent post not found" });
-        }
-
-        // Calculate comment depth
-        const depth = parentPost.type === 'comment' ? (parentPost.depth || 0) + 1 : 1;
-
-        // Create the comment
-        const [comment] = await db
-          .insert(posts)
-          .values({
-            ...postData,
-            userId: req.user.id,
-            depth,
-            createdAt: new Date()
-          })
-          .returning();
-
-        return res.status(201).json(comment);
-      }
-
       // Special handling for memory verse posts
       if (postData.type === "memory_verse") {
         const today = new Date();
-        if (today.getDay() !== 6) {
+        if (today.getDay() !== 0) { // Check for Sunday (0)
           return res.status(400).json({
-            error: "Memory verse posts can only be created on Saturdays"
+            error: "Memory verse posts can only be created on Sundays"
           });
         }
 
-        const weeklyCount = await storage.getWeeklyPostCount(req.user.id, "memory_verse", today);
+        const weeklyCount = await getWeeklyPostCount(req.user.id, "memory_verse", today);
         if (weeklyCount >= 1) {
           return res.status(400).json({
             error: "You have reached your weekly limit for memory verse posts"
           });
         }
-      } 
+      }
 
-      // Create the post
+      // Create the post and update points
       const post = await db.transaction(async (tx) => {
-        // Create the post first
         const [newPost] = await tx
           .insert(posts)
           .values({
@@ -260,7 +267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .returning();
 
-        // Update user points atomically
+        // Calculate points for current week only
+        const { weekStart, weekEnd } = getWeekBounds(new Date());
+
         await tx
           .update(users)
           .set({ 
@@ -269,6 +278,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               FROM ${posts}
               WHERE user_id = ${users.id}
               AND type != 'comment'
+              AND created_at >= ${weekStart}
+              AND created_at <= ${weekEnd}
             ), 0)`
           })
           .where(eq(users.id, req.user.id));
@@ -276,16 +287,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return newPost;
       });
 
-      // Send notification about points earned
-      if (post.type !== 'comment') {
-        await sendNotification(
-          req.user.id,
-          "Points Earned!",
-          `You earned ${post.points} points for your ${post.type} post!`
-        );
-      }
-
-      // Get the updated user with accurate points
+      // Get the updated user with accurate weekly points
+      const { weekStart, weekEnd } = getWeekBounds(new Date());
       const [updatedUser] = await db
         .select({
           id: users.id,
@@ -299,6 +302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             FROM ${posts}
             WHERE user_id = ${users.id}
             AND type != 'comment'
+            AND created_at >= ${weekStart}
+            AND created_at <= ${weekEnd}
           ), 0)`
         })
         .from(users)
