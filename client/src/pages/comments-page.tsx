@@ -116,7 +116,13 @@ function CommentThread({
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
           cursor-pointer relative
         `}
-        onClick={() => setShowActions(!showActions)}
+        onClick={() => {
+          // Cancel any active reply when opening comment actions
+          if (onReply) {
+            onReply(null);
+          }
+          setShowActions(!showActions);
+        }}
       >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -212,7 +218,6 @@ function CommentThread({
                 
                 <button
                   className="w-full p-4 text-foreground font-semibold flex justify-center border-t hover:bg-muted text-2xl"
-                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => setShowActions(false)}
                 >
                   Cancel
