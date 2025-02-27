@@ -558,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Fetching comment thread for post:', postId);
 
-      // First get all comments related to this post
+      // Get all comments related to this post with proper hierarchy
       const comments = await db
         .select({
           id: posts.id,
@@ -581,34 +581,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(posts.type, 'comment'),
-            // Get both direct replies and nested replies
-            or(
-              eq(posts.parentId, postId),
-              sql`${posts.id} IN (
-                WITH RECURSIVE comment_tree AS (
-                  -- Base case: direct replies to the post
-                  SELECT id FROM ${posts}
-                  WHERE parent_id = ${postId}
-                  AND type = 'comment'
+            // Get both direct replies and all nested replies
+            sql`${posts.id} IN (
+              WITH RECURSIVE comment_tree AS (
+                -- Base case: direct replies to the post
+                SELECT id, parent_id, depth, created_at
+                FROM ${posts}
+                WHERE parent_id = ${postId}
+                AND type = 'comment'
 
-                  UNION ALL
+                UNION ALL
 
-                  -- Recursive case: replies to comments
-                  SELECT p.id
-                  FROM ${posts} p
-                  INNER JOIN comment_tree ct ON p.parent_id = ct.id
-                  WHERE p.type = 'comment'
-                )
-                SELECT id FROM comment_tree
-              )`
-            )
+                -- Recursive case: replies to comments
+                SELECT p.id, p.parent_id, p.depth, p.created_at
+                FROM ${posts} p
+                INNER JOIN comment_tree ct ON p.parent_id = ct.id
+                WHERE p.type = 'comment'
+              )
+              SELECT id FROM comment_tree
+            )`
           )
         )
-        .orderBy(posts.createdAt);
+        .orderBy(
+          sql`array_agg(${posts.parentId}) OVER (ORDER BY ${posts.createdAt})`,
+          posts.createdAt
+        );
+
+      // Create a map to build the comment tree
+      const commentMap = new Map();
+      const rootComments = [];
+
+      // First pass: create a map of all comments
+      comments.forEach(comment => {
+        commentMap.set(comment.id, { ...comment, replies: [] });
+      });
+
+      // Second pass: build the tree structure
+      comments.forEach(comment => {
+        const commentWithReplies = commentMap.get(comment.id);
+        if (comment.parentId === postId) {
+          // This is a root level comment
+          rootComments.push(commentWithReplies);
+        } else {
+          // This is a reply to another comment
+          const parent = commentMap.get(comment.parentId);
+          if (parent) {
+            parent.replies.push(commentWithReplies);
+          }
+        }
+      });
 
       console.log('Comments found:', comments.length);
-      console.log('Sample comment data:', comments[0] || 'No comments found');
-      res.json(comments);
+      console.log('Root comments:', rootComments.length);
+
+      res.json(rootComments);
     } catch (error) {
       console.error('Error fetching comment thread:', error);
       res.status(500).json({ error: "Failed to fetch comments" });
@@ -902,8 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     try {
       await storage.deleteUser(parseInt(req.params.id));
-      res.sendStatus(200);
-    } catch (error) {
+      res.sendStatus(200);    } catch (error) {
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
