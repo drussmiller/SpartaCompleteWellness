@@ -99,7 +99,7 @@ function CommentThread({
                 >
                   Reply
                 </button>
-                
+
                 {/* Edit option - only for user's own comments */}
                 {currentUser?.id === comment.author.id && (
                   <button
@@ -113,7 +113,7 @@ function CommentThread({
                     Edit
                   </button>
                 )}
-                
+
                 {/* Delete option - for user's own comments or admin */}
                 {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
                   <button
@@ -126,7 +126,7 @@ function CommentThread({
                     Delete
                   </button>
                 )}
-                
+
                 {/* Copy option */}
                 <button
                   className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
@@ -138,7 +138,7 @@ function CommentThread({
                 >
                   Copy
                 </button>
-                
+
                 {/* Cancel button */}
                 <button
                   className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
@@ -147,7 +147,7 @@ function CommentThread({
                   Cancel
                 </button>
               </div>
-              
+
               {/* Bottom handle bar */}
               <div className="flex justify-center p-2">
                 <div className="w-16 h-1 bg-gray-300 rounded-full"></div>
@@ -245,15 +245,26 @@ export default function CommentsPage() {
 
   // Effect to focus the input when the page loads and when replyTo changes
   useEffect(() => {
-    // Use setTimeout to ensure DOM is fully rendered
+    // Set focus to the comment input whenever replyTo changes or when the page opens
     const timer = setTimeout(() => {
       if (commentInputRef.current) {
         commentInputRef.current.focus();
       }
-    }, 100);
+    }, 300); // Increased timeout for better reliability
 
     return () => clearTimeout(timer);
   }, [replyTo]);
+
+  // Additional effect to focus when the component mounts
+  useEffect(() => {
+    const focusTimer = setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+    }, 500);
+
+    return () => clearTimeout(focusTimer);
+  }, []);
 
   const handleSubmitComment = async () => {
     if (!comment.trim()) return;
@@ -274,8 +285,8 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen"> {/* Added flexbox for layout */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
+    <div className="flex flex-col h-screen bg-gray-50">
+      <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="p-4 flex items-center">
           <Button
             variant="ghost"
@@ -289,37 +300,40 @@ export default function CommentsPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 pb-32"> {/* Added padding at bottom for comment input */}
+      <main className="flex-1 overflow-auto p-4 pb-28">
         {originalPost && (
-          <div className="mb-6 p-4 border rounded-lg">
-            <div className="flex items-start gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
-                <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{originalPost.author?.username}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(originalPost.createdAt!).toLocaleString()}
+          <div className="mb-6">
+            {/* Assuming PostCard component exists */}
+            <div className="mb-6 p-4 border rounded-lg">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
+                  <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{originalPost.author?.username}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(originalPost.createdAt!).toLocaleString()}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                    {originalPost.content}
                   </p>
+                  {originalPost.imageUrl && (
+                    <img
+                      src={originalPost.imageUrl}
+                      alt="Post"
+                      className="mt-2 rounded-md max-h-[300px] w-auto"
+                    />
+                  )}
                 </div>
-                <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                  {originalPost.content}
-                </p>
-                {originalPost.imageUrl && (
-                  <img
-                    src={originalPost.imageUrl}
-                    alt="Post"
-                    className="mt-2 rounded-md max-h-[300px] w-auto"
-                  />
-                )}
               </div>
             </div>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-1">
           {comments.map((comment) => (
             <CommentThread
               key={comment.id}
@@ -329,9 +343,11 @@ export default function CommentsPage() {
             />
           ))}
           {comments.length === 0 && (
-            <p className="text-center text-muted-foreground py-6">
-              No comments yet. Be the first to comment!
-            </p>
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <p className="text-center text-muted-foreground py-6">
+                No comments yet. Be the first to comment!
+              </p>
+            </div>
           )}
         </div>
       </main>
