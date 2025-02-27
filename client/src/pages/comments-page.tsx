@@ -37,6 +37,9 @@ function CommentThread({
   const maxDepth = 3;
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const { postId } = useParams();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const deleteCommentMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
@@ -44,39 +47,51 @@ function CommentThread({
         const errorText = await res.text();
         throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
       }
+      return res;
+    },
+    onMutate: async () => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["/api/posts/comments", postId] });
 
-      // The server just returns a 200 status code with no content for successful deletion
-      // No need to parse any response body
-      return {};
+      // Get the current comments
+      const previousComments = queryClient.getQueryData(["/api/posts/comments", postId]);
+
+      // Return context with the previous comments
+      return { previousComments };
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Comment deleted successfully" });
-      // Force immediate refetch to update the UI
+      // Force refetch to ensure we have the latest data
       queryClient.invalidateQueries({ 
         queryKey: ["/api/posts/comments", postId],
-        refetchType: 'active'
+        exact: true,
+        refetchType: 'all'
       });
-      // Close the drawer immediately after successful deletion
       setDrawerOpen(false);
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      // Close the drawer on error as well
+    onError: (error: Error, _, context) => {
+      // Revert to the previous comments on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(["/api/posts/comments", postId], context.previousComments);
+      }
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete comment", 
+        variant: "destructive" 
+      });
       setDrawerOpen(false);
     }
   });
-
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleCommentClick = () => {
     setDrawerOpen(true);
   };
 
   const handleCopyComment = () => {
-    navigator.clipboard.writeText(comment.content).then(() => {
-        toast({ title: "Success", description: "Comment copied to clipboard" });
+    navigator.clipboard.writeText(comment.content || '').then(() => {
+      toast({ title: "Success", description: "Comment copied to clipboard" });
     }, (err) => {
-        toast({ title: "Error", description: "Failed to copy comment" , variant: "destructive"});
+      toast({ title: "Error", description: "Failed to copy comment", variant: "destructive" });
     });
   };
 
