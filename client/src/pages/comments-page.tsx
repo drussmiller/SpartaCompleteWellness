@@ -217,7 +217,7 @@ function CommentThread({
                 </button>
 
                 <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center border-t hover:bg-muted text-2xl"
+                  className="w-full p-4 bg-gray-400 hover:bg-gray-500 text-black font-bold flex justify-center border-t text-2xl"
                   onClick={() => setShowActions(false)}
                 >
                   Cancel
