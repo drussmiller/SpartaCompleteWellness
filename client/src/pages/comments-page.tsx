@@ -26,6 +26,7 @@ function CommentThread({
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const { postId } = useParams();
+  const [showActions, setShowActions] = useState(false); // Added state for drawer
 
   // Simpler deletion mutation
   const deleteCommentMutation = useMutation({
@@ -51,6 +52,7 @@ function CommentThread({
   const handleDeleteClick = async () => {
     try {
       await deleteCommentMutation.mutateAsync();
+      setShowActions(false); // Close drawer after delete
     } catch (error) {
       // Error is already handled in onError
     }
@@ -59,13 +61,13 @@ function CommentThread({
   return (
     <div className={`pl-${depth > 0 ? 4 : 0}`}>
       <div 
-        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer"
+        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer relative" // Added relative for positioning
         onClick={(e) => {
           // If clicking on the comment body (not on a button/link), open reply action
           if (e.target === e.currentTarget || 
               (e.target as HTMLElement).classList.contains('comment-body') ||
               (e.target as HTMLElement).parentElement === e.currentTarget) {
-            onReply(comment.id);
+            setShowActions(!showActions); // Toggle drawer
           }
         }}
       >
@@ -82,19 +84,37 @@ function CommentThread({
           </div>
           <p className="text-sm whitespace-pre-wrap break-words comment-body">{comment.content}</p>
         </div>
-        {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 ml-auto"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteClick();
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        {/* Action Drawer */}
+        {showActions && (
+          <div className="absolute top-full right-0 mt-2 bg-white rounded-md shadow-md w-48">
+            <div className="p-2">
+              {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
+                <Button 
+                  variant="destructive" 
+                  className="w-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick();
+                  }}
+                >
+                  <Trash2 className="mr-2 h-5 w-5" />
+                  Delete
+                </Button>
+              )}
+              <Button 
+                variant="default" 
+                className="w-full mt-2"
+                onClick={() => {
+                  setShowActions(false);
+                  onReply(comment.id);
+                }}
+              >
+                Reply
+              </Button>
+            </div>
+          </div>
         )}
+        {/* End Action Drawer */}
       </div>
 
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
