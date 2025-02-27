@@ -151,7 +151,7 @@ export default function CommentsPage() {
 
   // Modified query to fetch all comments related to this post
   const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
-    queryKey: ["/api/posts", postId, "comments"],
+    queryKey: ["/api/posts/comments", postId],
     queryFn: async () => {
       try {
         // Modified query to fetch all comments in the thread
@@ -194,7 +194,7 @@ export default function CommentsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       form.reset();
       setReplyToId(null);
       toast({
