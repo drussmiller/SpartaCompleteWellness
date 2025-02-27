@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { useForm } from "react-hook-form";
@@ -25,6 +24,7 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  Copy
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -122,6 +122,7 @@ function CommentThread({
                         )}
                         Delete Comment
                       </Button>
+                      <Button className="w-full">Copy</Button>
                       <DrawerClose asChild>
                         <Button variant="outline" className="w-full">
                           Cancel
@@ -136,16 +137,7 @@ function CommentThread({
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
             {comment.content}
           </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-0 text-xs text-muted-foreground"
-              onClick={() => onReply(comment.id)}
-            >
-              Reply
-            </Button>
-          </div>
+          {/* Removed Reply button */}
         </div>
       </div>
 
@@ -363,21 +355,15 @@ export default function CommentsPage() {
                       {...field}
                       ref={textareaRef}
                       placeholder={replyToId ? "Write a reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-                      className="min-h-[80px] pr-20"
+                      className="min-h-[80px]"
                       value={field.value || ''}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && field.value) {
+                          e.preventDefault();
+                          form.handleSubmit((data) => addCommentMutation.mutateAsync(data))();
+                        }
+                      }}
                     />
-                    <Button
-                      type="submit"
-                      size="icon"
-                      className="absolute right-2 bottom-2"
-                      disabled={!field.value?.trim() || addCommentMutation.isPending}
-                    >
-                      {addCommentMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <SendHorizontal className="h-4 w-4" />
-                      )}
-                    </Button>
                   </div>
                 </FormControl>
                 <FormMessage />
