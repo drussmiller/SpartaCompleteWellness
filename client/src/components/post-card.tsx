@@ -17,10 +17,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     queryFn: async () => {
       try {
         if (!post.id) return 0;
-        const res = await apiRequest("GET", `/api/posts/comments/${post.id}`);
+        const res = await apiRequest("GET", `/api/posts/comments/${post.id}?count=true`);
         if (!res.ok) throw new Error("Failed to fetch comments");
-        const comments = await res.json();
-        return Array.isArray(comments) ? comments.length : 0;
+        return res.json();
       } catch (error) {
         console.error("Error fetching comment count:", error);
         return 0;
@@ -55,7 +54,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         )}
         <div className="mt-4 flex items-center gap-2">
           <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
-          <span className="text-xs text-muted-foreground">•</span>
+          <span className="text.xs text-muted-foreground">•</span>
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
