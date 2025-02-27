@@ -209,7 +209,6 @@ function CommentThread({
                   className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => {
                     navigator.clipboard.writeText(comment.content);
-                    setShowActions(false);
                     toast({ description: "Comment copied to clipboard" });
                   }}
                 >
@@ -218,7 +217,6 @@ function CommentThread({
 
                 <button
                   className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
-                  onClick={() => setShowActions(false)}
                 >
                   Cancel
                 </button>
@@ -315,6 +313,9 @@ export default function CommentsPage() {
     // If we're replying to a different comment, clear the current comment text
     if (replyTo !== null && replyTo !== parentId) {
       setComment("");
+      // Close any active editing
+      setIsEditing(false);
+      setEditingCommentId(null);
     }
 
     setReplyTo(parentId);
@@ -460,14 +461,18 @@ export default function CommentsPage() {
           />
           {replyTo && (
             <div className="mt-2 mb-1 flex justify-between items-center text-xs text-muted-foreground px-2">
-              <span className="ml-2">
+              <span className="ml-4 pt-1">
                 Replying to {comments.find(c => c.id === replyTo)?.author?.username || `comment #${replyTo}`}
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-auto py-1 px-3 text-sm mr-2"
-                onClick={() => setReplyTo(null)}
+                className="h-auto py-1 px-3 text-sm mr-4 mt-1"
+                onClick={() => {
+                  setReplyTo(null);
+                  if (isEditing) setIsEditing(false);
+                  if (editingCommentId) setEditingCommentId(null);
+                }}
               >
                 Cancel
               </Button>
