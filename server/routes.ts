@@ -1085,8 +1085,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First create the activity
       const [activity] = await db
         .insert(activities)
-          .values(parsedActivityData)
-          .returning();
+        .values(parsedActivityData)
+        .returning();
 
       // Then create associated workout videos if any
       if (workoutVideos && workoutVideos.length > 0) {
@@ -1183,7 +1183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             '[]'::json
           )`
         })
-                .from(activities)
+        .from(activities)
         .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
         .where(eq(activities.id, activityId))
         .groupBy(activities.id);
@@ -1396,6 +1396,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws.on('close', () => {
         clients.delete(parseInt(userId));
       });
+    }
+  });
+
+  // Add test endpoint after existing routes
+  app.get("/api/points/test", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const { weekStart, weekEnd } = getWeekBounds(date);
+
+      // Get points for specified week
+      const [result] = await db
+        .select({
+          weeklyPoints: sql<number>`COALESCE((
+            SELECT CAST(SUM(points) AS INTEGER)
+            FROM ${posts}
+            WHERE user_id = ${req.user.id}
+            AND type != 'comment'
+            AND created_at >= ${weekStart}
+            AND created_at <= ${weekEnd}
+          ), 0)`,
+          totalPoints: sql<number>`COALESCE((
+            SELECT CAST(SUM(points) AS INTEGER)
+            FROM ${posts}
+            WHERE user_id = ${req.user.id}
+            AND type != 'comment'
+          ), 0)`
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      res.json({
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        weeklyPoints: result.weeklyPoints,
+        totalPoints: result.totalPoints
+      });
+    } catch (error) {
+      console.error('Error getting test points:', error);
+      res.status(500).json({ error: "Failed to get test points" });
     }
   });
 
