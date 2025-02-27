@@ -433,14 +433,14 @@ export default function CommentsPage() {
             className="resize-none w-full border-0 rounded-none px-4 pt-3 text-base min-h-[50px] overflow-hidden whitespace-nowrap text-ellipsis focus:whitespace-normal"
           />
           {replyTo && (
-            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-              <span>
-                Replying to comment #{replyTo}
+            <div className="mt-2 mb-1 flex justify-between items-center text-xs text-muted-foreground px-2">
+              <span className="ml-2">
+                Replying to {comments.find(c => c.id === replyTo)?.author?.username || `comment #${replyTo}`}
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-auto py-0 px-1"
+                className="h-auto py-1 px-3 text-sm mr-2"
                 onClick={() => setReplyTo(null)}
               >
                 Cancel
