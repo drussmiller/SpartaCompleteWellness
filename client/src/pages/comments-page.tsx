@@ -19,7 +19,7 @@ function CommentThread({
 }: {
   comment: CommentWithAuthor & { replies?: Array<CommentWithAuthor> };
   depth?: number;
-  onReply: (parentId: number, initialContent?: string, editing?: boolean) => void;
+  onReply: (parentId: number) => void;
   onRefresh: () => void;
 }) {
   const maxDepth = 3; // Maximum nesting level
@@ -129,7 +129,33 @@ function CommentThread({
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
-          <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
+          {isEditing ? (
+            <div>
+              <Textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="text-sm mt-1"
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEditCancel}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleEditSave}
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
+          )}
 
         </div>
 
@@ -220,8 +246,6 @@ export default function CommentsPage() {
   const { postId } = useParams();
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [comment, setComment] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: originalPost, isLoading: isPostLoading } = useQuery({
@@ -258,34 +282,25 @@ export default function CommentsPage() {
       }
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setComment("");
       setReplyTo(null);
-      setIsEditing(false);
-      setEditingCommentId(null);
       refetch();
-      toast({ description: isEditing ? "Comment updated successfully" : "Comment added successfully" });
+      toast({
+        description: "Comment posted successfully",
+      });
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
-        description: error.message || (isEditing ? "Failed to update comment" : "Failed to add comment")
+        description: error.message || "Failed to post comment",
       });
-    }
+    },
   });
 
-  function handleSubmitComment() {
-    if (!comment.trim()) return;
-    createCommentMutation.mutate();
-  }
-
-  const handleReply = (parentId: number, initialContent: string = "", editing: boolean = false) => {
+  const handleReply = (parentId: number) => {
     setReplyTo(parentId);
-    setComment(initialContent);
-    setIsEditing(editing);
-    setEditingCommentId(editing ? parentId : null);
-
-    // Focus the comment input
+    // Focus on the textarea after a short delay to ensure state is updated
     setTimeout(() => {
       if (commentInputRef.current) {
         commentInputRef.current.focus();
@@ -315,6 +330,16 @@ export default function CommentsPage() {
 
     return () => clearTimeout(focusTimer);
   }, []);
+
+  const handleSubmitComment = async () => {
+    if (!comment.trim()) return;
+
+    try {
+      await createCommentMutation.mutateAsync();
+    } catch (error) {
+      // Error handling is already done in the mutation
+    }
+  };
 
   if (isPostLoading || areCommentsLoading) {
     return (
