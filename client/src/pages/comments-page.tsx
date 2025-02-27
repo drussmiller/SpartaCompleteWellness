@@ -26,6 +26,8 @@ function CommentThread({
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [showActions, setShowActions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
 
   // Deletion mutation remains unchanged
   const deleteCommentMutation = useMutation({
@@ -57,6 +59,26 @@ function CommentThread({
     }
   };
 
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleEditSave = async () => {
+    // Implement actual update logic here.  This is a placeholder.
+    console.log("Saving edited comment:", editText);
+    setIsEditing(false);
+    setShowActions(false);
+    // Call an API to update the comment content
+    // ... update API call ...
+    onRefresh();
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+    setEditText(comment.content);
+  };
+
+
   return (
     <div className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}>
       <div 
@@ -78,13 +100,19 @@ function CommentThread({
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
-          <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
-
-          {/* Reply button removed - users can use the action drawer to reply */}
+          {isEditing ? (
+            <Textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="text-sm mt-1"
+            />
+          ) : (
+            <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
+          )}
 
         </div>
 
-        {/* Action Drawer - remains unchanged */}
+        {/* Action Drawer */}
         {showActions && (
           <div
             className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
@@ -92,7 +120,7 @@ function CommentThread({
           >
             <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
             <div 
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-white sm:relative"
+              className="fixed bottom-0 z-50 w-full max-w-md rounded-t-lg bg-background p-0 shadow-lg sm:rounded-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col">
@@ -108,28 +136,20 @@ function CommentThread({
                   </button>
                 )}
                 {currentUser?.id === comment.author.id && (
-                  <button
-                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
-                    onClick={handleDeleteClick}
-                    onClick={() => {
-                      setShowActions(false);
-                      toast({ description: "Edit functionality not implemented yet" });
-                    }}
-                  >
-                    Edit
-                  </button>
-                )}
-
-                {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
-                  <button
-                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick();
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      className="w-full p-4 text-blue-600 font-semibold flex justify-center border-b hover:bg-muted"
+                      onClick={handleEditClick}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
+                      onClick={handleDeleteClick}
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
 
                 <button
@@ -150,10 +170,12 @@ function CommentThread({
                   Cancel
                 </button>
               </div>
-
-              <div className="flex justify-center p-2">
-                <div className="w-16 h-1 bg-muted-foreground/20 rounded-full"></div>
-              </div>
+              {isEditing && (
+                <div className="flex justify-end p-2">
+                  <Button onClick={handleEditSave}>Save</Button>
+                  <Button variant="ghost" onClick={handleEditCancel}>Cancel</Button>
+                </div>
+              )}
             </div>
           </div>
         )}
