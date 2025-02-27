@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { MessageCircle } from "lucide-react";
@@ -26,6 +26,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         return 0;
       }
     },
+    // Add staleTime and refetchInterval to ensure counts stay updated
+    staleTime: 1000, // Consider data stale after 1 second
+    refetchInterval: 3000 // Refetch every 3 seconds
   });
 
   return (
