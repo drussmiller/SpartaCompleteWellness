@@ -116,7 +116,15 @@ function CommentThread({
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
           cursor-pointer relative
         `}
-        onClick={() => setShowActions(!showActions)}
+        onClick={() => {
+          // Close any other editing or reply sessions
+          if (!showActions) {
+            // Notify parent component to close any reply box
+            onReply(0); // Using 0 as a signal to close
+            setReplyTo(null);
+          }
+          setShowActions(!showActions);
+        }}
       >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -299,7 +307,16 @@ export default function CommentsPage() {
   });
 
   const handleReply = (parentId: number) => {
+    // If we're already replying to this comment, do nothing
+    if (replyTo === parentId) return;
+    
+    // If we're replying to a different comment, clear the current comment text
+    if (replyTo !== null && replyTo !== parentId) {
+      setComment("");
+    }
+    
     setReplyTo(parentId);
+    
     // Focus on the textarea after a short delay to ensure state is updated
     setTimeout(() => {
       if (commentInputRef.current) {
@@ -319,6 +336,15 @@ export default function CommentsPage() {
 
     return () => clearTimeout(timer);
   }, [replyTo]);
+  
+  // Effect to close editing/replying state when comment actions drawer is opened
+  useEffect(() => {
+    if (showActions) {
+      // If any comment's actions drawer is opened, close any active reply
+      setIsEditing(false);
+      setEditingCommentId(null);
+    }
+  }, [showActions]);
 
   // Additional effect to focus when the component mounts
   useEffect(() => {
