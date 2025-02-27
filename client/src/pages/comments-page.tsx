@@ -146,7 +146,8 @@ export default function CommentsPage() {
         type: "comment",
         content: comment.trim(),
         parentId: replyTo || parseInt(postId!),
-        depth: newDepth
+        depth: newDepth,
+        imageUrl: null, // Add the required imageUrl field
       });
 
       if (!res.ok) {
@@ -189,7 +190,7 @@ export default function CommentsPage() {
         commentInputRef.current.focus();
       }
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, [replyTo]);
 
