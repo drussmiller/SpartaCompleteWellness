@@ -1,330 +1,86 @@
-
 import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { User } from "@shared/schema";
-import { BottomNav } from "@/components/bottom-nav";
-import { BackButton } from "@/components/back-button";
-import { Loader2, MoreVertical, X, Check, Clipboard } from "lucide-react";
-import { useParams, Link } from "react-router-dom";
+import { useLocation } from "@/hooks/use-location";
+import { useParams } from "wouter";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
+import { BottomNav } from "@/components/bottom-nav";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
-import { Drawer, DrawerTrigger, DrawerContent } from "@/components/ui/drawer";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 
-// Define the comment schema
-const commentSchema = z.object({
-  content: z.string().min(1, { message: "Comment cannot be empty" }),
-  parentId: z.number().optional(),
-});
-
-// Define the comment type
-interface Comment {
+type Comment = {
   id: number;
   content: string;
-  userId: number;
   parentId: number | null;
-  createdAt: string;
-  type: string;
-  depth?: number;
-}
-
-interface CommentWithAuthor extends Comment {
-  author: User;
-  replies?: CommentWithAuthor[];
-}
-
-interface Post {
-  id: number;
-  type: string;
-  content: string;
-  imageUrl?: string;
-  createdAt: string;
   userId: number;
-}
+  createdAt: string;
+  depth: number;
+  author: {
+    id: number;
+    username: string;
+    imageUrl: string | null;
+  };
+};
 
-export default function CommentsPage() {
-  const { postId } = useParams<{ postId: string }>();
+type CommentThreadProps = {
+  comment: Comment;
+  depth: number;
+  onReply: (parentId: number) => void;
+  onRefresh: () => void;
+};
+
+function CommentThread({ comment, depth, onReply, onRefresh }: CommentThreadProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [replyToId, setReplyToId] = useState<number | null>(null);
-  const [editingComment, setEditingComment] = useState<Comment | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+  const { copy } = useClipboard();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof commentSchema>>({
-    resolver: zodResolver(commentSchema),
-    defaultValues: {
-      content: "",
-      parentId: undefined,
-    },
-  });
-
-  // Reset form when changes to replyToId or editingComment
-  useEffect(() => {
-    if (editingComment) {
-      form.setValue("content", editingComment.content);
-    } else {
-      form.setValue("content", "");
-    }
-  }, [editingComment, form]);
-
-  useEffect(() => {
-    // Focus the textarea when we're replying or editing
-    if ((replyToId || editingComment) && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [replyToId, editingComment]);
-
-  const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
-    queryKey: ["/api/posts/comments", postId],
-    queryFn: async () => {
-      if (!postId) return [];
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch comments");
-      }
-      return res.json();
-    },
-    enabled: !!postId && !!currentUser,
-  });
-
-  const { data: post } = useQuery<Post & { author: User }>({
-    queryKey: ["/api/posts", postId],
-    queryFn: async () => {
-      if (!postId) return null;
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch post");
-      }
-      return res.json();
-    },
-    enabled: !!postId && !!currentUser,
-  });
-
-  const addCommentMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof commentSchema>) => {
-      console.log("Submitting comment with parentId:", data.parentId);
-      const res = await apiRequest("POST", "/api/posts", {
-        content: data.content,
-        parentId: data.parentId || parseInt(postId!),
-        type: "comment",
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to add comment");
-      }
-
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      form.reset();
-      setReplyToId(null);
-      setEditingComment(null);
+  const handleDelete = async (commentId: number) => {
+    try {
+      await apiRequest("DELETE", `/api/comments/${commentId}`);
+      onRefresh();
       toast({
-        title: "Success",
-        description: "Comment added successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const editCommentMutation = useMutation({
-    mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      const res = await apiRequest("PUT", `/api/comments/${id}`, {
-        content,
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to edit comment");
-      }
-
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      form.reset();
-      setEditingComment(null);
-      toast({
-        title: "Success",
-        description: "Comment edited successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (commentId: number) => {
-      const res = await apiRequest("DELETE", `/api/comments/${commentId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete comment");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      toast({
-        title: "Success",
         description: "Comment deleted successfully",
       });
-      setDrawerOpen(false);
-    },
-    onError: (error: Error) => {
+    } catch (error) {
+      console.error("Error deleting comment:", error);
       toast({
-        title: "Error",
-        description: error.message,
         variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (data: z.infer<typeof commentSchema>) => {
-    // If we're editing, use the edit mutation
-    if (editingComment) {
-      editCommentMutation.mutate({
-        id: editingComment.id,
-        content: data.content
-      });
-    } else {
-      addCommentMutation.mutateAsync({
-        content: data.content,
-        parentId: replyToId || undefined,
+        description: "Failed to delete comment",
       });
     }
-  }
-
-  const onReply = (commentId: number) => {
-    setReplyToId(commentId);
-    setEditingComment(null);
-    form.reset();
-    
-    // Focus the textarea
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    }, 0);
   };
 
   const handleEdit = (comment: Comment) => {
-    setEditingComment(comment);
-    setReplyToId(null);
-    form.setValue("content", comment.content);
-    
-    // Focus the textarea
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    }, 0);
+    //This function will be implemented in the parent component.
   };
 
-  const handleDelete = (commentId: number) => {
-    deleteCommentMutation.mutate(commentId);
+  const handleCommentClick = () => {
+    setDrawerOpen(true);
   };
 
-  if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Please log in to view comments</p>
-          <Link to="/auth">
-            <Button>Log In</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  // Build comment tree based on parent-child relationships
-  const buildCommentTree = (comments: CommentWithAuthor[]): CommentWithAuthor[] => {
-    // First, create a map of comments by their IDs
-    const commentMap = new Map<number, CommentWithAuthor>();
-    const rootComments: CommentWithAuthor[] = [];
-
-    // Initialize the map with all comments
-    comments.forEach(comment => {
-      commentMap.set(comment.id, { ...comment, replies: [] });
-    });
-
-    // Build the tree structure
-    comments.forEach(comment => {
-      const processedComment = commentMap.get(comment.id)!;
-      
-      if (comment.parentId && commentMap.has(comment.parentId)) {
-        // This is a reply to another comment
-        const parentComment = commentMap.get(comment.parentId)!;
-        parentComment.replies = parentComment.replies || [];
-        parentComment.replies.push(processedComment);
-      } else if (comment.parentId && parseInt(postId!) === comment.parentId) {
-        // This is a direct reply to the post
-        rootComments.push(processedComment);
-      }
-    });
-
-    return rootComments;
-  };
-
-  const commentTree = comments ? buildCommentTree(comments) : [];
-
-  // Recursive component to render comment with its replies
-  const CommentThread = ({ comment, depth = 0 }: { comment: CommentWithAuthor, depth?: number }) => {
-    const [drawerOpen, setDrawerOpen] = useState(false);
-
-    const handleCommentClick = () => {
-      setDrawerOpen(true);
-    };
-
-    return (
-      <div className={`pl-${depth > 0 ? 4 : 0}`}>
-        <div 
-          className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer"
-          onClick={handleCommentClick}
-        >
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
-            <AvatarFallback>{comment.author.username.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-medium text-sm">{comment.author.username}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(comment.createdAt!).toLocaleString()}
-                </p>
-              </div>
+  return (
+    <div className={`pl-${depth > 0 ? 4 : 0}`}>
+      <div 
+        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer"
+        onClick={handleCommentClick}
+      >
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
+          <AvatarFallback>{comment.author.username.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <div className="font-medium">{comment.author.username}</div>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-muted-foreground">
+                {new Date(comment.createdAt!).toLocaleString()}
+              </p>
               <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
                 <DrawerTrigger asChild>
                   <div className="hidden">
@@ -367,9 +123,9 @@ export default function CommentsPage() {
                           Delete
                         </Button>
                       )}
-                      <Button 
-                        variant="ghost" 
-                        className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                      <Button
+                        variant="ghost"
+                        className="justify-center rounded-none py-6 text-base font-normal"
                         onClick={() => {
                           navigator.clipboard.writeText(comment.content);
                           toast({ description: "Comment copied to clipboard" });
@@ -382,132 +138,214 @@ export default function CommentsPage() {
                 </DrawerContent>
               </Drawer>
             </div>
-            <p className="text-sm mt-1 break-words">{comment.content}</p>
           </div>
+          <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
         </div>
-        
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-2 space-y-2 border-l-2 border-border">
-            {comment.replies.map((reply) => (
-              <CommentThread key={reply.id} comment={reply} depth={depth + 1} />
-            ))}
-          </div>
-        )}
       </div>
-    );
+    </div>
+  );
+}
+
+export default function CommentsPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [params, setParams] = useParams();
+  const postId = params.postId ? parseInt(params.postId) : null;
+  const [location, setLocation] = useLocation();
+
+  const [comment, setComment] = useState("");
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data: originalPost, isLoading: isPostLoading } = useQuery({
+    queryKey: [`/api/posts/${postId}`],
+    enabled: !!postId,
+  });
+
+  const { data: comments = [], isLoading: areCommentsLoading, refetch } = useQuery({
+    queryKey: [`/api/posts/comments/${postId}`],
+    enabled: !!postId,
+  });
+
+  const createCommentMutation = useMutation({
+    mutationFn: async (data: { content: string; parentId: number | null }) => {
+      console.log("Submitting comment with parentId:", data.parentId);
+      const response = await apiRequest("POST", "/api/posts", {
+        type: "comment",
+        content: data.content,
+        parentId: data.parentId || postId,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setComment("");
+      refetch();
+      toast({
+        description: "Comment posted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        description: "Failed to post comment",
+      });
+      console.error("Error posting comment:", error);
+    },
+  });
+
+  const handleSubmitComment = () => {
+    if (!comment.trim()) return;
+
+    createCommentMutation.mutate({
+      content: comment,
+      parentId: replyTo,
+    });
+
+    // Reset reply state
+    setReplyTo(null);
   };
 
+  const handleReply = (parentId: number) => {
+    setReplyTo(parentId);
+    if (commentInputRef.current) {
+      commentInputRef.current.focus();
+    }
+  };
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitComment();
+    }
+  };
+
+  useEffect(() => {
+    if (replyTo && commentInputRef.current) {
+      commentInputRef.current.focus();
+    }
+  }, [replyTo]);
+
+  const renderComments = (commentList: Comment[], parentId: number | null = null, level = 0) => {
+    return commentList
+      .filter(c => c.parentId === parentId)
+      .map(comment => (
+        <div key={comment.id} className="mt-3">
+          <CommentThread
+            comment={comment}
+            depth={level}
+            onReply={handleReply}
+            onRefresh={refetch}
+          />
+          {renderComments(commentList, comment.id, level + 1)}
+        </div>
+      ));
+  };
+
+  if (isPostLoading || areCommentsLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Please log in to view comments</p>
+          <Link to="/auth">
+            <Button>Log In</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="pb-32">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-        <div className="flex h-14 items-center px-4">
-          <BackButton />
-          <div className="ml-4 text-lg font-semibold">Comments</div>
+    <div className="pb-20">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4 flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.history.back()}
+            className="mr-2"
+          >
+            &larr;
+          </Button>
+          <h1 className="text-xl font-bold truncate">Comments</h1>
         </div>
       </header>
 
-      {post && (
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={post.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author.username}`} />
-              <AvatarFallback>{post.author.username.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium">{post.author.username}</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(post.createdAt).toLocaleString()}
-              </p>
+      <main className="p-4">
+        {originalPost && (
+          <div className="mb-6 p-4 border rounded-lg">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`} />
+                <AvatarFallback>{originalPost.author.username.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{originalPost.author.username}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(originalPost.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                  {originalPost.content}
+                </p>
+                {originalPost.imageUrl && (
+                  <img
+                    src={originalPost.imageUrl}
+                    alt="Post"
+                    className="mt-2 rounded-md max-h-[300px] w-auto"
+                  />
+                )}
+              </div>
             </div>
-          </div>
-          {post.content && (
-            <p className="mt-3 text-sm">{post.content}</p>
-          )}
-          {post.imageUrl && (
-            <img
-              src={post.imageUrl}
-              alt={post.type}
-              className="w-full h-auto object-contain rounded-md mt-3"
-            />
-          )}
-        </div>
-      )}
-
-      <main className="p-4 space-y-4 mb-[150px]">
-        {commentTree.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">No comments yet</p>
-        ) : (
-          <div className="space-y-4">
-            {commentTree.map((comment) => (
-              <CommentThread key={comment.id} comment={comment} />
-            ))}
           </div>
         )}
-      </main>
 
-      <Form {...form} onSubmit={onSubmit}>
-        <form className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
-          <FormLabel className="text-base">
-            {editingComment ? "Edit comment" : replyToId ? "Reply to comment" : "Add a comment"}
-          </FormLabel>
-          <FormField
-            control={form.control}
-            name="content"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <div className="relative">
-                    <Textarea
-                      {...field}
-                      ref={textareaRef}
-                      placeholder={replyToId ? "Write a reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-                      className="min-h-[80px]"
-                      value={field.value || ''}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && field.value) {
-                          e.preventDefault();
-                          form.handleSubmit(onSubmit)();
-                        }
-                      }}
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+        <div className="sticky bottom-20 z-10 bg-background pt-2">
+          <div className="flex flex-col mb-2">
+            <Textarea
+              ref={commentInputRef}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onKeyDown={handleCommentKeyDown}
+              placeholder={replyTo ? "Write your reply..." : "Write a comment..."}
+              className="resize-none"
+            />
+            {replyTo && (
+              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                <span>
+                  Replying to comment #{replyTo}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-auto py-0 px-1"
+                  onClick={() => setReplyTo(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
             )}
-          />
-          {replyToId && (
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-muted-foreground">
-                Replying to a comment
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyToId(null)}
-              >
-                <X className="h-4 w-4 mr-1" /> Cancel
-              </Button>
-            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {comments.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6">
+              No comments yet. Be the first to comment!
+            </p>
+          ) : (
+            renderComments(comments)
           )}
-          {editingComment && (
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-muted-foreground">
-                Editing comment
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingComment(null)}
-              >
-                <X className="h-4 w-4 mr-1" /> Cancel
-              </Button>
-            </div>
-          )}
-        </form>
-      </Form>
+        </div>
+      </main>
 
       <BottomNav />
     </div>
