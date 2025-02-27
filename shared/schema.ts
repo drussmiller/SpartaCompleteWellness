@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   waist: integer("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
+  teamJoinedAt: timestamp("team_joined_at"), // New field to track when user joins a team
 });
 
 export const teams = pgTable("teams", {
@@ -67,7 +68,7 @@ export const videos = pgTable("videos", {
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   week: integer("week").notNull(),
-  day: integer("day").notNull(),
+  day: integer("day").notNull(), // 1 = Monday, 7 = Sunday
   memoryVerse: text("memory_verse").notNull(),
   memoryVerseReference: text("memory_verse_reference").notNull(),
   scripture: text("scripture"),
