@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MessageSquare, Trash2 } from "lucide-react";
+import { Loader2, MessageSquare, Trash2, MessageCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type CommentWithAuthor } from "@shared/schema";
 
@@ -22,11 +22,10 @@ function CommentThread({
   onReply: (parentId: number) => void;
   onRefresh: () => void;
 }) {
-  const maxDepth = 3;
+  const maxDepth = 3; // Maximum nesting level
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const { postId } = useParams();
-  const [showActions, setShowActions] = useState(false); // Added state for drawer
+  const [showActions, setShowActions] = useState(false);
 
   // Simpler deletion mutation
   const deleteCommentMutation = useMutation({
@@ -59,54 +58,73 @@ function CommentThread({
   };
 
   return (
-    <div className={`pl-${depth > 0 ? 4 : 0}`}>
+    <div 
+      className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}
+    >
       <div 
-        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer relative" // Added relative for positioning
+        className={`
+          flex items-start gap-3 p-3 rounded-lg border 
+          ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
+          cursor-pointer relative
+        `}
         onClick={(e) => {
-          // If clicking on the comment body (not on a button/link), open reply action
           if (e.target === e.currentTarget || 
               (e.target as HTMLElement).classList.contains('comment-body') ||
               (e.target as HTMLElement).parentElement === e.currentTarget) {
-            setShowActions(!showActions); // Toggle drawer
+            setShowActions(!showActions);
           }
         }}
       >
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
           <AvatarFallback>{comment.author.username.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <div className="flex-1 overflow-hidden">
-          <div className="flex items-center justify-between">
-            <div className="font-medium">{comment.author.username}</div>
-            <div className="text-xs text-muted-foreground">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-medium truncate">{comment.author.username}</div>
+            <div className="text-xs text-muted-foreground whitespace-nowrap">
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
-          <p className="text-sm whitespace-pre-wrap break-words comment-body">{comment.content}</p>
+          <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
+
+          {/* Reply indicator */}
+          {depth < maxDepth && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onReply(comment.id);
+              }}
+              className="text-xs text-muted-foreground hover:text-primary mt-2 flex items-center gap-1"
+            >
+              <MessageCircle className="h-3 w-3" />
+              Reply
+            </button>
+          )}
         </div>
+
         {/* Action Drawer */}
         {showActions && (
           <div className="fixed inset-0 bg-black/20 z-50 flex items-end justify-center" onClick={() => setShowActions(false)}>
-            <div className="bg-white w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-background w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="divide-y">
-                {/* Reply option */}
-                <button
-                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
-                  onClick={() => {
-                    setShowActions(false);
-                    onReply(comment.id);
-                  }}
-                >
-                  Reply
-                </button>
-
-                {/* Edit option - only for user's own comments */}
-                {currentUser?.id === comment.author.id && (
+                {depth < maxDepth && (
                   <button
-                    className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                    className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
                     onClick={() => {
                       setShowActions(false);
-                      // Edit functionality would go here
+                      onReply(comment.id);
+                    }}
+                  >
+                    Reply
+                  </button>
+                )}
+
+                {currentUser?.id === comment.author.id && (
+                  <button
+                    className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                    onClick={() => {
+                      setShowActions(false);
                       toast({ description: "Edit functionality not implemented yet" });
                     }}
                   >
@@ -114,10 +132,9 @@ function CommentThread({
                   </button>
                 )}
 
-                {/* Delete option - for user's own comments or admin */}
                 {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
                   <button
-                    className="w-full p-4 text-red-500 font-semibold flex justify-center hover:bg-gray-50"
+                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteClick();
@@ -127,9 +144,8 @@ function CommentThread({
                   </button>
                 )}
 
-                {/* Copy option */}
                 <button
-                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
                   onClick={() => {
                     navigator.clipboard.writeText(comment.content);
                     setShowActions(false);
@@ -139,38 +155,21 @@ function CommentThread({
                   Copy
                 </button>
 
-                {/* Cancel button */}
                 <button
-                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
                   onClick={() => setShowActions(false)}
                 >
                   Cancel
                 </button>
               </div>
 
-              {/* Bottom handle bar */}
               <div className="flex justify-center p-2">
-                <div className="w-16 h-1 bg-gray-300 rounded-full"></div>
+                <div className="w-16 h-1 bg-muted-foreground/20 rounded-full"></div>
               </div>
             </div>
           </div>
         )}
-        {/* End Action Drawer */}
       </div>
-
-      {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
-        <div className="ml-8 mt-2 space-y-2">
-          {comment.replies.map((reply) => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              onReply={onReply}
-              onRefresh={onRefresh}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
