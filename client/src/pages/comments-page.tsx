@@ -196,6 +196,7 @@ function CommentThread({
                     >
                       Delete
                     </button>
+                    <div className="h-2"></div> {/* Added spacing between buttons */}
                   </>
                 )}
 
