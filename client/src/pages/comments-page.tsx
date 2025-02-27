@@ -51,9 +51,8 @@ function CommentThread({
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Comment deleted successfully" });
-      // Use the post ID from the comment object or the postId from the URL parameter
-      const postIdForRefresh = comment.postId || postId;
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postIdForRefresh, "comments"] });
+      // Invalidate the comment thread query to refresh the comments
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
