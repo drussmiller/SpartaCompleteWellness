@@ -181,9 +181,21 @@ export default function CommentsPage() {
     }, 50);
   };
 
-  const handleSubmitComment = () => {
+  // Add effect to focus the input when replyTo changes
+  useEffect(() => {
+    if (commentInputRef.current) {
+      commentInputRef.current.focus();
+    }
+  }, [replyTo]);
+
+  const handleSubmitComment = async () => {
     if (!comment.trim()) return;
-    createCommentMutation.mutate();
+
+    try {
+      await createCommentMutation.mutateAsync();
+    } catch (error) {
+      // Error handling is already done in the mutation
+    }
   };
 
   if (isPostLoading || areCommentsLoading) {
