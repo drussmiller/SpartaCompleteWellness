@@ -90,6 +90,7 @@ function CommentThread({
       }
       
       setIsEditing(false);
+      setShowActions(false); // Hide the drawer after saving edits
       toast({ description: "Comment updated successfully" });
       onRefresh(); // Refresh the comment list
     } catch (error) {
@@ -102,6 +103,7 @@ function CommentThread({
 
   const handleEditCancel = () => {
     setIsEditing(false);
+    setShowActions(false); // Hide the drawer when canceling edits
     setEditText(comment.content);
   };
 
