@@ -53,9 +53,13 @@ function CommentThread({
       toast({ title: "Success", description: "Comment deleted successfully" });
       // Invalidate the comment thread query to refresh the comments
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      // Close the drawer immediately after successful deletion
+      setDrawerOpen(false);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      // Close the drawer on error as well
+      setDrawerOpen(false);
     }
   });
 
@@ -403,7 +407,8 @@ function CommentActionDrawer({
             <button 
               onClick={() => {
                 onDelete();
-                onClose();
+                // Don't close manually - let the mutation handler close it
+                // to prevent potential race conditions
               }}
               className="flex items-center gap-3 w-full p-3 text-left text-destructive hover:bg-destructive/10 rounded-md"
             >
