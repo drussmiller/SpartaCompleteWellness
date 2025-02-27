@@ -13,8 +13,11 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useState as useHookState } from "react";
 import { cn } from "@/lib/utils";
+import { Copy, Trash2, Reply } from "lucide-react";
+import { useState } from "react";
+
 
 function CommentThread({
   comment,
@@ -51,6 +54,30 @@ function CommentThread({
     }
   });
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [touchStartTime, setTouchStartTime] = useState(0);
+
+  const handleTouchStart = () => {
+    setTouchStartTime(Date.now());
+  };
+
+  const handleTouchEnd = () => {
+    const touchEndTime = Date.now();
+    const touchDuration = touchEndTime - touchStartTime;
+    if (touchDuration < 300) { //Adjust as needed to determine what constitutes a tap vs long-press
+      return; //Treat as a simple tap, no action needed.
+    }
+    setDrawerOpen(true);
+  };
+
+  const handleCopyComment = () => {
+    navigator.clipboard.writeText(comment.content).then(() => {
+        toast({ title: "Success", description: "Comment copied to clipboard" });
+    }, (err) => {
+        toast({ title: "Error", description: "Failed to copy comment" , variant: "destructive"});
+    });
+  };
+
   return (
     <div className={cn(
       "flex flex-col gap-2",
@@ -62,7 +89,16 @@ function CommentThread({
           <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="bg-muted/50 rounded-lg px-3 py-2">
+          <div 
+            className="bg-muted/50 rounded-lg px-3 py-2 relative cursor-pointer active:bg-muted"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setDrawerOpen(true);
+            }}
+          >
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium">{comment.author.username}</p>
               <span className="text-xs text-muted-foreground">•</span>
@@ -72,28 +108,17 @@ function CommentThread({
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => onReply(comment.id)}
-            >
-              <MessageSquare className="h-3 w-3 mr-1" />
-              Reply
-            </Button>
-            {currentUser?.id === comment.userId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteCommentMutation.mutate()}
-                disabled={deleteCommentMutation.isPending}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                Delete
-              </Button>
-            )}
-          </div>
+          {/* Comment interaction drawer */}
+          <CommentActionDrawer 
+            isOpen={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            onReply={() => onReply(comment.id)}
+            onDelete={() => deleteCommentMutation.mutate()}
+            onCopy={handleCopyComment}
+            canDelete={currentUser?.id === comment.userId}
+            commentId={comment.id}
+            commentContent={comment.content || ''}
+          />
         </div>
       </div>
 
@@ -319,5 +344,82 @@ export default function CommentsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Comment Action Drawer Component
+function CommentActionDrawer({
+  isOpen,
+  onClose,
+  onReply,
+  onDelete,
+  onCopy,
+  canDelete,
+  commentId,
+  commentContent
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onReply: () => void;
+  onDelete: () => void;
+  onCopy: () => void;
+  canDelete: boolean;
+  commentId: number;
+  commentContent: string;
+}) {
+  return (
+    <>
+      {/* Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-background/80 z-50"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Drawer */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-card rounded-t-xl shadow-lg transition-transform duration-300 ease-in-out z-50 ${
+        isOpen ? 'translate-y-0' : 'translate-y-full'
+      }`}>
+        <div className="p-4 space-y-4">
+          <div className="w-12 h-1 bg-muted mx-auto rounded-full mb-4" />
+
+          <button 
+            onClick={() => {
+              onReply();
+              onClose();
+            }}
+            className="flex items-center gap-3 w-full p-3 text-left hover:bg-accent rounded-md"
+          >
+            <Reply className="h-5 w-5" />
+            <span>Reply</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              onCopy();
+              onClose();
+            }}
+            className="flex items-center gap-3 w-full p-3 text-left hover:bg-accent rounded-md"
+          >
+            <Copy className="h-5 w-5" />
+            <span>Copy Text</span>
+          </button>
+
+          {canDelete && (
+            <button 
+              onClick={() => {
+                onDelete();
+                onClose();
+              }}
+              className="flex items-center gap-3 w-full p-3 text-left text-destructive hover:bg-destructive/10 rounded-md"
+            >
+              <Trash2 className="h-5 w-5" />
+              <span>Delete</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
