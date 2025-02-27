@@ -43,7 +43,9 @@ function CommentThread({
       if (!res.ok) {
         throw new Error("Failed to delete comment");
       }
-      return res.json();
+      // Check if there is content to parse, otherwise return empty object
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Comment deleted successfully" });
