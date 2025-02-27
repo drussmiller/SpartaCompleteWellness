@@ -303,8 +303,21 @@ export default function CommentsPage() {
         <h1 className="text-xl font-semibold">Comments</h1>
       </div>
 
+      <div className="space-y-6 pb-32">
+        {commentTree.map((comment) => (
+          <CommentThread
+            key={comment.id}
+            comment={comment}
+            onReply={setReplyToId}
+          />
+        ))}
+        {!comments?.length && (
+          <p className="text-center text-muted-foreground">No comments yet</p>
+        )}
+      </div>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => addCommentMutation.mutateAsync(data))} className="space-y-4 mb-8">
+        <form onSubmit={form.handleSubmit((data) => addCommentMutation.mutateAsync(data))} className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
           <FormField
             control={form.control}
             name="content"
@@ -345,19 +358,6 @@ export default function CommentsPage() {
           )}
         </form>
       </Form>
-
-      <div className="space-y-6">
-        {commentTree.map((comment) => (
-          <CommentThread
-            key={comment.id}
-            comment={comment}
-            onReply={setReplyToId}
-          />
-        ))}
-        {!comments?.length && (
-          <p className="text-center text-muted-foreground">No comments yet</p>
-        )}
-      </div>
     </div>
   );
 }
