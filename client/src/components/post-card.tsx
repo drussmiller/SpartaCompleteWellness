@@ -11,6 +11,7 @@ import { MessageCircle } from "lucide-react";
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
+  const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
 
   const { data: commentCount = 0 } = useQuery<number>({
     queryKey: ["/api/posts", post.id, "comment-count"],
@@ -36,7 +37,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
-            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${post.author.username}`} />
+            <AvatarImage 
+                  key={`avatar-${post.author?.id}-${avatarKey}`} 
+                  src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
+                />
             <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
