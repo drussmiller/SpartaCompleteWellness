@@ -173,7 +173,7 @@ function CommentThread({
               <div className="flex flex-col">
                 {depth < maxDepth && (
                   <button
-                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted"
+                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted text-2xl"
                     onClick={() => {
                       onReply(comment.id);
                       setShowActions(false);
@@ -185,13 +185,13 @@ function CommentThread({
                 {currentUser?.id === comment.author.id && (
                   <>
                     <button
-                      className="w-full p-4 text-blue-600 font-semibold flex justify-center border-b hover:bg-muted"
+                      className="w-full p-4 text-blue-600 font-semibold flex justify-center border-b hover:bg-muted text-2xl"
                       onClick={handleEditClick}
                     >
                       Edit
                     </button>
                     <button
-                      className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
+                      className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted text-2xl"
                       onClick={handleDeleteClick}
                     >
                       Delete
@@ -200,7 +200,7 @@ function CommentThread({
                 )}
 
                 <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => {
                     navigator.clipboard.writeText(comment.content);
                     setShowActions(false);
@@ -211,7 +211,7 @@ function CommentThread({
                 </button>
 
                 <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => setShowActions(false)}
                 >
                   Cancel
