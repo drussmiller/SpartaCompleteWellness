@@ -316,16 +316,6 @@ export default function CommentsPage() {
     return () => clearTimeout(focusTimer);
   }, []);
 
-  const handleSubmitComment = async () => {
-    if (!comment.trim()) return;
-
-    try {
-      await createCommentMutation.mutateAsync();
-    } catch (error) {
-      // Error handling is already done in the mutation
-    }
-  };
-
   if (isPostLoading || areCommentsLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
