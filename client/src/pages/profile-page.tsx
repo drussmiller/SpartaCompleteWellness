@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut, ArrowLeft } from "lucide-react";
+import { LogOut, ArrowLeft, ChevronLeft } from "lucide-react"; // Added ChevronLeft import
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
@@ -122,7 +122,7 @@ export default function ProfilePage() {
               size="icon"
               onClick={() => setLocation("/")}
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" /> {/* Replaced ArrowLeft with ChevronLeft */}
             </Button>
             <h1 className="text-xl font-bold">Profile</h1>
           </div>

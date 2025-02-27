@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MessageSquare, Trash2, MessageCircle } from "lucide-react";
+import { Loader2, MessageSquare, Trash2, MessageCircle, ChevronLeft } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type CommentWithAuthor } from "@shared/schema";
 
@@ -359,7 +359,7 @@ export default function CommentsPage() {
             onClick={() => window.history.back()}
             className="mr-2"
           >
-            &larr;
+            <ChevronLeft className="h-4 w-4" /> {/* Changed to ChevronLeft */}
           </Button>
           <h1 className="text-xl font-bold truncate">Comments</h1>
         </div>
