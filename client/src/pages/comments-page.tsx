@@ -51,8 +51,11 @@ function CommentThread({
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Comment deleted successfully" });
-      // Invalidate the comment thread query to refresh the comments
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      // Force immediate refetch to update the UI
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/comments", postId],
+        refetchType: 'active'
+      });
       // Close the drawer immediately after successful deletion
       setDrawerOpen(false);
     },
