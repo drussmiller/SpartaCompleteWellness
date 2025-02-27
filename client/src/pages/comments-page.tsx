@@ -47,7 +47,9 @@ function CommentThread({
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Comment deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", comment.postId, "comments"] });
+      // Use the post ID from the comment object or the postId from the URL parameter
+      const postIdForRefresh = comment.postId || postId;
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", postIdForRefresh, "comments"] });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -55,18 +57,8 @@ function CommentThread({
   });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [touchStartTime, setTouchStartTime] = useState(0);
-
-  const handleTouchStart = () => {
-    setTouchStartTime(Date.now());
-  };
-
-  const handleTouchEnd = () => {
-    const touchEndTime = Date.now();
-    const touchDuration = touchEndTime - touchStartTime;
-    if (touchDuration < 300) { //Adjust as needed to determine what constitutes a tap vs long-press
-      return; //Treat as a simple tap, no action needed.
-    }
+  
+  const handleCommentClick = () => {
     setDrawerOpen(true);
   };
 
@@ -91,9 +83,7 @@ function CommentThread({
         <div className="flex-1">
           <div 
             className="bg-muted/50 rounded-lg px-3 py-2 relative cursor-pointer active:bg-muted"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
+            onClick={handleCommentClick}
             onContextMenu={(e) => {
               e.preventDefault();
               setDrawerOpen(true);
