@@ -210,7 +210,7 @@ export default function CommentsPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4"> {/* Added overflow-y-auto */}
+      <main className="flex-1 overflow-y-auto p-4 pb-32"> {/* Added padding at bottom for comment input */}
         {originalPost && (
           <div className="mb-6 p-4 border rounded-lg">
             <div className="flex items-start gap-3">
@@ -257,7 +257,7 @@ export default function CommentsPage() {
         </div>
       </main>
 
-      <div className="sticky bottom-0 left-0 right-0 bg-background p-4 flex items-center"> {/* Fixed position comment input */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background p-4 border-t border-border shadow-lg"> {/* Fixed position comment input that overlays the nav */}
         <div className="flex flex-col w-full">
           <Textarea
             ref={commentInputRef}
@@ -289,7 +289,9 @@ export default function CommentsPage() {
           )}
         </div>
       </div>
-      <BottomNav />
+      <div className="pb-20">
+        <BottomNav />
+      </div>
     </div>
   );
 }
