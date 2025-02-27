@@ -1,252 +1,260 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useParams } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
-import { insertPostSchema, Post, User } from "@shared/schema";
-import * as z from "zod";
-import { queryClient } from "@/lib/queryClient";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
+import { useLocation } from "@/hooks/use-location";
+import { useParams } from "wouter";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowLeft,
-  Loader2,
-  SendHorizontal,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  Copy
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BottomNav } from "@/components/bottom-nav";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 
-interface CommentWithAuthor extends Post {
-  author: User;
-  replies?: CommentWithAuthor[];
-}
+type Comment = {
+  id: number;
+  content: string;
+  parentId: number | null;
+  userId: number;
+  createdAt: string;
+  depth: number;
+  author: {
+    id: number;
+    username: string;
+    imageUrl: string | null;
+  };
+};
 
-function CommentThread({
-  comment,
-  depth = 0,
-  onReply,
-}: {
-  comment: CommentWithAuthor;
-  depth?: number;
+type CommentThreadProps = {
+  comment: Comment;
+  depth: number;
   onReply: (parentId: number) => void;
-}) {
-  const maxDepth = 3;
+  onRefresh: () => void;
+};
+
+function CommentThread({ comment, depth, onReply, onRefresh }: CommentThreadProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const { postId } = useParams();
+  const { copy } = useClipboard();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const deleteCommentMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
-      }
-      return res;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+  const handleDelete = async (commentId: number) => {
+    try {
+      await apiRequest("DELETE", `/api/comments/${commentId}`);
+      onRefresh();
       toast({
-        title: "Success",
         description: "Comment deleted successfully",
       });
-      setDrawerOpen(false);
-    },
-    onError: (error: Error) => {
+    } catch (error) {
+      console.error("Error deleting comment:", error);
       toast({
-        title: "Error",
-        description: error.message,
         variant: "destructive",
+        description: "Failed to delete comment",
       });
-    },
-  });
+    }
+  };
+
+  const handleEdit = (comment: Comment) => {
+    //This function will be implemented in the parent component.
+  };
+
+  const handleCommentClick = () => {
+    setDrawerOpen(true);
+  };
 
   return (
     <div className={`pl-${depth > 0 ? 4 : 0}`}>
-      <div className="flex items-start gap-3 p-3 rounded-lg border">
+      <div 
+        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer"
+        onClick={handleCommentClick}
+      >
         <Avatar className="h-8 w-8">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
           <AvatarFallback>{comment.author.username.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <div className="flex-1 space-y-1.5">
+        <div className="flex-1 overflow-hidden">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium leading-none">
-              {comment.author.username}
-            </p>
-            <div className="flex items-center gap-2">
+            <div className="font-medium">{comment.author.username}</div>
+            <div className="flex items-center gap-1">
               <p className="text-xs text-muted-foreground">
                 {new Date(comment.createdAt!).toLocaleString()}
               </p>
-              {(currentUser?.id === comment.userId || currentUser?.isAdmin) && (
-                <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-                  <DrawerTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DrawerTrigger>
-                  <DrawerContent>
-                    <div className="p-4 text-center text-2xl font-bold">
-                      Actions
-                    </div>
-                    <div className="flex flex-col p-4 gap-2">
-                      <Button
-                        variant="destructive"
-                        onClick={() => deleteCommentMutation.mutate()}
-                        disabled={deleteCommentMutation.isPending}
-                        className="w-full"
+              <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <div className="hidden">
+                    {/* Hidden trigger, we'll control the drawer with our own click handler */}
+                  </div>
+                </DrawerTrigger>
+                <DrawerContent className="p-0">
+                    <div className="flex flex-col divide-y divide-border">
+                      <Button 
+                        variant="ghost" 
+                        className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                        onClick={() => {
+                          onReply(comment.id);
+                          setDrawerOpen(false);
+                        }}
                       >
-                        {deleteCommentMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 mr-2" />
-                        )}
-                        Delete Comment
+                        Reply
                       </Button>
-                      <Button className="w-full">Copy</Button>
-                      <DrawerClose asChild>
-                        <Button variant="outline" className="w-full">
-                          Cancel
+                      {(currentUser?.id === comment.userId || currentUser?.isAdmin) && (
+                        <Button 
+                          variant="ghost" 
+                          className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                          onClick={() => {
+                            handleEdit(comment);
+                            setDrawerOpen(false);
+                          }}
+                        >
+                          Edit
                         </Button>
-                      </DrawerClose>
+                      )}
+                      {(currentUser?.id === comment.userId || currentUser?.isAdmin) && (
+                        <Button 
+                          variant="ghost" 
+                          className="justify-center rounded-none py-6 text-red-500 text-base font-normal"
+                          onClick={() => {
+                            handleDelete(comment.id);
+                            // Drawer will be closed by the delete mutation success handler
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        className="justify-center rounded-none py-6 text-base font-normal"
+                        onClick={() => {
+                          navigator.clipboard.writeText(comment.content);
+                          toast({ description: "Comment copied to clipboard" });
+                          setDrawerOpen(false);
+                        }}
+                      >
+                        Copy
+                      </Button>
                     </div>
-                  </DrawerContent>
-                </Drawer>
-              )}
+                </DrawerContent>
+              </Drawer>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-            {comment.content}
-          </p>
-          {/* Removed Reply button */}
+          <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
         </div>
       </div>
-
-      {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
-        <div className="space-y-2 ml-4 mt-2">
-          {comment.replies.map((reply) => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              onReply={onReply}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
 export default function CommentsPage() {
-  const { postId } = useParams();
-  const { user: currentUser } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [replyToId, setReplyToId] = useState<number | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [params, setParams] = useParams();
+  const postId = params.postId ? parseInt(params.postId) : null;
+  const [location, setLocation] = useLocation();
 
-  // Focus the textarea when reply is initiated
-  useEffect(() => {
-    if (replyToId && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [replyToId]);
+  const [comment, setComment] = useState("");
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const form = useForm<z.infer<typeof insertPostSchema>>({
-    resolver: zodResolver(insertPostSchema),
-    defaultValues: {
-      type: "comment",
-      content: "",
-      imageUrl: null,
-      points: 1,
-      parentId: parseInt(postId!),
-      depth: 0
-    }
+  const { data: originalPost, isLoading: isPostLoading } = useQuery({
+    queryKey: [`/api/posts/${postId}`],
+    enabled: !!postId,
   });
 
-  const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
-    queryKey: ["/api/posts/comments", postId],
-    queryFn: async () => {
-      if (!postId) return [];
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch comments");
-      }
-      return res.json();
-    },
-    enabled: !!postId && !!currentUser,
+  const { data: comments = [], isLoading: areCommentsLoading, refetch } = useQuery({
+    queryKey: [`/api/posts/comments/${postId}`],
+    enabled: !!postId,
   });
 
-  const { data: post } = useQuery<Post & { author: User }>({
-    queryKey: ["/api/posts", postId],
-    queryFn: async () => {
-      if (!postId) return null;
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch post");
-      }
-      return res.json();
-    },
-    enabled: !!postId && !!currentUser,
-  });
-
-  const addCommentMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
-      console.log("Submitting comment with parentId:", replyToId);
-      const commentData = {
-        ...data,
-        parentId: replyToId || parseInt(postId!),
-      };
-      const res = await apiRequest("POST", "/api/posts", commentData);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to add comment");
-      }
-      return res.json();
+  const createCommentMutation = useMutation({
+    mutationFn: async (data: { content: string; parentId: number | null }) => {
+      console.log("Submitting comment with parentId:", data.parentId);
+      const response = await apiRequest("POST", "/api/posts", {
+        type: "comment",
+        content: data.content,
+        parentId: data.parentId || postId,
+      });
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      form.reset();
-      setReplyToId(null);
+      setComment("");
+      refetch();
       toast({
-        title: "Success",
-        description: "Comment added successfully",
+        description: "Comment posted successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
-        title: "Error",
-        description: error.message,
         variant: "destructive",
+        description: "Failed to post comment",
       });
+      console.error("Error posting comment:", error);
     },
   });
 
-  if (!currentUser) {
+  const handleSubmitComment = () => {
+    if (!comment.trim()) return;
+
+    createCommentMutation.mutate({
+      content: comment,
+      parentId: replyTo,
+    });
+
+    // Reset reply state
+    setReplyTo(null);
+  };
+
+  const handleReply = (parentId: number) => {
+    setReplyTo(parentId);
+    if (commentInputRef.current) {
+      commentInputRef.current.focus();
+    }
+  };
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitComment();
+    }
+  };
+
+  useEffect(() => {
+    if (replyTo && commentInputRef.current) {
+      commentInputRef.current.focus();
+    }
+  }, [replyTo]);
+
+  const renderComments = (commentList: Comment[], parentId: number | null = null, level = 0) => {
+    return commentList
+      .filter(c => c.parentId === parentId)
+      .map(comment => (
+        <div key={comment.id} className="mt-3">
+          <CommentThread
+            comment={comment}
+            depth={level}
+            onReply={handleReply}
+            onRefresh={refetch}
+          />
+          {renderComments(commentList, comment.id, level + 1)}
+        </div>
+      ));
+  };
+
+  if (isPostLoading || areCommentsLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Please log in to view comments</p>
-          <Link href="/auth">
+          <Link to="/auth">
             <Button>Log In</Button>
           </Link>
         </div>
@@ -254,139 +262,92 @@ export default function CommentsPage() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  // Build comment tree based on parent-child relationships
-  const buildCommentTree = (comments: CommentWithAuthor[]): CommentWithAuthor[] => {
-    // First, create a map of comments by their IDs
-    const commentMap = new Map<number, CommentWithAuthor>();
-    const rootComments: CommentWithAuthor[] = [];
-
-    // Initialize the map with all comments
-    comments.forEach(comment => {
-      commentMap.set(comment.id, { ...comment, replies: [] });
-    });
-
-    // Build the tree structure
-    comments.forEach(comment => {
-      const processedComment = commentMap.get(comment.id)!;
-
-      // If it's a reply to another comment
-      if (comment.parentId && comment.parentId !== parseInt(postId!)) {
-        const parentComment = commentMap.get(comment.parentId);
-        if (parentComment) {
-          if (!parentComment.replies) parentComment.replies = [];
-          parentComment.replies.push(processedComment);
-        }
-      } else {
-        // It's a top-level comment
-        rootComments.push(processedComment);
-      }
-    });
-
-    return rootComments;
-  };
-
-  const commentTree = buildCommentTree(comments || []);
-
   return (
-    <div className="container max-w-3xl mx-auto py-6 pb-32">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
+    <div className="pb-20">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4 flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.history.back()}
+            className="mr-2"
+          >
+            &larr;
           </Button>
-        </Link>
-        <h1 className="text-xl font-semibold">Comments</h1>
-      </div>
+          <h1 className="text-xl font-bold truncate">Comments</h1>
+        </div>
+      </header>
 
-      {post && (
-        <div className="mb-6 p-4 border rounded-lg">
-          <div className="flex items-center gap-4 mb-3">
-            <Avatar>
-              <AvatarImage src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} />
-              <AvatarFallback>{post.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-semibold">{post.author?.username}</p>
-              <p className="text-xs text-muted-foreground">{new Date(post.createdAt!).toLocaleString()}</p>
+      <main className="p-4">
+        {originalPost && (
+          <div className="mb-6 p-4 border rounded-lg">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`} />
+                <AvatarFallback>{originalPost.author.username.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{originalPost.author.username}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(originalPost.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                  {originalPost.content}
+                </p>
+                {originalPost.imageUrl && (
+                  <img
+                    src={originalPost.imageUrl}
+                    alt="Post"
+                    className="mt-2 rounded-md max-h-[300px] w-auto"
+                  />
+                )}
+              </div>
             </div>
           </div>
-          <p className="whitespace-pre-wrap">{post.content}</p>
-          {post.imageUrl && (
-            <img 
-              src={post.imageUrl} 
-              alt="Post image" 
-              className="w-full h-auto rounded-md mt-3 max-h-96 object-contain" 
+        )}
+
+        <div className="sticky bottom-20 z-10 bg-background pt-2">
+          <div className="flex flex-col mb-2">
+            <Textarea
+              ref={commentInputRef}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onKeyDown={handleCommentKeyDown}
+              placeholder={replyTo ? "Write your reply..." : "Write a comment..."}
+              className="resize-none"
             />
+            {replyTo && (
+              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                <span>
+                  Replying to comment #{replyTo}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-auto py-0 px-1"
+                  onClick={() => setReplyTo(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {comments.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6">
+              No comments yet. Be the first to comment!
+            </p>
+          ) : (
+            renderComments(comments)
           )}
         </div>
-      )}
+      </main>
 
-      <div className="space-y-6 mb-24 px-2">
-        {commentTree.map((comment) => (
-          <CommentThread
-            key={comment.id}
-            comment={comment}
-            onReply={setReplyToId}
-          />
-        ))}
-        {!comments?.length && (
-          <p className="text-center text-muted-foreground">No comments yet</p>
-        )}
-      </div>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => addCommentMutation.mutateAsync(data))} className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
-          <FormField
-            control={form.control}
-            name="content"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <div className="relative">
-                    <Textarea
-                      {...field}
-                      ref={textareaRef}
-                      placeholder={replyToId ? "Write a reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-                      className="min-h-[80px]"
-                      value={field.value || ''}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && field.value) {
-                          e.preventDefault();
-                          form.handleSubmit((data) => addCommentMutation.mutateAsync(data))();
-                        }
-                      }}
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {replyToId && (
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-muted-foreground">
-                Replying to a comment
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyToId(null)}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
-        </form>
-      </Form>
+      <BottomNav />
     </div>
   );
 }
