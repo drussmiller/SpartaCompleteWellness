@@ -753,6 +753,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Add endpoint for deleting comments
+  app.delete("/api/comments/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      const commentId = parseInt(req.params.id);
+
+      // First check if the comment exists
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(and(
+          eq(posts.id, commentId),
+          eq(posts.type, 'comment')
+        ));
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Allow users to delete their own comments or if they are admin
+      if (comment.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      }
+
+      // Delete the comment
+      await db.delete(posts).where(eq(posts.id, commentId));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      res.status(500).json({
+        message: "Failed to delete comment",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   app.delete("/api/data", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
@@ -892,8 +930,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First create the activity
       const [activity] = await db
         .insert(activities)
-        .values(parsedActivityData)
-        .returning();
+          .values(parsedActivityData)
+          .returning();
 
       // Then create associated workout videos if any
       if (workoutVideos && workoutVideos.length > 0) {

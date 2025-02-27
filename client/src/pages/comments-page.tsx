@@ -13,8 +13,11 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useState as useHookState } from "react";
 import { cn } from "@/lib/utils";
+import { Copy, Trash2, Reply } from "lucide-react";
+import { useState } from "react";
+
 
 function CommentThread({
   comment,
@@ -32,6 +35,50 @@ function CommentThread({
   });
 
   const maxDepth = 3;
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  const deleteCommentMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
+      }
+
+      // The server just returns a 200 status code with no content for successful deletion
+      // No need to parse any response body
+      return {};
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Comment deleted successfully" });
+      // Force immediate refetch to update the UI
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/comments", postId],
+        refetchType: 'active'
+      });
+      // Close the drawer immediately after successful deletion
+      setDrawerOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      // Close the drawer on error as well
+      setDrawerOpen(false);
+    }
+  });
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const handleCommentClick = () => {
+    setDrawerOpen(true);
+  };
+
+  const handleCopyComment = () => {
+    navigator.clipboard.writeText(comment.content).then(() => {
+        toast({ title: "Success", description: "Comment copied to clipboard" });
+    }, (err) => {
+        toast({ title: "Error", description: "Failed to copy comment" , variant: "destructive"});
+    });
+  };
 
   return (
     <div className={cn(
@@ -44,7 +91,14 @@ function CommentThread({
           <AvatarFallback>{comment.author.username[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="bg-muted/50 rounded-lg px-3 py-2">
+          <div 
+            className="bg-muted/50 rounded-lg px-3 py-2 relative cursor-pointer active:bg-muted"
+            onClick={handleCommentClick}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setDrawerOpen(true);
+            }}
+          >
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium">{comment.author.username}</p>
               <span className="text-xs text-muted-foreground">•</span>
@@ -54,30 +108,30 @@ function CommentThread({
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => onReply(comment.id)}
-            >
-              <MessageSquare className="h-3 w-3 mr-1" />
-              Reply
-            </Button>
-          </div>
+          {/* Comment interaction drawer */}
+          <CommentActionDrawer 
+            isOpen={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            onReply={() => onReply(comment.id)}
+            onDelete={() => deleteCommentMutation.mutate()}
+            onCopy={handleCopyComment}
+            canDelete={currentUser?.id === comment.userId}
+            commentId={comment.id}
+            commentContent={comment.content || ''}
+          />
         </div>
       </div>
 
       {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
         <div className="space-y-2">
           {comment.replies.map((reply) => (
-              <CommentThread
-                key={reply.id}
-                comment={reply}
-                depth={depth + 1}
-                onReply={onReply}
-              />
-            ))}
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              onReply={onReply}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -104,7 +158,7 @@ export default function CommentsPage() {
 
   // Modified query to fetch all comments related to this post
   const { data: comments, isLoading } = useQuery<CommentWithAuthor[]>({
-    queryKey: ["/api/posts", postId, "comments"],
+    queryKey: ["/api/posts/comments", postId],
     queryFn: async () => {
       try {
         // Modified query to fetch all comments in the thread
@@ -147,7 +201,7 @@ export default function CommentsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       form.reset();
       setReplyToId(null);
       toast({
@@ -245,25 +299,35 @@ export default function CommentsPage() {
                   <div className="relative">
                     <Textarea
                       {...field}
-                      placeholder={replyToId ? "Write a reply..." : "Write a comment..."}
-                      className="min-h-[100px] pr-20"
+                      placeholder={replyToId ? "Write a reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
+                      className="min-h-[80px] pr-20"
                       value={field.value || ''}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          form.handleSubmit((data) => addCommentMutation.mutateAsync(data))();
+                        }
+                      }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        field.onChange(field.value + "😊");
+                      }}
+                      className="absolute right-2 bottom-2 p-2 text-muted-foreground hover:text-foreground"
+                    >
+                      😊
+                    </button>
                   </div>
                 </FormControl>
               </FormItem>
             )}
           />
-          <div className="flex gap-2">
-            <Button type="submit" disabled={addCommentMutation.isPending}>
-              {addCommentMutation.isPending ? "Adding..." : (replyToId ? "Reply" : "Comment")}
+          {replyToId && (
+            <Button variant="ghost" onClick={() => setReplyToId(null)}>
+              Cancel Reply
             </Button>
-            {replyToId && (
-              <Button variant="ghost" onClick={() => setReplyToId(null)}>
-                Cancel Reply
-              </Button>
-            )}
-          </div>
+          )}
         </form>
       </Form>
 
@@ -280,5 +344,83 @@ export default function CommentsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Add CommentActionDrawer component at the bottom of the file
+function CommentActionDrawer({
+  isOpen,
+  onClose,
+  onReply,
+  onDelete,
+  onCopy,
+  canDelete,
+  commentId,
+  commentContent
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onReply: () => void;
+  onDelete: () => void;
+  onCopy: () => void;
+  canDelete: boolean;
+  commentId: number;
+  commentContent: string;
+}) {
+  return (
+    <>
+      {/* Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-background/80 z-50"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Drawer */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-card rounded-t-xl shadow-lg transition-transform duration-300 ease-in-out z-50 ${
+        isOpen ? 'translate-y-0' : 'translate-y-full'
+      }`}>
+        <div className="p-4 space-y-4">
+          <div className="w-12 h-1 bg-muted mx-auto rounded-full mb-4" />
+
+          <button 
+            onClick={() => {
+              onReply();
+              onClose();
+            }}
+            className="flex items-center gap-3 w-full p-3 text-left hover:bg-accent rounded-md"
+          >
+            <Reply className="h-5 w-5" />
+            <span>Reply</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              onCopy();
+              onClose();
+            }}
+            className="flex items-center gap-3 w-full p-3 text-left hover:bg-accent rounded-md"
+          >
+            <Copy className="h-5 w-5" />
+            <span>Copy Text</span>
+          </button>
+
+          {canDelete && (
+            <button 
+              onClick={() => {
+                onDelete();
+                // Don't close manually - let the mutation handler close it
+                // to prevent potential race conditions
+              }}
+              className="flex items-center gap-3 w-full p-3 text-left text-destructive hover:bg-destructive/10 rounded-md"
+            >
+              <Trash2 className="h-5 w-5" />
+              <span>Delete</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
