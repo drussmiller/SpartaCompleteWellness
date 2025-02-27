@@ -972,8 +972,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add team assignment route
   app.get("/api/users", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
-    const users = await storage.getAllUsers();
-    res.json(users);
+    try {
+      const users = await storage.getAllUsers();
+
+      // Calculate program start dates for all users
+      const enhancedUsers = await Promise.all(users.map(async (user) => {
+        const weekInfo = await storage.getUserWeekInfo(user.id);
+
+        let firstMonday = null;
+        if (user.teamJoinedAt) {
+          const joinDate = new Date(user.teamJoinedAt);
+          const dayOfWeek = joinDate.getDay();
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+          firstMonday = new Date(joinDate);
+          firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+          firstMonday.setHours(0, 0, 0, 0);
+        }
+
+        return {
+          ...user,
+          weekInfo,
+          programStart: firstMonday?.toISOString() || null
+        };
+      }));
+
+      res.json(enhancedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
   });
 
   app.post("/api/users/:id/team", async (req, res) => {
@@ -1269,6 +1296,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
+      const weekInfo = await storage.getUserWeekInfo(req.user.id);
+
+      // Get the user's first Monday (if they're in a team)
+      let firstMonday = null;
+      if (req.user.teamJoinedAt) {
+        const joinDate = new Date(req.user.teamJoinedAt);
+        const dayOfWeek = joinDate.getDay();
+        const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+        firstMonday = new Date(joinDate);
+        firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+        firstMonday.setHours(0, 0, 0, 0);
+      }
+
       // Get user with accurate point total by only counting existing posts
       const [user] = await db
         .select({
@@ -1283,7 +1323,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             FROM ${posts}
             WHERE user_id = ${users.id}
             AND type != 'comment'
-          ), 0)`
+          ), 0)`,
+          teamJoinedAt: users.teamJoinedAt
         })
         .from(users)
         .where(eq(users.id, req.user.id));
@@ -1295,7 +1336,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always return points as a number
       const sanitizedUser = {
         ...user,
-        points: typeof user.points ==='number' ? user.points : 0
+        points: typeof user.points ==='number' ? user.points : 0,
+        weekInfo,
+        programStart: firstMonday?.toISOString() || null
       };
 
       res.json(sanitizedUser);

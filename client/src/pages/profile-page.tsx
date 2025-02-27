@@ -17,6 +17,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation } from "wouter";
+import { format } from "date-fns";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
@@ -187,6 +188,48 @@ export default function ProfilePage() {
             <div className="flex-1">
               <h2 className="text-xl font-semibold">{user?.username}</h2>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <h3 className="text-lg font-semibold mb-4">Program Details</h3>
+            <div className="space-y-3">
+              {user?.teamId ? (
+                <>
+                  {user.programStart ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Program Start (Day One)</span>
+                        <span className="text-sm font-medium">
+                          {format(new Date(user.programStart), 'PPP')}
+                        </span>
+                      </div>
+                      {user.weekInfo && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Current Week</span>
+                            <span className="text-sm font-medium">Week {user.weekInfo.week}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Current Day</span>
+                            <span className="text-sm font-medium">Day {user.weekInfo.day}</span>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Your program will start on the first Monday after joining a team
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Join a team to start your program
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

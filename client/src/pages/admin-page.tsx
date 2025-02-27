@@ -17,6 +17,7 @@ import { insertTeamSchema } from "@shared/schema";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -398,13 +399,39 @@ export default function AdminPage() {
           <CardContent>
             <div className="space-y-4">
               {users.map((u) => (
-                <div key={u.id} className="flex flex-wrap items-center justify-between p-2 gap-2">
-                  <div className="min-w-[150px]">
+                <div key={u.id} className="flex flex-wrap items-start justify-between p-2 gap-2">
+                  <div className="min-w-[200px]">
                     <p className="font-medium">{u.username}</p>
                     <p className="text-sm text-muted-foreground">{u.email}</p>
                     <p className="text-sm text-muted-foreground">
                       Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                     </p>
+                    {u.teamId && (
+                      <>
+                        {u.programStart ? (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm">
+                              <span className="text-muted-foreground">Start Date: </span>
+                              <span className="font-medium">
+                                {format(new Date(u.programStart), 'PP')}
+                              </span>
+                            </p>
+                            {u.weekInfo && (
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Progress: </span>
+                                <span className="font-medium">
+                                  Week {u.weekInfo.week}, Day {u.weekInfo.day}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Program starts next Monday
+                          </p>
+                        )}
+                      </>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2 min-w-[140px]">
                     <Button
@@ -471,7 +498,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
-
 
 
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
