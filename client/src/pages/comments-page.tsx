@@ -215,7 +215,7 @@ function CommentThread({
                 >
                   Copy
                 </button>
-                
+
                 <button
                   className="w-full p-4 text-foreground font-semibold flex justify-center border-t hover:bg-muted text-2xl"
                   onClick={() => setShowActions(false)}
