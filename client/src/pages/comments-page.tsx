@@ -65,13 +65,7 @@ function CommentThread({
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
           cursor-pointer relative
         `}
-        onClick={(e) => {
-          if (e.target === e.currentTarget || 
-              (e.target as HTMLElement).classList.contains('comment-body') ||
-              (e.target as HTMLElement).parentElement === e.currentTarget) {
-            setShowActions(!showActions);
-          }
-        }}
+        onClick={() => setShowActions(!showActions)}
       >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -86,40 +80,37 @@ function CommentThread({
           </div>
           <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
 
-          {depth < maxDepth && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onReply(comment.id);
-              }}
-              className="text-xs text-muted-foreground hover:text-primary mt-2 flex items-center gap-1"
-            >
-              <MessageCircle className="h-3 w-3" />
-              Reply
-            </button>
-          )}
+          {/* Reply button removed - users can use the action drawer to reply */}
+
         </div>
 
         {/* Action Drawer - remains unchanged */}
         {showActions && (
-          <div className="fixed inset-0 bg-black/20 z-50 flex items-end justify-center" onClick={() => setShowActions(false)}>
-            <div className="bg-background w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="divide-y">
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+            onClick={() => setShowActions(false)}
+          >
+            <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+            <div 
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-white sm:relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col">
                 {depth < maxDepth && (
                   <button
-                    className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted"
                     onClick={() => {
-                      setShowActions(false);
                       onReply(comment.id);
+                      setShowActions(false);
                     }}
                   >
                     Reply
                   </button>
                 )}
-
                 {currentUser?.id === comment.author.id && (
                   <button
-                    className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
+                    onClick={handleDeleteClick}
                     onClick={() => {
                       setShowActions(false);
                       toast({ description: "Edit functionality not implemented yet" });
