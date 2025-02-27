@@ -330,7 +330,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user) return res.sendStatus(401);
     try {
       const postId = parseInt(req.params.id);
-      
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
       const [post] = await db
         .select({
           id: posts.id,
@@ -548,7 +551,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/posts/comments/:postId", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      console.log('Fetching comment thread for post:', req.params.postId);
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      console.log('Fetching comment thread for post:', postId);
 
       // First get all comments related to this post
       const comments = await db
@@ -575,12 +583,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             eq(posts.type, 'comment'),
             // Get both direct replies and nested replies
             or(
-              eq(posts.parentId, parseInt(req.params.postId)),
+              eq(posts.parentId, postId),
               sql`${posts.id} IN (
                 WITH RECURSIVE comment_tree AS (
                   -- Base case: direct replies to the post
                   SELECT id FROM ${posts}
-                  WHERE parent_id = ${parseInt(req.params.postId)}
+                  WHERE parent_id = ${postId}
                   AND type = 'comment'
 
                   UNION ALL
