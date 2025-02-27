@@ -181,11 +181,16 @@ export default function CommentsPage() {
     }, 50);
   };
 
-  // Add effect to focus the input when replyTo changes
+  // Effect to focus the input when the page loads and when replyTo changes
   useEffect(() => {
-    if (commentInputRef.current) {
-      commentInputRef.current.focus();
-    }
+    // Use setTimeout to ensure DOM is fully rendered
+    const timer = setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [replyTo]);
 
   const handleSubmitComment = async () => {
@@ -269,7 +274,7 @@ export default function CommentsPage() {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background p-4 border-t border-border shadow-lg"> {/* Fixed position comment input that overlays the nav */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg"> {/* Fixed position comment input that overlays the nav */}
         <div className="flex flex-col w-full">
           <Textarea
             ref={commentInputRef}
@@ -282,7 +287,7 @@ export default function CommentsPage() {
               }
             }}
             placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-            className="resize-none w-full"
+            className="resize-none w-full border-0 rounded-none px-4 pt-3"
           />
           {replyTo && (
             <div className="mt-1 flex justify-between text-xs text-muted-foreground">
