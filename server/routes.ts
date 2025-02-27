@@ -559,31 +559,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get total comment count including all replies using recursive CTE
       if (req.query.count === 'true') {
         console.log('Fetching comment count for post:', postId);
-        const [result] = await db
+        const comments = await db
           .select({
-            count: sql<number>`
-              WITH RECURSIVE comment_tree AS (
-                -- Base case: direct replies to the post
-                SELECT id
-                FROM ${posts}
-                WHERE parent_id = ${postId}
-                AND type = 'comment'
-
-                UNION ALL
-
-                -- Recursive case: replies to comments
-                SELECT p.id
-                FROM ${posts} p
-                INNER JOIN comment_tree ct ON p.parent_id = ct.id
-                WHERE p.type = 'comment'
-              )
-              SELECT COUNT(*)::integer FROM comment_tree
-            `
+            id: posts.id
           })
-          .execute();
+          .from(posts)
+          .where(
+            and(
+              eq(posts.type, 'comment'),
+              or(
+                eq(posts.parentId, postId),
+                sql`${posts.id} IN (
+                  WITH RECURSIVE comment_tree AS (
+                    SELECT id FROM ${posts}
+                    WHERE parent_id = ${postId}
+                    AND type = 'comment'
 
-        console.log('Comment count result:', result?.count || 0);
-        return res.json(result?.count || 0);
+                    UNION ALL
+
+                    SELECT p.id
+                    FROM ${posts} p
+                    INNER JOIN comment_tree ct ON p.parent_id = ct.id
+                    WHERE p.type = 'comment'
+                  )
+                  SELECT id FROM comment_tree
+                )`
+              )
+            )
+          );
+
+        const count = comments.length;
+        console.log('Comment count result:', count);
+        return res.json(count);
       }
 
       console.log('Fetching comment thread for post:', postId);
