@@ -41,11 +41,18 @@ function CommentThread({
     mutationFn: async () => {
       const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
       if (!res.ok) {
-        throw new Error("Failed to delete comment");
+        const errorText = await res.text();
+        throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
       }
-      // Check if there is content to parse, otherwise return empty object
-      const text = await res.text();
-      return text ? JSON.parse(text) : {};
+      
+      // For successful responses, try to parse JSON if there's content
+      try {
+        const text = await res.text();
+        return text && text.trim() ? JSON.parse(text) : {};
+      } catch (error) {
+        // If parsing fails, return empty object
+        return {};
+      }
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Comment deleted successfully" });
