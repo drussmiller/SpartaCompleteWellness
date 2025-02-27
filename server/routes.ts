@@ -1401,7 +1401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Add test endpoint after existing routes
   app.get("/api/points/test", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
+    if (!req.user) return res.sendStatus(401);
 
     try {
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
@@ -1432,7 +1432,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weekStart: weekStart.toISOString(),
         weekEnd: weekEnd.toISOString(),
         weeklyPoints: result.weeklyPoints,
-        totalPoints: result.totalPoints
+        totalPoints: result.totalPoints,
+        currentDay: date.getDay(), // 0 = Sunday, 1 = Monday, etc.
+        isCurrentWeek: date.getTime() === new Date().getTime()
       });
     } catch (error) {
       console.error('Error getting test points:', error);
