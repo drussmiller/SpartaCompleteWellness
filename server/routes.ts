@@ -558,6 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get total comment count including all replies using recursive CTE
       if (req.query.count === 'true') {
+        console.log('Fetching comment count for post:', postId);
         const [result] = await db
           .select({
             count: sql<number>`
@@ -579,12 +580,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               SELECT COUNT(*)::integer FROM comment_tree
             `
           })
-          .from(posts);
+          .execute();
 
-        return res.json(result.count || 0);
+        console.log('Comment count result:', result?.count || 0);
+        return res.json(result?.count || 0);
       }
 
-      // Rest of the code for fetching comment thread remains unchanged
       console.log('Fetching comment thread for post:', postId);
 
       const comments = await db
