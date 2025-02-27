@@ -86,31 +86,72 @@ function CommentThread({
         </div>
         {/* Action Drawer */}
         {showActions && (
-          <div className="absolute top-full right-0 mt-2 bg-white rounded-md shadow-md w-48">
-            <div className="p-2">
-              {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
-                <Button 
-                  variant="destructive" 
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteClick();
+          <div className="fixed inset-0 bg-black/20 z-50 flex items-end justify-center" onClick={() => setShowActions(false)}>
+            <div className="bg-white w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="divide-y">
+                {/* Reply option */}
+                <button
+                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  onClick={() => {
+                    setShowActions(false);
+                    onReply(comment.id);
                   }}
                 >
-                  <Trash2 className="mr-2 h-5 w-5" />
-                  Delete
-                </Button>
-              )}
-              <Button 
-                variant="default" 
-                className="w-full mt-2"
-                onClick={() => {
-                  setShowActions(false);
-                  onReply(comment.id);
-                }}
-              >
-                Reply
-              </Button>
+                  Reply
+                </button>
+                
+                {/* Edit option - only for user's own comments */}
+                {currentUser?.id === comment.author.id && (
+                  <button
+                    className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                    onClick={() => {
+                      setShowActions(false);
+                      // Edit functionality would go here
+                      toast({ description: "Edit functionality not implemented yet" });
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
+                
+                {/* Delete option - for user's own comments or admin */}
+                {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
+                  <button
+                    className="w-full p-4 text-red-500 font-semibold flex justify-center hover:bg-gray-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick();
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+                
+                {/* Copy option */}
+                <button
+                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  onClick={() => {
+                    navigator.clipboard.writeText(comment.content);
+                    setShowActions(false);
+                    toast({ description: "Comment copied to clipboard" });
+                  }}
+                >
+                  Copy
+                </button>
+                
+                {/* Cancel button */}
+                <button
+                  className="w-full p-4 text-blue-500 font-semibold flex justify-center hover:bg-gray-50"
+                  onClick={() => setShowActions(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              {/* Bottom handle bar */}
+              <div className="flex justify-center p-2">
+                <div className="w-16 h-1 bg-gray-300 rounded-full"></div>
+              </div>
             </div>
           </div>
         )}
