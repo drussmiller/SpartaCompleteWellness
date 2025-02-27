@@ -707,45 +707,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get a single post by ID
-  app.get("/api/posts/:id", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const postId = parseInt(req.params.id);
-      
-      const post = await db
-        .select({
-          id: posts.id,
-          type: posts.type,
-          content: posts.content,
-          imageUrl: posts.imageUrl,
-          points: posts.points,
-          userId: posts.userId,
-          parentId: posts.parentId,
-          createdAt: posts.createdAt,
-          author: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl,
-            points: users.points
-          }
-        })
-        .from(posts)
-        .leftJoin(users, eq(posts.userId, users.id))
-        .where(eq(posts.id, postId))
-        .limit(1);
-
-      if (!post.length) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      res.json(post[0]);
-    } catch (error) {
-      console.error('Error fetching post:', error);
-      res.status(500).json({ error: "Failed to fetch post" });
-    }
-  });
-
   // Notification routes
   app.get("/api/notifications", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
