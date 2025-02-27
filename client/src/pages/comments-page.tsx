@@ -195,7 +195,7 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="pb-20">
+    <div className="flex flex-col h-screen"> {/* Added flexbox for layout */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4 flex items-center">
           <Button
@@ -210,7 +210,7 @@ export default function CommentsPage() {
         </div>
       </header>
 
-      <main className="p-4">
+      <main className="flex-1 overflow-y-auto p-4"> {/* Added overflow-y-auto */}
         {originalPost && (
           <div className="mb-6 p-4 border rounded-lg">
             <div className="flex items-start gap-3">
@@ -255,41 +255,40 @@ export default function CommentsPage() {
             </p>
           )}
         </div>
-
-        <div className="sticky bottom-20 z-10 bg-background pt-2">
-          <div className="flex flex-col mb-2">
-            <Textarea
-              ref={commentInputRef}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitComment();
-                }
-              }}
-              placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-              className="resize-none"
-            />
-            {replyTo && (
-              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                <span>
-                  Replying to comment #{replyTo}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-auto py-0 px-1"
-                  onClick={() => setReplyTo(null)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
       </main>
 
+      <div className="sticky bottom-0 left-0 right-0 bg-background p-4 flex items-center"> {/* Fixed position comment input */}
+        <div className="flex flex-col w-full">
+          <Textarea
+            ref={commentInputRef}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitComment();
+              }
+            }}
+            placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
+            className="resize-none w-full"
+          />
+          {replyTo && (
+            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+              <span>
+                Replying to comment #{replyTo}
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-auto py-0 px-1"
+                onClick={() => setReplyTo(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
       <BottomNav />
     </div>
   );
