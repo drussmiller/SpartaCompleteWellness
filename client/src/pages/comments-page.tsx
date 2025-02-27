@@ -65,13 +65,7 @@ function CommentThread({
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
           cursor-pointer relative
         `}
-        onClick={(e) => {
-          if (e.target === e.currentTarget || 
-              (e.target as HTMLElement).classList.contains('comment-body') ||
-              (e.target as HTMLElement).parentElement === e.currentTarget) {
-            setShowActions(!showActions);
-          }
-        }}
+        onClick={() => setShowActions(!showActions)}
       >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
