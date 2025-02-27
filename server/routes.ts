@@ -326,6 +326,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/posts/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const postId = parseInt(req.params.id);
+      
+      const [post] = await db
+        .select({
+          id: posts.id,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          userId: posts.userId,
+          parentId: posts.parentId,
+          createdAt: posts.createdAt,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+            points: users.points
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(eq(posts.id, postId));
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      res.json(post);
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      res.status(500).json({ error: "Failed to fetch post" });
+    }
+  });
+
   app.get("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
