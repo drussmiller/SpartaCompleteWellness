@@ -173,8 +173,10 @@ export default function ProfilePage() {
                       }
 
                       await refetchUser();
-                      // Invalidate posts queries to refresh the avatar in all posts
+                      // Invalidate all queries that might contain user profile images
                       await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+                      await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
+                      await queryClient.invalidateQueries();
                       toast({
                         title: "Success",
                         description: "Profile image updated successfully"
