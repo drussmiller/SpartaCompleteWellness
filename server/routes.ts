@@ -857,6 +857,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add endpoint for updating comments
+  app.patch("/api/comments/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      const commentId = parseInt(req.params.id);
+      const { content } = req.body;
+
+      if (!content || content.trim() === '') {
+        return res.status(400).json({ message: "Comment content cannot be empty" });
+      }
+
+      // First check if the comment exists
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(and(
+          eq(posts.id, commentId),
+          eq(posts.type, 'comment')
+        ));
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Allow users to update their own comments only
+      if (comment.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to update this comment" });
+      }
+
+      // Update the comment
+      const [updatedComment] = await db
+        .update(posts)
+        .set({ content })
+        .where(eq(posts.id, commentId))
+        .returning();
+
+      res.json(updatedComment);
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      res.status(500).json({
+        message: "Failed to update comment",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add endpoint for deleting comments
   app.delete("/api/comments/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);

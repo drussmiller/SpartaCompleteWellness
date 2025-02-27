@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MessageSquare, Trash2, MessageCircle } from "lucide-react";
+import { Loader2, MessageSquare, Trash2, MessageCircle, ChevronLeft } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type CommentWithAuthor } from "@shared/schema";
 
@@ -26,6 +26,8 @@ function CommentThread({
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [showActions, setShowActions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
 
   // Deletion mutation remains unchanged
   const deleteCommentMutation = useMutation({
@@ -57,6 +59,55 @@ function CommentThread({
     }
   };
 
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setShowActions(false); // Close the drawer when edit is clicked
+    // Focus the edit text area in the next render cycle
+    setTimeout(() => {
+      const textareas = document.querySelectorAll('textarea');
+      const editTextarea = Array.from(textareas).find(
+        textarea => textarea.value === editText
+      );
+      if (editTextarea) {
+        editTextarea.focus();
+      }
+    }, 50);
+  };
+
+  const handleEditSave = async () => {
+    if (!editText.trim()) {
+      return;
+    }
+
+    try {
+      const res = await apiRequest("PATCH", `/api/comments/${comment.id}`, {
+        content: editText.trim()
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update comment");
+      }
+
+      setIsEditing(false);
+      setShowActions(false); // Hide the drawer after saving edits
+      toast({ description: "Comment updated successfully" });
+      onRefresh(); // Refresh the comment list
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: error instanceof Error ? error.message : "Failed to update comment"
+      });
+    }
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+    setShowActions(false); // Hide the drawer when canceling edits
+    setEditText(comment.content);
+  };
+
+
   return (
     <div className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}>
       <div 
@@ -78,13 +129,37 @@ function CommentThread({
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
-          <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
-
-          {/* Reply button removed - users can use the action drawer to reply */}
+          {isEditing ? (
+            <div>
+              <Textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="text-sm mt-1"
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEditCancel}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleEditSave}
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
+          )}
 
         </div>
 
-        {/* Action Drawer - remains unchanged */}
+        {/* Action Drawer */}
         {showActions && (
           <div
             className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
@@ -92,13 +167,13 @@ function CommentThread({
           >
             <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
             <div 
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-white sm:relative"
+              className="fixed bottom-0 z-50 w-full max-w-md rounded-t-lg bg-background p-0 shadow-lg sm:rounded-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col">
                 {depth < maxDepth && (
                   <button
-                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted"
+                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted text-2xl"
                     onClick={() => {
                       onReply(comment.id);
                       setShowActions(false);
@@ -108,32 +183,25 @@ function CommentThread({
                   </button>
                 )}
                 {currentUser?.id === comment.author.id && (
-                  <button
-                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
-                    onClick={handleDeleteClick}
-                    onClick={() => {
-                      setShowActions(false);
-                      toast({ description: "Edit functionality not implemented yet" });
-                    }}
-                  >
-                    Edit
-                  </button>
-                )}
-
-                {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
-                  <button
-                    className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick();
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      className="w-full p-4 text-blue-600 font-semibold flex justify-center border-b hover:bg-muted text-2xl"
+                      onClick={handleEditClick}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted text-2xl"
+                      onClick={handleDeleteClick}
+                    >
+                      Delete
+                    </button>
+                    <div className="h-2"></div> {/* Added spacing between buttons */}
+                  </>
                 )}
 
                 <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => {
                     navigator.clipboard.writeText(comment.content);
                     setShowActions(false);
@@ -142,17 +210,14 @@ function CommentThread({
                 >
                   Copy
                 </button>
-
+                
                 <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center border-t hover:bg-muted text-2xl"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => setShowActions(false)}
                 >
                   Cancel
                 </button>
-              </div>
-
-              <div className="flex justify-center p-2">
-                <div className="w-16 h-1 bg-muted-foreground/20 rounded-full"></div>
               </div>
             </div>
           </div>
@@ -296,7 +361,7 @@ export default function CommentsPage() {
             onClick={() => window.history.back()}
             className="mr-2"
           >
-            &larr;
+            <ChevronLeft className="h-4 w-4" /> {/* Changed to ChevronLeft */}
           </Button>
           <h1 className="text-xl font-bold truncate">Comments</h1>
         </div>
@@ -361,23 +426,23 @@ export default function CommentsPage() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if ((e.key === 'Enter' && !e.shiftKey) && !e.ctrlKey) {
                 e.preventDefault();
                 handleSubmitComment();
               }
             }}
-            placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
-            className="resize-none w-full border-0 rounded-none px-4 pt-3"
+            placeholder={replyTo ? "Enter reply..." : "Enter comment..."}
+            className="resize-none w-full border-0 rounded-none px-4 pt-3 text-base min-h-[50px] overflow-hidden whitespace-nowrap text-ellipsis focus:whitespace-normal"
           />
           {replyTo && (
-            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-              <span>
-                Replying to comment #{replyTo}
+            <div className="mt-2 mb-1 flex justify-between items-center text-xs text-muted-foreground px-2">
+              <span className="ml-2">
+                Replying to {comments.find(c => c.id === replyTo)?.author?.username || `comment #${replyTo}`}
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-auto py-0 px-1"
+                className="h-auto py-1 px-3 text-sm mr-2"
                 onClick={() => setReplyTo(null)}
               >
                 Cancel
