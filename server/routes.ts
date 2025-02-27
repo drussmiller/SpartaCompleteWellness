@@ -556,9 +556,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
+      // Get total comment count including all replies using recursive CTE
+      if (req.query.count === 'true') {
+        const [result] = await db
+          .select({
+            count: sql<number>`
+              WITH RECURSIVE comment_tree AS (
+                -- Base case: direct replies to the post
+                SELECT id
+                FROM ${posts}
+                WHERE parent_id = ${postId}
+                AND type = 'comment'
+
+                UNION ALL
+
+                -- Recursive case: replies to comments
+                SELECT p.id
+                FROM ${posts} p
+                INNER JOIN comment_tree ct ON p.parent_id = ct.id
+                WHERE p.type = 'comment'
+              )
+              SELECT COUNT(*)::integer FROM comment_tree
+            `
+          })
+          .from(posts);
+
+        return res.json(result.count || 0);
+      }
+
+      // Rest of the code for fetching comment thread remains unchanged
       console.log('Fetching comment thread for post:', postId);
 
-      // Get all comments related to this post with proper hierarchy
       const comments = await db
         .select({
           id: posts.id,
@@ -581,10 +609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(posts.type, 'comment'),
-            // Get both direct replies and all nested replies
             sql`${posts.id} IN (
               WITH RECURSIVE comment_tree AS (
-                -- Base case: direct replies to the post
                 SELECT id, parent_id, depth, created_at
                 FROM ${posts}
                 WHERE parent_id = ${postId}
@@ -592,7 +618,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 UNION ALL
 
-                -- Recursive case: replies to comments
                 SELECT p.id, p.parent_id, p.depth, p.created_at
                 FROM ${posts} p
                 INNER JOIN comment_tree ct ON p.parent_id = ct.id
@@ -620,10 +645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       comments.forEach(comment => {
         const commentWithReplies = commentMap.get(comment.id);
         if (comment.parentId === postId) {
-          // This is a root level comment
           rootComments.push(commentWithReplies);
         } else {
-          // This is a reply to another comment
           const parent = commentMap.get(comment.parentId);
           if (parent) {
             parent.replies.push(commentWithReplies);
@@ -825,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Add endpoint for deleting comments
   app.delete("/api/comments/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -907,8 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/users/:id/toggle-admin", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    const userId = parseInt(req.params.id);
+    if (!req.user?.isAdmin) return res.sendStatus(403);    const userId = parseInt(req.params.id);
     const { isAdmin } = req.body;
 
     try {
