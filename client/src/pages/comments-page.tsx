@@ -268,7 +268,7 @@ export default function CommentsPage() {
                   handleSubmitComment();
                 }
               }}
-              placeholder={replyTo ? "Write your reply..." : "Write a comment..."}
+              placeholder={replyTo ? "Write your reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
               className="resize-none"
             />
             {replyTo && (
@@ -287,7 +287,6 @@ export default function CommentsPage() {
               </div>
             )}
           </div>
-          <Button onClick={handleSubmitComment} className="mt-2">Submit</Button>
         </div>
       </main>
 
