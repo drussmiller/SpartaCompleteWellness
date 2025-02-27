@@ -86,21 +86,27 @@ function CommentThread({
 
         {/* Action Drawer - remains unchanged */}
         {showActions && (
-          <div className="fixed inset-0 bg-black/20 z-50 flex items-end justify-center" onClick={() => setShowActions(false)}>
-            <div className="bg-background w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="divide-y">
-                {depth < maxDepth && (
-                  <button
-                    className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
-                    onClick={() => {
-                      setShowActions(false);
-                      onReply(comment.id);
-                    }}
-                  >
-                    Reply
-                  </button>
-                )}
-
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+            onClick={(e) => {
+              setShowActions(false);
+            }}
+          >
+            <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+            <div 
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-white sm:relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col">
+                <button
+                  className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted"
+                  onClick={() => {
+                    onReply(comment.id);
+                    setShowActions(false);
+                  }}
+                >
+                  Reply
+                </button>
                 {currentUser?.id === comment.author.id && (
                   <button
                     className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted"
