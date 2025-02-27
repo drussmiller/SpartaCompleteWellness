@@ -116,13 +116,7 @@ function CommentThread({
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
           cursor-pointer relative
         `}
-        onClick={() => {
-          // Close any other editing or reply sessions
-          // Notify parent component to close any reply box
-          onReply(0); // Using 0 as a signal to close
-          setReplyTo(null);
-          setIsEditing(false);
-        }}
+        onClick={() => setShowActions(!showActions)}
       >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -209,6 +203,7 @@ function CommentThread({
                   className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
                   onClick={() => {
                     navigator.clipboard.writeText(comment.content);
+                    setShowActions(false);
                     toast({ description: "Comment copied to clipboard" });
                   }}
                 >
@@ -217,6 +212,7 @@ function CommentThread({
 
                 <button
                   className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
+                  onClick={() => setShowActions(false)}
                 >
                   Cancel
                 </button>
@@ -251,10 +247,6 @@ export default function CommentsPage() {
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
-  const [showActions, setShowActions] = useState(false); // Added state variable
-  const [isEditing, setIsEditing] = useState(false); // Added state variable
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null); // Added state variable
-
 
   const { data: originalPost, isLoading: isPostLoading } = useQuery({
     queryKey: [`/api/posts/${postId}`],
@@ -307,19 +299,7 @@ export default function CommentsPage() {
   });
 
   const handleReply = (parentId: number) => {
-    // If we're already replying to this comment, do nothing
-    if (replyTo === parentId) return;
-
-    // If we're replying to a different comment, clear the current comment text
-    if (replyTo !== null && replyTo !== parentId) {
-      setComment("");
-      // Close any active editing
-      setIsEditing(false);
-      setEditingCommentId(null);
-    }
-
     setReplyTo(parentId);
-
     // Focus on the textarea after a short delay to ensure state is updated
     setTimeout(() => {
       if (commentInputRef.current) {
@@ -339,13 +319,6 @@ export default function CommentsPage() {
 
     return () => clearTimeout(timer);
   }, [replyTo]);
-
-  // Effect to close editing/replying when needed
-  useEffect(() => {
-    // Close any active editing when component mounts
-    setIsEditing(false);
-    setEditingCommentId(null);
-  }, []);
 
   // Additional effect to focus when the component mounts
   useEffect(() => {
@@ -461,18 +434,14 @@ export default function CommentsPage() {
           />
           {replyTo && (
             <div className="mt-2 mb-1 flex justify-between items-center text-xs text-muted-foreground px-2">
-              <span className="ml-4 pt-1">
+              <span className="ml-2">
                 Replying to {comments.find(c => c.id === replyTo)?.author?.username || `comment #${replyTo}`}
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-auto py-1 px-3 text-sm mr-4 mt-1"
-                onClick={() => {
-                  setReplyTo(null);
-                  if (isEditing) setIsEditing(false);
-                  if (editingCommentId) setEditingCommentId(null);
-                }}
+                className="h-auto py-1 px-3 text-sm mr-2"
+                onClick={() => setReplyTo(null)}
               >
                 Cancel
               </Button>
