@@ -98,9 +98,16 @@ function CommentThread({
     //This function will be implemented in the parent component.
   };
 
+  const handleCommentClick = () => {
+    setDrawerOpen(true);
+  };
+
   return (
     <div className={`pl-${depth > 0 ? 4 : 0}`}>
-      <div className="flex items-start gap-3 p-3 rounded-lg border">
+      <div 
+        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer"
+        onClick={handleCommentClick}
+      >
         <Avatar className="h-8 w-8">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
           <AvatarFallback>{comment.author.username.charAt(0).toUpperCase()}</AvatarFallback>
@@ -114,19 +121,21 @@ function CommentThread({
               <p className="text-xs text-muted-foreground">
                 {new Date(comment.createdAt!).toLocaleString()}
               </p>
-              {(currentUser?.id === comment.userId || currentUser?.isAdmin) && (
-                <Drawer>
-                  <DrawerTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DrawerTrigger>
-                  <DrawerContent className="p-0">
+              <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <div className="hidden">
+                    {/* Hidden trigger, we'll control the drawer with our own click handler */}
+                  </div>
+                </DrawerTrigger>
+                <DrawerContent className="p-0">
                     <div className="flex flex-col divide-y divide-border">
                       <Button 
                         variant="ghost" 
                         className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
-                        onClick={() => onReply(comment.id)}
+                        onClick={() => {
+                          onReply(comment.id);
+                          setDrawerOpen(false);
+                        }}
                       >
                         Reply
                       </Button>
@@ -134,7 +143,10 @@ function CommentThread({
                         <Button 
                           variant="ghost" 
                           className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
-                          onClick={() => handleEdit(comment)}
+                          onClick={() => {
+                            handleEdit(comment);
+                            setDrawerOpen(false);
+                          }}
                         >
                           Edit
                         </Button>
@@ -143,7 +155,10 @@ function CommentThread({
                         <Button 
                           variant="ghost" 
                           className="justify-center rounded-none py-6 text-red-500 text-base font-normal"
-                          onClick={() => handleDelete(comment.id)}
+                          onClick={() => {
+                            handleDelete(comment.id);
+                            // Drawer will be closed by the delete mutation success handler
+                          }}
                         >
                           Delete
                         </Button>
@@ -154,6 +169,7 @@ function CommentThread({
                         onClick={() => {
                           navigator.clipboard.writeText(comment.content);
                           toast({ description: "Comment copied to clipboard" });
+                          setDrawerOpen(false);
                         }}
                       >
                         Copy
