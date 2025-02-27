@@ -158,6 +158,14 @@ export default function CommentsPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [replyToId, setReplyToId] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus the textarea when reply is initiated
+  useEffect(() => {
+    if (replyToId && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [replyToId]);
 
   const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
@@ -327,6 +335,7 @@ export default function CommentsPage() {
                   <div className="relative">
                     <Textarea
                       {...field}
+                      ref={textareaRef}
                       placeholder={replyToId ? "Write a reply... (Press Enter to submit)" : "Write a comment... (Press Enter to submit)"}
                       className="min-h-[80px] pr-20"
                       value={field.value || ''}
