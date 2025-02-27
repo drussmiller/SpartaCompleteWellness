@@ -196,12 +196,11 @@ function CommentThread({
                     >
                       Delete
                     </button>
-                    <div className="h-2"></div> {/* Added spacing between buttons */}
                   </>
                 )}
 
                 <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center hover:bg-muted text-2xl"
+                  className="w-full p-4 text-foreground font-semibold flex justify-center border-t hover:bg-muted text-2xl"
                   onClick={() => {
                     navigator.clipboard.writeText(comment.content);
                     setShowActions(false);
