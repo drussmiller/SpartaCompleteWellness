@@ -61,16 +61,43 @@ function CommentThread({
 
   const handleEditClick = () => {
     setIsEditing(true);
+    setShowActions(false); // Close the drawer when edit is clicked
+    // Focus the edit text area in the next render cycle
+    setTimeout(() => {
+      const textareas = document.querySelectorAll('textarea');
+      const editTextarea = Array.from(textareas).find(
+        textarea => textarea.value === editText
+      );
+      if (editTextarea) {
+        editTextarea.focus();
+      }
+    }, 50);
   };
 
   const handleEditSave = async () => {
-    // Implement actual update logic here.  This is a placeholder.
-    console.log("Saving edited comment:", editText);
-    setIsEditing(false);
-    setShowActions(false);
-    // Call an API to update the comment content
-    // ... update API call ...
-    onRefresh();
+    if (!editText.trim()) {
+      return;
+    }
+    
+    try {
+      const res = await apiRequest("PATCH", `/api/comments/${comment.id}`, {
+        content: editText.trim()
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update comment");
+      }
+      
+      setIsEditing(false);
+      toast({ description: "Comment updated successfully" });
+      onRefresh(); // Refresh the comment list
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: error instanceof Error ? error.message : "Failed to update comment"
+      });
+    }
   };
 
   const handleEditCancel = () => {
