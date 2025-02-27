@@ -1442,5 +1442,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add this before the activities endpoints
+  async function getCurrentActivity(req: any, res: any) {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      const weekInfo = await storage.getUserWeekInfo(req.user.id);
+
+      if (!weekInfo) {
+        return res.status(404).json({
+          message: "No activities available yet. Activities will start on the first Monday after joining a team."
+        });
+      }
+
+      // Get activity for current week and day
+      const [activity] = await db
+        .select({
+          activity: {
+            id: activities.id,
+            week: activities.week,
+            day: activities.day,
+            memoryVerse: activities.memoryVerse,
+            memoryVerseReference: activities.memoryVerseReference,
+            scripture: activities.scripture,
+            workout: activities.workout,
+            tasks: activities.tasks,
+            description: activities.description,
+            isComplete: activities.isComplete,
+            completedAt: activities.completedAt,
+            createdAt: activities.createdAt
+          },
+          workoutVideos: sql<string>`
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', ${workoutVideos.id},
+                  'url', ${workoutVideos.url},
+                  'description', ${workoutVideos.description}
+                )
+              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
+              '[]'::json
+            )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(
+          and(
+            eq(activities.week, weekInfo.week),
+            eq(activities.day, weekInfo.day)
+          )
+        )
+        .groupBy(activities.id);
+
+      if (!activity) {
+        return res.status(404).json({
+          message: `No activity found for Week ${weekInfo.week}, Day ${weekInfo.day}`
+        });
+      }
+
+      // Include week info in response
+      res.json({
+        ...activity,
+        currentWeek: weekInfo.week,
+        currentDay: weekInfo.day
+      });
+
+    } catch (error) {
+      console.error('Error fetching current activity:', error);
+      res.status(500).json({ 
+        error: "Failed to fetch activity",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  // Add new route for current activity
+  app.get("/api/activities/current", getCurrentActivity);
+
   return httpServer;
 }

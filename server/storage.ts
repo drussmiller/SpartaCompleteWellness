@@ -41,6 +41,7 @@ export interface IStorage {
   deleteTeam(teamId: number): Promise<void>;
   getActivities(week?: number, day?: number): Promise<any>;
   createActivity(data: any): Promise<any>;
+  getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -67,7 +68,8 @@ export class DatabaseStorage implements IStorage {
         preferredName: users.preferredName,
         weight: users.weight,
         waist: users.waist,
-        createdAt: users.createdAt
+        createdAt: users.createdAt,
+        teamJoinedAt: users.teamJoinedAt
       })
       .from(users)
       .where(eq(users.id, id));
@@ -88,7 +90,8 @@ export class DatabaseStorage implements IStorage {
         preferredName: users.preferredName,
         weight: users.weight,
         waist: users.waist,
-        createdAt: users.createdAt
+        createdAt: users.createdAt,
+        teamJoinedAt: users.teamJoinedAt
       })
       .from(users)
       .where(eq(users.username, username));
@@ -108,7 +111,10 @@ export class DatabaseStorage implements IStorage {
   async updateUserTeam(userId: number, teamId: number): Promise<User> {
     const [updatedUser] = await db
       .update(users)
-      .set({ teamId })
+      .set({ 
+        teamId,
+        teamJoinedAt: teamId ? new Date() : null 
+      })
       .where(eq(users.id, userId))
       .returning();
     return updatedUser;
@@ -418,6 +424,44 @@ export class DatabaseStorage implements IStorage {
 
   async createActivity(data: any) {
     return await db.insert(activities).values(data).returning();
+  }
+
+  async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {
+    const [user] = await db
+      .select({
+        teamJoinedAt: users.teamJoinedAt,
+        teamId: users.teamId
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!user?.teamId || !user?.teamJoinedAt) {
+      return null;
+    }
+
+    const joinDate = new Date(user.teamJoinedAt);
+    const today = new Date();
+
+    // Find the first Monday after join date
+    const dayOfWeek = joinDate.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const firstMonday = new Date(joinDate);
+    firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+    firstMonday.setHours(0, 0, 0, 0);
+
+    // If today is before first Monday, return null
+    if (today < firstMonday) {
+      return null;
+    }
+
+    // Calculate weeks and days since first Monday
+    const diffTime = today.getTime() - firstMonday.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    const week = Math.floor(diffDays / 7) + 1; 
+    const day = today.getDay() === 0 ? 7 : today.getDay(); 
+
+    return { week, day };
   }
 }
 
