@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [uploading, setUploading] = useState(false);
 
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
@@ -123,7 +124,7 @@ export default function ProfilePage() {
               size="icon"
               onClick={() => setLocation("/")}
             >
-              <ChevronLeft className="h-5 w-5" /> {/* Replaced ArrowLeft with ChevronLeft */}
+              <ChevronLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-bold">Profile</h1>
           </div>
@@ -152,6 +153,7 @@ export default function ProfilePage() {
                   type="file"
                   accept="image/*"
                   className="absolute inset-0 opacity-0 cursor-pointer"
+                  disabled={uploading}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -160,6 +162,7 @@ export default function ProfilePage() {
                     formData.append('image', file);
 
                     try {
+                      setUploading(true);
                       const res = await fetch('/api/user/image', {
                         method: 'POST',
                         body: formData,
@@ -180,9 +183,19 @@ export default function ProfilePage() {
                         description: "Failed to update profile image",
                         variant: "destructive"
                       });
+                    } finally {
+                      setUploading(false);
                     }
                   }}
                 />
+                {uploading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                ) : (
+                  <div className="text-center text-white text-xs">
+                    <p>Click to</p>
+                    <p>Upload Photo</p>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex-1">
@@ -248,7 +261,6 @@ export default function ProfilePage() {
           <CardContent>
             <h3 className="text-lg font-semibold mb-4">Measurements</h3>
 
-            {/* Add measurement form */}
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => addMeasurementMutation.mutate(data))} className="space-y-4 mb-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -293,7 +305,6 @@ export default function ProfilePage() {
               </form>
             </Form>
 
-            {/* Existing measurements display */}
             {measurementsLoading ? (
               <div className="flex items-center justify-center p-4">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -307,7 +318,6 @@ export default function ProfilePage() {
               </div>
             ) : (
               <>
-                {/* Measurement Graphs */}
                 <div className="space-y-6 mb-6">
                   <div className="h-[300px]">
                     <h4 className="text-sm font-medium mb-4">Weight Progress</h4>
@@ -362,7 +372,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Measurement History List */}
                 <div className="space-y-4">
                   {measurements.map((measurement) => (
                     <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
