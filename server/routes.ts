@@ -930,7 +930,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/users/:id/toggle-admin", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);    const userId = parseInt(req.params.id);
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
     const { isAdmin } = req.body;
 
     try {
@@ -950,7 +951,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     try {
       await storage.deleteUser(parseInt(req.params.id));
-      res.sendStatus(200);    } catch (error) {
+      res.sendStatus(200);
+    } catch (error) {
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
