@@ -14,6 +14,7 @@ import {
   FormField,
   FormItem,
   FormMessage,
+  FormLabel
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,22 @@ function CommentThread({
     },
   });
 
+  const canEdit = (comment: any) => {
+    return currentUser?.id === comment.userId;
+  };
+
+  const canDelete = (comment: any) => {
+    return currentUser?.id === comment.userId || currentUser?.isAdmin;
+  };
+
+  const handleEdit = (comment: any) => {
+    //This function will be implemented in the parent component.
+  };
+
+  const handleDelete = (commentId: number) => {
+    //This function will be implemented in the parent component.
+  };
+
   return (
     <div className={`pl-${depth > 0 ? 4 : 0}`}>
       <div className="flex items-start gap-3 p-3 rounded-lg border">
@@ -98,36 +115,62 @@ function CommentThread({
                 {new Date(comment.createdAt!).toLocaleString()}
               </p>
               {(currentUser?.id === comment.userId || currentUser?.isAdmin) && (
-                <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                <Drawer>
                   <DrawerTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DrawerTrigger>
-                  <DrawerContent>
-                    <div className="p-4 text-center text-2xl font-bold">
-                      Actions
-                    </div>
-                    <div className="flex flex-col p-4 gap-2">
-                      <Button
-                        variant="destructive"
-                        onClick={() => deleteCommentMutation.mutate()}
-                        disabled={deleteCommentMutation.isPending}
-                        className="w-full"
+                  <DrawerContent className="p-0">
+                    <div className="flex flex-col divide-y divide-border">
+                      <Button 
+                        variant="ghost" 
+                        className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                        onClick={() => onReply(comment.id)}
                       >
-                        {deleteCommentMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 mr-2" />
-                        )}
-                        Delete Comment
+                        Reply
                       </Button>
-                      <Button className="w-full">Copy</Button>
+                      {canEdit && (
+                        <Button 
+                          variant="ghost" 
+                          className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                          onClick={() => handleEdit(comment)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button 
+                          variant="ghost" 
+                          className="justify-center rounded-none py-6 text-red-500 text-base font-normal"
+                          onClick={() => handleDelete(comment.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                        onClick={() => {
+                          navigator.clipboard.writeText(comment.content);
+                          toast({ description: "Comment copied to clipboard" });
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                    <div className="mt-2 border-t border-border">
                       <DrawerClose asChild>
-                        <Button variant="outline" className="w-full">
+                        <Button 
+                          variant="ghost" 
+                          className="w-full justify-center rounded-none py-6 text-blue-500 text-base font-normal"
+                        >
                           Cancel
                         </Button>
                       </DrawerClose>
+                    </div>
+                    <div className="h-1.5 w-full flex justify-center items-center pt-2 pb-4">
+                      <div className="h-1 w-10 bg-gray-300 rounded-full"></div>
                     </div>
                   </DrawerContent>
                 </Drawer>
@@ -162,14 +205,15 @@ export default function CommentsPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [replyToId, setReplyToId] = useState<number | null>(null);
+  const [editingComment, setEditingComment] = useState<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus the textarea when reply is initiated
+  // Focus the textarea when reply is initiated or editing starts
   useEffect(() => {
-    if (replyToId && textareaRef.current) {
+    if ((replyToId || editingComment) && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [replyToId]);
+  }, [replyToId, editingComment]);
 
   const form = useForm<z.infer<typeof insertPostSchema>>({
     resolver: zodResolver(insertPostSchema),
@@ -227,6 +271,7 @@ export default function CommentsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       form.reset();
       setReplyToId(null);
+      setEditingComment(null);
       toast({
         title: "Success",
         description: "Comment added successfully",
@@ -240,6 +285,66 @@ export default function CommentsPage() {
       });
     },
   });
+
+  const editCommentMutation = useMutation({
+    mutationFn: async (data: { id: number; content: string }) => {
+      const response = await apiRequest('PATCH', `/api/posts/${data.id}`, {
+        content: data.content
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      form.reset();
+      setEditingComment(null);
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update comment",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleEdit = (comment: any) => {
+    setEditingComment(comment);
+    form.setValue("content", comment.content);
+  };
+
+  const handleDelete = (commentId: number) => {
+    deleteCommentMutation.mutate();
+  };
+
+  const canEdit = (comment: any) => {
+    return currentUser?.id === comment.userId;
+  };
+
+  const canDelete = (comment: any) => {
+    return currentUser?.id === comment.userId || currentUser?.isAdmin;
+  };
+
+  const onReply = (commentId: number) => {
+    setReplyToId(commentId);
+    setEditingComment(null);
+  };
+
+  function onSubmit(data: z.infer<typeof insertPostSchema>) {
+    if (!data.content.trim()) return;
+
+    if (editingComment) {
+      editCommentMutation.mutate({
+        id: editingComment.id,
+        content: data.content
+      });
+    } else {
+      addCommentMutation.mutateAsync(data);
+    }
+  }
 
   if (!currentUser) {
     return (
@@ -334,7 +439,9 @@ export default function CommentsPage() {
           <CommentThread
             key={comment.id}
             comment={comment}
-            onReply={setReplyToId}
+            onReply={onReply}
+            handleDelete={handleDelete}
+            handleEdit={handleEdit}
           />
         ))}
         {!comments?.length && (
@@ -342,8 +449,11 @@ export default function CommentsPage() {
         )}
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => addCommentMutation.mutateAsync(data))} className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
+      <Form {...form} onSubmit={onSubmit}>
+        <form className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-10">
+          <FormLabel className="text-base">
+            {editingComment ? "Edit comment" : replyToId ? "Reply to comment" : "Add a comment"}
+          </FormLabel>
           <FormField
             control={form.control}
             name="content"
@@ -360,7 +470,7 @@ export default function CommentsPage() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey && field.value) {
                           e.preventDefault();
-                          form.handleSubmit((data) => addCommentMutation.mutateAsync(data))();
+                          form.handleSubmit(onSubmit)();
                         }
                       }}
                     />
@@ -385,6 +495,7 @@ export default function CommentsPage() {
               </Button>
             </div>
           )}
+          <Button type="submit" className="mt-4">Submit</Button>
         </form>
       </Form>
     </div>
