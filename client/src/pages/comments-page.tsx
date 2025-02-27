@@ -86,18 +86,8 @@ function CommentThread({
           </div>
           <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
 
-          {depth < maxDepth && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onReply(comment.id);
-              }}
-              className="text-xs text-muted-foreground hover:text-primary mt-2 flex items-center gap-1"
-            >
-              <MessageCircle className="h-3 w-3" />
-              Reply
-            </button>
-          )}
+          {/* Reply button removed - users can use the action drawer to reply */}
+
         </div>
 
         {/* Action Drawer - remains unchanged */}
