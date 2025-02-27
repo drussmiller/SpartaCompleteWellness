@@ -1,22 +1,17 @@
+import { z } from "zod";
 import { useParams } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPostSchema, type CommentWithAuthor } from "@shared/schema";
-import { z } from "zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
+import { insertPostSchema, Post, User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
-import { Link } from "wouter";
-import { useState as useHookState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Copy, Trash2, Reply } from "lucide-react";
-import { useState } from "react";
 
 
 function CommentThread({
@@ -26,80 +21,13 @@ function CommentThread({
 }: {
   comment: CommentWithAuthor;
   depth?: number;
-  onReply: (parentId: number) => void;
+  onReply: (commentId: number) => void;
 }) {
-  console.log(`Rendering CommentThread for comment ID ${comment.id}`, {
-    comment,
-    depth,
-    hasReplies: comment.replies?.length || 0
-  });
-
-  const maxDepth = 3;
-  const { user: currentUser } = useAuth();
-  const { toast } = useToast();
-  const { postId } = useParams();
+  const maxDepth = 5;
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const deleteCommentMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
-      }
-      return res;
-    },
-    onMutate: async () => {
-      // Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: ["/api/posts/comments", postId] });
-
-      // Get the current comments
-      const previousComments = queryClient.getQueryData(["/api/posts/comments", postId]);
-
-      // Return context with the previous comments
-      return { previousComments };
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Comment deleted successfully" });
-      // Force refetch to ensure we have the latest data
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/posts/comments", postId],
-        exact: true,
-        refetchType: 'all'
-      });
-      setDrawerOpen(false);
-    },
-    onError: (error: Error, _, context) => {
-      // Revert to the previous comments on error
-      if (context?.previousComments) {
-        queryClient.setQueryData(["/api/posts/comments", postId], context.previousComments);
-      }
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to delete comment", 
-        variant: "destructive" 
-      });
-      setDrawerOpen(false);
-    }
-  });
-
-  const handleCommentClick = () => {
-    setDrawerOpen(true);
-  };
-
-  const handleCopyComment = () => {
-    navigator.clipboard.writeText(comment.content || '').then(() => {
-      toast({ title: "Success", description: "Comment copied to clipboard" });
-    }, (err) => {
-      toast({ title: "Error", description: "Failed to copy comment", variant: "destructive" });
-    });
-  };
-
   return (
-    <div className={cn(
-      "flex flex-col gap-2",
-      depth > 0 && "ml-8 pl-4 border-l border-border mt-2"
-    )}>
+    <div className={`border-l-2 pl-4 py-3 mb-4 ${depth > 0 ? "ml-4" : ""}`}>
       <div className="flex items-start gap-3">
         <Avatar className="h-8 w-8">
           <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -190,6 +118,12 @@ export default function CommentsPage() {
     enabled: !!postId && !!currentUser
   });
 
+  const { data: originalPost, isLoading: isOriginalPostLoading } = useQuery<Post>({
+    queryKey: ["/api/posts", postId],
+    queryFn: () => apiRequest("GET", `/api/posts/${postId}`).then(res => res.json()),
+    enabled: !!postId
+  });
+
   const addCommentMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertPostSchema>) => {
       console.log("Adding new comment/reply:", {
@@ -246,7 +180,7 @@ export default function CommentsPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isOriginalPostLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -302,6 +236,40 @@ export default function CommentsPage() {
         </Link>
         <h1 className="text-xl font-semibold">Comments</h1>
       </div>
+
+      {originalPost && (
+        <div className="mb-8 border rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <Avatar>
+              <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
+              <AvatarFallback>{originalPost.author?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold">{originalPost.author?.username}</p>
+              <p className="text-sm text-muted-foreground">{originalPost.author?.points || 0} points</p>
+            </div>
+          </div>
+
+          {originalPost.content && (
+            <p className="text-sm mb-4 whitespace-pre-wrap">{originalPost.content}</p>
+          )}
+          {originalPost.imageUrl && (
+            <img
+              src={originalPost.imageUrl}
+              alt={originalPost.type}
+              className="w-full h-auto object-contain rounded-md mb-4"
+            />
+          )}
+
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground capitalize">{originalPost.type.replace("_", " ")}</span>
+            <span className="text-xs text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground">
+              {new Date(originalPost.createdAt!).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6 pb-32">
         {commentTree.map((comment) => (
@@ -382,6 +350,60 @@ function CommentActionDrawer({
   commentId: number;
   commentContent: string;
 }) {
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  const { postId } = useParams();
+  const deleteCommentMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/comments/${commentId}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText ? JSON.parse(errorText).message : "Failed to delete comment");
+      }
+      return res;
+    },
+    onMutate: async () => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["/api/posts/comments", postId] });
+
+      // Get the current comments
+      const previousComments = queryClient.getQueryData(["/api/posts/comments", postId]);
+
+      // Return context with the previous comments
+      return { previousComments };
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Comment deleted successfully" });
+      // Force refetch to ensure we have the latest data
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/comments", postId],
+        exact: true,
+        refetchType: 'all'
+      });
+      onClose();
+    },
+    onError: (error: Error, _, context) => {
+      // Revert to the previous comments on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(["/api/posts/comments", postId], context.previousComments);
+      }
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete comment", 
+        variant: "destructive" 
+      });
+      onClose();
+    }
+  });
+
+  const handleCopyComment = () => {
+    navigator.clipboard.writeText(commentContent).then(() => {
+      toast({ title: "Success", description: "Comment copied to clipboard" });
+    }, (err) => {
+      toast({ title: "Error", description: "Failed to copy comment", variant: "destructive" });
+    });
+  };
+
   return (
     <>
       {/* Overlay */}
