@@ -6,7 +6,6 @@ import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { BottomNav } from "@/components/bottom-nav";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +26,6 @@ function CommentThread({
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const { postId } = useParams();
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Simpler deletion mutation
   const deleteCommentMutation = useMutation({
@@ -37,9 +35,6 @@ function CommentThread({
         const error = await res.json().catch(() => ({ message: "Failed to delete comment" }));
         throw new Error(error.message || "Failed to delete comment");
       }
-    },
-    onMutate: () => {
-      setDrawerOpen(false); // Close drawer immediately
     },
     onSuccess: () => {
       toast({ description: "Comment deleted successfully" });
@@ -64,8 +59,15 @@ function CommentThread({
   return (
     <div className={`pl-${depth > 0 ? 4 : 0}`}>
       <div 
-        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors"
-        onClick={() => setDrawerOpen(true)}
+        className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer"
+        onClick={(e) => {
+          // If clicking on the comment body (not on a button/link), open reply action
+          if (e.target === e.currentTarget || 
+              (e.target as HTMLElement).classList.contains('comment-body') ||
+              (e.target as HTMLElement).parentElement === e.currentTarget) {
+            onReply(comment.id);
+          }
+        }}
       >
         <Avatar className="h-8 w-8">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -78,52 +80,22 @@ function CommentThread({
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
-          <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
+          <p className="text-sm whitespace-pre-wrap break-words comment-body">{comment.content}</p>
         </div>
+        {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 ml-auto"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteClick();
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
-
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerTrigger asChild>
-          <div className="hidden" />
-        </DrawerTrigger>
-        <DrawerContent className="p-0">
-          <div className="flex flex-col divide-y divide-border">
-            <Button 
-              variant="ghost" 
-              className="justify-center rounded-none py-6 text-blue-500 text-base font-normal"
-              onClick={() => {
-                onReply(comment.id);
-                setDrawerOpen(false);
-              }}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Reply
-            </Button>
-            {(currentUser?.id === comment.author.id || currentUser?.isAdmin) && (
-              <Button 
-                variant="ghost" 
-                className="justify-center rounded-none py-6 text-red-500 text-base font-normal"
-                onClick={handleDeleteClick}
-                disabled={deleteCommentMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {deleteCommentMutation.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="justify-center rounded-none py-6 text-base font-normal"
-              onClick={() => {
-                navigator.clipboard.writeText(comment.content || '');
-                toast({ description: "Comment copied to clipboard" });
-                setDrawerOpen(false);
-              }}
-            >
-              Copy
-            </Button>
-          </div>
-        </DrawerContent>
-      </Drawer>
 
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
         <div className="ml-8 mt-2 space-y-2">
@@ -201,9 +173,12 @@ export default function CommentsPage() {
 
   const handleReply = (parentId: number) => {
     setReplyTo(parentId);
-    if (commentInputRef.current) {
-      commentInputRef.current.focus();
-    }
+    // Focus on the textarea after a short delay to ensure state is updated
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+    }, 50);
   };
 
   const handleSubmitComment = () => {
@@ -312,6 +287,7 @@ export default function CommentsPage() {
               </div>
             )}
           </div>
+          <Button onClick={handleSubmitComment} className="mt-2">Submit</Button>
         </div>
       </main>
 

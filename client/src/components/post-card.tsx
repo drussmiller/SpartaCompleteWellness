@@ -17,7 +17,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     queryFn: async () => {
       try {
         if (!post.id) return 0;
-        const res = await apiRequest("GET", `/api/posts?parentId=${post.id}&type=comment`);
+        const res = await apiRequest("GET", `/api/posts/comments/${post.id}`);
         if (!res.ok) throw new Error("Failed to fetch comments");
         const comments = await res.json();
         return Array.isArray(comments) ? comments.length : 0;
