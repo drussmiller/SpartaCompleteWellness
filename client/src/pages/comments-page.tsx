@@ -121,9 +121,6 @@ function CommentThread({
           // Notify parent component to close any reply box
           onReply(0); // Using 0 as a signal to close
           setReplyTo(null);
-          
-          // Toggle the comment's showActions state
-          setShowActions(prev => !prev);
         }}
       >
         <Avatar className="h-8 w-8 shrink-0">
@@ -337,12 +334,12 @@ export default function CommentsPage() {
     return () => clearTimeout(timer);
   }, [replyTo]);
   
-  // Effect to close editing/replying state when comment actions drawer is opened
+  // Effect to close editing/replying when needed
   useEffect(() => {
-    // When the showActions state changes, close any active editing
+    // Close any active editing when component mounts
     setIsEditing(false);
     setEditingCommentId(null);
-  }, [showActions]);
+  }, []);
 
   // Additional effect to focus when the component mounts
   useEffect(() => {
