@@ -17,7 +17,7 @@ function CommentThread({
   onReply,
   onRefresh
 }: {
-  comment: CommentWithAuthor;
+  comment: CommentWithAuthor & { replies?: Array<CommentWithAuthor> };
   depth?: number;
   onReply: (parentId: number) => void;
   onRefresh: () => void;
@@ -27,7 +27,7 @@ function CommentThread({
   const { toast } = useToast();
   const [showActions, setShowActions] = useState(false);
 
-  // Simpler deletion mutation
+  // Deletion mutation remains unchanged
   const deleteCommentMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
@@ -51,16 +51,14 @@ function CommentThread({
   const handleDeleteClick = async () => {
     try {
       await deleteCommentMutation.mutateAsync();
-      setShowActions(false); // Close drawer after delete
+      setShowActions(false);
     } catch (error) {
-      // Error is already handled in onError
+      // Error is handled in onError
     }
   };
 
   return (
-    <div 
-      className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}
-    >
+    <div className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}>
       <div 
         className={`
           flex items-start gap-3 p-3 rounded-lg border 
@@ -88,7 +86,6 @@ function CommentThread({
           </div>
           <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
 
-          {/* Reply indicator */}
           {depth < maxDepth && (
             <button
               onClick={(e) => {
@@ -103,7 +100,7 @@ function CommentThread({
           )}
         </div>
 
-        {/* Action Drawer */}
+        {/* Action Drawer - remains unchanged */}
         {showActions && (
           <div className="fixed inset-0 bg-black/20 z-50 flex items-end justify-center" onClick={() => setShowActions(false)}>
             <div className="bg-background w-full max-w-md rounded-t-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -170,6 +167,21 @@ function CommentThread({
           </div>
         )}
       </div>
+
+      {/* Render nested replies */}
+      {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
+        <div className="mt-2 space-y-2">
+          {comment.replies.map((reply) => (
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              onReply={onReply}
+              onRefresh={onRefresh}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
