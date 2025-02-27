@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { promisify } from "util";
 import { exec } from "child_process";
+import { Server as HttpServer } from "http";
 
 const execAsync = promisify(exec);
 
@@ -42,7 +43,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  let server;
+  let server: HttpServer;
   try {
     server = await registerRoutes(app);
 
@@ -81,7 +82,7 @@ app.use((req, res, next) => {
     };
 
     // Improved server cleanup mechanism
-    let currentServer: any = null;
+    let currentServer: HttpServer | null = null;
     const cleanupAndStartServer = async (retries = 3, delay = 1000) => {
       try {
         // First kill any existing process on the port
@@ -90,7 +91,7 @@ app.use((req, res, next) => {
         // Close existing server if any
         if (currentServer) {
           await new Promise<void>((resolve) => {
-            currentServer.close(() => {
+            currentServer?.close(() => {
               console.log('Existing server closed');
               resolve();
             });
@@ -107,7 +108,7 @@ app.use((req, res, next) => {
         });
 
         // Handle server errors
-        currentServer.on('error', async (e: any) => {
+        currentServer.on('error', async (e: NodeJS.ErrnoException) => {
           if (e.code === 'EADDRINUSE' && retries > 0) {
             console.log(`Port ${port} is in use, retrying in ${delay}ms...`);
             await killPort(port);
