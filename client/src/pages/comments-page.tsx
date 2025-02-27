@@ -118,12 +118,13 @@ function CommentThread({
         `}
         onClick={() => {
           // Close any other editing or reply sessions
-          if (!showActions) {
+          if (!comment.showActions) {
             // Notify parent component to close any reply box
             onReply(0); // Using 0 as a signal to close
             setReplyTo(null);
           }
-          setShowActions(!showActions);
+          comment.showActions = !comment.showActions;
+          setShowActions(!comment.showActions);
         }}
       >
         <Avatar className="h-8 w-8 shrink-0">
