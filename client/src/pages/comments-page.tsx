@@ -121,6 +121,7 @@ function CommentThread({
           // Notify parent component to close any reply box
           onReply(0); // Using 0 as a signal to close
           setReplyTo(null);
+          setIsEditing(false);
         }}
       >
         <Avatar className="h-8 w-8 shrink-0">
@@ -252,6 +253,10 @@ export default function CommentsPage() {
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const [showActions, setShowActions] = useState(false); // Added state variable
+  const [isEditing, setIsEditing] = useState(false); // Added state variable
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null); // Added state variable
+
 
   const { data: originalPost, isLoading: isPostLoading } = useQuery({
     queryKey: [`/api/posts/${postId}`],
@@ -306,14 +311,14 @@ export default function CommentsPage() {
   const handleReply = (parentId: number) => {
     // If we're already replying to this comment, do nothing
     if (replyTo === parentId) return;
-    
+
     // If we're replying to a different comment, clear the current comment text
     if (replyTo !== null && replyTo !== parentId) {
       setComment("");
     }
-    
+
     setReplyTo(parentId);
-    
+
     // Focus on the textarea after a short delay to ensure state is updated
     setTimeout(() => {
       if (commentInputRef.current) {
@@ -333,7 +338,7 @@ export default function CommentsPage() {
 
     return () => clearTimeout(timer);
   }, [replyTo]);
-  
+
   // Effect to close editing/replying when needed
   useEffect(() => {
     // Close any active editing when component mounts
