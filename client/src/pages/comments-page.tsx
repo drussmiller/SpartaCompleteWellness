@@ -366,7 +366,7 @@ export default function CommentsPage() {
                 handleSubmitComment();
               }
             }}
-            placeholder={replyTo ? "Write your reply... (Enter to submit, Ctrl+Enter for new line)" : "Write a comment... (Enter to submit, Ctrl+Enter for new line)"}
+            placeholder={replyTo ? "Enter reply..." : "Enter comment..."}
             className="resize-none w-full border-0 rounded-none px-4 pt-3 text-base min-h-[50px] overflow-hidden whitespace-nowrap text-ellipsis focus:whitespace-normal"
           />
           {replyTo && (
