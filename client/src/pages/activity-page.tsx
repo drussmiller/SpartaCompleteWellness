@@ -22,28 +22,19 @@ export default function ActivityPage() {
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Get user info including weekInfo
+  // Get the current user's data including progress
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
-    onSuccess: (data) => {
-      console.log("Activity page - User data loaded:", data?.weekInfo);
-    }
   });
 
-  // Get the current activity directly from the API using the current user's week and day
-  const { data: currentActivity, isLoading: activityLoading, error: activityError } = useQuery({
-    queryKey: ["/api/activities/current"],
-    enabled: !!userData?.weekInfo,
-    refetchOnWindowFocus: false,
-    retry: 2,
-    onSuccess: (data) => {
-      console.log("Activity page - Current activity loaded:", data);
-    },
-    onError: (error) => {
-      console.error("Activity page - Error loading activity:", error);
-    }
+  const { data: activities } = useQuery({
+    queryKey: ["/api/activities"],
   });
 
+  // Use the user's actual week and day from their progress
+  const weekInfo = userData?.weekInfo;
+  const selectedWeek = weekInfo?.week || 1;
+  const selectedDay = weekInfo?.day || 1;
 
   const form = useForm();
 
@@ -53,7 +44,7 @@ export default function ActivityPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       setEditDialogOpen(false);
       toast({
         title: "Success",
@@ -68,7 +59,7 @@ export default function ActivityPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       toast({
         title: "Success",
         description: "Activity deleted successfully"
@@ -76,8 +67,9 @@ export default function ActivityPage() {
     }
   });
 
-  // Use the user's actual week and day from their progress
-  const weekInfo = userData?.weekInfo;
+  const currentActivity = activities?.find(
+    (a) => a.week === selectedWeek && a.day === selectedDay
+  );
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
