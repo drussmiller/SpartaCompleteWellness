@@ -37,8 +37,16 @@ export default function AdminPage() {
     queryKey: ["/api/teams"],
   });
 
-  const { data: users } = useQuery<User[]>({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    select: (data) => {
+      // Sort users by preferred name
+      return [...data].sort((a, b) => {
+        const nameA = a.preferredName || a.username || '';
+        const nameB = b.preferredName || b.username || '';
+        return nameA.localeCompare(nameB);
+      });
+    }
   });
 
   const { data: activities } = useQuery<Activity[]>({
@@ -504,6 +512,9 @@ export default function AdminPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
+            <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setEditTeamOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogHeader>
           <Form {...editTeamForm}>
             <form
@@ -559,6 +570,9 @@ export default function AdminPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset User Password</DialogTitle>
+            <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setResetPasswordOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogHeader>
           <Input
             type="password"
@@ -588,6 +602,9 @@ export default function AdminPage() {
         <DialogContent className="max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Edit Activity</DialogTitle>
+            <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setEditActivityOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-4">
             <Form>

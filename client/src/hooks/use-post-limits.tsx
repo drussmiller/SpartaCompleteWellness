@@ -53,6 +53,14 @@ export function usePostLimits() {
     });
   }
 
+  // Define default post limits based on the application rules
+  const defaultCanPost = {
+    food: true,
+    workout: true,
+    scripture: true,
+    memory_verse: new Date().getDay() === 6 // Only on Saturday
+  };
+
   return {
     counts: data?.counts || {
       food: 0,
@@ -60,12 +68,7 @@ export function usePostLimits() {
       scripture: 0,
       memory_verse: 0
     },
-    canPost: data?.canPost || {
-      food: false,
-      workout: false,
-      scripture: false,
-      memory_verse: false
-    },
+    canPost: data?.canPost || defaultCanPost,
     isSaturday: new Date().getDay() === 6
   };
 }

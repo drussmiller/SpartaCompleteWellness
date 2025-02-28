@@ -173,6 +173,16 @@ export default function ProfilePage() {
                       }
 
                       await refetchUser();
+                      // Invalidate all queries to ensure profile image is updated everywhere
+                      await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+                      await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
+                      
+                      // Clear the entire cache to make sure everything refreshes
+                      queryClient.clear();
+                      
+                      // Force refresh the home page data
+                      await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
+                      
                       toast({
                         title: "Success",
                         description: "Profile image updated successfully"

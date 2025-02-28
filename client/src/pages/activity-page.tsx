@@ -123,6 +123,7 @@ export default function ActivityPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
                     onClick={() => {
                       form.reset(currentActivity);
                       setEditDialogOpen(true);
@@ -133,6 +134,7 @@ export default function ActivityPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
                     onClick={() => {
                       if (confirm("Are you sure you want to delete this activity?")) {
                         deleteActivityMutation.mutate();

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -144,8 +144,8 @@ export function CreatePostDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" className="h-10 w-10">
-          <Plus className="h-6 w-6" />
+        <Button size="icon" className="h-10 w-10 bg-gray-200 hover:bg-gray-300">
+          <Plus className="h-9 w-9 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -264,16 +264,28 @@ export function CreatePostDialog() {
               )}
             />
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={
-                createPostMutation.isPending ||
-                !canPost[form.watch("type") as keyof typeof canPost]
-              }
-            >
-              {createPostMutation.isPending ? "Creating..." : "Create Post"}
-            </Button>
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  createPostMutation.isPending ||
+                  !canPost[form.watch("type") as keyof typeof canPost]
+                }
+              >
+                {createPostMutation.isPending ? "Creating..." : "Create Post"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOpen(false);
+                  form.reset();
+                }}
+                className="bg-gray-400 hover:bg-gray-500 text-black font-bold h-14 w-full"
+              >
+                Close
+              </Button>
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>
