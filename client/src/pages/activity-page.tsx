@@ -25,12 +25,6 @@ export default function ActivityPage() {
   // Get user info including weekInfo
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
-    onSuccess: (userData) => {
-      if (userData?.programStart) {
-        console.log("Activity Page - Program Start Date:", new Date(userData.programStart).toLocaleDateString());
-        console.log("Activity Page - Current Progress:", `Week ${userData.weekInfo?.week}, Day ${userData.weekInfo?.day}`);
-      }
-    }
   });
 
   // Get the current activity directly from the API using the current user's week and day
@@ -71,6 +65,8 @@ export default function ActivityPage() {
     }
   });
 
+  // Use the user's actual week and day from their progress
+  const weekInfo = userData?.weekInfo;
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -80,15 +76,15 @@ export default function ActivityPage() {
             <h1 className="text-xl font-bold">Daily Activity</h1>
             {userData?.teamId ? (
               <div className="mt-2 space-y-1">
-                {userData.programStart && (
+                {userData.teamJoinedAt && (
                   <p className="text-sm text-muted-foreground">
-                    Program Start: {format(new Date(userData.programStart), 'PP')}
+                    Program Start: {format(new Date(userData.teamJoinedAt), 'PP')}
                   </p>
                 )}
-                {userData?.weekInfo && (
+                {weekInfo && (
                   <p className="text-sm">
                     <span className="font-medium text-primary">
-                      Week {userData.weekInfo.week}, Day {userData.weekInfo.day}
+                      Week {weekInfo.week}, Day {weekInfo.day}
                     </span>
                   </p>
                 )}
