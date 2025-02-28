@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from "wouter";
 import { Home, Calendar, HelpCircle, Bell, User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,9 +17,9 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
-      <div className="grid grid-cols-5 items-center h-16">
+      <div className="flex justify-around items-center h-16">
         {items.map(({ icon: Icon, label, href }) => (
-          <Link key={href} href={href} className="w-full h-full">
+          <Link key={href} href={href}>
             <button
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
@@ -33,7 +34,7 @@ export function BottomNav() {
           </Link>
         ))}
         {user?.isAdmin && (
-          <Link href="/admin" className="w-full h-full">
+          <Link href="/admin">
             <button
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
@@ -47,7 +48,7 @@ export function BottomNav() {
             </button>
           </Link>
         )}
-        <Link href="/profile" className="w-full h-full">
+        <Link href="/profile">
           <button
             className={cn(
               "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
