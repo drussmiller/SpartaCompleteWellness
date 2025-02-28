@@ -22,19 +22,23 @@ export default function ActivityPage() {
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Get the current user's data including progress
+  // Get user info including weekInfo
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
+    onSuccess: (userData) => {
+      if (userData?.programStart) {
+        console.log("Activity Page - Program Start Date:", new Date(userData.programStart).toLocaleDateString());
+        console.log("Activity Page - Current Progress:", `Week ${userData.weekInfo?.week}, Day ${userData.weekInfo?.day}`);
+      }
+    }
   });
 
-  const { data: activities } = useQuery({
-    queryKey: ["/api/activities"],
+  // Get the current activity directly from the API using the current user's week and day
+  const { data: currentActivity } = useQuery({
+    queryKey: ["/api/activities/current"],
+    enabled: !!userData?.weekInfo,
   });
 
-  // Use the user's actual week and day from their progress
-  const weekInfo = userData?.weekInfo;
-  const selectedWeek = weekInfo?.week || 1;
-  const selectedDay = weekInfo?.day || 1;
 
   const form = useForm();
 
@@ -44,7 +48,7 @@ export default function ActivityPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
       setEditDialogOpen(false);
       toast({
         title: "Success",
@@ -59,7 +63,7 @@ export default function ActivityPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
       toast({
         title: "Success",
         description: "Activity deleted successfully"
@@ -67,9 +71,6 @@ export default function ActivityPage() {
     }
   });
 
-  const currentActivity = activities?.find(
-    (a) => a.week === selectedWeek && a.day === selectedDay
-  );
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
@@ -84,10 +85,10 @@ export default function ActivityPage() {
                     Program Start: {format(new Date(userData.programStart), 'PP')}
                   </p>
                 )}
-                {weekInfo && (
+                {userData?.weekInfo && (
                   <p className="text-sm">
                     <span className="font-medium text-primary">
-                      Week {weekInfo.week}, Day {weekInfo.day}
+                      Week {userData.weekInfo.week}, Day {userData.weekInfo.day}
                     </span>
                   </p>
                 )}
