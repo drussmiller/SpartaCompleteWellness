@@ -115,11 +115,11 @@ export default function ActivityPage() {
           <div className="flex flex-col gap-2">
             <h1 className="text-xl font-bold">Daily Activity</h1>
             <div className="text-sm text-muted-foreground">
-              <span>Program started on {format(new Date(user.programStart), 'PPP')}</span>
-              <div className="flex gap-2 mt-1">
-                <div className="bg-muted px-2 py-1 rounded-md">Week {user.weekInfo?.week}</div>
-                <div className="bg-muted px-2 py-1 rounded-md">Day {user.weekInfo?.day}</div>
+              <div className="flex gap-2 mt-1 mb-1">
+                <div className="bg-muted px-2 py-1 rounded-md font-medium">Week {user.weekInfo?.week}</div>
+                <div className="bg-muted px-2 py-1 rounded-md font-medium">Day {user.weekInfo?.day}</div>
               </div>
+              <span>Program started on {format(new Date(user.programStart), 'PPP')}</span>
             </div>
           </div>
         </header>
@@ -133,12 +133,15 @@ export default function ActivityPage() {
                     Today's Activity
                   </CardTitle>
                   {user?.weekInfo && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Week {user.weekInfo.week}, Day {user.weekInfo.day}
+                    <div className="text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="bg-muted px-2 py-0.5 rounded-md font-medium">Week {user.weekInfo.week}</span>
+                        <span className="bg-muted px-2 py-0.5 rounded-md font-medium">Day {user.weekInfo.day}</span>
+                      </div>
                       {user.programStart && (
-                        <span className="ml-2">· Program started on {format(new Date(user.programStart), 'MMM d, yyyy')}</span>
+                        <div>Program started on {format(new Date(user.programStart), 'MMM d, yyyy')}</div>
                       )}
-                    </p>
+                    </div>
                   )}
                 </div>
                 {authUser?.isAdmin && (
