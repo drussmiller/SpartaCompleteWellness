@@ -26,8 +26,8 @@ interface WorkoutVideo {
 const activityFormSchema = z.object({
   week: z.number().min(1),
   day: z.number().min(1).max(7),
-  memoryVerse: z.string().min(1),
   memoryVerseReference: z.string().min(1),
+  memoryVerse: z.string().min(1),
   scripture: z.string().optional(),
   tasks: z.string().optional(),
   description: z.string().optional(),
@@ -225,10 +225,10 @@ export default function ActivityManagementPage() {
 
               <FormField
                 control={form.control}
-                name="memoryVerse"
+                name="memoryVerseReference"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Memory Verse</FormLabel>
+                    <FormLabel>Memory Verse Reference</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -238,10 +238,10 @@ export default function ActivityManagementPage() {
 
               <FormField
                 control={form.control}
-                name="memoryVerseReference"
+                name="memoryVerse"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Memory Verse Reference</FormLabel>
+                    <FormLabel>Memory Verse</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -431,10 +431,10 @@ export default function ActivityManagementPage() {
 
                 <FormField
                   control={editForm.control}
-                  name="memoryVerse"
+                  name="memoryVerseReference"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Memory Verse</FormLabel>
+                      <FormLabel>Memory Verse Reference</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -444,10 +444,10 @@ export default function ActivityManagementPage() {
 
                 <FormField
                   control={editForm.control}
-                  name="memoryVerseReference"
+                  name="memoryVerse"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Memory Verse Reference</FormLabel>
+                      <FormLabel>Memory Verse</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
