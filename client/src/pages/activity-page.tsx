@@ -25,6 +25,12 @@ export default function ActivityPage() {
   // Get user info including weekInfo
   const { data: user } = useQuery({
     queryKey: ["/api/user"],
+    onSuccess: (userData) => {
+      if (userData?.programStart) {
+        console.log("Activity Page - Program Start Date:", new Date(userData.programStart).toLocaleDateString());
+        console.log("Activity Page - Current Progress:", `Week ${userData.weekInfo?.week}, Day ${userData.weekInfo?.day}`);
+      }
+    }
   });
 
   // Get activities based on user's current progress
@@ -115,11 +121,17 @@ export default function ActivityPage() {
           <div className="flex flex-col gap-2">
             <h1 className="text-xl font-bold">Daily Activity</h1>
             <div className="text-sm text-muted-foreground">
-              <span>Program started on {format(new Date(user.programStart), 'PPP')}</span>
-              <div className="flex gap-2 mt-1">
-                <div className="bg-muted px-2 py-1 rounded-md">Week {user.weekInfo?.week}</div>
-                <div className="bg-muted px-2 py-1 rounded-md">Day {user.weekInfo?.day}</div>
-              </div>
+              {user.weekInfo ? (
+                <>
+                  <div className="flex gap-2 mt-1 mb-1">
+                    <div className="bg-muted px-2 py-1 rounded-md font-medium">Week {user.weekInfo.week}</div>
+                    <div className="bg-muted px-2 py-1 rounded-md font-medium">Day {user.weekInfo.day}</div>
+                  </div>
+                  <span>Program started on {format(new Date(user.programStart), 'PPP')}</span>
+                </>
+              ) : (
+                <div>Loading progress information...</div>
+              )}
             </div>
           </div>
         </header>
@@ -128,9 +140,26 @@ export default function ActivityPage() {
           <Card>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
-                <CardTitle>
-                  Today's Activity
-                </CardTitle>
+                <div>
+                  <CardTitle>
+                    Today's Activity
+                  </CardTitle>
+                  {user?.weekInfo ? (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="bg-muted px-2 py-0.5 rounded-md font-medium">Week {user.weekInfo.week}</span>
+                        <span className="bg-muted px-2 py-0.5 rounded-md font-medium">Day {user.weekInfo.day}</span>
+                      </div>
+                      {user.programStart && (
+                        <div>Program started on {format(new Date(user.programStart), 'MMM d, yyyy')}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Loading progress information...
+                    </div>
+                  )}
+                </div>
                 {authUser?.isAdmin && (
                   <div className="flex gap-2">
                     <Button
