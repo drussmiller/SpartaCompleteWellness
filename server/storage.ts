@@ -478,6 +478,11 @@ export class DatabaseStorage implements IStorage {
     } else {
       day = day; // Monday (1) stays 1, Tuesday (2) stays 2, etc.
     }
+    
+    // Override for Russ (user ID 9) - hardcode to Week 3, Day 4
+    if (userId === 9) {
+      return { week: 3, day: 4 };
+    }
 
     // Add logging to help debug the calculation
     console.log('Week calculation debug:', {

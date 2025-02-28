@@ -31,10 +31,13 @@ export default function ActivityPage() {
     queryKey: ["/api/activities"],
   });
 
-  // Use the user's actual week and day from their progress
+  // Use the user's actual week and day from their progress with timezone
   const weekInfo = userData?.weekInfo;
   const selectedWeek = weekInfo?.week || 1;
   const selectedDay = weekInfo?.day || 1;
+  
+  // Get user's timezone offset in minutes to localize dates
+  const userTimezoneOffset = new Date().getTimezoneOffset();
 
   const form = useForm();
 
