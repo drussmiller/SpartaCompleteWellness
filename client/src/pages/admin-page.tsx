@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, ChevronLeft } from "lucide-react";
+import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, ChevronLeft, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -18,13 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserIdForDate, setSelectedUserIdForDate] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
@@ -32,6 +34,9 @@ export default function AdminPage() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [workoutVideos, setWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
   const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
+  const [editJoinDateOpen, setEditJoinDateOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -40,7 +45,6 @@ export default function AdminPage() {
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
     select: (data) => {
-      // Sort users by preferred name
       return [...data].sort((a, b) => {
         const nameA = a.preferredName || a.username || '';
         const nameB = b.preferredName || b.username || '';
@@ -276,6 +280,37 @@ export default function AdminPage() {
     setEditingWorkoutVideos(editingWorkoutVideos.filter((_, i) => i !== index));
   };
 
+  const updateTeamJoinDateMutation = useMutation({
+    mutationFn: async ({ userId, date }: { userId: number; date: Date }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/team-join-date`, {
+        teamJoinedAt: date.toISOString(),
+      });
+      if (!res.ok) throw new Error("Failed to update team join date");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setEditJoinDateOpen(false);
+      setSelectedDate(undefined);
+      toast({
+        title: "Success",
+        description: "Team join date updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditTeamJoinDate = (userId: number, currentDate?: string) => {
+    setSelectedUserId(userId);
+    setSelectedDate(currentDate ? new Date(currentDate) : undefined);
+    setEditJoinDateOpen(true);
+  };
 
   if (!user?.isAdmin) {
     return (
@@ -416,14 +451,32 @@ export default function AdminPage() {
                     </p>
                     {u.teamId && (
                       <>
-                        {u.programStart ? (
+                        {u.teamJoinedAt ? (
                           <div className="mt-2 space-y-1">
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Start Date: </span>
-                              <span className="font-medium">
-                                {format(new Date(u.programStart), 'PP')}
-                              </span>
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Joined Team: </span>
+                                <span className="font-medium">
+                                  {format(new Date(u.teamJoinedAt), 'PP')}
+                                </span>
+                              </p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleEditTeamJoinDate(u.id, u.teamJoinedAt)}
+                              >
+                                <Calendar className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {u.programStart && (
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Start Date: </span>
+                                <span className="font-medium">
+                                  {format(new Date(u.programStart), 'PP')}
+                                </span>
+                              </p>
+                            )}
                             {u.weekInfo && (
                               <p className="text-sm">
                                 <span className="text-muted-foreground">Progress: </span>
@@ -434,9 +487,17 @@ export default function AdminPage() {
                             )}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Program starts next Monday
-                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <p className="text-sm text-muted-foreground">Set join date:</p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleEditTeamJoinDate(u.id)}
+                            >
+                              <Calendar className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </>
                     )}
@@ -506,7 +567,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
-
 
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
         <DialogContent>
@@ -745,6 +805,63 @@ export default function AdminPage() {
               </form>
             </Form>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={editJoinDateOpen} onOpenChange={setEditJoinDateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Team Join Date</DialogTitle>
+            <Button
+              variant="ghost"
+              className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
+              size="icon"
+              onClick={() => setEditJoinDateOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Select Join Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${
+                      !selectedDate && "text-muted-foreground"
+                    }`}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <Button
+              onClick={() => {
+                if (selectedUserId && selectedDate) {
+                  updateTeamJoinDateMutation.mutate({
+                    userId: selectedUserId,
+                    date: selectedDate,
+                  });
+                }
+              }}
+              disabled={updateTeamJoinDateMutation.isPending || !selectedDate}
+            >
+              {updateTeamJoinDateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Update Join Date
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
