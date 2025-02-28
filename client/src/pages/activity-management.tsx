@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,10 @@ const activityFormSchema = z.object({
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
+interface ActivityPayload extends ActivityFormValues {
+  workoutVideos: WorkoutVideo[];
+}
+
 export default function ActivityManagementPage() {
   const { toast } = useToast();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
@@ -50,8 +54,8 @@ export default function ActivityManagementPage() {
     defaultValues: {
       week: 1,
       day: 1,
-      memoryVerse: "",
       memoryVerseReference: "",
+      memoryVerse: "",
       scripture: "",
       tasks: "",
       description: "",
@@ -67,10 +71,60 @@ export default function ActivityManagementPage() {
     queryKey: ["/api/activities"],
   });
 
+  const createActivityMutation = useMutation({
+    mutationFn: async (data: ActivityFormValues) => {
+      console.log('Creating activity with data:', { ...data, workoutVideos });
+      const res = await apiRequest("POST", "/api/activities", {
+        ...data,
+        workoutVideos: workoutVideos.map(video => ({
+          url: video.url,
+          description: video.description,
+          title: video.title
+        }))
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create activity');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setWorkoutVideos([]);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Activity created successfully"
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Activity creation error:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const updateActivityMutation = useMutation({
-    mutationFn: async (data: ActivityFormValues & { workoutVideos: WorkoutVideo[] }) => {
-      const res = await apiRequest("PUT", `/api/activities/${editingActivity?.id}`, data);
-      if (!res.ok) throw new Error("Failed to update activity");
+    mutationFn: async (data: ActivityFormValues) => {
+      if (!editingActivity?.id) throw new Error("No activity selected for editing");
+      console.log('Updating activity with data:', { ...data, workoutVideos: editingWorkoutVideos });
+
+      const res = await apiRequest("PUT", `/api/activities/${editingActivity.id}`, {
+        ...data,
+        workoutVideos: editingWorkoutVideos.map(video => ({
+          url: video.url,
+          description: video.description,
+          title: video.title
+        }))
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update activity");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -78,38 +132,43 @@ export default function ActivityManagementPage() {
       setEditActivityOpen(false);
       toast({
         title: "Success",
-        description: "Activity updated successfully",
+        description: "Activity updated successfully"
       });
     },
     onError: (error: Error) => {
+      console.error('Activity update error:', error);
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
 
   const deleteActivityMutation = useMutation({
     mutationFn: async (activityId: number) => {
       const res = await apiRequest("DELETE", `/api/activities/${activityId}`);
-      if (!res.ok) throw new Error("Failed to delete activity");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete activity");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       toast({
         title: "Success",
-        description: "Activity deleted successfully",
+        description: "Activity deleted successfully"
       });
     },
     onError: (error: Error) => {
+      console.error('Activity deletion error:', error);
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-    },
+    }
   });
 
   const handleEditActivity = (activity: Activity) => {
@@ -118,12 +177,12 @@ export default function ActivityManagementPage() {
     editForm.reset({
       week: activity.week,
       day: activity.day,
-      memoryVerse: activity.memoryVerse,
-      memoryVerseReference: activity.memoryVerseReference,
-      scripture: activity.scripture,
-      tasks: activity.tasks,
-      description: activity.description,
-      workout: activity.workout,
+      memoryVerseReference: activity.memoryVerseReference || "",
+      memoryVerse: activity.memoryVerse || "",
+      scripture: activity.scripture || "",
+      tasks: activity.tasks || "",
+      description: activity.description || "",
+      workout: activity.workout || "",
     });
     setEditActivityOpen(true);
   };
@@ -137,13 +196,11 @@ export default function ActivityManagementPage() {
   const handleAddVideo = () => {
     if (editingActivity) {
       setEditingWorkoutVideos([...editingWorkoutVideos, newVideo]);
-      setNewVideo({ url: '', description: '', title: '' });
-      setAddVideoOpen(false);
     } else {
       setWorkoutVideos([...workoutVideos, newVideo]);
-      setNewVideo({ url: '', description: '', title: '' });
-      setAddVideoOpen(false);
     }
+    setNewVideo({ url: '', description: '', title: '' });
+    setAddVideoOpen(false);
   };
 
   const handleRemoveVideo = (index: number) => {
@@ -166,35 +223,13 @@ export default function ActivityManagementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Activity Management</CardTitle>
+          <CardTitle>Add New Activity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(async (data) => {
-              try {
-                const activityData = {
-                  ...data,
-                  workoutVideos
-                };
-
-                const res = await apiRequest("POST", "/api/activities", activityData);
-                if (!res.ok) throw new Error('Failed to create activity');
-
-                toast({
-                  title: "Success",
-                  description: "Activity created successfully"
-                });
-
-                queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-                setWorkoutVideos([]);
-                form.reset();
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: error instanceof Error ? error.message : "Failed to create activity",
-                  variant: "destructive"
-                });
-              }
+            <form onSubmit={form.handleSubmit((data) => {
+              console.log('Form data:', data);
+              createActivityMutation.mutate(data);
             })} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -204,7 +239,13 @@ export default function ActivityManagementPage() {
                     <FormItem>
                       <FormLabel>Week</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} min={1} />
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          min={1} 
+                          onChange={e => field.onChange(parseInt(e.target.value))} 
+                          value={field.value || ''} 
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -216,7 +257,14 @@ export default function ActivityManagementPage() {
                     <FormItem>
                       <FormLabel>Day</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} min={1} max={7} />
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          min={1} 
+                          max={7} 
+                          onChange={e => field.onChange(parseInt(e.target.value))}
+                          value={field.value || ''} 
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -270,7 +318,7 @@ export default function ActivityManagementPage() {
                     <FormLabel>Tasks</FormLabel>
                     <FormControl>
                       <RichTextEditor
-                        value={field.value}
+                        value={field.value || ''}
                         onChange={field.onChange}
                       />
                     </FormControl>
@@ -286,7 +334,7 @@ export default function ActivityManagementPage() {
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <RichTextEditor
-                        value={field.value}
+                        value={field.value || ''}
                         onChange={field.onChange}
                       />
                     </FormControl>
@@ -302,7 +350,7 @@ export default function ActivityManagementPage() {
                     <FormLabel>Workout</FormLabel>
                     <FormControl>
                       <RichTextEditor
-                        value={field.value}
+                        value={field.value || ''}
                         onChange={field.onChange}
                       />
                     </FormControl>
@@ -344,7 +392,9 @@ export default function ActivityManagementPage() {
                 </div>
               </div>
 
-              <Button type="submit">Add Activity</Button>
+              <Button type="submit" disabled={createActivityMutation.isPending}>
+                {createActivityMutation.isPending ? "Creating..." : "Add Activity"}
+              </Button>
             </form>
           </Form>
 
@@ -397,10 +447,7 @@ export default function ActivityManagementPage() {
           <ScrollArea className="max-h-[70vh] pr-4">
             <Form {...editForm}>
               <form onSubmit={editForm.handleSubmit((data) => {
-                updateActivityMutation.mutate({
-                  ...data,
-                  workoutVideos: editingWorkoutVideos
-                });
+                updateActivityMutation.mutate(data);
               })} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -410,7 +457,13 @@ export default function ActivityManagementPage() {
                       <FormItem>
                         <FormLabel>Week</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} min={1} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            min={1} 
+                            onChange={e => field.onChange(parseInt(e.target.value))}
+                            value={field.value || ''} 
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -422,7 +475,14 @@ export default function ActivityManagementPage() {
                       <FormItem>
                         <FormLabel>Day</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} min={1} max={7} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            min={1} 
+                            max={7} 
+                            onChange={e => field.onChange(parseInt(e.target.value))}
+                            value={field.value || ''} 
+                          />
                         </FormControl>
                       </FormItem>
                     )}
