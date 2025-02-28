@@ -132,10 +132,12 @@ export default function ActivityPage() {
                   <CardTitle>
                     Today's Activity
                   </CardTitle>
-                  {user?.programStart && (
+                  {user?.weekInfo && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      Week {user.weekInfo?.week}, Day {user.weekInfo?.day} 
-                      {" · "}{format(new Date(user.programStart), 'MMM d, yyyy')}
+                      Week {user.weekInfo.week}, Day {user.weekInfo.day}
+                      {user.programStart && (
+                        <span className="ml-2">· Program started on {format(new Date(user.programStart), 'MMM d, yyyy')}</span>
+                      )}
                     </p>
                   )}
                 </div>
