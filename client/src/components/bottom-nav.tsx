@@ -23,7 +23,7 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === href
-                  ? "bg-violet-600 text-black [&>svg]:text-black rounded-lg"
+                  ? "text-black [&>svg]:text-black"
                   : "text-muted-foreground hover:text-primary transition-colors"
               )}
             >
@@ -38,7 +38,7 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === "/admin"
-                  ? "bg-violet-600 text-black [&>svg]:text-black rounded-lg"
+                  ? "text-black [&>svg]:text-black"
                   : "text-muted-foreground hover:text-primary transition-colors"
               )}
             >
@@ -52,7 +52,7 @@ export function BottomNav() {
             className={cn(
               "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
               location === "/profile"
-                ? "bg-violet-600 text-black [&>svg]:text-black rounded-lg"
+                ? "text-black [&>svg]:text-black"
                 : "text-muted-foreground hover:text-primary transition-colors"
             )}
           >
