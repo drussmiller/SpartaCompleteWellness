@@ -982,8 +982,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let firstMonday = null;
         if (user.teamJoinedAt) {
           const joinDate = new Date(user.teamJoinedAt);
+          // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
           const dayOfWeek = joinDate.getDay();
-          const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+          // Calculate days until next Monday
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
           firstMonday = new Date(joinDate);
           firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
           firstMonday.setHours(0, 0, 0, 0);
@@ -1596,7 +1598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 json_build_object(
                   'id', ${workoutVideos.id},
                   'url', ${workoutVideos.url},
-                  'description', ${workoutVideos.description}
+                  'description', ${workoutVideos}.description
                 )
               ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
               '[]'::json
