@@ -169,7 +169,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    return await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        isAdmin: users.isAdmin,
+        teamId: users.teamId,
+        points: users.points,
+        imageUrl: users.imageUrl,
+        preferredName: users.preferredName,
+        weight: users.weight,
+        waist: users.waist,
+        createdAt: users.createdAt,
+        teamJoinedAt: users.teamJoinedAt
+      })
+      .from(users)
+      .orderBy(users.username);
   }
 
   async createPost(post: Post): Promise<Post> {

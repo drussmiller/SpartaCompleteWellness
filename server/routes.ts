@@ -974,6 +974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     try {
       const users = await storage.getAllUsers();
+      console.log("Fetched users count:", users.length);
 
       // Calculate program start dates for all users
       const enhancedUsers = await Promise.all(users.map(async (user) => {
