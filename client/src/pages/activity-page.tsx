@@ -21,6 +21,7 @@ export default function ActivityPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false); // Added state for delete confirmation
 
   // Get the current user's data including progress
   const { data: userData } = useQuery({
@@ -63,6 +64,7 @@ export default function ActivityPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setDeleteDialogOpen(false); // Close the dialog after successful deletion
       toast({
         title: "Success",
         description: "Activity deleted successfully"
@@ -184,6 +186,9 @@ export default function ActivityPage() {
                     )}
                   </div>
                 </CardContent>
+                <div className="flex justify-end p-4"> {/* Added button for delete confirmation */}
+                  <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>Delete Activity</Button>
+                </div>
               </Card>
             ) : (
               <Card>
@@ -280,6 +285,20 @@ export default function ActivityPage() {
                   </form>
                 </Form>
               </ScrollArea>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Activity</DialogTitle>
+              </DialogHeader>
+              <p>Are you sure you want to delete this activity?</p>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={() => deleteActivityMutation.mutate()}>Delete</Button>
+              </div>
             </DialogContent>
           </Dialog>
         </ScrollArea>
