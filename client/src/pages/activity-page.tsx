@@ -25,12 +25,21 @@ export default function ActivityPage() {
   // Get user info including weekInfo
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
+    onSuccess: (data) => {
+      console.log("Activity page - User data loaded:", data?.weekInfo);
+    }
   });
 
   // Get the current activity directly from the API using the current user's week and day
   const { data: currentActivity } = useQuery({
     queryKey: ["/api/activities/current"],
     enabled: !!userData?.weekInfo,
+    onSuccess: (data) => {
+      console.log("Activity page - Current activity:", data);
+    },
+    onError: (error) => {
+      console.error("Activity page - Error loading activity:", error);
+    }
   });
 
 
@@ -76,9 +85,9 @@ export default function ActivityPage() {
             <h1 className="text-xl font-bold">Daily Activity</h1>
             {userData?.teamId ? (
               <div className="mt-2 space-y-1">
-                {userData.teamJoinedAt && (
+                {userData.programStart && (
                   <p className="text-sm text-muted-foreground">
-                    Program Start: {format(new Date(userData.teamJoinedAt), 'PP')}
+                    Program Start: {format(new Date(userData.programStart), 'PP')}
                   </p>
                 )}
                 {weekInfo && (
