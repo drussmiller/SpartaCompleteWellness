@@ -457,7 +457,9 @@ export class DatabaseStorage implements IStorage {
     
     // For specific user Russ (ID 9), hardcode the start date to Feb 10, 2025
     if (userId === 9) {
-      firstMonday.setUTCFullYear(2025, 1, 10); // Month is 0-based, so 1 = February
+      // Month is 0-based, so 1 = February
+      // Create a new Date object to ensure we have a clean date with no time component
+      firstMonday = new Date(Date.UTC(2025, 1, 10, 0, 0, 0, 0));
     }
 
     // If today is before first Monday, return null
