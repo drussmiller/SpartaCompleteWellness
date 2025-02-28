@@ -44,6 +44,9 @@ export default function ActivityManagementPage() {
   const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<WorkoutVideo[]>([]);
   const [addVideoOpen, setAddVideoOpen] = useState(false);
   const [newVideo, setNewVideo] = useState<WorkoutVideo>({ url: '', description: '', title: '' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+
 
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
@@ -178,6 +181,7 @@ export default function ActivityManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setDeleteDialogOpen(false);
       toast({
         title: "Success",
         description: "Activity deleted successfully"
@@ -210,9 +214,8 @@ export default function ActivityManagementPage() {
   };
 
   const handleDeleteActivity = (activityId: number) => {
-    if (confirm("Are you sure you want to delete this activity?")) {
-      deleteActivityMutation.mutate(activityId);
-    }
+    setActivityToDelete(activityId);
+    setDeleteDialogOpen(true);
   };
 
   const handleAddVideo = () => {
@@ -680,6 +683,26 @@ export default function ActivityManagementPage() {
             </div>
             <Button type="submit">Add Video</Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <DialogContent>
+            <p>Are you sure you want to delete this activity?</p>
+          </DialogContent>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => {
+              if(activityToDelete){
+                deleteActivityMutation.mutate(activityToDelete);
+              }
+              setDeleteDialogOpen(false);
+            }}>Delete</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
