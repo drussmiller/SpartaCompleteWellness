@@ -1055,16 +1055,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const { teamJoinedAt } = req.body;
 
+      console.log('Updating team join date:', {
+        userId,
+        teamJoinedAt,
+        parsedDate: new Date(teamJoinedAt)
+      });
+
       // Update the user's team join date
       const [updatedUser] = await db
         .update(users)
-        .set({ teamJoinedAt: new Date(teamJoinedAt) })
+        .set({
+          teamJoinedAt: new Date(teamJoinedAt),
+          updatedAt: new Date() // Add updated timestamp
+        })
         .where(eq(users.id, userId))
-        .returning();
+        .returning({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          teamId: users.teamId,
+          teamJoinedAt: users.teamJoinedAt
+        });
 
       if (!updatedUser) {
+        console.error('User not found:', userId);
         return res.status(404).json({ message: "User not found" });
       }
+
+      console.log('Updated user:', updatedUser);
 
       res.json(updatedUser);
     } catch (error) {
