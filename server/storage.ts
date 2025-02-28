@@ -439,7 +439,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createActivity(data: any) {
-    return await db.insert(activities).values(data).returning();
+    try {
+      console.log('Creating activity with data:', data);
+      const activityData = {
+        week: data.week,
+        day: data.day,
+        memoryVerse: data.memoryVerse,
+        memoryVerseReference: data.memoryVerseReference,
+        scripture: data.scripture || null,
+        tasks: data.tasks || null,
+        description: data.description || null,
+        workout: data.workout || null,
+        workoutVideos: Array.isArray(data.workoutVideos) ? data.workoutVideos : [],
+      };
+
+      const [newActivity] = await db
+        .insert(activities)
+        .values(activityData)
+        .returning();
+
+      console.log('Created activity:', newActivity);
+      return newActivity;
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      throw error;
+    }
   }
 
   async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {
