@@ -463,7 +463,13 @@ export class DatabaseStorage implements IStorage {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     const week = Math.floor(diffDays / 7) + 1;
-    const day = today.getUTCDay() === 0 ? 7 : today.getUTCDay();
+
+    // Convert UTC day to our program day (1 = Monday, ..., 7 = Sunday)
+    let day = today.getUTCDay();
+    if (day === 0) {
+      day = 7;  // Sunday
+    }
+    // Now we don't need to adjust Monday-Saturday as they already match our desired numbering
 
     // Add logging to help debug the calculation
     console.log('Week calculation debug:', {
@@ -471,6 +477,8 @@ export class DatabaseStorage implements IStorage {
       joinDate: joinDate.toISOString(),
       firstMonday: firstMonday.toISOString(),
       today: today.toISOString(),
+      todayUTCDay: today.getUTCDay(),
+      adjustedDay: day,
       diffDays,
       week,
       day
