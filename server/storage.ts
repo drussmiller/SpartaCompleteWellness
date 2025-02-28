@@ -467,7 +467,7 @@ export class DatabaseStorage implements IStorage {
     // If the user joined on Monday, start that day
     // Otherwise, find the next Monday
     const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
-    const firstMonday = new Date(joinDate);
+    let firstMonday = new Date(joinDate);
     firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
     firstMonday.setUTCHours(0, 0, 0, 0);
     
