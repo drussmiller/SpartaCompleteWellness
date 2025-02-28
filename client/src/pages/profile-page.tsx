@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -6,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import { Measurement } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import { insertMeasurementSchema } from "@shared/schema";
@@ -20,18 +20,31 @@ import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BottomNav } from "@/components/bottom-nav";
 
+interface UserData {
+  id: number;
+  username: string;
+  email: string;
+  imageUrl?: string;
+  teamId?: number;
+  programStart?: string;
+  weekInfo?: {
+    week: number;
+    day: number;
+  };
+  points?: number;
+}
+
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
 
-  const { data: user, refetch: refetchUser } = useQuery({
+  const { data: user, refetch: refetchUser } = useQuery<UserData>({
     queryKey: ["/api/user"],
     staleTime: 0,
     enabled: !!authUser,
   });
 
-  // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements", user?.id],
     queryFn: async () => {
@@ -51,20 +64,10 @@ export default function ProfilePage() {
     refetchUser();
   }, [refetchUser]);
 
-  const handleRefresh = async () => {
-    console.log('Manual refresh requested');
-    await refetchUser();
-    toast({
-      title: "Refreshed",
-      description: "Profile data has been refreshed"
-    });
-  };
-
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
-  // Add measurement form
   const form = useForm({
     resolver: zodResolver(insertMeasurementSchema.omit({ userId: true, date: true })),
     defaultValues: {
@@ -75,12 +78,10 @@ export default function ProfilePage() {
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
-      // Ensure we're sending at least one measurement
       if (data.weight === undefined && data.waist === undefined) {
         throw new Error("Please enter at least one measurement");
       }
 
-      // Only send fields that have values
       const payload = {
         ...(data.weight !== undefined && { weight: data.weight }),
         ...(data.waist !== undefined && { waist: data.waist })
@@ -132,7 +133,7 @@ export default function ProfilePage() {
                     src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`}
                     alt={user?.username}
                   />
-                  <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>{user?.username?.[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
                   <Input
@@ -159,14 +160,9 @@ export default function ProfilePage() {
                         }
 
                         await refetchUser();
-                        // Invalidate all queries to ensure profile image is updated everywhere
                         await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
                         await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
-
-                        // Clear the entire cache to make sure everything refreshes
                         queryClient.clear();
-
-                        // Force refresh the home page data
                         await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
 
                         toast({
