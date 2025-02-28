@@ -1,6 +1,10 @@
 {
   "variant": "professional",
-  "primary": "hsl(222.2 47.4% 11.2%)",
+  "primary": "hsl(220 14% 96%)",
   "appearance": "light",
-  "radius": 0.5
+  "radius": 0.5,
+  "button": {
+    "background": "hsl(220 14% 96%)",
+    "text": "hsl(222.2 47.4% 11.2%)"
+  }
 }
