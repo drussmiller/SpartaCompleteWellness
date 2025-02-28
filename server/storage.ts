@@ -446,11 +446,14 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday after join date (in UTC)
+    // Find the first Monday after join date
+    let firstMonday = new Date(joinDate);
     const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-    const firstMonday = new Date(joinDate);
-    firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
+
+    if (dayOfWeek !== 1) { // If not already Monday
+      const daysToAdd = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+      firstMonday.setUTCDate(joinDate.getUTCDate() + daysToAdd);
+    }
     firstMonday.setUTCHours(0, 0, 0, 0);
 
     // If today is before first Monday, return null
@@ -458,27 +461,14 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    // Calculate weeks and days since first Monday (in UTC)
+    // Calculate number of weeks since first Monday
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
     const week = Math.floor(diffDays / 7) + 1;
 
-    // Convert UTC day to our program day (1 = Monday, 2 = Tuesday, ..., 7 = Sunday)
-    // JavaScript: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    // Our system: 1 = Monday, 2 = Tuesday, ..., 7 = Sunday
-    let day = today.getUTCDay();
-    if (day === 0) {
-      day = 7;  // Sunday (0) becomes 7
-    } else {
-      day = day; // Monday (1) stays 1, Tuesday (2) stays 2, etc.
-    }
-
-    // Additional check: February 28, 2025 should be day 4 (Thursday), not day 5
-    // This is a temporary fix for the specific issue
-    if (today.getUTCFullYear() === 2025 && today.getUTCMonth() === 1 && today.getUTCDate() === 28) {
-      day = 4; // Force February 28, 2025 to be day 4 (Thursday)
-    }
+    // Calculate current day (1 = Monday, ..., 7 = Sunday)
+    const currentDayOfWeek = today.getUTCDay();
+    const day = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
 
     // Add logging to help debug the calculation
     console.log('Week calculation debug:', {
