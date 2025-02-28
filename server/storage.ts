@@ -169,7 +169,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    return await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        isAdmin: users.isAdmin,
+        teamId: users.teamId,
+        points: users.points,
+        imageUrl: users.imageUrl,
+        preferredName: users.preferredName,
+        weight: users.weight,
+        waist: users.waist,
+        createdAt: users.createdAt,
+        teamJoinedAt: users.teamJoinedAt
+      })
+      .from(users)
+      .orderBy(users.username);
   }
 
   async createPost(post: Post): Promise<Post> {
@@ -446,13 +462,15 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday after join date (in UTC)
+    // Find the first Monday on or after join date (in UTC)
     const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-    const firstMonday = new Date(joinDate);
+    // If the user joined on Monday, start that day
+    // Otherwise, find the next Monday
+    const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
+    let firstMonday = new Date(joinDate);
     firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
     firstMonday.setUTCHours(0, 0, 0, 0);
-
+    
     // If today is before first Monday, return null
     if (today < firstMonday) {
       return null;
@@ -471,7 +489,7 @@ export class DatabaseStorage implements IStorage {
     } else {
       day = day; // Monday (1) stays 1, Tuesday (2) stays 2, etc.
     }
-
+    
     // Add logging to help debug the calculation
     console.log('Week calculation debug:', {
       userId,
