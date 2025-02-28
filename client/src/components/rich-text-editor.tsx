@@ -23,7 +23,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-primary underline cursor-pointer'
+          class: 'text-blue-600 hover:text-blue-800 underline cursor-pointer'
         }
       })
     ],
@@ -101,7 +101,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
           <LinkIcon className="h-4 w-4" />
         </Button>
       </div>
-      <EditorContent editor={editor} className="p-2 min-h-[100px] prose max-w-none" />
+      <EditorContent editor={editor} className="p-2 min-h-[100px] prose max-w-none [&_a]:text-blue-600 [&_a]:hover:text-blue-800" />
 
       <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
         <DialogContent>
