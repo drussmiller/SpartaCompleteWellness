@@ -236,10 +236,10 @@ export default function ActivityManagementPage() {
   return (
     <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
       <div className="flex items-center justify-start mb-6"> {/* Changed justify to start */}
-        <Button variant="outline" onClick={() => window.history.back()} className="bg-gray-400 hover:bg-gray-500 text-black font-bold h-14 w-14"> {/* Updated styling to match Admin Dashboard */}
-          <ChevronLeft className="h-6 w-6" /> {/* Increased icon size */}
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="mr-2 h-10 w-10 bg-gray-200 hover:bg-gray-300 rounded-md flex items-center justify-center">
+          <ChevronLeft className="h-9 w-9 text-black font-extrabold" />
         </Button>
-        <h1 className="text-2xl font-bold ml-4">Activity Management</h1> {/* Added margin */}
+        <h1 className="text-2xl font-bold ml-2">Activity Management</h1> {/* Adjusted margin */}
       </div>
 
       <Card>
