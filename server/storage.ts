@@ -439,27 +439,42 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
+    // Ensure dates are in UTC
     const joinDate = new Date(user.teamJoinedAt);
-    const today = new Date();
+    joinDate.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday after join date
-    const dayOfWeek = joinDate.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    // Find the first Monday after join date (in UTC)
+    const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
     const firstMonday = new Date(joinDate);
-    firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-    firstMonday.setHours(0, 0, 0, 0);
+    firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
+    firstMonday.setUTCHours(0, 0, 0, 0);
 
     // If today is before first Monday, return null
     if (today < firstMonday) {
       return null;
     }
 
-    // Calculate weeks and days since first Monday
+    // Calculate weeks and days since first Monday (in UTC)
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    const week = Math.floor(diffDays / 7) + 1; 
-    const day = today.getDay() === 0 ? 7 : today.getDay(); 
+    const week = Math.floor(diffDays / 7) + 1;
+    const day = today.getUTCDay() === 0 ? 7 : today.getUTCDay();
+
+    // Add logging to help debug the calculation
+    console.log('Week calculation debug:', {
+      userId,
+      joinDate: joinDate.toISOString(),
+      firstMonday: firstMonday.toISOString(),
+      today: today.toISOString(),
+      diffDays,
+      week,
+      day
+    });
 
     return { week, day };
   }
