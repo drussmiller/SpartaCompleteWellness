@@ -3,6 +3,10 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { Button } from "./ui/button";
 import { Bold, Italic, List, Link as LinkIcon } from "lucide-react";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface RichTextEditorProps {
   value: string;
@@ -10,6 +14,9 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -30,10 +37,27 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     return null;
   }
 
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const addLink = () => {
-    const url = window.prompt('Enter URL');
-    if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
+    if (!linkUrl) return;
+
+    // Add http:// if no protocol is specified
+    const urlToAdd = linkUrl.startsWith('http://') || linkUrl.startsWith('https://')
+      ? linkUrl
+      : `https://${linkUrl}`;
+
+    if (isValidUrl(urlToAdd)) {
+      editor.chain().focus().setLink({ href: urlToAdd }).run();
+      setLinkUrl('');
+      setLinkDialogOpen(false);
     }
   };
 
@@ -71,13 +95,53 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={addLink}
+          onClick={() => setLinkDialogOpen(true)}
           className={editor.isActive('link') ? 'bg-muted' : ''}
         >
           <LinkIcon className="h-4 w-4" />
         </Button>
       </div>
       <EditorContent editor={editor} className="p-2 min-h-[100px] prose max-w-none" />
+
+      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Link</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              addLink();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="url">URL</Label>
+              <Input
+                id="url"
+                type="text"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="Enter URL (e.g., https://example.com)"
+                className="mt-2"
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Enter a URL to create a link. The URL will be automatically formatted if needed.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLinkDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Add Link</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
