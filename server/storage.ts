@@ -439,29 +439,18 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    // Parse join date and ensure it's in a consistent format
+    // Ensure dates are in UTC
     const joinDate = new Date(user.teamJoinedAt);
     joinDate.setUTCHours(0, 0, 0, 0);
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // For user Russ (userId 9) who joined on Feb 7, 2025
-    // The first Monday is Feb 10, and the current day is Thursday (day 4)
-    if (userId === 9) {
-      console.log('Special handling for user Russ (userId 9)');
-      // Hard-coded specific week and day for testing
-      return { week: 3, day: 4 };
-    }
-
-    // Find the first Monday after join date
-    let firstMonday = new Date(joinDate);
+    // Find the first Monday after join date (in UTC)
     const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-
-    if (dayOfWeek !== 1) { // If not already Monday
-      const daysToAdd = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-      firstMonday.setUTCDate(joinDate.getUTCDate() + daysToAdd);
-    }
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    const firstMonday = new Date(joinDate);
+    firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
     firstMonday.setUTCHours(0, 0, 0, 0);
 
     // If today is before first Monday, return null
@@ -469,14 +458,19 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    // Calculate number of weeks since first Monday
+    // Calculate weeks and days since first Monday (in UTC)
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
     const week = Math.floor(diffDays / 7) + 1;
 
-    // Calculate current day (1 = Monday, ..., 7 = Sunday)
-    const currentDayOfWeek = today.getUTCDay();
-    const day = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
+    // Convert UTC day to our program day (1 = Monday, 2 = Tuesday, ..., 7 = Sunday)
+    let day = today.getUTCDay();
+    if (day === 0) {
+      day = 7;  // Sunday becomes 7
+    } else {
+      day = day; // Monday (1) stays 1, Tuesday (2) stays 2, etc.
+    }
 
     // Add logging to help debug the calculation
     console.log('Week calculation debug:', {
