@@ -25,6 +25,12 @@ export default function ActivityPage() {
   // Get user info including weekInfo
   const { data: user } = useQuery({
     queryKey: ["/api/user"],
+    onSuccess: (userData) => {
+      if (userData?.programStart) {
+        console.log("Activity Page - Program Start Date:", new Date(userData.programStart).toLocaleDateString());
+        console.log("Activity Page - Current Progress:", `Week ${userData.weekInfo?.week}, Day ${userData.weekInfo?.day}`);
+      }
+    }
   });
 
   // Get activities based on user's current progress
