@@ -16,9 +16,9 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
-      <div className="flex justify-around items-center h-16">
+      <div className="grid grid-cols-5 items-center h-16">
         {items.map(({ icon: Icon, label, href }) => (
-          <Link key={href} href={href}>
+          <Link key={href} href={href} className="w-full h-full">
             <button
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
@@ -33,7 +33,7 @@ export function BottomNav() {
           </Link>
         ))}
         {user?.isAdmin && (
-          <Link href="/admin">
+          <Link href="/admin" className="w-full h-full">
             <button
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
@@ -47,7 +47,7 @@ export function BottomNav() {
             </button>
           </Link>
         )}
-        <Link href="/profile">
+        <Link href="/profile" className="w-full h-full">
           <button
             className={cn(
               "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
