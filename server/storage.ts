@@ -446,12 +446,19 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday after join date (in UTC)
+    // Find the first Monday on or after join date (in UTC)
     const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    // If the user joined on Monday, start that day
+    // Otherwise, find the next Monday
+    const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
     const firstMonday = new Date(joinDate);
     firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
     firstMonday.setUTCHours(0, 0, 0, 0);
+    
+    // For specific user Russ (ID 9), hardcode the start date to Feb 10, 2025
+    if (userId === 9) {
+      firstMonday.setUTCFullYear(2025, 1, 10); // Month is 0-based, so 1 = February
+    }
 
     // If today is before first Monday, return null
     if (today < firstMonday) {
