@@ -128,9 +128,17 @@ export default function ActivityPage() {
           <Card>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
-                <CardTitle>
-                  Today's Activity
-                </CardTitle>
+                <div>
+                  <CardTitle>
+                    Today's Activity
+                  </CardTitle>
+                  {user?.programStart && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Week {user.weekInfo?.week}, Day {user.weekInfo?.day} 
+                      {" · "}{format(new Date(user.programStart), 'MMM d, yyyy')}
+                    </p>
+                  )}
+                </div>
                 {authUser?.isAdmin && (
                   <div className="flex gap-2">
                     <Button
