@@ -111,9 +111,16 @@ export default function ActivityPage() {
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <ScrollArea className="h-[calc(100vh-80px)]">
-        <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4">
+        <header className="sticky top-0 z-50 bg-background border-b border-border p-4">
+          <div className="flex flex-col gap-2">
             <h1 className="text-xl font-bold">Daily Activity</h1>
+            <div className="text-sm text-muted-foreground">
+              <span>Program started on {format(new Date(user.programStart), 'PPP')}</span>
+              <div className="flex gap-2 mt-1">
+                <div className="bg-muted px-2 py-1 rounded-md">Week {user.weekInfo?.week}</div>
+                <div className="bg-muted px-2 py-1 rounded-md">Day {user.weekInfo?.day}</div>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -122,7 +129,7 @@ export default function ActivityPage() {
             <CardHeader className="pb-2">
               <div className="flex justify-between items-center">
                 <CardTitle>
-                  Week {user.weekInfo?.week} - Day {user.weekInfo?.day}
+                  Today's Activity
                 </CardTitle>
                 {authUser?.isAdmin && (
                   <div className="flex gap-2">
