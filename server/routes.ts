@@ -1048,6 +1048,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user team join date endpoint
+  app.post("/api/users/:id/team-join-date", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const userId = parseInt(req.params.id);
+      const { teamJoinedAt } = req.body;
+
+      // Update the user's team join date
+      const [updatedUser] = await db
+        .update(users)
+        .set({ teamJoinedAt: new Date(teamJoinedAt) })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating team join date:', error);
+      res.status(500).json({ error: "Failed to update team join date" });
+    }
+  });
+
   app.post("/api/users/:id/toggle-admin", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     const userId = parseInt(req.params.id);
