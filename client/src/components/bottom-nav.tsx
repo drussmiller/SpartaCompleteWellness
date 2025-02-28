@@ -15,16 +15,16 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg">
-      <div className="grid grid-cols-5 h-16 relative">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+      <div className="flex justify-around items-center h-16">
         {items.map(({ icon: Icon, label, href }) => (
           <Link key={href} href={href}>
             <button
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full text-sm gap-1 relative",
+                "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === href
-                  ? "text-black [&>svg]:text-black border-b-2 border-primary" //Increased contrast and border for active state
-                  : "text-gray-600 hover:text-primary hover:border-b-2 hover:border-primary transition-colors" //Increased contrast and hover effect
+                  ? "text-black [&>svg]:text-black"
+                  : "text-muted-foreground hover:text-primary transition-colors"
               )}
             >
               <Icon className="h-5 w-5" />
@@ -36,10 +36,10 @@ export function BottomNav() {
           <Link href="/admin">
             <button
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full text-sm gap-1 relative",
+                "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === "/admin"
-                  ? "text-black [&>svg]:text-black border-b-2 border-primary"
-                  : "text-gray-600 hover:text-primary hover:border-b-2 hover:border-primary transition-colors"
+                  ? "text-black [&>svg]:text-black"
+                  : "text-muted-foreground hover:text-primary transition-colors"
               )}
             >
               <Shield className="h-5 w-5" />
@@ -50,10 +50,10 @@ export function BottomNav() {
         <Link href="/profile">
           <button
             className={cn(
-              "flex flex-col items-center justify-center w-full h-full text-sm gap-1 relative",
+              "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
               location === "/profile"
-                ? "text-black [&>svg]:text-black border-b-2 border-primary"
-                : "text-gray-600 hover:text-primary hover:border-b-2 hover:border-primary transition-colors"
+                ? "text-black [&>svg]:text-black"
+                : "text-muted-foreground hover:text-primary transition-colors"
             )}
           >
             <User className="h-5 w-5" />
