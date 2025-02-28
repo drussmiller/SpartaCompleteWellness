@@ -36,10 +36,6 @@ const activityFormSchema = z.object({
 
 type ActivityFormValues = z.infer<typeof activityFormSchema>;
 
-interface ActivityPayload extends ActivityFormValues {
-  workoutVideos: WorkoutVideo[];
-}
-
 export default function ActivityManagementPage() {
   const { toast } = useToast();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
@@ -72,21 +68,32 @@ export default function ActivityManagementPage() {
   });
 
   const createActivityMutation = useMutation({
-    mutationFn: async (data: ActivityFormValues) => {
-      console.log('Creating activity with data:', { ...data, workoutVideos });
-      const res = await apiRequest("POST", "/api/activities", {
-        ...data,
-        workoutVideos: workoutVideos.map(video => ({
-          url: video.url,
-          description: video.description,
-          title: video.title
-        }))
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to create activity');
+    mutationFn: async (values: ActivityFormValues) => {
+      try {
+        const data = {
+          ...values,
+          week: Number(values.week),
+          day: Number(values.day),
+          workoutVideos: workoutVideos.map(video => ({
+            url: video.url,
+            description: video.description,
+            title: video.title
+          }))
+        };
+
+        console.log('Creating activity with data:', data);
+        const res = await apiRequest("POST", "/api/activities", data);
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || 'Failed to create activity');
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error('Activity creation error:', error);
+        throw error;
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
@@ -108,24 +115,34 @@ export default function ActivityManagementPage() {
   });
 
   const updateActivityMutation = useMutation({
-    mutationFn: async (data: ActivityFormValues) => {
+    mutationFn: async (values: ActivityFormValues) => {
       if (!editingActivity?.id) throw new Error("No activity selected for editing");
-      console.log('Updating activity with data:', { ...data, workoutVideos: editingWorkoutVideos });
 
-      const res = await apiRequest("PUT", `/api/activities/${editingActivity.id}`, {
-        ...data,
-        workoutVideos: editingWorkoutVideos.map(video => ({
-          url: video.url,
-          description: video.description,
-          title: video.title
-        }))
-      });
+      try {
+        const data = {
+          ...values,
+          week: Number(values.week),
+          day: Number(values.day),
+          workoutVideos: editingWorkoutVideos.map(video => ({
+            url: video.url,
+            description: video.description,
+            title: video.title
+          }))
+        };
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update activity");
+        console.log('Updating activity with data:', data);
+        const res = await apiRequest("PUT", `/api/activities/${editingActivity.id}`, data);
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to update activity");
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error('Activity update error:', error);
+        throw error;
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
@@ -147,12 +164,17 @@ export default function ActivityManagementPage() {
 
   const deleteActivityMutation = useMutation({
     mutationFn: async (activityId: number) => {
-      const res = await apiRequest("DELETE", `/api/activities/${activityId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete activity");
+      try {
+        const res = await apiRequest("DELETE", `/api/activities/${activityId}`);
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to delete activity");
+        }
+        return res.json();
+      } catch (error) {
+        console.error('Activity deletion error:', error);
+        throw error;
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
@@ -243,7 +265,7 @@ export default function ActivityManagementPage() {
                           type="number" 
                           {...field} 
                           min={1} 
-                          onChange={e => field.onChange(parseInt(e.target.value))} 
+                          onChange={e => field.onChange(Number(e.target.value))} 
                           value={field.value || ''} 
                         />
                       </FormControl>
@@ -262,7 +284,7 @@ export default function ActivityManagementPage() {
                           {...field} 
                           min={1} 
                           max={7} 
-                          onChange={e => field.onChange(parseInt(e.target.value))}
+                          onChange={e => field.onChange(Number(e.target.value))}
                           value={field.value || ''} 
                         />
                       </FormControl>
@@ -447,6 +469,7 @@ export default function ActivityManagementPage() {
           <ScrollArea className="max-h-[70vh] pr-4">
             <Form {...editForm}>
               <form onSubmit={editForm.handleSubmit((data) => {
+                console.log('Edit form data:', data);
                 updateActivityMutation.mutate(data);
               })} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -461,7 +484,7 @@ export default function ActivityManagementPage() {
                             type="number" 
                             {...field} 
                             min={1} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
+                            onChange={e => field.onChange(Number(e.target.value))}
                             value={field.value || ''} 
                           />
                         </FormControl>
@@ -480,7 +503,7 @@ export default function ActivityManagementPage() {
                             {...field} 
                             min={1} 
                             max={7} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
+                            onChange={e => field.onChange(Number(e.target.value))}
                             value={field.value || ''} 
                           />
                         </FormControl>
