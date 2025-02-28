@@ -1005,11 +1005,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users/:id/team", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
-    const userId = parseInt(req.params.id);
-    const { teamId } = req.body;
     try {
-      const user = await storage.updateUserTeam(userId, teamId);
-      res.json(user);
+      const userId = parseInt(req.params.id);
+      const { teamId } = req.body;
+
+      // If teamId is not provided or null, user is being removed from team
+      const updateData = teamId ? {
+        teamId,
+        teamJoinedAt: new Date()
+      } : {
+        teamId: null,
+        teamJoinedAt: null
+      };
+
+      // Update user's team and join date
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+
+      // Send notification to user about team assignment
+      if (teamId) {
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, teamId));
+
+        if (team) {
+          await sendNotification(
+            userId,
+            "Team Assignment",
+            `You have been assigned to team ${team.name}. Your program will start on the first Monday after today.`
+          );
+        }
+      }
+
+      res.json(updatedUser);
     } catch (error) {
       console.error('Error updating user team:', error);
       res.status(500).json({ error: "Failed to update user team" });
