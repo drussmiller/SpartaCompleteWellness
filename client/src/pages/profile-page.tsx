@@ -4,9 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut, ArrowLeft, ChevronLeft } from "lucide-react"; // Added ChevronLeft import
+import { LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Measurement } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import { insertMeasurementSchema } from "@shared/schema";
@@ -16,13 +16,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useLocation } from "wouter";
 import { format } from "date-fns";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
 
   const { data: user, refetch: refetchUser } = useQuery({
@@ -116,305 +116,293 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setLocation("/")}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+      <ScrollArea className="h-[calc(100vh-80px)]">
+        <header className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="p-4">
             <h1 className="text-xl font-bold">Profile</h1>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleRefresh}
-          >
-            Refresh Data
-          </Button>
-        </div>
-      </header>
-      <main className="p-4 space-y-6">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="relative">
-              <Avatar className="h-20 w-20">
-                <AvatarImage
-                  src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`}
-                  alt={user?.username}
-                />
-                <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={uploading}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+        </header>
 
-                    const formData = new FormData();
-                    formData.append('image', file);
+        <main className="p-4 space-y-6">
+          <Card>
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage
+                    src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`}
+                    alt={user?.username}
+                  />
+                  <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    disabled={uploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
 
-                    try {
-                      setUploading(true);
-                      const res = await fetch('/api/user/image', {
-                        method: 'POST',
-                        body: formData,
-                      });
+                      const formData = new FormData();
+                      formData.append('image', file);
 
-                      if (!res.ok) {
-                        throw new Error('Failed to update profile image');
+                      try {
+                        setUploading(true);
+                        const res = await fetch('/api/user/image', {
+                          method: 'POST',
+                          body: formData,
+                        });
+
+                        if (!res.ok) {
+                          throw new Error('Failed to update profile image');
+                        }
+
+                        await refetchUser();
+                        // Invalidate all queries to ensure profile image is updated everywhere
+                        await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+                        await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
+
+                        // Clear the entire cache to make sure everything refreshes
+                        queryClient.clear();
+
+                        // Force refresh the home page data
+                        await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
+
+                        toast({
+                          title: "Success",
+                          description: "Profile image updated successfully"
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to update profile image",
+                          variant: "destructive"
+                        });
+                      } finally {
+                        setUploading(false);
                       }
+                    }}
+                  />
+                  {uploading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                  ) : (
+                    <div className="text-center text-white text-xs">
+                      <p>Click to</p>
+                      <p>Upload Photo</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold">{user?.username}</h2>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              </div>
+            </CardContent>
+          </Card>
 
-                      await refetchUser();
-                      // Invalidate all queries to ensure profile image is updated everywhere
-                      await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-                      await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
-                      
-                      // Clear the entire cache to make sure everything refreshes
-                      queryClient.clear();
-                      
-                      // Force refresh the home page data
-                      await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
-                      
-                      toast({
-                        title: "Success",
-                        description: "Profile image updated successfully"
-                      });
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to update profile image",
-                        variant: "destructive"
-                      });
-                    } finally {
-                      setUploading(false);
-                    }
-                  }}
-                />
-                {uploading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+          <Card>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">Program Details</h3>
+              <div className="space-y-3">
+                {user?.teamId ? (
+                  <>
+                    {user.programStart ? (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Program Start (Day One)</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(user.programStart), 'PPP')}
+                          </span>
+                        </div>
+                        {user.weekInfo && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Current Week</span>
+                              <span className="text-sm font-medium">Week {user.weekInfo.week}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Current Day</span>
+                              <span className="text-sm font-medium">Day {user.weekInfo.day}</span>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Your program will start on the first Monday after joining a team
+                      </p>
+                    )}
+                  </>
                 ) : (
-                  <div className="text-center text-white text-xs">
-                    <p>Click to</p>
-                    <p>Upload Photo</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Join a team to start your program
+                  </p>
                 )}
               </div>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold">{user?.username}</h2>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent>
-            <h3 className="text-lg font-semibold mb-4">Program Details</h3>
-            <div className="space-y-3">
-              {user?.teamId ? (
-                <>
-                  {user.programStart ? (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Program Start (Day One)</span>
-                        <span className="text-sm font-medium">
-                          {format(new Date(user.programStart), 'PPP')}
-                        </span>
-                      </div>
-                      {user.weekInfo && (
-                        <>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Current Week</span>
-                            <span className="text-sm font-medium">Week {user.weekInfo.week}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Current Day</span>
-                            <span className="text-sm font-medium">Day {user.weekInfo.day}</span>
-                          </div>
-                        </>
+          <Card>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">My Stats</h3>
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground">Points</p>
+                <p className="text-xl font-semibold">{user?.points || 0}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">Measurements</h3>
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => addMeasurementMutation.mutate(data))} className="space-y-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="weight"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Weight (lbs)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Enter weight"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                            />
+                          </FormControl>
+                        </FormItem>
                       )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Your program will start on the first Monday after joining a team
-                    </p>
-                  )}
-                </>
+                    />
+                    <FormField
+                      control={form.control}
+                      name="waist"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Waist (inches)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Enter waist"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <Button type="submit" disabled={addMeasurementMutation.isPending}>
+                    {addMeasurementMutation.isPending ? "Adding..." : "Add Measurement"}
+                  </Button>
+                </form>
+              </Form>
+
+              {measurementsLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : measurementsError ? (
+                <p className="text-sm text-destructive">Failed to load measurements</p>
+              ) : !measurements?.length ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">No measurements recorded yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Record your measurements to track your progress</p>
+                </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Join a team to start your program
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <h3 className="text-lg font-semibold mb-4">My Stats</h3>
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground">Points</p>
-              <p className="text-xl font-semibold">{user?.points || 0}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <h3 className="text-lg font-semibold mb-4">Measurements</h3>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => addMeasurementMutation.mutate(data))} className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="weight"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Weight (lbs)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter weight" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                <>
+                  <div className="space-y-6 mb-6">
+                    <div className="h-[300px]">
+                      <h4 className="text-sm font-medium mb-4">Weight Progress</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={measurements
+                            .filter(m => m.weight !== null)
+                            .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
+                          }
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={(date) => new Date(date).toLocaleDateString()}
                           />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="waist"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Waist (inches)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter waist" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                          <YAxis unit=" lbs" domain={['auto', 'auto']} />
+                          <Tooltip
+                            labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                            formatter={(value) => [`${value} lbs`, 'Weight']}
                           />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Button type="submit" disabled={addMeasurementMutation.isPending}>
-                  {addMeasurementMutation.isPending ? "Adding..." : "Add Measurement"}
-                </Button>
-              </form>
-            </Form>
+                          <Legend />
+                          <Line type="monotone" dataKey="weight" stroke="#2563eb" name="Weight" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
 
-            {measurementsLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : measurementsError ? (
-              <p className="text-sm text-destructive">Failed to load measurements</p>
-            ) : !measurements?.length ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">No measurements recorded yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Record your measurements to track your progress</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-6 mb-6">
-                  <div className="h-[300px]">
-                    <h4 className="text-sm font-medium mb-4">Weight Progress</h4>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={measurements
-                          .filter(m => m.weight !== null)
-                          .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
-                        }
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="date"
-                          tickFormatter={(date) => new Date(date).toLocaleDateString()}
-                        />
-                        <YAxis unit=" lbs" domain={['auto', 'auto']} />
-                        <Tooltip
-                          labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                          formatter={(value) => [`${value} lbs`, 'Weight']}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="weight" stroke="#2563eb" name="Weight" />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <div className="h-[300px]">
+                      <h4 className="text-sm font-medium mb-4">Waist Progress</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={measurements
+                            .filter(m => m.waist !== null)
+                            .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
+                          }
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={(date) => new Date(date).toLocaleDateString()}
+                          />
+                          <YAxis unit=" in" domain={['auto', 'auto']} />
+                          <Tooltip
+                            labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                            formatter={(value) => [`${value} inches`, 'Waist']}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="waist" stroke="#16a34a" name="Waist" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
 
-                  <div className="h-[300px]">
-                    <h4 className="text-sm font-medium mb-4">Waist Progress</h4>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={measurements
-                          .filter(m => m.waist !== null)
-                          .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
-                        }
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="date"
-                          tickFormatter={(date) => new Date(date).toLocaleDateString()}
-                        />
-                        <YAxis unit=" in" domain={['auto', 'auto']} />
-                        <Tooltip
-                          labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                          formatter={(value) => [`${value} inches`, 'Waist']}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="waist" stroke="#16a34a" name="Waist" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {measurements.map((measurement) => (
-                    <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
-                      <div className="space-y-2">
-                        {measurement.weight !== null && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Weight</span>
-                            <span className="text-sm font-medium">{measurement.weight} lbs</span>
+                  <div className="space-y-4">
+                    {measurements.map((measurement) => (
+                      <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
+                        <div className="space-y-2">
+                          {measurement.weight !== null && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Weight</span>
+                              <span className="text-sm font-medium">{measurement.weight} lbs</span>
+                            </div>
+                          )}
+                          {measurement.waist !== null && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Waist</span>
+                              <span className="text-sm font-medium">{measurement.waist} inches</span>
+                            </div>
+                          )}
+                          <div className="text-xs text-muted-foreground pt-2 border-t border-border">
+                            {measurement.date ? new Date(measurement.date).toLocaleDateString() : 'Date not recorded'}
                           </div>
-                        )}
-                        {measurement.waist !== null && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Waist</span>
-                            <span className="text-sm font-medium">{measurement.waist} inches</span>
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                          {measurement.date ? new Date(measurement.date).toLocaleDateString() : 'Date not recorded'}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-        <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending}>
-          {logoutMutation.isPending ? "Logging out..." : "Logout"}
-          <LogOut className="ml-2 h-4 w-4"/>
-        </Button>
-      </main>
+          <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending}>
+            {logoutMutation.isPending ? "Logging out..." : "Logout"}
+            <LogOut className="ml-2 h-4 w-4"/>
+          </Button>
+        </main>
+      </ScrollArea>
+      <BottomNav />
     </div>
   );
 }
