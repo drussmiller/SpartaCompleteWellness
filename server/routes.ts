@@ -1373,20 +1373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const weekInfo = await storage.getUserWeekInfo(req.user.id);
-
-      // Get the user's first Monday (if they're in a team)
-      let firstMonday = null;
-      if (req.user.teamJoinedAt) {
-        const joinDate = new Date(req.user.teamJoinedAt);
-        const dayOfWeek = joinDate.getDay();
-        const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-        firstMonday = new Date(joinDate);
-        firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-        firstMonday.setHours(0, 0, 0, 0);
-      }
-
-      // Get user with accurate point total by only counting existing posts
+      // Get the user's team join date and calculate program progress
       const [user] = await db
         .select({
           id: users.id,
@@ -1395,33 +1382,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isAdmin: users.isAdmin,
           teamId: users.teamId,
           imageUrl: users.imageUrl,
-          points: sql`COALESCE((
-            SELECT CAST(SUM(points) AS INTEGER)
-            FROM ${posts}
-            WHERE user_id = ${users.id}
-            AND type != 'comment'
-          ), 0)`,
-          teamJoinedAt: users.teamJoinedAt
+          teamJoinedAt: users.teamJoinedAt,
+          points: users.points
         })
         .from(users)
         .where(eq(users.id, req.user.id));
 
       if (!user) {
-        return res.status(404).json({ error: "User not found" });
+        return res.status(404).json({ message: "User not found" });
       }
 
-      // Always return points as a number
-      const sanitizedUser = {
-        ...user,
-        points: typeof user.points ==='number' ? user.points : 0,
-        weekInfo,
-        programStart: firstMonday?.toISOString() || null
-      };
+      const weekInfo = await storage.getUserWeekInfo(req.user.id);
 
-      res.json(sanitizedUser);
+      // Calculate program start date (first Monday after team join)
+      let programStart = null;
+      if (user.teamJoinedAt) {
+        const joinDate = new Date(user.teamJoinedAt);
+        const dayOfWeek = joinDate.getDay();
+        const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+        programStart = new Date(joinDate);
+        programStart.setDate(joinDate.getDate() + daysUntilMonday);
+        programStart.setHours(0, 0, 0, 0);
+      }
+
+      res.json({
+        ...user,
+        weekInfo,
+        programStart: programStart?.toISOString() || null
+      });
     } catch (error) {
       console.error('Error fetching user:', error);
-      res.status(500).json({ error: "Failed to fetch user data" });
+      res.status(500).json({ message: "Failed to fetch user info" });
     }
   });
 
