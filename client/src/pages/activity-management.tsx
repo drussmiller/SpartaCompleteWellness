@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Video } from "lucide-react";
+import { Edit, Trash2, X, Plus, Video, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -235,12 +235,11 @@ export default function ActivityManagementPage() {
 
   return (
     <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Activity Management</h1>
-        <Button variant="outline" onClick={() => window.history.back()}>
-          <X className="h-4 w-4 mr-2" />
-          Close
+      <div className="flex items-center justify-start mb-6"> {/* Changed justify to start */}
+        <Button variant="outline" onClick={() => window.history.back()} className="bg-gray-400 hover:bg-gray-500 text-black font-bold h-14 w-14"> {/* Updated styling to match Admin Dashboard */}
+          <ChevronLeft className="h-6 w-6" /> {/* Increased icon size */}
         </Button>
+        <h1 className="text-2xl font-bold ml-4">Activity Management</h1> {/* Added margin */}
       </div>
 
       <Card>

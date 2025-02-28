@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Team, User, Activity } from "@shared/schema";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, ChevronLeft, Calendar } from "lucide-react";
+import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -329,541 +330,541 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <header>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
-          </Button>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        </div>
-        <div className="flex gap-2 mt-4 justify-center">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="default" className="px-4">
-                <Plus className="h-4 w-4 mr-2" />
-                New Team
-              </Button>
-            </DialogTrigger>
-            <DialogContent aria-describedby="new-team-description">
-              <p id="new-team-description" className="sr-only">Create a new team form</p>
-              <DialogHeader>
-                <DialogTitle>Create New Team</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" disabled={createTeamMutation.isPending}>
-                    {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-          <Button onClick={() => window.location.href = '/activity-management'} size="default" className="ml-2">
-            Manage Activities
-          </Button>
-        </div>
-      </header>
+    <div className="max-w-2xl mx-auto pb-20">
+      <ScrollArea className="h-[calc(100vh-80px)]">
+        <header className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="p-4">
+            <h1 className="text-xl font-bold">Admin Dashboard</h1>
+          </div>
+        </header>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Teams</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {teams.map((team) => (
-                <div
-                  key={team.id}
-                  className="flex items-center justify-between p-2 pr-6 rounded hover:bg-accent"
-                >
+        <main className="p-4 space-y-6">
+          <div className="flex gap-2 justify-center mb-6">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="default">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Team
+                </Button>
+              </DialogTrigger>
+              <DialogContent aria-describedby="new-team-description">
+                <p id="new-team-description" className="sr-only">Create a new team form</p>
+                <DialogHeader>
+                  <DialogTitle>Create New Team</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={createTeamMutation.isPending}>
+                      {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+            <Button onClick={() => window.location.href = '/activity-management'}>
+              Manage Activities
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {teams.map((team) => (
                   <div
-                    className="flex-1 cursor-pointer"
-                    onClick={() => setSelectedTeam(selectedTeam === team.id ? null : team.id)}
+                    key={team.id}
+                    className="flex items-center justify-between p-2 pr-6 rounded hover:bg-accent"
                   >
-                    <p className="font-medium">{team.name}</p>
-                    <p className="text-sm text-muted-foreground">{team.description}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditTeam(team)}
+                    <div
+                      className="flex-1 cursor-pointer"
+                      onClick={() => setSelectedTeam(selectedTeam === team.id ? null : team.id)}
                     >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteTeam(team.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <p className="font-medium">{team.name}</p>
+                      <p className="text-sm text-muted-foreground">{team.description}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditTeam(team)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteTeam(team.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {selectedTeam === team.id && (
+                      <div className="w-2 h-2 rounded-full bg-primary ml-2" />
+                    )}
                   </div>
-                  {selectedTeam === team.id && (
-                    <div className="w-2 h-2 rounded-full bg-primary ml-2" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {users.map((u) => (
-                <div key={u.id} className="flex flex-wrap items-start justify-between p-2 gap-2">
-                  <div className="min-w-[200px]">
-                    <p className="font-medium">{u.username}</p>
-                    <p className="text-sm text-muted-foreground">{u.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
-                    </p>
-                    {u.teamId && (
-                      <>
-                        {u.teamJoinedAt ? (
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Joined Team: </span>
-                                <span className="font-medium">
-                                  {format(new Date(u.teamJoinedAt), 'PP')}
-                                </span>
-                              </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {users.map((u) => (
+                  <div key={u.id} className="flex flex-wrap items-start justify-between p-2 gap-2">
+                    <div className="min-w-[200px]">
+                      <p className="font-medium">{u.username}</p>
+                      <p className="text-sm text-muted-foreground">{u.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
+                      </p>
+                      {u.teamId && (
+                        <>
+                          {u.teamJoinedAt ? (
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Joined Team: </span>
+                                  <span className="font-medium">
+                                    {format(new Date(u.teamJoinedAt), 'PP')}
+                                  </span>
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => handleEditTeamJoinDate(u.id, u.teamJoinedAt)}
+                                >
+                                  <Calendar className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {u.programStart && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Start Date: </span>
+                                  <span className="font-medium">
+                                    {format(new Date(u.programStart), 'PP')}
+                                  </span>
+                                </p>
+                              )}
+                              {u.weekInfo && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Progress: </span>
+                                  <span className="font-medium">
+                                    Week {u.weekInfo.week}, Day {u.weekInfo.day}
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-2">
+                              <p className="text-sm text-muted-foreground">Set join date:</p>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
-                                onClick={() => handleEditTeamJoinDate(u.id, u.teamJoinedAt)}
+                                onClick={() => handleEditTeamJoinDate(u.id)}
                               >
                                 <Calendar className="h-4 w-4" />
                               </Button>
                             </div>
-                            {u.programStart && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Start Date: </span>
-                                <span className="font-medium">
-                                  {format(new Date(u.programStart), 'PP')}
-                                </span>
-                              </p>
-                            )}
-                            {u.weekInfo && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Progress: </span>
-                                <span className="font-medium">
-                                  Week {u.weekInfo.week}, Day {u.weekInfo.day}
-                                </span>
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 mt-2">
-                            <p className="text-sm text-muted-foreground">Set join date:</p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleEditTeamJoinDate(u.id)}
-                            >
-                              <Calendar className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 min-w-[140px]">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (selectedTeam) {
-                          updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
-                        }
-                      }}
-                      disabled={!selectedTeam || updateUserTeamMutation.isPending}
-                    >
-                      {updateUserTeamMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : null}
-                      {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleResetPassword(u.id)}
-                    >
-                      Reset Password
-                    </Button>
-                    <Button
-                      variant={u.isAdmin ? "destructive" : "outline"}
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
-                            isAdmin: !u.isAdmin
-                          });
-                          queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-                          toast({ 
-                            title: "Success", 
-                            description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "Error",
-                            description: "Failed to update admin status",
-                            variant: "destructive"
-                          });
-                        }
-                      }}
-                    >
-                      {u.isAdmin ? "Remove Admin" : "Make Admin"}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this user?")) {
-                          deleteUserMutation.mutate(u.id);
-                        }
-                      }}
-                    >
-                      Delete User
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Team</DialogTitle>
-            <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setEditTeamOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
-          <Form {...editTeamForm}>
-            <form
-              onSubmit={editTeamForm.handleSubmit(async (data) => {
-                if (!editingTeam) return;
-                try {
-                  await updateTeamMutation.mutateAsync({ 
-                    id: editingTeam.id, 
-                    data: {
-                      name: data.name,
-                      description: data.description
-                    }
-                  });
-                  setEditTeamOpen(false);
-                } catch (error) {
-                  console.error('Error in form submission:', error);
-                }
-              })}
-              className="space-y-4"
-            >
-              <FormField
-                control={editTeamForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editTeamForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={updateTeamMutation.isPending}>
-                {updateTeamMutation.isPending ? "Updating..." : "Update Team"}
-              </Button>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset User Password</DialogTitle>
-            <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setResetPasswordOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
-          <Input
-            type="password"
-            placeholder="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-          <Button
-            onClick={() => {
-              if (selectedUserId) {
-                resetPasswordMutation.mutate({
-                  userId: selectedUserId,
-                  password: newPassword,
-                });
-              }
-            }}
-            disabled={resetPasswordMutation.isPending || !newPassword}
-          >
-            {resetPasswordMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Reset Password
-          </Button>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
-        <DialogContent className="max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Edit Activity</DialogTitle>
-            <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setEditActivityOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
-          <ScrollArea className="max-h-[70vh] pr-4">
-            <Form>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target as HTMLFormElement);
-                const data = {
-                  week: parseInt(formData.get('week') as string),
-                  day: parseInt(formData.get('day') as string),
-                  memoryVerse: formData.get('memoryVerse'),
-                  memoryVerseReference: formData.get('memoryVerseReference'),
-                  scripture: formData.get('scripture'),
-                  workout: formData.get('workout'),
-                  tasks: formData.get('tasks'),
-                  description: formData.get('description'),
-                  workoutVideos: editingWorkoutVideos
-                };
-                updateActivityMutation.mutate(data);
-              }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="week">Week</Label>
-                    <Input 
-                      type="number" 
-                      name="week" 
-                      defaultValue={editingActivity?.week} 
-                      required 
-                      min="1" 
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="day">Day</Label>
-                    <Input 
-                      type="number" 
-                      name="day" 
-                      defaultValue={editingActivity?.day} 
-                      required 
-                      min="1" 
-                      max="7" 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="memoryVerse">Memory Verse</Label>
-                  <Textarea 
-                    name="memoryVerse" 
-                    defaultValue={editingActivity?.memoryVerse} 
-                    required 
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
-                  <Input 
-                    name="memoryVerseReference" 
-                    defaultValue={editingActivity?.memoryVerseReference} 
-                    required 
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="scripture">Scripture Reading</Label>
-                  <Input 
-                    name="scripture" 
-                    defaultValue={editingActivity?.scripture} 
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tasks">Tasks</Label>
-                  <Textarea 
-                    name="tasks" 
-                    defaultValue={editingActivity?.tasks} 
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    name="description" 
-                    defaultValue={editingActivity?.description} 
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="workout">Workout</Label>
-                  <Textarea 
-                    name="workout" 
-                    defaultValue={editingActivity?.workout} 
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label>Workout Videos</Label>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setEditingWorkoutVideos([...editingWorkoutVideos, { url: '', description: '' }])}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Video
-                    </Button>
-                  </div>
-
-                  {editingWorkoutVideos.map((video, index) => (
-                    <div key={index} className="space-y-2 p-4 border rounded-lg relative">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2"
-                        onClick={() => handleRemoveEditWorkoutVideo(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-
-                      <div>
-                        <Label>Video Description</Label>
-                        <Textarea
-                          value={video.description}
-                          onChange={(e) => handleEditWorkoutVideo(index, 'description', e.target.value)}
-                          placeholder="Describe this workout video"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Video URL</Label>
-                        <Input
-                          value={video.url}
-                          onChange={(e) => handleEditWorkoutVideo(index, 'url', e.target.value)}
-                          placeholder="Enter video URL"
-                        />
-                      </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <div className="flex flex-col gap-2 min-w-[140px]">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          if (selectedTeam) {
+                            updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
+                          }
+                        }}
+                        disabled={!selectedTeam || updateUserTeamMutation.isPending}
+                      >
+                        {updateUserTeamMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetPassword(u.id)}
+                      >
+                        Reset Password
+                      </Button>
+                      <Button
+                        variant={u.isAdmin ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
+                              isAdmin: !u.isAdmin
+                            });
+                            queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                            toast({ 
+                              title: "Success", 
+                              description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
+                            });
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to update admin status",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                      >
+                        {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this user?")) {
+                            deleteUserMutation.mutate(u.id);
+                          }
+                        }}
+                      >
+                        Delete User
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </main>
 
-                <Button type="submit" disabled={updateActivityMutation.isPending}>
-                  {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+        <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Team</DialogTitle>
+              <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setEditTeamOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+            <Form {...editTeamForm}>
+              <form
+                onSubmit={editTeamForm.handleSubmit(async (data) => {
+                  if (!editingTeam) return;
+                  try {
+                    await updateTeamMutation.mutateAsync({ 
+                      id: editingTeam.id, 
+                      data: {
+                        name: data.name,
+                        description: data.description
+                      }
+                    });
+                    setEditTeamOpen(false);
+                  } catch (error) {
+                    console.error('Error in form submission:', error);
+                  }
+                })}
+                className="space-y-4"
+              >
+                <FormField
+                  control={editTeamForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editTeamForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={updateTeamMutation.isPending}>
+                  {updateTeamMutation.isPending ? "Updating..." : "Update Team"}
                 </Button>
               </form>
             </Form>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={editJoinDateOpen} onOpenChange={setEditJoinDateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Team Join Date</DialogTitle>
-            <Button
-              variant="ghost"
-              className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
-              size="icon"
-              onClick={() => setEditJoinDateOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label>Select Join Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !selectedDate && "text-muted-foreground"
-                    }`}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset User Password</DialogTitle>
+              <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setResetPasswordOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+            <Input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
             <Button
               onClick={() => {
-                if (selectedUserId && selectedDate) {
-                  updateTeamJoinDateMutation.mutate({
+                if (selectedUserId) {
+                  resetPasswordMutation.mutate({
                     userId: selectedUserId,
-                    date: selectedDate,
+                    password: newPassword,
                   });
                 }
               }}
-              disabled={updateTeamJoinDateMutation.isPending || !selectedDate}
+              disabled={resetPasswordMutation.isPending || !newPassword}
             >
-              {updateTeamJoinDateMutation.isPending ? (
+              {resetPasswordMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Update Join Date
+              Reset Password
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
+          <DialogContent className="max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Edit Activity</DialogTitle>
+              <Button variant="ghost" className="bg-gray-400 hover:bg-gray-500 text-black font-bold" size="icon" onClick={() => setEditActivityOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+            <ScrollArea className="max-h-[70vh] pr-4">
+              <Form>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target as HTMLFormElement);
+                  const data = {
+                    week: parseInt(formData.get('week') as string),
+                    day: parseInt(formData.get('day') as string),
+                    memoryVerse: formData.get('memoryVerse'),
+                    memoryVerseReference: formData.get('memoryVerseReference'),
+                    scripture: formData.get('scripture'),
+                    workout: formData.get('workout'),
+                    tasks: formData.get('tasks'),
+                    description: formData.get('description'),
+                    workoutVideos: editingWorkoutVideos
+                  };
+                  updateActivityMutation.mutate(data);
+                }} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="week">Week</Label>
+                      <Input 
+                        type="number" 
+                        name="week" 
+                        defaultValue={editingActivity?.week} 
+                        required 
+                        min="1" 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="day">Day</Label>
+                      <Input 
+                        type="number" 
+                        name="day" 
+                        defaultValue={editingActivity?.day} 
+                        required 
+                        min="1" 
+                        max="7" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="memoryVerse">Memory Verse</Label>
+                    <Textarea 
+                      name="memoryVerse" 
+                      defaultValue={editingActivity?.memoryVerse} 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
+                    <Input 
+                      name="memoryVerseReference" 
+                      defaultValue={editingActivity?.memoryVerseReference} 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="scripture">Scripture Reading</Label>
+                    <Input 
+                      name="scripture" 
+                      defaultValue={editingActivity?.scripture} 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tasks">Tasks</Label>
+                    <Textarea 
+                      name="tasks" 
+                      defaultValue={editingActivity?.tasks} 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea 
+                      name="description" 
+                      defaultValue={editingActivity?.description} 
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="workout">Workout</Label>
+                    <Textarea 
+                      name="workout" 
+                      defaultValue={editingActivity?.workout} 
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Workout Videos</Label>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setEditingWorkoutVideos([...editingWorkoutVideos, { url: '', description: '' }])}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Video
+                      </Button>
+                    </div>
+
+                    {editingWorkoutVideos.map((video, index) => (
+                      <div key={index} className="space-y-2 p-4 border rounded-lg relative">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2"
+                          onClick={() => handleRemoveEditWorkoutVideo(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+
+                        <div>
+                          <Label>Video Description</Label>
+                          <Textarea
+                            value={video.description}
+                            onChange={(e) => handleEditWorkoutVideo(index, 'description', e.target.value)}
+                            placeholder="Describe this workout video"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Video URL</Label>
+                          <Input
+                            value={video.url}
+                            onChange={(e) => handleEditWorkoutVideo(index, 'url', e.target.value)}
+                            placeholder="Enter video URL"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button type="submit" disabled={updateActivityMutation.isPending}>
+                    {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                  </Button>
+                </form>
+              </Form>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={editJoinDateOpen} onOpenChange={setEditJoinDateOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Team Join Date</DialogTitle>
+              <Button
+                variant="ghost"
+                className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
+                size="icon"
+                onClick={() => setEditJoinDateOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label>Select Join Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${
+                        !selectedDate && "text-muted-foreground"
+                      }`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button
+                onClick={() => {
+                  if (selectedUserId && selectedDate) {
+                    updateTeamJoinDateMutation.mutate({
+                      userId: selectedUserId,
+                      date: selectedDate,
+                    });
+                  }
+                }}
+                disabled={updateTeamJoinDateMutation.isPending || !selectedDate}
+              >
+                {updateTeamJoinDateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Update Join Date
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </ScrollArea>
+      <BottomNav />
     </div>
   );
 }
