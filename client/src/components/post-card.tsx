@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { PostComments } from "./post-comments";
 import { PostOptionsMenu } from "./post-options-menu";
+import { useState } from "react";
 
 type PostWithAuthor = Post & {
   author?: {

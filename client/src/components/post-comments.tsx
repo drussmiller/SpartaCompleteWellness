@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatDistance } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
+import { useQuery } from "@tanstack/react-query";
 
 interface Comment {
   id: number;
@@ -21,29 +22,13 @@ interface Comment {
 
 export function PostComments({ postId }: { postId: number }) {
   const { user } = useAuth();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchComments();
-  }, [postId]);
-
-  const fetchComments = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/posts/comments/${postId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setComments(data);
-      }
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: comments = [], isLoading: loading, refetch } = useQuery<Comment[]>({
+    queryKey: [`/api/posts/comments/${postId}`],
+    enabled: !!postId
+  });
 
   const handleSubmitComment = async () => {
     if (!newComment.trim() || !user) return;
@@ -65,7 +50,7 @@ export function PostComments({ postId }: { postId: number }) {
 
       if (response.ok) {
         setNewComment("");
-        fetchComments();
+        refetch();
       }
     } catch (error) {
       console.error("Error posting comment:", error);
