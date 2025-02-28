@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Post, User } from "@shared/schema";
 import { formatDistance } from "date-fns";
 import { MessageSquare } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { PostComments } from "./post-comments";
 import { PostOptionsMenu } from "./post-options-menu";
