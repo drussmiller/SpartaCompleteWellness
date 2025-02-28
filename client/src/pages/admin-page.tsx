@@ -37,16 +37,8 @@ export default function AdminPage() {
     queryKey: ["/api/teams"],
   });
 
-  const { data: users = [] } = useQuery<User[]>({
+  const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    select: (data) => {
-      // Sort users by preferred name
-      return [...data].sort((a, b) => {
-        const nameA = a.preferredName || a.username || '';
-        const nameB = b.preferredName || b.username || '';
-        return nameA.localeCompare(nameB);
-      });
-    }
   });
 
   const { data: activities } = useQuery<Activity[]>({
