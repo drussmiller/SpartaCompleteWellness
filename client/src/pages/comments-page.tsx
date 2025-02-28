@@ -363,9 +363,9 @@ export default function CommentsPage() {
             variant="ghost"
             size="icon"
             onClick={() => window.history.back()}
-            className="mr-2"
+            className="mr-2 h-10 w-10 bg-gray-200 hover:bg-gray-300 rounded-md flex items-center justify-center"
           >
-            <ChevronLeft className="h-4 w-4" /> {/* Changed to ChevronLeft */}
+            <ChevronLeft className="h-9 w-9 text-black font-extrabold" /> {/* Changed to ChevronLeft */}
           </Button>
           <h1 className="text-xl font-bold truncate">Comments</h1>
         </div>
