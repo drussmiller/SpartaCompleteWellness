@@ -471,13 +471,6 @@ export class DatabaseStorage implements IStorage {
     firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
     firstMonday.setUTCHours(0, 0, 0, 0);
     
-    // For specific user Russ (ID 9), hardcode the start date to Feb 10, 2025
-    if (userId === 9) {
-      // Month is 0-based, so 1 = February
-      // Create a new Date object to ensure we have a clean date with no time component
-      firstMonday = new Date(Date.UTC(2025, 1, 10, 0, 0, 0, 0));
-    }
-
     // If today is before first Monday, return null
     if (today < firstMonday) {
       return null;
@@ -497,11 +490,6 @@ export class DatabaseStorage implements IStorage {
       day = day; // Monday (1) stays 1, Tuesday (2) stays 2, etc.
     }
     
-    // Override for Russ (user ID 9) - hardcode to Week 3, Day 4
-    if (userId === 9) {
-      return { week: 3, day: 4 };
-    }
-
     // Add logging to help debug the calculation
     console.log('Week calculation debug:', {
       userId,
