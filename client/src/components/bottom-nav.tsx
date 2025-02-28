@@ -24,7 +24,7 @@ export function BottomNav() {
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === href
                   ? "text-black [&>svg]:text-black"
-                  : "text-muted-foreground hover:text-primary transition-colors"
+                  : "text-muted-foreground"
               )}
             >
               <Icon className="h-5 w-5" />
@@ -39,7 +39,7 @@ export function BottomNav() {
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === "/admin"
                   ? "text-black [&>svg]:text-black"
-                  : "text-muted-foreground hover:text-primary transition-colors"
+                  : "text-muted-foreground"
               )}
             >
               <Shield className="h-5 w-5" />
@@ -53,7 +53,7 @@ export function BottomNav() {
               "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
               location === "/profile"
                 ? "text-black [&>svg]:text-black"
-                : "text-muted-foreground hover:text-primary transition-colors"
+                : "text-muted-foreground"
             )}
           >
             <User className="h-5 w-5" />
