@@ -31,11 +31,13 @@ export default function ActivityPage() {
   });
 
   // Get the current activity directly from the API using the current user's week and day
-  const { data: currentActivity } = useQuery({
+  const { data: currentActivity, isLoading: activityLoading, error: activityError } = useQuery({
     queryKey: ["/api/activities/current"],
     enabled: !!userData?.weekInfo,
+    refetchOnWindowFocus: false,
+    retry: 2,
     onSuccess: (data) => {
-      console.log("Activity page - Current activity:", data);
+      console.log("Activity page - Current activity loaded:", data);
     },
     onError: (error) => {
       console.error("Activity page - Error loading activity:", error);

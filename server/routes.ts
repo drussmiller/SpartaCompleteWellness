@@ -1556,6 +1556,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get activity for current week and day
+      // Get activity for current week and day - include explicit week and day in log
+      console.log(`GET /api/activities/current - Searching for activity with Week ${weekInfo.week}, Day ${weekInfo.day}`);
+
+      // Query all activities to ensure we're not missing any
+      const allActivities = await db
+        .select()
+        .from(activities);
+
+      console.log(`Available activities: ${allActivities.map(a => `Week ${a.week}, Day ${a.day}`).join(', ')}`);
+
       const [activity] = await db
         .select({
           activity: {
