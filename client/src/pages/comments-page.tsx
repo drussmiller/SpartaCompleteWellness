@@ -106,7 +106,7 @@ export function CommentsPage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="rounded-lg bg-muted p-3">
+          <div className="rounded-lg bg-gray-100 p-3">
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
           </div>
@@ -114,14 +114,14 @@ export function CommentsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4 bg-background hover:bg-background"
+              className="h-8 px-4 bg-white hover:bg-gray-50"
             >
               Like
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4 bg-background hover:bg-background"
+              className="h-8 px-4 bg-white hover:bg-gray-50"
               onClick={() => setReplyTo({ 
                 id: comment.id, 
                 username: comment.author?.username || null 
