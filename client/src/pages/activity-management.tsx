@@ -16,6 +16,17 @@ import { RichTextEditor } from "@/components/rich-text-editor";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface WorkoutVideo {
   url: string;
@@ -44,6 +55,9 @@ export default function ActivityManagementPage() {
   const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<WorkoutVideo[]>([]);
   const [addVideoOpen, setAddVideoOpen] = useState(false);
   const [newVideo, setNewVideo] = useState<WorkoutVideo>({ url: '', description: '', title: '' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+
 
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
@@ -178,6 +192,7 @@ export default function ActivityManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setDeleteDialogOpen(false);
       toast({
         title: "Success",
         description: "Activity deleted successfully"
@@ -210,9 +225,8 @@ export default function ActivityManagementPage() {
   };
 
   const handleDeleteActivity = (activityId: number) => {
-    if (confirm("Are you sure you want to delete this activity?")) {
-      deleteActivityMutation.mutate(activityId);
-    }
+    deleteActivityMutation.mutate(activityId);
+    setActivityToDelete(null); // Reset after deletion
   };
 
   const handleAddVideo = () => {
@@ -442,14 +456,35 @@ export default function ActivityManagementPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteActivity(activity.id)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog open={activityToDelete === activity.id} onOpenChange={(open) => !open && setActivityToDelete(null)}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setActivityToDelete(activity.id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Activity</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this activity? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteActivity(activity.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </CardContent>
@@ -479,12 +514,12 @@ export default function ActivityManagementPage() {
                       <FormItem>
                         <FormLabel>Week</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            {...field} 
-                            min={1} 
+                          <Input
+                            type="number"
+                            {...field}
+                            min={1}
                             onChange={e => field.onChange(Number(e.target.value))}
-                            value={field.value || ''} 
+                            value={field.value || ''}
                           />
                         </FormControl>
                       </FormItem>
@@ -497,13 +532,13 @@ export default function ActivityManagementPage() {
                       <FormItem>
                         <FormLabel>Day</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            {...field} 
-                            min={1} 
-                            max={7} 
+                          <Input
+                            type="number"
+                            {...field}
+                            min={1}
+                            max={7}
                             onChange={e => field.onChange(Number(e.target.value))}
-                            value={field.value || ''} 
+                            value={field.value || ''}
                           />
                         </FormControl>
                       </FormItem>
@@ -680,6 +715,26 @@ export default function ActivityManagementPage() {
             </div>
             <Button type="submit">Add Video</Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <DialogContent>
+            <p>Are you sure you want to delete this activity?</p>
+          </DialogContent>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => {
+              if(activityToDelete){
+                deleteActivityMutation.mutate(activityToDelete);
+              }
+              setDeleteDialogOpen(false);
+            }}>Delete</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

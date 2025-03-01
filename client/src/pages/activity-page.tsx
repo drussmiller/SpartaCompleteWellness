@@ -290,11 +290,8 @@ export default function ActivityPage() {
 
           {/* Delete Confirmation Dialog */}
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Activity</DialogTitle>
-              </DialogHeader>
-              <p>Are you sure you want to delete this activity?</p>
+            <DialogContent className="pt-6">
+              <p className="text-center mb-4">Are you sure you want to delete this activity?</p>
               <div className="flex justify-end gap-2 mt-4">
                 <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
                 <Button variant="destructive" onClick={() => deleteActivityMutation.mutate()}>Delete</Button>
