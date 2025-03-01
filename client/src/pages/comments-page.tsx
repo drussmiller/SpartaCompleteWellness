@@ -1,19 +1,19 @@
+
 import React, { useState } from "react";
-import { useLocation, useParams } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
-import { apiRequest } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/context/auth-context";
 import { ArrowLeft, Send } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { apiRequest } from "@/lib/api";
 
-const CommentsPage: React.FC = () => {
-  const [location, params] = useLocation(); // useLocation and useParams from wouter
-  const { postId } = params as { postId: string };
-  const navigate = () => {}; // Placeholder for useNavigate. wouter doesn't directly offer this. We'll need to find alternative
+export function CommentsPage() {
+  const [location, setLocation] = useLocation();
+  const postId = location.split('/').pop(); // Extract postId from URL
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const { toast } = useToast();
@@ -40,36 +40,43 @@ const CommentsPage: React.FC = () => {
     enabled: !!postId,
   });
 
+  // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/posts", {
+      const res = await apiRequest("POST", `/api/posts`, {
         type: "comment",
         content: comment,
-        parentId: Number(postId),
+        parentId: Number(postId)
       });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ message: "Failed to add comment" }));
-        throw new Error(error.message || "Failed to add comment");
-      }
+      if (!res.ok) throw new Error("Failed to add comment");
       return res.json();
     },
     onSuccess: () => {
       setComment("");
-      toast({ description: "Comment added" });
-      // Invalidate relevant queries
+      // Invalidate and refetch comments
       queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({
+        title: "Comment added",
+        description: "Your comment has been posted.",
+      });
     },
-    onError: (error: Error) => {
-      toast({ variant: "destructive", description: error.message });
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add comment. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
-    addCommentMutation.mutateAsync();
+    if (comment.trim()) {
+      addCommentMutation.mutate();
+    }
   };
+
+  const isLoading = isLoadingPost || isLoadingComments;
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
@@ -77,7 +84,7 @@ const CommentsPage: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(-1)} //This will likely need adjustment based on wouter's navigation
+          onClick={() => setLocation("/")}
           className="mr-2"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -85,70 +92,65 @@ const CommentsPage: React.FC = () => {
         <h1 className="text-lg font-semibold">Comments</h1>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 pb-28">
-        {originalPost && (
-          <div className="mb-6">
-            <div className="mb-6 p-4 border rounded-lg bg-white">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
-                  <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{originalPost.author?.username}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {originalPost.createdAt && new Date(originalPost.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                    {originalPost.content}
-                  </p>
-                  {originalPost.imageUrl && (
-                    <img
-                      src={originalPost.imageUrl}
-                      alt="Post"
-                      className="mt-2 rounded-md max-h-[300px] w-auto"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isLoadingComments || isLoadingPost ? (
-          <div className="text-center py-8">Loading...</div>
-        ) : comments.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No comments yet. Be the first to comment!
+      <div className="flex-1 overflow-auto p-4 space-y-4">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {comments.map((comment) => (
-              <div key={comment.id} className="p-4 border rounded-lg bg-white">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} />
-                    <AvatarFallback>{comment.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+          <>
+            {/* Original post */}
+            {originalPost && (
+              <div className="border rounded-lg p-4 mb-4 bg-white">
+                <div className="flex items-start">
+                  <Avatar className="h-10 w-10 mr-3">
+                    {originalPost.author?.imageUrl ? (
+                      <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />
+                    ) : (
+                      <AvatarFallback>{originalPost.author?.username.charAt(0).toUpperCase()}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium text-sm">{comment.author?.username}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {comment.createdAt && new Date(comment.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                      {comment.content}
-                    </p>
+                    <p className="font-semibold">{originalPost.author?.username}</p>
+                    <p className="mt-1">{originalPost.content}</p>
+                    {originalPost.imageUrl && (
+                      <img
+                        src={originalPost.imageUrl}
+                        alt="Post"
+                        className="mt-2 rounded-lg w-full object-cover max-h-80"
+                      />
+                    )}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* Comments */}
+            <div className="space-y-3">
+              <h2 className="font-medium text-gray-500">
+                {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
+              </h2>
+              {comments.map((comment) => (
+                <div key={comment.id} className="border rounded-lg p-3 bg-white">
+                  <div className="flex items-start">
+                    <Avatar className="h-8 w-8 mr-2">
+                      {comment.author?.imageUrl ? (
+                        <AvatarImage src={comment.author.imageUrl} alt={comment.author.username} />
+                      ) : (
+                        <AvatarFallback>{comment.author?.username.charAt(0).toUpperCase()}</AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm">{comment.author?.username}</p>
+                      <p className="text-sm mt-1">{comment.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
-      </main>
+      </div>
 
       <div className="sticky bottom-0 border-t bg-background p-4 pb-safe">
         <form onSubmit={handleSubmit} className="flex gap-2">
@@ -169,6 +171,6 @@ const CommentsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default CommentsPage;
