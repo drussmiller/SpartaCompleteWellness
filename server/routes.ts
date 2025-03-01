@@ -98,34 +98,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Move notifications routes to top priority
   app.get("/api/notifications", async (req, res) => {
-    console.log('GET /api/notifications - Request received');
-    console.log('User authenticated:', !!req.user);
-    console.log('Headers:', req.headers);
-    console.log('Session:', req.session);
-    console.log('User details:', req.user);
-    console.log('Cookie:', req.headers.cookie);
+    console.log('\n=== GET /api/notifications ===');
+    console.log('Request details:', {
+      isAuthenticated: req.isAuthenticated(),
+      sessionID: req.sessionID,
+      cookies: req.headers.cookie,
+      user: req.user ? {
+        id: req.user.id,
+        username: req.user.username
+      } : null
+    });
 
     if (!req.user) {
-      console.log('User not authenticated, returning 401');
+      console.log('Authentication failed - no user in request');
       return res.sendStatus(401);
     }
 
     try {
       console.log('Fetching notifications for user:', req.user.id);
       const notifications = await storage.getUnreadNotifications(req.user.id);
-      console.log('Found notifications:', notifications.length);
-      console.log('Sample notification data:', notifications[0] || 'No notifications found');
+      console.log('Notifications found:', notifications.length);
+
+      if (notifications.length > 0) {
+        console.log('Sample notification:', notifications[0]);
+      } else {
+        console.log('No notifications found');
+      }
+
       res.json(notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      res.status(500).json({ message: "Failed to fetch notifications" });
+      res.status(500).json({ 
+        error: "Failed to fetch notifications",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
+    console.log('=== End notifications request ===\n');
   });
 
   app.post("/api/notifications/:id/read", async (req, res) => {
     console.log('POST /api/notifications/:id/read - Request received');
     console.log('User authenticated:', !!req.user);
-
+    console.log('Request user:', req.user);
+    console.log('Request session:', req.session);
     if (!req.user) return res.sendStatus(401);
     try {
       const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
@@ -139,7 +154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/notifications/:id", async (req, res) => {
     console.log('DELETE /api/notifications/:id - Request received');
     console.log('User authenticated:', !!req.user);
-
+    console.log('Request user:', req.user);
+    console.log('Request session:', req.session);
     if (!req.user) return res.sendStatus(401);
 
     try {
@@ -918,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add points calculation for each user
       const usersWithPoints = await Promise.all(
-        allUsers.map(async (user) => {
+        allUsers.map(async(user) => {
           const [result] = await db
             .select({
               points: sql`COALESCE((
@@ -930,9 +946,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .from(users)
             .where(eq(users.id, user.id));
-
           return { ...user,
-            points: typeof result?.points === 'number' ? result.points: 0
+            points: typeof result?.points === 'number' ? result.points : 0
           };
         })
       );
@@ -966,7 +981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Login error after registration:', err);
           return next(err);
         }
-        res.status(201).json(user);
+        res.json(user);
       });
     } catch (error) {
       console.error('Registration error:', error);

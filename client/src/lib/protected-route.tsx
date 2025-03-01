@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
-import { Route, useLocation } from "wouter";
+import { Route, Redirect } from "wouter";
 
 export function ProtectedRoute({
   path,
@@ -10,7 +10,6 @@ export function ProtectedRoute({
   component: () => React.JSX.Element;
 }) {
   const { user, isLoading } = useAuth();
-  const [_, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -23,12 +22,19 @@ export function ProtectedRoute({
   return (
     <Route path={path}>
       {() => {
+        console.log('Protected route evaluation:', {
+          path,
+          isAuthenticated: !!user,
+          userId: user?.id,
+          username: user?.username
+        });
+
         if (!user) {
-          console.log('No authenticated user found, redirecting to /auth');
-          setLocation("/auth");
-          return null;
+          console.log('Access denied - redirecting to /auth');
+          return <Redirect to="/auth" />;
         }
-        console.log('Rendering protected component for path:', path);
+
+        console.log('Access granted to protected route:', path);
         return <Component />;
       }}
     </Route>

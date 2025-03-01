@@ -19,7 +19,7 @@ import UsersPage from "@/pages/users-page";
 
 function AppRoutes() {
   return (
-    <>
+    <Router>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
@@ -32,7 +32,7 @@ function AppRoutes() {
       <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
       <ProtectedRoute path="/users" component={UsersPage} />
       <Route path="*" component={NotFound} />
-    </>
+    </Router>
   );
 }
 
@@ -40,9 +40,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <AppRoutes />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
