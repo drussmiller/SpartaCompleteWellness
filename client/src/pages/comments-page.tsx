@@ -141,7 +141,7 @@ export default function CommentsPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <p className="text-lg text-muted-foreground">Please log in to view comments</p>
       </div>
     );
@@ -149,16 +149,16 @@ export default function CommentsPage() {
 
   if (!postId) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <p className="text-lg text-muted-foreground">Invalid post ID</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="container max-w-2xl mx-auto flex-1 pb-24">
-        <div className="p-4">
+    <div className="flex flex-col min-h-screen bg-white">
+      <div className="container max-w-2xl mx-auto flex-1 pb-24 bg-white">
+        <div className="p-4 bg-white">
           <Button
             variant="ghost"
             size="icon"
@@ -171,16 +171,16 @@ export default function CommentsPage() {
         </div>
 
         {postQuery.isLoading ? (
-          <div className="flex justify-center p-4">
+          <div className="flex justify-center p-4 bg-white">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : postQuery.error ? (
-          <div className="p-4 text-destructive">
+          <div className="p-4 text-destructive bg-white">
             {postQuery.error instanceof Error ? postQuery.error.message : 'Failed to load post'}
           </div>
         ) : postQuery.data ? (
-          <div className="mb-6">
-            <div className="flex items-start space-x-3 p-4">
+          <div className="mb-6 bg-white">
+            <div className="flex items-start space-x-3 p-4 bg-white">
               <Avatar className="h-10 w-10">
                 <AvatarImage 
                   src={postQuery.data.author?.imageUrl || undefined} 
@@ -207,28 +207,28 @@ export default function CommentsPage() {
           </div>
         ) : null}
 
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border bg-white">
           <h2 className="font-semibold text-lg p-4">Comments</h2>
 
           {commentsQuery.isLoading ? (
-            <div className="flex justify-center p-4">
+            <div className="flex justify-center p-4 bg-white">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : commentsQuery.error ? (
-            <div className="text-destructive p-4">
+            <div className="text-destructive p-4 bg-white">
               Error loading comments: {commentsQuery.error instanceof Error ? commentsQuery.error.message : 'Unknown error'}
             </div>
           ) : commentsQuery.data?.length === 0 ? (
-            <div className="text-center text-muted-foreground p-4">No comments yet. Be the first to comment!</div>
+            <div className="text-center text-muted-foreground p-4 bg-white">No comments yet. Be the first to comment!</div>
           ) : (
-            <div className="space-y-6 p-4">
+            <div className="space-y-6 p-4 bg-white">
               {commentsQuery.data?.map(comment => renderComment(comment))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
         <div className="container max-w-2xl mx-auto">
           {replyTo.id && (
             <div className="flex items-center justify-between mb-2 text-sm">
