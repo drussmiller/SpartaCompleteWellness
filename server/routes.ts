@@ -111,7 +111,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Fetching notifications for user:', req.user.id);
       const notifications = await storage.getUnreadNotifications(req.user.id);
-      console.log('Found notifications:', notifications);
+      console.log('Found notifications:', notifications.length);
+      console.log('Sample notification data:', notifications[0] || 'No notifications found');
       res.json(notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);

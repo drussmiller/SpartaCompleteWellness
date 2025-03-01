@@ -2,13 +2,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
 
-  const { data: users = [] } = useQuery<User[]>({
+  const { data: users = [], isLoading, error } = useQuery<User[]>({
     queryKey: ["/api/users"],
     select: (data) => {
       return [...data].sort((a, b) => {
@@ -18,6 +18,14 @@ export default function UsersPage() {
       });
     }
   });
+
+  if (isLoading) {
+    return <div className="container py-6">Loading users...</div>;
+  }
+
+  if (error) {
+    return <div className="container py-6">Error loading users: {error.toString()}</div>;
+  }
 
   return (
     <div className="container py-6">
