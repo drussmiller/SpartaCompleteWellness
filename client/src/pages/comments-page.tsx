@@ -109,7 +109,7 @@ export default function CommentsPage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="rounded-lg bg-muted p-3">
+          <div className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm">
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
           </div>
@@ -191,8 +191,10 @@ export default function CommentsPage() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <div className="font-semibold">{postQuery.data.author?.username}</div>
-                <p className="mt-1">{postQuery.data.content}</p>
+                <div className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm">
+                  <div className="font-semibold">{postQuery.data.author?.username}</div>
+                  <p className="mt-1">{postQuery.data.content}</p>
+                </div>
               </div>
             </div>
             {postQuery.data.imageUrl && (
