@@ -1,74 +1,75 @@
 import React, { useState } from "react";
-import { useLocation, useParams } from "wouter";
+import { useParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
-import { apiRequest } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/context/auth-context";
 import { ArrowLeft, Send } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
-const CommentsPage: React.FC = () => {
-  const [location, params] = useLocation(); // useLocation and useParams from wouter
-  const { postId } = params as { postId: string };
-  const navigate = () => {}; // Placeholder for useNavigate. wouter doesn't directly offer this. We'll need to find alternative
+export function CommentsPage() {
+  const { postId } = useParams<{ postId: string }>();
+  const [_, navigate] = useLocation();
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch original post and its comments
-  const { data: originalPost, isLoading: isLoadingPost } = useQuery<Post & { author?: { username: string; imageUrl?: string; id: number } }>({
-    queryKey: ["/api/posts", postId],
+  const postQuery = useQuery({
+    queryKey: ["post", postId],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) throw new Error("Failed to load post");
+      const res = await fetch(`/api/posts/${postId}`);
+      if (!res.ok) throw new Error("Failed to fetch post");
       return res.json();
     },
-    enabled: !!postId,
   });
 
-  const { data: comments = [], isLoading: isLoadingComments } = useQuery<(Post & { author?: { username: string; imageUrl?: string; id: number } })[]>({
-    queryKey: ["/api/posts", postId, "comments"],
+  const commentsQuery = useQuery({
+    queryKey: ["comments", postId],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/${postId}/comments`);
-      if (!res.ok) throw new Error("Failed to load comments");
+      const res = await fetch(`/api/posts/${postId}/comments`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
       return res.json();
     },
-    enabled: !!postId,
   });
 
   const addCommentMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: comment,
-        parentId: Number(postId),
+      const res = await fetch(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: comment }),
       });
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ message: "Failed to add comment" }));
+        const error = await res.json();
         throw new Error(error.message || "Failed to add comment");
       }
       return res.json();
     },
     onSuccess: () => {
       setComment("");
-      toast({ description: "Comment added" });
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId, "comments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      toast({
+        title: "Comment added",
+        description: "Your comment has been added successfully.",
+      });
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", description: error.message });
+      toast({
+        title: "Failed to add comment",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
-    addCommentMutation.mutateAsync();
+    if (comment.trim()) {
+      addCommentMutation.mutate();
+    }
   };
 
   return (
@@ -77,7 +78,7 @@ const CommentsPage: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(-1)} //This will likely need adjustment based on wouter's navigation
+          onClick={() => window.history.back()}
           className="mr-2"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -85,90 +86,82 @@ const CommentsPage: React.FC = () => {
         <h1 className="text-lg font-semibold">Comments</h1>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 pb-28">
-        {originalPost && (
+      <div className="flex-1 overflow-auto p-4">
+        {postQuery.isLoading ? (
+          <div className="flex justify-center p-4">Loading post...</div>
+        ) : postQuery.error ? (
+          <div className="text-red-500 p-4">Error loading post: {postQuery.error.message}</div>
+        ) : (
           <div className="mb-6">
-            <div className="mb-6 p-4 border rounded-lg bg-white">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
-                  <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{originalPost.author?.username}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {originalPost.createdAt && new Date(originalPost.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                    {originalPost.content}
-                  </p>
-                  {originalPost.imageUrl && (
-                    <img
-                      src={originalPost.imageUrl}
-                      alt="Post"
-                      className="mt-2 rounded-md max-h-[300px] w-auto"
-                    />
-                  )}
-                </div>
+            <div className="flex items-start space-x-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={postQuery.data.author?.imageUrl} alt={postQuery.data.author?.username} />
+                <AvatarFallback>{postQuery.data.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-semibold">{postQuery.data.author?.username}</div>
+                <p className="mt-1">{postQuery.data.content}</p>
+                {postQuery.data.imageUrl && (
+                  <img
+                    src={postQuery.data.imageUrl}
+                    alt="Post image"
+                    className="mt-2 rounded-md max-h-72 object-contain"
+                  />
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {isLoadingComments || isLoadingPost ? (
-          <div className="text-center py-8">Loading...</div>
-        ) : comments.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No comments yet. Be the first to comment!
-          </div>
+        <h2 className="font-semibold text-lg mb-4">Comments</h2>
+
+        {commentsQuery.isLoading ? (
+          <div className="flex justify-center p-4">Loading comments...</div>
+        ) : commentsQuery.error ? (
+          <div className="text-red-500 p-4">Error loading comments: {commentsQuery.error.message}</div>
+        ) : commentsQuery.data.length === 0 ? (
+          <div className="text-center text-gray-500 p-4">No comments yet. Be the first to comment!</div>
         ) : (
           <div className="space-y-4">
-            {comments.map((comment) => (
-              <div key={comment.id} className="p-4 border rounded-lg bg-white">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} />
-                    <AvatarFallback>{comment.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium text-sm">{comment.author?.username}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {comment.createdAt && new Date(comment.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                      {comment.content}
-                    </p>
-                  </div>
+            {commentsQuery.data.map((comment: Post) => (
+              <div key={comment.id} className="flex items-start space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={comment.author?.imageUrl} alt={comment.author?.username} />
+                  <AvatarFallback>{comment.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-semibold">{comment.author?.username}</div>
+                  <p className="mt-1">{comment.content}</p>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </main>
-
-      <div className="sticky bottom-0 border-t bg-background p-4 pb-safe">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="flex-1"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!comment.trim() || addCommentMutation.isPending}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
       </div>
+
+      {user && (
+        <div className="sticky bottom-0 border-t bg-background p-4">
+          <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+            <Avatar className="h-8 w-8 flex-shrink-0">
+              <AvatarImage src={user?.imageUrl} alt={user?.username} />
+              <AvatarFallback>{user?.username?.[0]?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <Input
+              placeholder="Add a comment..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!comment.trim() || addCommentMutation.isPending}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
+      )}
     </div>
   );
-};
-
-export default CommentsPage;
+}
