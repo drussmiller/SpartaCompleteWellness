@@ -106,7 +106,7 @@ export function CommentsPage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="rounded-xl bg-gray-100 p-3">
+          <div className="rounded-xl bg-gray-100 p-3 border border-gray-300">
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
           </div>
