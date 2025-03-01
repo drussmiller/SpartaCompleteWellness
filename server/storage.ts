@@ -411,16 +411,6 @@ export class DatabaseStorage implements IStorage {
       .delete(teams)
       .where(eq(teams.id, teamId));
   }
-
-  async deleteUser(userId: number): Promise<void> {
-    // Delete all posts, notifications, and measurements for this user first
-    await db.delete(posts).where(eq(posts.userId, userId));
-    await db.delete(notifications).where(eq(notifications.userId, userId));
-    await db.delete(measurements).where(eq(measurements.userId, userId));
-    
-    // Then delete the user
-    await db.delete(users).where(eq(users.id, userId));
-  }
   async getPostComments(postId: number): Promise<Post[]> {
     return await db
       .select()

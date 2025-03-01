@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { MessageCircle, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Trash2, MoreHorizontal } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,6 +16,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Post } from "@shared/schema";
 import { formatDistance } from "date-fns";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 type PostCardProps = {
   post: Post & {
@@ -35,6 +36,8 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   const [, setLocation] = useLocation();
 
   const isOwnPost = user?.id === post.userId;
+  const isAdmin = user?.isAdmin;
+  const canDelete = isOwnPost || isAdmin;
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
@@ -48,6 +51,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     onSuccess: () => {
       toast({ description: "Post deleted successfully" });
       if (onDelete) onDelete();
+      // Invalidate queries to refresh the post list
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error: Error) => {
@@ -62,6 +66,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     setLocation(`/comments/${post.id}`);
   };
 
+  // Show post type tag
   const getPostTypeTag = () => {
     switch (post.type) {
       case "food":
@@ -78,12 +83,13 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   };
 
   if (post.type === "comment") {
-    return null; 
+    return null; // Don't render comments in the post list
   }
 
   return (
     <Card className="mb-4 overflow-hidden">
       <div className="p-4">
+        {/* Author info and options */}
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
@@ -98,12 +104,14 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             </div>
           </div>
 
+          {/* Post type tag and options menu */}
           <div className="flex items-center">
             {getPostTypeTag()}
-            {isOwnPost && (
+
+            {canDelete && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-background hover:bg-background/90">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -112,6 +120,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
                     className="text-destructive cursor-pointer"
                     onClick={() => deletePostMutation.mutate()}
                   >
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -120,34 +129,37 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           </div>
         </div>
 
+        {/* Post content */}
         <div className="mb-3">
           <p className="whitespace-pre-wrap break-words">{post.content}</p>
           {post.imageUrl && (
-            <div className="w-full mx-[-1rem] mt-2">
+            <div className="flex justify-center w-full mt-2">
               <img 
                 src={post.imageUrl} 
                 alt="Post image" 
-                className="w-full object-contain" 
+                className="mt-2 rounded-md max-h-96 object-contain mx-auto" 
               />
             </div>
           )}
         </div>
 
+        {/* Actions */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground font-medium">
+              {post.points && post.points > 0 ? `+${post.points} pts` : ""}
+            </span>
+          </div>
+          <div className="flex items-center">
             <Button 
-              className="flex items-center gap-1 bg-background hover:bg-background/90"
-              variant="ghost"
-              size="sm"
+              variant="ghost" 
+              size="sm" 
+              className="flex items-center gap-1"
               onClick={handleCommentClick}
             >
               <MessageCircle className="h-4 w-4" />
               <span>{post.commentCount || 0}</span>
             </Button>
-
-            <span className="text-xs text-muted-foreground font-medium ml-2">
-              {post.points && post.points > 0 ? `+${post.points} pts` : ""}
-            </span>
           </div>
         </div>
       </div>

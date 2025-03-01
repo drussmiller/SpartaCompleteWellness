@@ -1,43 +1,14 @@
 modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
-hidden = [".config", "package-lock.json"]
-
-[[hints]]
-regex = "Error \\[ERR_REQUIRE_ESM\\]"
-message = "We see that you are using require(...) inside an async function. Please use import instead as the Node.js Loader has been updated in Node.js 14."
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
-channel = "stable-21_11"
-
-[env]
-XDG_CONFIG_HOME = "/home/runner/.config"
-
-[packager]
-language = "nodejs"
-
-[packager.features]
-packageSearch = true
-guessImports = true
-enabledForHosting = false
-
-[unitTest]
-language = "jest"
-
-[languages.javascript]
-pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
-
-[languages.javascript.languageServer]
-start = ["typescript-language-server", "--stdio"]
+channel = "stable-24_05"
 
 [deployment]
-deploymentTarget = "static"
-build = "npm run build"
-publicDir = "dist/public"
-run = ["sh", "-c", "serve -s dist/public --single"]
-
-[[deployment.rewrites]]
-from = "/*"
-to = "/index.html"
+deploymentTarget = "cloudrun"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 3000
