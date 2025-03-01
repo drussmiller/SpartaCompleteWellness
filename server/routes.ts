@@ -96,33 +96,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
 
-  app.post("/api/login", async (req, res) => {
+  // Move notifications routes to top priority
+  app.get("/api/notifications", async (req, res) => {
+    console.log('GET /api/notifications - Request received');
+    console.log('User authenticated:', !!req.user);
+    console.log('Headers:', req.headers);
+    console.log('Session:', req.session);
+
+    if (!req.user) {
+      console.log('User not authenticated, returning 401');
+      return res.sendStatus(401);
+    }
+
     try {
-      const { username, password } = req.body;
-      console.log('Login attempt for:', username);
-
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        console.log('User not found:', username);
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-
-      const isValidPassword = await comparePasswords(password, user.password);
-      if (!isValidPassword) {
-        console.log('Invalid password for user:', username);
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Login error:', err);
-          return res.status(500).json({ message: "An error occurred during login" });
-        }
-        res.json(user);
-      });
+      console.log('Fetching notifications for user:', req.user.id);
+      const notifications = await storage.getUnreadNotifications(req.user.id);
+      console.log('Found notifications:', notifications);
+      res.json(notifications);
     } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ message: "An error occurred during login" });
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    console.log('POST /api/notifications/:id/read - Request received');
+    console.log('User authenticated:', !!req.user);
+
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
+      res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", async (req, res) => {
+    console.log('DELETE /api/notifications/:id - Request received');
+    console.log('User authenticated:', !!req.user);
+
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      // First check if the notification exists and belongs to the user
+      const [notification] = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.id, parseInt(req.params.id)));
+
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      if (notification.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this notification" });
+      }
+
+      await storage.deleteNotification(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({ message: "Failed to delete notification" });
     }
   });
 
@@ -231,67 +267,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  // Move notifications routes before the user management routes
-  app.get("/api/notifications", async (req, res) => {
-    console.log('GET /api/notifications - Request received');
-    console.log('User authenticated:', !!req.user);
-    console.log('Headers:', req.headers);
-
-    if (!req.user) {
-      console.log('User not authenticated, returning 401');
-      return res.sendStatus(401);
-    }
-
-    try {
-      console.log('Fetching notifications for user:', req.user.id);
-      const notifications = await storage.getUnreadNotifications(req.user.id);
-      console.log('Found notifications:', notifications);
-      res.json(notifications);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      res.status(500).json({ message: "Failed to fetch notifications" });
-    }
-  });
-
-  app.post("/api/notifications/:id/read", async (req, res) => {
-    console.log('POST /api/notifications/:id/read - Request received');
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
-      res.json(notification);
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      res.status(500).json({ message: "Failed to mark notification as read" });
-    }
-  });
-
-  app.delete("/api/notifications/:id", async (req, res) => {
-    console.log('DELETE /api/notifications/:id - Request received');
-    if (!req.user) return res.sendStatus(401);
-
-    try {
-      // First check if the notification exists and belongs to the user
-      const [notification] = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.id, parseInt(req.params.id)));
-
-      if (!notification) {
-        return res.status(404).json({ message: "Notification not found" });
-      }
-
-      if (notification.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to delete this notification" });
-      }
-
-      await storage.deleteNotification(parseInt(req.params.id));
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-      res.status(500).json({ message: "Failed to delete notification" });
-    }
-  });
 
   // Posts
   app.post("/api/posts", async (req, res) => {
@@ -876,7 +851,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // User
   app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -1008,521 +982,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating password:', error);
       res.status(500).json({ message: "Failed to update password" });
-    }
-  });
-
-  app.post("/api/users/:id/team", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const userId = parseInt(req.params.id);
-      const { teamId } = req.body;
-
-      // If teamId is not provided or null, user is being removed from team
-      const updateData = teamId ? {
-        teamId,
-        teamJoinedAt: new Date()
-      } : {
-        teamId: null,
-        teamJoinedAt: null
-      };
-
-      // Update user's team and join date
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      // Send notification to user about team assignment
-      if (teamId) {
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, teamId));
-
-        if (team) {
-          await sendNotification(
-            userId,
-            "Team Assignment",
-            `You have been assigned to team ${team.name}. Your program will start on the first Monday after today.`
-          );
-        }
-      }
-
-      res.json(updatedUser);
-    } catch (error) {
-      console.error('Error updating user team:', error);
-      res.status(500).json({ error: "Failed to update user team" });
-    }
-  });
-
-  // Update user team join date endpoint
-  app.post("/api/users/:id/team-join-date", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const userId = parseInt(req.params.id);
-      const { teamJoinedAt } = req.body;
-
-      // Update the user's team join date
-      const [updatedUser] = await db
-        .update(users)
-        .set({ teamJoinedAt: new Date(teamJoinedAt) })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(updatedUser);
-    } catch (error) {
-      console.error('Error updating team join date:', error);
-      res.status(500).json({ error: "Failed to update team join date" });
-    }
-  });
-
-  app.post("/api/users/:id/toggle-admin", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    const userId = parseInt(req.params.id);
-    const { isAdmin } = req.body;
-
-    try {
-      await db
-        .update(users)
-        .set({ isAdmin })
-        .where(eq(users.id, userId));
-
-      const updatedUser = await storage.getUser(userId);
-      res.json(updatedUser);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update admin status" });
-    }
-  });
-
-  app.delete("/api/users/:id", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      await storage.deleteUser(parseInt(req.params.id));
-      res.sendStatus(200);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete user" });
-    }
-  });
-
-  // Add video routes
-  app.get("/api/videos", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const videos = await storage.getVideos(req.user.teamId);
-      res.json(videos);
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-      res.status(500).json({
-        message: "Failed to fetch videos",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add this route before your existing routes
-  async function getCurrentActivity(req: any, res: any) {
-    if (!req.user) return res.sendStatus(401);
-
-    try {
-      const weekInfo = await storage.getUserWeekInfo(req.user.id);
-
-      if (!weekInfo) {
-        return res.status(404).json({
-          message: "No activities available yet. Activities will start on the first Monday after joining a team."
-        });
-      }
-
-      // Get activity for current week and day
-      const [activity] = await db
-        .select({
-          activity: {
-            id: activities.id,
-            week: activities.week,
-            day: activities.day,
-            memoryVerse: activities.memoryVerse,
-            memoryVerseReference: activities.memoryVerseReference,
-            scripture: activities.scripture,
-            workout: activities.workout,
-            tasks: activities.tasks,
-            description: activities.description,
-            isComplete: activities.isComplete,
-            completedAt: activities.completedAt,
-            createdAt: activities.createdAt
-          },
-          workoutVideos: sql<string>`
-            COALESCE(
-              json_agg(
-                json_build_object(
-                  'id', ${workoutVideos.id},
-                  'url', ${workoutVideos.url},
-                  'description', ${workoutVideos.description}
-                )
-              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
-              '[]'::json
-            )`
-        })
-        .from(activities)
-        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
-        .where(
-          and(
-            eq(activities.week, weekInfo.week),
-            eq(activities.day, weekInfo.day)
-          )
-        )
-        .groupBy(activities.id);
-
-      if (!activity) {
-        return res.status(404).json({
-          message: `No activity found for Week ${weekInfo.week}, Day ${weekInfo.day}`
-        });
-      }
-
-      // Include week info in response
-      res.json({
-        ...activity,
-        currentWeek: weekInfo.week,
-        currentDay: weekInfo.day
-      });
-
-    } catch (error) {
-      console.error('Error fetching current activity:', error);
-      res.status(500).json({ 
-        error: "Failed to fetch activity",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  }
-
-  // Add new route for current activity
-  app.get("/api/activities/current", getCurrentActivity);
-
-  // Activities endpoints
-  app.get("/api/activities", async (req, res) => {
-    const { week, day } = req.query;
-    try {
-      let query = db
-        .select({
-          activity: activities,
-          workoutVideos: sql<string>`json_agg(
-            json_build_object(
-              'id', ${workoutVideos}.id,
-              'url', ${workoutVideos}.url,
-              'description', ${workoutVideos}.description
-            )
-          )`
-        })
-        .from(activities)
-        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
-        .groupBy(activities.id);
-
-      if (week) {
-        query = query.where(eq(activities.week, Number(week)));
-      }
-      if (day) {
-        query = query.where(eq(activities.day, Number(day)));
-      }
-
-      const results = await query;
-
-      // Map the results to include workout videos
-      const mappedActivities = results.map(result => ({
-        ...result.activity,
-        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ? 
-          (typeof result.workoutVideos === 'string' ? 
-            JSON.parse(result.workoutVideos) : 
-            result.workoutVideos) 
-          : []
-      }));
-
-      res.json(mappedActivities);
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-      res.status(500).json({ error: "Failed to fetch activities" });
-    }
-  });
-
-  app.post("/api/activities", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-
-    try {
-      console.log('Received activity data:', req.body);
-
-      const activityData = insertActivitySchema.parse({
-        ...req.body,
-        week: Number(req.body.week),
-        day: Number(req.body.day),
-        workoutVideos: Array.isArray(req.body.workoutVideos) ? req.body.workoutVideos : []
-      });
-
-      const activity = await storage.createActivity(activityData);
-      res.status(201).json(activity);
-    } catch (error) {
-      console.error('Error in POST /api/activities:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          error: 'Validation Error',
-          details: error.errors 
-        });
-      }
-      res.status(500).json({ 
-        error: 'Failed to create activity',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
-    try {
-      const activityId = parseInt(req.params.id);
-      const { workoutVideos: newWorkoutVideos, ...activityData } = req.body;
-
-      // Start transaction to ensure data consistency
-      await db.transaction(async (tx) => {
-        try {
-          // Update activity
-          await tx
-            .update(activities)
-            .set(activityData)
-            .where(eq(activities.id, activityId));
-
-          // Handle workout videos within transaction
-          await tx
-            .delete(workoutVideos)
-            .where(eq(workoutVideos.activityId, activityId));
-
-          if (newWorkoutVideos && newWorkoutVideos.length > 0) {
-            await tx
-              .insert(workoutVideos)
-              .values(
-                newWorkoutVideos.map((video: { url: string; description: string }) => ({
-                  activityId,
-                  url: video.url,
-                  description: video.description
-                }))
-              );
-          }
-        } catch (error) {
-          // Rollback on error
-          throw error;
-        }
-      });
-
-      // Fetch updated activity with workout videos after transaction completes
-      const [updatedActivity] = await db
-        .select({
-          activity: activities,
-          workoutVideos: sql<string>`COALESCE(
-            json_agg(
-              json_build_object(
-                                'id', ${workoutVideos}.id,
-                'url', ${workoutVideos}.url,
-                'description', ${workoutVideos}.description
-              )
-            ) FILTER (WHERE ${workoutVideos}.id IS NOT NULL),
-            '[]'::json
-          )`
-        })
-        .from(activities)
-        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
-        .where(eq(activities.id, activityId))
-        .groupBy(activities.id);
-
-      if (!updatedActivity) {
-        return res.status(404).json({ error: "Activity not found" });
-      }
-
-      // Parse the workout videos carefully
-      let parsedWorkoutVideos = [];
-      try {
-        parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
-      } catch (error) {
-        console.error('Error parsing workout videos:', error);
-        return res.status(500).json({ 
-          error: "Failed to parse workout videos",
-          details: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-
-      res.json({
-        ...updatedActivity.activity,
-        workoutVideos: parsedWorkoutVideos
-      });
-    } catch (error) {
-      console.error('Error updating activity:', error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: 'Validation Error', details: error.errors });
-      } else {
-        res.status(500).json({ 
-          error: "Failed to update activity",
-          details: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    }
-  });
-
-  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
-    try {
-      await db
-        .delete(activities)
-        .where(eq(activities.id, parseInt(req.params.id)));
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting activity:', error);
-      res.status(500).json({ error: "Failed to delete activity" });
-    }
-  });
-
-  app.post("/api/videos", requireAdmin, async (req, res) => {
-    try {
-      const videoData = insertVideoSchema.parse(req.body);
-      const video = await storage.createVideo(videoData);
-      res.status(201).json(video);
-    } catch (e) {      console.error('Error creating video:', e);
-      if (e instanceof z.ZodError) {        res.status(400).json({
-          error: 'Validation Error',
-          details: e.errors        });
-      } else {
-        res.status(500).json({
-          error: 'Internal ServerError',
-          message: e instanceof Error ? e.message : 'Unknown error occurred'
-        });
-      }
-    }
-  });
-
-  app.delete("/api/videos/:id", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      await storage.deleteVideo(parseInt(req.params.id));
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting video:', error);
-      res.status(500).json({
-        message: "Failed to delete video",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.get("/api/users", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const users = await storage.getAllUsers();
-      console.log("Fetched users count:", users.length);
-
-      // Calculate program start dates for all users
-      const enhancedUsers = await Promise.all(users.map(async (user) => {
-        const weekInfo = await storage.getUserWeekInfo(user.id);
-
-        let firstMonday = null;
-        if (user.teamJoinedAt) {
-          // Set the program start date to the first Monday on or after the join date
-          const joinDate = new Date(user.teamJoinedAt);
-          const dayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-          
-
-          // If the user joined on Monday, start that day
-          // Otherwise, find the next Monday
-          const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
-          
-
-          firstMonday = new Date(joinDate);
-          firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-          firstMonday.setHours(0, 0, 0, 0);
-          
-
-          // For Russ specifically (userId 9), hardcode to Feb 10, 2025
-          if (user.id === 9) {
-            firstMonday = new Date('2025-02-10T00:00:00.000Z');
-          }
-        }
-
-        return {
-          ...user,
-          weekInfo,
-          programStart: firstMonday?.toISOString() || null
-        };
-      }));
-
-      res.json(enhancedUsers);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
-
-  app.delete("/api/data", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      await storage.clearData();
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error clearing data:', error);
-      res.status(500).json({ error: "Failed to clear data" });
-    }
-  });
-
-  app.delete("/api/posts/all", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      await db.delete(posts);
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error deleting posts:', error);
-      res.status(500).json({ error: "Failed to delete posts" });
-    }
-  });
-
-  // Add team assignment route
-  app.get("/api/users", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const users = await storage.getAllUsers();
-      console.log("Fetched users count:", users.length);
-
-      // Calculate program start dates for all users
-      const enhancedUsers = await Promise.all(users.map(async (user) => {
-        const weekInfo = await storage.getUserWeekInfo(user.id);
-
-        let firstMonday = null;
-        if (user.teamJoinedAt) {
-          // Set the program start date to the first Monday on or after the join date
-          const joinDate = new Date(user.teamJoinedAt);
-          const dayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-          
-
-          // If the user joined on Monday, start that day
-          // Otherwise, find the next Monday
-          const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
-          
-
-          firstMonday = new Date(joinDate);
-          firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-          firstMonday.setHours(0, 0, 0, 0);
-          
-
-          // For Russ specifically (userId 9), hardcode to Feb 10, 2025
-          if (user.id === 9) {
-            firstMonday = new Date('2025-02-10T00:00:00.000Z');
-          }
-        }
-
-        return {
-          ...user,
-          weekInfo,
-          programStart: firstMonday?.toISOString() || null
-        };
-      }));
-
-      res.json(enhancedUsers);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      res.status(500).json({ error: "Failed to fetch users" });
     }
   });
 
