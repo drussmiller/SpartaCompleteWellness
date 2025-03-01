@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ interface Notification {
 
 export default function NotificationsPage() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isMarking, setIsMarking] = useState<number | null>(null);
 

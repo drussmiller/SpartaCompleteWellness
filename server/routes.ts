@@ -928,7 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .from(users)
             .where(eq(users.id, user.id));
-            
+          
           return {
             ...user,
             points: typeof result?.points === 'number' ? result.points : 0
