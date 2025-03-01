@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Send, Reply, Loader2 } from "lucide-react";
+import { Send, Loader2, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -106,22 +106,29 @@ export function CommentsPage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">{comment.author?.username}</span>
+          <span className="font-semibold">{comment.author?.username}</span>
+          <p className="text-sm">{comment.content}</p>
+          <div className="flex gap-2 mt-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 px-2"
+              className="h-8 px-4 bg-white"
+            >
+              <Heart className="h-4 w-4 mr-1" />
+              Like
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-4 bg-white"
               onClick={() => setReplyTo({ 
                 id: comment.id, 
                 username: comment.author?.username || null 
               })}
             >
-              <Reply className="h-4 w-4 mr-1" />
               Reply
             </Button>
           </div>
-          <p className="text-sm">{comment.content}</p>
         </div>
       </div>
       {comment.replies?.map(reply => renderComment(reply, depth + 1))}
@@ -146,7 +153,7 @@ export function CommentsPage() {
             onClick={() => setLocation("/")}
             className="mr-2"
           >
-            <ArrowLeft className="h-5 w-5" />
+            &lt;
           </Button>
           <h1 className="font-bold text-xl inline-block">Comments</h1>
         </div>
@@ -160,8 +167,8 @@ export function CommentsPage() {
             {postQuery.error instanceof Error ? postQuery.error.message : 'Failed to load post'}
           </div>
         ) : postQuery.data && (
-          <div className="mb-6 p-4">
-            <div className="flex items-start space-x-3">
+          <div className="mb-6">
+            <div className="flex items-start space-x-3 p-4">
               <Avatar className="h-10 w-10">
                 <AvatarImage 
                   src={postQuery.data.author?.imageUrl || undefined} 
@@ -171,18 +178,18 @@ export function CommentsPage() {
                   {postQuery.data.author?.username?.[0]?.toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="flex-1">
                 <div className="font-semibold">{postQuery.data.author?.username}</div>
                 <p className="mt-1">{postQuery.data.content}</p>
-                {postQuery.data.imageUrl && (
-                  <img
-                    src={postQuery.data.imageUrl}
-                    alt="Post image"
-                    className="mt-2 rounded-lg max-h-64 object-contain"
-                  />
-                )}
               </div>
             </div>
+            {postQuery.data.imageUrl && (
+              <img
+                src={postQuery.data.imageUrl}
+                alt="Post image"
+                className="w-full object-contain max-h-[70vh]"
+              />
+            )}
           </div>
         )}
 
