@@ -112,11 +112,6 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    console.log('GET /api/user - Request received');
-    console.log('Is authenticated:', req.isAuthenticated());
-    console.log('Session ID:', req.sessionID);
-    console.log('Cookie:', req.headers.cookie);
-
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
       return res.sendStatus(401);

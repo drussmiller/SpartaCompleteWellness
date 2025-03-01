@@ -9,14 +9,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 
 type PostWithAuthor = Post & {
   author?: {
@@ -38,10 +30,6 @@ export default function CommentsPage() {
     id: null,
     username: null,
   });
-  const [selectedComment, setSelectedComment] = useState<PostWithAuthor | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState("");
 
   const postQuery = useQuery<PostWithAuthor>({
     queryKey: ["/api/posts", postId],
@@ -99,103 +87,29 @@ export default function CommentsPage() {
     },
   });
 
-  const editCommentMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedComment) return;
-      const res = await apiRequest("PATCH", `/api/posts/${selectedComment.id}`, {
-        content: editedContent.trim()
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to edit comment");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ description: "Comment updated successfully" });
-      setIsEditing(false);
-      setIsDrawerOpen(false);
-      setSelectedComment(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to edit comment"
-      });
-    }
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedComment) return;
-      const res = await apiRequest("DELETE", `/api/posts/${selectedComment.id}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete comment");
-      }
-    },
-    onSuccess: () => {
-      toast({ description: "Comment deleted successfully" });
-      setIsDrawerOpen(false);
-      setSelectedComment(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to delete comment"
-      });
-    }
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
     addCommentMutation.mutate();
   };
 
-  const handleCommentClick = (comment: PostWithAuthor) => {
-    setSelectedComment(comment);
-    setEditedContent(comment.content || "");
-    setIsDrawerOpen(true);
-  };
-
-  const handleCopyComment = () => {
-    if (!selectedComment?.content) return;
-    navigator.clipboard.writeText(selectedComment.content)
-      .then(() => {
-        toast({ description: "Comment copied to clipboard" });
-        setIsDrawerOpen(false);
-      })
-      .catch(() => {
-        toast({
-          variant: "destructive",
-          description: "Failed to copy comment"
-        });
-      });
-  };
-
   const renderComment = (comment: PostWithAuthor, depth = 0) => (
-    <div
-      key={comment.id}
+    <div 
+      key={comment.id} 
       className={`flex flex-col space-y-2 ${depth > 0 ? 'ml-8 pl-4 border-l border-border' : ''}`}
     >
       <div className="flex items-start space-x-3">
         <Avatar className="h-8 w-8">
-          <AvatarImage
-            src={comment.author?.imageUrl || undefined}
-            alt={comment.author?.username || ''}
+          <AvatarImage 
+            src={comment.author?.imageUrl || undefined} 
+            alt={comment.author?.username || ''} 
           />
           <AvatarFallback>
             {comment.author?.username?.[0]?.toUpperCase() || '?'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div
-            className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm cursor-pointer hover:bg-muted/30"
-            onClick={() => handleCommentClick(comment)}
-          >
+          <div className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm">
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
           </div>
@@ -209,13 +123,10 @@ export default function CommentsPage() {
             <Button
               size="sm"
               className="h-8 px-4 bg-background hover:bg-background/90"
-              onClick={(e) => {
-                e.stopPropagation();
-                setReplyTo({
-                  id: comment.id,
-                  username: comment.author?.username || null
-                });
-              }}
+              onClick={() => setReplyTo({ 
+                id: comment.id, 
+                username: comment.author?.username || null 
+              })}
             >
               Reply
             </Button>
@@ -245,19 +156,17 @@ export default function CommentsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="container max-w-2xl mx-auto flex-1 pb-24 bg-white">
-        <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setLocation("/")}
-              className="mr-2"
-            >
-              &lt;
-            </Button>
-            <h1 className="font-bold text-xl inline-block">Comments</h1>
-          </div>
-        </header>
+        <div className="p-4 bg-white">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation("/")}
+            className="mr-2"
+          >
+            &lt;
+          </Button>
+          <h1 className="font-bold text-xl inline-block">Comments</h1>
+        </div>
 
         {postQuery.isLoading ? (
           <div className="flex justify-center p-4 bg-white">
@@ -271,9 +180,9 @@ export default function CommentsPage() {
           <div className="mb-6 bg-white">
             <div className="flex items-start space-x-3 p-4 bg-white">
               <Avatar className="h-10 w-10">
-                <AvatarImage
-                  src={postQuery.data.author?.imageUrl || undefined}
-                  alt={postQuery.data.author?.username || ''}
+                <AvatarImage 
+                  src={postQuery.data.author?.imageUrl || undefined} 
+                  alt={postQuery.data.author?.username || ''} 
                 />
                 <AvatarFallback>
                   {postQuery.data.author?.username?.[0]?.toUpperCase() || '?'}
@@ -335,7 +244,7 @@ export default function CommentsPage() {
           )}
           <form onSubmit={handleSubmit} className="flex items-center space-x-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage
+              <AvatarImage 
                 src={user.imageUrl || undefined}
                 alt={user.username}
               />
@@ -349,7 +258,7 @@ export default function CommentsPage() {
               placeholder={replyTo.id ? "Write a reply..." : "Add a comment..."}
               className="flex-1"
             />
-            <Button
+            <Button 
               type="submit"
               disabled={!comment.trim() || addCommentMutation.isPending}
               size="icon"
@@ -363,94 +272,6 @@ export default function CommentsPage() {
           </form>
         </div>
       </div>
-
-      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerContent>
-          <div className="mx-auto w-full max-w-2xl">
-            <DrawerHeader>
-              <DrawerTitle>
-                {isEditing ? "Edit Comment" : "Comment Options"}
-              </DrawerTitle>
-            </DrawerHeader>
-            {isEditing ? (
-              <div className="p-4">
-                <Input
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  className="mb-4"
-                />
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => editCommentMutation.mutate()}
-                    disabled={!editedContent.trim() || editCommentMutation.isPending}
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 space-y-2">
-                <Button
-                  className="w-full justify-start h-12"
-                  variant="ghost"
-                  onClick={() => {
-                    setIsDrawerOpen(false);
-                    if (selectedComment) {
-                      setReplyTo({
-                        id: selectedComment.id,
-                        username: selectedComment.author?.username || null
-                      });
-                    }
-                  }}
-                >
-                  Reply
-                </Button>
-                {selectedComment?.author?.id === user.id && (
-                  <>
-                    <Button
-                      className="w-full justify-start h-12"
-                      variant="ghost"
-                      onClick={() => setIsEditing(true)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      className="w-full justify-start h-12 text-destructive hover:text-destructive"
-                      variant="ghost"
-                      onClick={() => deleteCommentMutation.mutate()}
-                    >
-                      Delete
-                    </Button>
-                  </>
-                )}
-                <Button
-                  className="w-full justify-start h-12"
-                  variant="ghost"
-                  onClick={handleCopyComment}
-                >
-                  Copy
-                </Button>
-                <DrawerFooter className="p-0">
-                  <DrawerClose asChild>
-                    <Button
-                      className="w-full justify-start h-12"
-                      variant="ghost"
-                    >
-                      Close
-                    </Button>
-                  </DrawerClose>
-                </DrawerFooter>
-              </div>
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
     </div>
   );
 }
