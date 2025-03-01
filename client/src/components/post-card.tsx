@@ -48,7 +48,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     onSuccess: () => {
       toast({ description: "Post deleted successfully" });
       if (onDelete) onDelete();
-      // Invalidate queries to refresh the post list
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error: Error) => {
@@ -63,7 +62,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     setLocation(`/comments/${post.id}`);
   };
 
-  // Show post type tag
   const getPostTypeTag = () => {
     switch (post.type) {
       case "food":
@@ -80,13 +78,12 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   };
 
   if (post.type === "comment") {
-    return null; // Don't render comments in the post list
+    return null; 
   }
 
   return (
     <Card className="mb-4 overflow-hidden">
       <div className="p-4">
-        {/* Author info and options */}
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
@@ -101,32 +98,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             </div>
           </div>
 
-          {/* Post type tag and options menu */}
           <div className="flex items-center">
             {getPostTypeTag()}
-
-            {isOwnPost && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    className="text-destructive cursor-pointer"
-                    onClick={() => deletePostMutation.mutate()}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
         </div>
 
-        {/* Post content */}
         <div className="mb-3">
           <p className="whitespace-pre-wrap break-words">{post.content}</p>
           {post.imageUrl && (
@@ -140,14 +116,8 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t">
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground font-medium">
-              {post.points && post.points > 0 ? `+${post.points} pts` : ""}
-            </span>
-          </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <Button 
               className="flex items-center gap-1 bg-background hover:bg-background/90"
               variant="ghost"
@@ -157,6 +127,21 @@ export function PostCard({ post, onDelete }: PostCardProps) {
               <MessageCircle className="h-4 w-4" />
               <span>{post.commentCount || 0}</span>
             </Button>
+
+            {isOwnPost && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 bg-background hover:bg-background/90"
+                onClick={() => deletePostMutation.mutate()}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
+
+            <span className="text-xs text-muted-foreground font-medium ml-2">
+              {post.points && post.points > 0 ? `+${post.points} pts` : ""}
+            </span>
           </div>
         </div>
       </div>
