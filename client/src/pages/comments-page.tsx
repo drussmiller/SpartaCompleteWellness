@@ -112,14 +112,14 @@ export function CommentsPage() {
           </div>
           <div className="flex gap-2 mt-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className="h-8 px-4 bg-white hover:bg-gray-50"
             >
               Like
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className="h-8 px-4 bg-white hover:bg-gray-50"
               onClick={() => setReplyTo({ 
