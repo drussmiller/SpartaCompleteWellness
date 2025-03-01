@@ -13,6 +13,11 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   console.log(`Making ${method} request to ${url}`);
+  console.log('Request headers:', {
+    'Content-Type': data ? 'application/json' : undefined,
+    'Credentials': 'include'
+  });
+
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -22,6 +27,7 @@ export async function apiRequest(
 
   if (!res.ok) {
     console.error(`Request failed: ${res.status} ${res.statusText}`);
+    console.error('Response headers:', Object.fromEntries(res.headers.entries()));
   }
 
   return res;
