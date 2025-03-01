@@ -1,17 +1,17 @@
 import React, { useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Send } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const [_, navigate] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const { toast } = useToast();
