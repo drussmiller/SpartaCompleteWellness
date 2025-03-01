@@ -1,14 +1,15 @@
-import React, { useState } from "react";
-import { useParams, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Post } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
-import { Send, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import React, { useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ArrowLeft, Send } from "lucide-react";
+import type { PostWithAuthor } from "@/types";
+import { useAuth } from "@/context/auth-context";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { useToast } from "@/hooks/use-toast";
 
 type PostWithAuthor = Post & {
   author?: {
@@ -20,15 +21,37 @@ type PostWithAuthor = Post & {
   depth?: number;
 };
 
-export function CommentsPage() {
+export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const [_, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [comment, setComment] = useState("");
   const { toast } = useToast();
   const [replyTo, setReplyTo] = useState<{ id: number | null; username: string | null }>({
     id: null,
-    username: null,
+    username: null
+  });
+  const commentInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete comment mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: number) => {
+      const res = await apiRequest("DELETE", `/api/comments/${commentId}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: "Failed to delete comment" }));
+        throw new Error(error.message || "Failed to delete comment");
+      }
+    },
+    onSuccess: () => {
+      toast({ description: "Comment deleted successfully" });
+      // Refetch comments
+      commentsQuery.refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to delete comment"
+      });
+    }
   });
 
   const postQuery = useQuery<PostWithAuthor>({
@@ -90,6 +113,7 @@ export function CommentsPage() {
     addCommentMutation.mutate();
   };
 
+  const [commentText, setComment] = useState("");
   const renderComment = (comment: PostWithAuthor, depth = 0) => (
     <div 
       key={comment.id} 
@@ -106,9 +130,26 @@ export function CommentsPage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="rounded-xl bg-gray-100 p-3 border border-gray-300">
+          <div className="rounded-xl bg-gray-100 p-3 border border-gray-300 relative">
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
+            <Drawer>
+              <DrawerTrigger asChild>
+                <div className="absolute top-2 right-2 cursor-pointer">...</div>
+              </DrawerTrigger>
+              <DrawerContent>
+                <ul>
+                  <li>Reply</li>
+                  {comment.author?.id === user?.id && (
+                    <>
+                      <li>Edit</li>
+                      <li onClick={() => deleteCommentMutation.mutate(comment.id)}>Delete</li>
+                    </>
+                  )}
+                  <li>Copy</li>
+                </ul>
+              </DrawerContent>
+            </Drawer>
           </div>
           <div className="flex gap-2 mt-2">
             <Button
@@ -151,17 +192,17 @@ export function CommentsPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setLocation("/")}
+            onClick={() => navigate("/")}
             className="mr-2"
           >
-            &lt;
+            <ArrowLeft />
           </Button>
           <h1 className="font-bold text-xl inline-block">Comments</h1>
         </div>
 
         {postQuery.isLoading ? (
           <div className="flex justify-center p-4">
-            <Loader2 className="h-6 w-6 animate-spin" />
+            {/* <Loader2 className="h-6 w-6 animate-spin" /> */}
           </div>
         ) : postQuery.error ? (
           <div className="p-4 text-destructive">
@@ -199,7 +240,7 @@ export function CommentsPage() {
 
           {commentsQuery.isLoading ? (
             <div className="flex justify-center p-4">
-              <Loader2 className="h-6 w-6 animate-spin" />
+              {/* <Loader2 className="h-6 w-6 animate-spin" /> */}
             </div>
           ) : commentsQuery.error ? (
             <div className="text-destructive p-4">
@@ -242,18 +283,18 @@ export function CommentsPage() {
               </AvatarFallback>
             </Avatar>
             <Input
-              value={comment}
+              value={commentText}
               onChange={(e) => setComment(e.target.value)}
               placeholder={replyTo.id ? "Write a reply..." : "Add a comment..."}
               className="flex-1"
             />
             <Button 
               type="submit"
-              disabled={!comment.trim() || addCommentMutation.isPending}
+              disabled={!commentText.trim() || addCommentMutation.isPending}
               size="icon"
             >
               {addCommentMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                // <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
@@ -261,6 +302,19 @@ export function CommentsPage() {
           </form>
         </div>
       </div>
+        <Drawer>
+          <DrawerTrigger asChild>
+            <div className="rounded-lg bg-gray-300 p-2 cursor-pointer">Grey Box</div>
+          </DrawerTrigger>
+          <DrawerContent>
+            <ul>
+              <li>Reply</li>
+              <li>Edit</li>
+              <li>Delete</li>
+              <li>Copy</li>
+            </ul>
+          </DrawerContent>
+        </Drawer>
     </div>
   );
 }
