@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { MessageCircle, Trash2, MoreHorizontal } from "lucide-react";
+import { MessageCircle, MoreHorizontal } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -100,6 +100,23 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
           <div className="flex items-center">
             {getPostTypeTag()}
+            {isOwnPost && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-background hover:bg-background/90">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    className="text-destructive cursor-pointer"
+                    onClick={() => deletePostMutation.mutate()}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
@@ -127,17 +144,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
               <MessageCircle className="h-4 w-4" />
               <span>{post.commentCount || 0}</span>
             </Button>
-
-            {isOwnPost && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 bg-background hover:bg-background/90"
-                onClick={() => deletePostMutation.mutate()}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )}
 
             <span className="text-xs text-muted-foreground font-medium ml-2">
               {post.points && post.points > 0 ? `+${post.points} pts` : ""}
