@@ -1,90 +1,111 @@
 
 import { useState } from "react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical, Trash, Edit } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-interface PostOptionsMenuProps {
-  postId: number;
-  onDelete?: (postId: number) => void;
-}
+export function PostOptionsMenu({ 
+  postId, 
+  userId, 
+  currentUserId,
+  isAdmin = false
+}: { 
+  postId: number; 
+  userId: number;
+  currentUserId: number;
+  isAdmin?: boolean;
+}) {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const canDelete = userId === currentUserId || isAdmin;
 
-export function PostOptionsMenu({ postId, onDelete }: PostOptionsMenuProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const deletePostMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/posts/${postId}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: "Failed to delete post" }));
+        throw new Error(error.message || "Failed to delete post");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ description: "Post deleted successfully" });
+      // Invalidate queries to refresh the post list
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to delete post"
+      });
+    }
+  });
 
   const handleDelete = async () => {
-    if (!postId) return;
-    
-    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/posts/${postId}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        // Call the onDelete callback if provided
-        if (onDelete) {
-          onDelete(postId);
-        }
-      } else {
-        console.error('Failed to delete post');
-      }
+      await deletePostMutation.mutateAsync();
+      setIsOpen(false);
     } catch (error) {
-      console.error('Error deleting post:', error);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
+      // Error handling is done in the mutation
     }
   };
 
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreVertical className="h-4 w-4" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)}>
-            <Trash className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+  const handleCopy = () => {
+    // We don't have direct access to post content here,
+    // so we'll need to use an alternative approach.
+    const postElement = document.getElementById(`post-${postId}`);
+    if (postElement) {
+      const content = postElement.querySelector('p')?.textContent || '';
+      navigator.clipboard.writeText(content);
+      toast({ description: "Post content copied to clipboard" });
+    }
+    setIsOpen(false);
+  };
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete your post. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+  return (
+    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <DrawerTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 absolute top-3 right-3">
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <div className="bg-white rounded-t-xl overflow-hidden shadow-lg">
+          <div className="flex flex-col w-full">
+            <div className="text-center py-3 border-b border-gray-200 font-semibold text-lg">
+              Post Options
+            </div>
+            
+            {canDelete && (
+              <button
+                className="w-full p-4 text-red-500 font-semibold flex justify-center border-b hover:bg-gray-50"
+                onClick={handleDelete}
+                disabled={deletePostMutation.isPending}
+              >
+                {deletePostMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            )}
+            
+            <button
+              className="w-full p-4 text-gray-700 font-semibold flex justify-center border-b hover:bg-gray-50"
+              onClick={handleCopy}
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+              Copy
+            </button>
+            
+            <button
+              className="w-full p-4 bg-gray-200 text-gray-700 font-semibold flex justify-center mt-2 mb-safe"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
