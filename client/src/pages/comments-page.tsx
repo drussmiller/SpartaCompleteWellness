@@ -1,15 +1,26 @@
-import React, { useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+
 import { ArrowLeft, Send } from "lucide-react";
-import type { PostWithAuthor } from "@/types";
-import { useAuth } from "@/context/auth-context";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
-import { useToast } from "@/hooks/use-toast";
+import { useNavigate, useParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/providers/auth-provider";
+import { useEffect, useRef, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/api";
+import { Post } from "@shared/schema";
+import { useToast } from "@/components/ui/use-toast";
+import { 
+  Drawer, 
+  DrawerClose, 
+  DrawerContent, 
+  DrawerDescription, 
+  DrawerFooter, 
+  DrawerHeader, 
+  DrawerTitle, 
+  DrawerTrigger 
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { MoreVertical } from "lucide-react";
 
 type PostWithAuthor = Post & {
   author?: {
@@ -31,6 +42,9 @@ export default function CommentsPage() {
     username: null
   });
   const commentInputRef = useRef<HTMLInputElement>(null);
+  const [commentText, setCommentText] = useState("");
+  const [selectedComment, setSelectedComment] = useState<PostWithAuthor | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
@@ -54,128 +68,89 @@ export default function CommentsPage() {
     }
   });
 
-  const postQuery = useQuery<PostWithAuthor>({
-    queryKey: ["/api/posts", postId],
+  // Fetch post and its comments
+  const commentsQuery = useQuery<PostWithAuthor>({
+    queryKey: ["post", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) throw new Error('Failed to fetch post');
+      if (!res.ok) {
+        throw new Error("Failed to fetch post");
+      }
       return res.json();
     },
-    enabled: !!postId
+    enabled: !!postId,
   });
 
-  const commentsQuery = useQuery<PostWithAuthor[]>({
-    queryKey: ["/api/posts/comments", postId],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) throw new Error('Failed to fetch comments');
-      return res.json();
-    },
-    enabled: !!postId
-  });
-
+  // Add comment mutation
   const addCommentMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (comment: string) => {
+      const parentId = replyTo.id || Number(postId);
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
-        content: comment.trim(),
-        parentId: replyTo.id || Number(postId),
-        depth: replyTo.id ? 1 : 0,
-        imageUrl: null
+        content: comment,
+        parentId,
       });
-
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ message: "Failed to post comment" }));
-        throw new Error(error.message || "Failed to post comment");
+        const error = await res.json().catch(() => ({ message: "Failed to add comment" }));
+        throw new Error(error.message || "Failed to add comment");
       }
-
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        description: replyTo.id ? "Reply added successfully" : "Comment added successfully"
-      });
-      setComment("");
+      setCommentText("");
       setReplyTo({ id: null, username: null });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      commentsQuery.refetch();
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
-        description: error.message || "Failed to add comment"
+        description: error.message || "Failed to add comment",
       });
-    }
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!comment.trim()) return;
-    addCommentMutation.mutate();
+  const handleAddComment = () => {
+    if (commentText.trim()) {
+      addCommentMutation.mutate(commentText);
+    }
   };
 
-  const [commentText, setComment] = useState("");
-  const renderComment = (comment: PostWithAuthor, depth = 0) => (
-    <div 
-      key={comment.id} 
-      className={`flex flex-col space-y-2 ${depth > 0 ? 'ml-8 pl-4 border-l border-border' : ''}`}
-    >
-      <div className="flex items-start space-x-3">
-        <Avatar className="h-8 w-8">
-          <AvatarImage 
-            src={comment.author?.imageUrl || undefined} 
-            alt={comment.author?.username || ''} 
-          />
-          <AvatarFallback>
-            {comment.author?.username?.[0]?.toUpperCase() || '?'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <div className="rounded-xl bg-gray-100 p-3 border border-gray-300 relative">
-            <span className="font-semibold">{comment.author?.username}</span>
-            <p className="text-sm mt-1">{comment.content}</p>
-            <Drawer>
-              <DrawerTrigger asChild>
-                <div className="absolute top-2 right-2 cursor-pointer">...</div>
-              </DrawerTrigger>
-              <DrawerContent>
-                <ul>
-                  <li>Reply</li>
-                  {comment.author?.id === user?.id && (
-                    <>
-                      <li>Edit</li>
-                      <li onClick={() => deleteCommentMutation.mutate(comment.id)}>Delete</li>
-                    </>
-                  )}
-                  <li>Copy</li>
-                </ul>
-              </DrawerContent>
-            </Drawer>
-          </div>
-          <div className="flex gap-2 mt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-4 bg-white hover:bg-gray-50"
-            >
-              Like
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-4 bg-white hover:bg-gray-50"
-              onClick={() => setReplyTo({ 
-                id: comment.id, 
-                username: comment.author?.username || null 
-              })}
-            >
-              Reply
-            </Button>
-          </div>
-        </div>
+  const handleCopyComment = (content: string) => {
+    navigator.clipboard.writeText(content)
+      .then(() => {
+        toast({ description: "Comment copied to clipboard" });
+        setIsDrawerOpen(false);
+      })
+      .catch(() => {
+        toast({ 
+          variant: "destructive", 
+          description: "Failed to copy comment" 
+        });
+      });
+  };
+
+  // Focus input when replying
+  useEffect(() => {
+    if (replyTo.id && commentInputRef.current) {
+      commentInputRef.current.focus();
+    }
+  }, [replyTo.id]);
+
+  if (commentsQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading comments...</p>
       </div>
-      {comment.replies?.map(reply => renderComment(reply, depth + 1))}
-    </div>
-  );
+    );
+  }
+
+  if (commentsQuery.isError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Error loading comments. Please try again.</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -200,121 +175,142 @@ export default function CommentsPage() {
           <h1 className="font-bold text-xl inline-block">Comments</h1>
         </div>
 
-        {postQuery.isLoading ? (
-          <div className="flex justify-center p-4">
-            {/* <Loader2 className="h-6 w-6 animate-spin" /> */}
-          </div>
-        ) : postQuery.error ? (
-          <div className="p-4 text-destructive">
-            {postQuery.error instanceof Error ? postQuery.error.message : 'Failed to load post'}
-          </div>
-        ) : postQuery.data && (
-          <div className="mb-6">
-            <div className="flex items-start space-x-3 p-4">
-              <Avatar className="h-10 w-10">
-                <AvatarImage 
-                  src={postQuery.data.author?.imageUrl || undefined} 
-                  alt={postQuery.data.author?.username || ''} 
-                />
-                <AvatarFallback>
-                  {postQuery.data.author?.username?.[0]?.toUpperCase() || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="font-semibold">{postQuery.data.author?.username}</div>
-                <p className="mt-1">{postQuery.data.content}</p>
+        <div className="space-y-4 p-4">
+          {commentsQuery.data?.comments?.map((comment: PostWithAuthor) => (
+            <div key={comment.id} className="mb-4">
+              <div className="flex items-start space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage 
+                    src={comment.author?.imageUrl || undefined} 
+                    alt={comment.author?.username || ''} 
+                  />
+                  <AvatarFallback>
+                    {comment.author?.username?.[0]?.toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="rounded-xl bg-gray-100 p-3 border border-gray-300 relative">
+                    <span className="font-semibold">{comment.author?.username}</span>
+                    <p className="text-sm mt-1">{comment.content}</p>
+                    
+                    <Drawer open={isDrawerOpen && selectedComment?.id === comment.id} onOpenChange={(open) => {
+                      setIsDrawerOpen(open);
+                      if (open) setSelectedComment(comment);
+                    }}>
+                      <DrawerTrigger asChild>
+                        <button className="absolute top-2 right-2 cursor-pointer text-gray-500">
+                          <MoreVertical size={16} />
+                        </button>
+                      </DrawerTrigger>
+                      <DrawerContent className="bg-white">
+                        <div className="py-2 px-4">
+                          <button className="w-full py-3 text-center border-b border-gray-200 text-gray-800 font-normal" 
+                                  onClick={() => {
+                                    setReplyTo({ id: comment.id, username: comment.author?.username || '' });
+                                    setIsDrawerOpen(false);
+                                    if (commentInputRef.current) commentInputRef.current.focus();
+                                  }}>
+                            Reply
+                          </button>
+                          
+                          {comment.author?.id === user?.id && (
+                            <>
+                              <button className="w-full py-3 text-center border-b border-gray-200 text-blue-500 font-normal">
+                                Edit
+                              </button>
+                              <button className="w-full py-3 text-center border-b border-gray-200 text-red-500 font-normal"
+                                      onClick={() => {
+                                        deleteCommentMutation.mutate(comment.id);
+                                        setIsDrawerOpen(false);
+                                      }}>
+                                Delete
+                              </button>
+                            </>
+                          )}
+                          
+                          <button className="w-full py-3 text-center text-gray-800 font-normal"
+                                  onClick={() => handleCopyComment(comment.content || '')}>
+                            Copy
+                          </button>
+                        </div>
+                      </DrawerContent>
+                    </Drawer>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-4 bg-white hover:bg-gray-50"
+                    >
+                      Like
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-4 bg-white hover:bg-gray-50"
+                      onClick={() => setReplyTo({ 
+                        id: comment.id, 
+                        username: comment.author?.username || '' 
+                      })}
+                    >
+                      Reply
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
-            {postQuery.data.imageUrl && (
-              <img
-                src={postQuery.data.imageUrl}
-                alt="Post image"
-                className="w-full object-contain max-h-[70vh]"
-              />
-            )}
-          </div>
-        )}
-
-        <div className="divide-y divide-border bg-white">
-          <h2 className="font-semibold text-lg p-4">Comments</h2>
-
-          {commentsQuery.isLoading ? (
-            <div className="flex justify-center p-4">
-              {/* <Loader2 className="h-6 w-6 animate-spin" /> */}
-            </div>
-          ) : commentsQuery.error ? (
-            <div className="text-destructive p-4">
-              Error loading comments: {commentsQuery.error instanceof Error ? commentsQuery.error.message : 'Unknown error'}
-            </div>
-          ) : commentsQuery.data?.length === 0 ? (
-            <div className="text-center text-muted-foreground p-4">No comments yet. Be the first to comment!</div>
-          ) : (
-            <div className="space-y-6 p-4">
-              {commentsQuery.data?.map(comment => renderComment(comment))}
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
+      {/* Comment input */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-2">
         <div className="container max-w-2xl mx-auto">
-          {replyTo.id && (
-            <div className="flex items-center justify-between mb-2 text-sm">
-              <span className="text-muted-foreground">
-                Replying to <span className="font-medium">{replyTo.username}</span>
-              </span>
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user.imageUrl || undefined} alt={user.username} />
+              <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1">
+              <Input
+                ref={commentInputRef}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder={replyTo.id ? `Reply to ${replyTo.username}...` : "Add a comment..."}
+                className="flex-1 bg-transparent border-none focus-visible:ring-0"
+              />
+              
+              {replyTo.id && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 mr-1" 
+                  onClick={() => setReplyTo({ id: null, username: null })}
+                >
+                  ✕
+                </Button>
+              )}
+              
               <Button
+                type="submit"
+                size="icon"
                 variant="ghost"
-                size="sm"
-                onClick={() => setReplyTo({ id: null, username: null })}
+                disabled={!commentText.trim() || addCommentMutation.isPending}
+                onClick={handleAddComment}
+                className="h-8 w-8 p-0"
               >
-                Cancel
+                {addCommentMutation.isPending ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </div>
-          )}
-          <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-            <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage 
-                src={user?.imageUrl || undefined} 
-                alt={user?.username || ''} 
-              />
-              <AvatarFallback>
-                {user?.username?.[0]?.toUpperCase() || '?'}
-              </AvatarFallback>
-            </Avatar>
-            <Input
-              value={commentText}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder={replyTo.id ? "Write a reply..." : "Add a comment..."}
-              className="flex-1"
-            />
-            <Button 
-              type="submit"
-              disabled={!commentText.trim() || addCommentMutation.isPending}
-              size="icon"
-            >
-              {addCommentMutation.isPending ? (
-                // <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </form>
+          </div>
         </div>
       </div>
-        <Drawer>
-          <DrawerTrigger asChild>
-            <div className="rounded-lg bg-gray-300 p-2 cursor-pointer">Grey Box</div>
-          </DrawerTrigger>
-          <DrawerContent>
-            <ul>
-              <li>Reply</li>
-              <li>Edit</li>
-              <li>Delete</li>
-              <li>Copy</li>
-            </ul>
-          </DrawerContent>
-        </Drawer>
     </div>
   );
 }
