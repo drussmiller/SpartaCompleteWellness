@@ -411,6 +411,11 @@ export class DatabaseStorage implements IStorage {
       .delete(teams)
       .where(eq(teams.id, teamId));
   }
+
+  async deleteUser(userId: number): Promise<void> {
+    // Delete the user
+    await db.delete(users).where(eq(users.id, userId));
+  }
   async getPostComments(postId: number): Promise<Post[]> {
     return await db
       .select()
