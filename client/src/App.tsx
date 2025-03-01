@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Router, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,9 +16,9 @@ import ActivityPage from "@/pages/activity-page";
 import ActivityManagementPage from "@/pages/activity-management";
 import { CommentsPage } from "@/pages/comments-page";
 
-function Router() {
+function AppRoutes() {
   return (
-    <Switch>
+    <>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
@@ -29,8 +29,8 @@ function Router() {
       <ProtectedRoute path="/activity" component={ActivityPage} />
       <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
       <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
-      <Route component={NotFound} />
-    </Switch>
+      <Route path="/:rest*" component={NotFound} />
+    </>
   );
 }
 
@@ -38,7 +38,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
+        <Router>
+          <AppRoutes />
+        </Router>
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
