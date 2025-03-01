@@ -114,7 +114,7 @@ export function CommentsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4 bg-background"
+              className="h-8 px-4"
             >
               <Heart className="h-4 w-4 mr-1" />
               Like
@@ -122,7 +122,7 @@ export function CommentsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4 bg-background"
+              className="h-8 px-4"
               onClick={() => setReplyTo({ 
                 id: comment.id, 
                 username: comment.author?.username || null 
