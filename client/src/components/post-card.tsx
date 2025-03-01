@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Heart, MessageCircle, Trash2, MoreHorizontal } from "lucide-react";
@@ -35,7 +34,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  
+
   const isOwnPost = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
   const canDelete = isOwnPost || isAdmin;
@@ -104,11 +103,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
               </p>
             </div>
           </div>
-          
+
           {/* Post type tag and options menu */}
           <div className="flex items-center">
             {getPostTypeTag()}
-            
+
             {canDelete && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -129,19 +128,21 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             )}
           </div>
         </div>
-        
+
         {/* Post content */}
         <div className="mb-3">
           <p className="whitespace-pre-wrap break-words">{post.content}</p>
           {post.imageUrl && (
-            <img 
-              src={post.imageUrl} 
-              alt="Post" 
-              className="mt-3 rounded-md max-h-[300px] w-auto object-contain"
-            />
+            <div className="flex justify-center w-full mt-2">
+              <img 
+                src={post.imageUrl} 
+                alt="Post image" 
+                className="mt-2 rounded-md max-h-96 object-contain mx-auto" 
+              />
+            </div>
           )}
         </div>
-        
+
         {/* Actions */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t">
           <div className="flex items-center gap-1">
