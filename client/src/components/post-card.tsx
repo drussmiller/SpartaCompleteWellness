@@ -151,36 +151,16 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
       {post.type !== "comment" && (
         <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowComments(true)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <MessageSquare className="h-4 w-4 mr-1" />
-            {post.commentCount || 0} Comments
-          </Button>
-          
-          {/* Facebook-style slide-over panel */}
-          {showComments && (
-            <div className="fixed inset-0 z-50 overflow-hidden">
-              <div className="absolute inset-0 overflow-hidden">
-                {/* Backdrop */}
-                <div 
-                  className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
-                  onClick={() => setShowComments(false)}
-                />
-                
-                {/* Slide-over panel */}
-                <div className="fixed inset-y-0 right-0 max-w-full flex">
-                  <div className="w-screen max-w-md transform transition ease-in-out duration-300 translate-x-0">
-                    <div className="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
-                      {/* Header */}
-                      <div className="flex items-center justify-between px-4 py-3 border-b">
-                        <h2 className="text-lg font-semibold">Comments</h2>
-                        <button
-                          onClick={() => setShowComments(false)}
-                          className="text-gray-500 hover:text-gray-700"
+          <Link href={`/comments/${post.id}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              {post.commentCount || 0} Comments
+            </Button>
+          </Link>0"
                         >
                           <span className="sr-only">Close panel</span>
                           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
