@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Post, User } from "@shared/schema";
 import { formatDistance } from "date-fns";
@@ -29,7 +28,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
-  
+
   const isOwnPost = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
   const canDelete = isOwnPost || isAdmin;
@@ -75,6 +74,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       postType = post.type;
   }
 
+  const toggleComments = () => {
+    // Navigate to comments page instead of toggling the comments panel
+    window.location.href = `/comments/${post.id}`;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
       <div className="flex justify-between items-start mb-3">
@@ -86,7 +90,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
               <AvatarFallback>{post.author?.username.charAt(0).toUpperCase()}</AvatarFallback>
             )}
           </Avatar>
-          
+
           <div>
             <div className="font-semibold">{post.author?.username || "Unknown User"}</div>
             <div className="text-xs text-gray-500 flex items-center">
@@ -110,14 +114,14 @@ export function PostCard({ post, onDelete }: PostCardProps) {
                   <div className="text-center py-3 border-b border-gray-200 font-semibold text-lg">
                     Post Options
                   </div>
-                  
+
                   <button
                     className="w-full p-4 text-red-500 font-semibold flex justify-center border-b hover:bg-gray-50"
                     onClick={() => deletePostMutation.mutateAsync()}
                   >
                     Delete
                   </button>
-                  
+
                   <button
                     className="w-full p-4 text-gray-700 font-semibold flex justify-center border-b hover:bg-gray-50"
                     onClick={() => {
@@ -127,7 +131,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
                   >
                     Copy
                   </button>
-                  
+
                   <button
                     className="w-full p-4 bg-gray-200 text-gray-700 font-semibold flex justify-center mt-2 mb-safe"
                     onClick={() => document.body.click()} // Close drawer
@@ -142,7 +146,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       </div>
 
       <p className="mb-3 whitespace-pre-line">{post.content}</p>
-      
+
       {post.imageUrl && (
         <div className="mb-3 overflow-hidden rounded-lg">
           <img src={post.imageUrl} alt="Post attachment" className="w-full object-cover" />
@@ -160,25 +164,8 @@ export function PostCard({ post, onDelete }: PostCardProps) {
               <MessageSquare className="h-4 w-4 mr-1" />
               {post.commentCount || 0} Comments
             </Button>
-          </Link>0"
-                        >
-                          <span className="sr-only">Close panel</span>
-                          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      
-                      {/* Comment content */}
-                      <div className="flex-1 p-4">
-                        <PostComments postId={post.id} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          </Link>
+          {/* Added closing tag for the fragment */}
         </>
       )}
     </div>
