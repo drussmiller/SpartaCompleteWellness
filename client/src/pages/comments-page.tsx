@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Send } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/api";
 
 type PostWithAuthor = Post & {
@@ -55,12 +54,12 @@ export function CommentsPage() {
         depth: 0,
         imageUrl: null
       });
-      
+
       if (!res.ok) {
         const error = await res.json().catch(() => ({ message: "Failed to post comment" }));
         throw new Error(error.message || "Failed to post comment");
       }
-      
+
       return res.json();
     },
     onSuccess: () => {
@@ -132,7 +131,7 @@ export function CommentsPage() {
         )}
 
         <h2 className="font-semibold text-lg mb-4">Comments</h2>
-        
+
         {commentsQuery.isLoading ? (
           <div className="flex justify-center p-4">Loading comments...</div>
         ) : commentsQuery.error ? (
