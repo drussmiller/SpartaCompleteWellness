@@ -102,6 +102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('User authenticated:', !!req.user);
     console.log('Headers:', req.headers);
     console.log('Session:', req.session);
+    console.log('User details:', req.user);
+    console.log('Cookie:', req.headers.cookie);
 
     if (!req.user) {
       console.log('User not authenticated, returning 401');
@@ -929,9 +931,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(users)
             .where(eq(users.id, user.id));
           
-          return {
+          return {            
             ...user,
-            points: typeof result?.points === 'number' ? result.points : 0
+          points: typeof result?.points === 'number' ? result.points : 0
           };
         })
       );
@@ -1461,17 +1463,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-
   // Setup WebSocket server
+  const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws, req) => {
+    console.log('WebSocket connection established');
     const userId = req.url?.split('userId=')[1];
     if (userId) {
+      console.log('WebSocket client connected for user:', userId);
       clients.set(parseInt(userId), ws);
 
       ws.on('close', () => {
+        console.log('WebSocket client disconnected for user:', userId);
         clients.delete(parseInt(userId));
       });
     }

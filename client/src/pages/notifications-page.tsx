@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Bell, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Notification {
   id: number;
@@ -17,6 +18,7 @@ interface Notification {
 
 export default function NotificationsPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isMarking, setIsMarking] = useState<number | null>(null);
 
@@ -25,6 +27,32 @@ export default function NotificationsPage() {
     refetchOnMount: true,
     refetchOnWindowFocus: true
   });
+
+  useEffect(() => {
+    if (user) {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connection established');
+      };
+
+      ws.onmessage = (event) => {
+        const notification = JSON.parse(event.data);
+        console.log('Received notification:', notification);
+        refetch();
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      return () => {
+        ws.close();
+      };
+    }
+  }, [user]);
 
   async function markAsRead(id: number) {
     setIsMarking(id);
