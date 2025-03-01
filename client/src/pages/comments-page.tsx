@@ -145,7 +145,7 @@ export function CommentsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white">
       <div className="container max-w-2xl mx-auto flex-1 pb-24">
         <div className="p-4">
           <Button
@@ -194,7 +194,7 @@ export function CommentsPage() {
           </div>
         )}
 
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border bg-white">
           <h2 className="font-semibold text-lg p-4">Comments</h2>
 
           {commentsQuery.isLoading ? (
