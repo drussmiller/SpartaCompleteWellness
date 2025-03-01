@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,35 +18,16 @@ interface Comment {
   };
 }
 
-export function PostComments({ 
-  postId, 
-  isReplying = false, 
-  setIsReplying = undefined 
-}: { 
-  postId: number;
-  isReplying?: boolean;
-  setIsReplying?: (value: boolean) => void;
-}) {
+export function PostComments({ postId }: { postId: number }) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetchComments();
   }, [postId]);
-  
-  // Focus on textarea when isReplying becomes true
-  useEffect(() => {
-    if (isReplying && textareaRef.current) {
-      textareaRef.current.focus();
-      if (setIsReplying) {
-        setIsReplying(false);
-      }
-    }
-  }, [isReplying, setIsReplying]);
 
   const fetchComments = async () => {
     setLoading(true);
@@ -135,7 +115,6 @@ export function PostComments({
       {user && (
         <div className="mt-4 space-y-2">
           <Textarea
-            ref={textareaRef}
             placeholder="Write a comment..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
