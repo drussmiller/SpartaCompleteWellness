@@ -1,6 +1,5 @@
-
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const navigate = useNavigate();
+  const [_, navigate] = useLocation();
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const { toast } = useToast();
@@ -79,7 +78,7 @@ export function CommentsPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(-1)}
+          onClick={() => window.history.back()}
           className="mr-2"
         >
           <ArrowLeft className="h-5 w-5" />
