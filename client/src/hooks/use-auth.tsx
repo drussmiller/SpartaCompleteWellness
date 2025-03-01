@@ -32,7 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 0,
+    staleTime: Infinity, // Don't refetch unless explicitly invalidated
+    retry: false, // Don't retry on failure
   });
 
   const loginMutation = useMutation<SelectUser, Error, LoginData>({
@@ -46,9 +47,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/user"], data);
+      toast({
+        description: "Successfully logged in"
+      });
     },
     onError: (error: Error) => {
       console.error('Login error:', error);
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to log in"
+      });
     },
   });
 
@@ -63,6 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/user"], data);
+      toast({
+        description: "Successfully registered and logged in"
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -75,10 +86,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation<void, Error>({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      const res = await apiRequest("POST", "/api/logout");
+      if (!res.ok) {
+        throw new Error("Failed to log out");
+      }
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      queryClient.clear(); // Clear all queries on logout
+      toast({
+        description: "Successfully logged out"
+      });
     },
     onError: (error: Error) => {
       toast({

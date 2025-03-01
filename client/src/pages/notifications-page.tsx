@@ -4,7 +4,7 @@ import { Notification } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +13,12 @@ export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    enabled: !!user // Only fetch notifications when user is authenticated
   });
 
   const markAsReadMutation = useMutation({
@@ -24,6 +27,7 @@ export default function NotificationsPage() {
         "POST",
         `/api/notifications/${notificationId}/read`
       );
+      if (!res.ok) throw new Error("Failed to mark notification as read");
       return res.json();
     },
     onSuccess: () => {
@@ -59,33 +63,87 @@ export default function NotificationsPage() {
   });
 
   useEffect(() => {
-    if (!user) return;
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-      const notification: Notification = JSON.parse(event.data);
-      toast({
-        title: notification.title,
-        description: notification.message,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    // Clean up any existing connection and timeout
+    const cleanup = () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      setWsConnected(false);
     };
 
-    wsRef.current = ws;
+    // Only establish WebSocket connection if user is authenticated
+    if (!user) {
+      cleanup();
+      return;
+    }
 
-    return () => {
-      ws.close();
+    const connectWebSocket = () => {
+      cleanup();
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setWsConnected(true);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const notification: Notification = JSON.parse(event.data);
+          toast({
+            title: notification.title,
+            description: notification.message,
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, attempting to reconnect...');
+        setWsConnected(false);
+        // Attempt to reconnect after 5 seconds
+        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        ws.close();
+      };
+
+      wsRef.current = ws;
     };
+
+    connectWebSocket();
+
+    return cleanup;
   }, [user, toast]);
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-muted-foreground">Not authorized</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
           <h1 className="text-xl font-bold">Notifications</h1>
+          {!wsConnected && (
+            <p className="text-sm text-muted-foreground">
+              Connecting to notification service...
+            </p>
+          )}
         </div>
       </header>
 
