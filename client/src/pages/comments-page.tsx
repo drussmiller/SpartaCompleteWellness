@@ -1,14 +1,14 @@
+
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 type PostWithAuthor = Post & {
   author?: {
@@ -29,7 +29,7 @@ export function CommentsPage() {
   const postQuery = useQuery<PostWithAuthor>({
     queryKey: ["post", postId],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
+      const res = await fetch(`/api/posts/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch post");
       return res.json();
     },
@@ -38,7 +38,7 @@ export function CommentsPage() {
   const commentsQuery = useQuery({
     queryKey: ["comments", postId],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+      const res = await fetch(`/api/posts/comments/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
       return res.json();
     },
@@ -47,12 +47,18 @@ export function CommentsPage() {
 
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: content.trim(),
-        parentId: Number(postId),
-        depth: 0,
-        imageUrl: null
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          type: "comment",
+          content: content.trim(),
+          parentId: Number(postId),
+          depth: 0,
+          imageUrl: null
+        })
       });
 
       if (!res.ok) {
@@ -65,35 +71,40 @@ export function CommentsPage() {
     onSuccess: () => {
       setComment("");
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
-      toast({ description: "Comment added successfully" });
-    },
-    onError: (error: Error) => {
       toast({
-        variant: "destructive",
-        description: error.message || "Failed to post comment"
+        title: "Comment added",
+        description: "Your comment has been added successfully.",
       });
-    }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (comment.trim()) {
-      addCommentMutation.mutate(comment);
-    }
+    if (!comment.trim()) return;
+    addCommentMutation.mutate(comment);
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background p-4 flex items-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => navigate(-1)}
-          className="mr-2"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-semibold">Comments</h1>
+    <div className="flex flex-col h-screen bg-background">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+        <div className="flex h-14 items-center px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-semibold">Post Details</h1>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-4">
@@ -117,11 +128,11 @@ export function CommentsPage() {
                 <div className="font-semibold">{postQuery.data?.author?.username}</div>
                 <p className="mt-1">{postQuery.data?.content}</p>
                 {postQuery.data?.imageUrl && (
-                  <div className="flex justify-center w-full mt-2">
+                  <div className="mt-2 flex justify-center">
                     <img
                       src={postQuery.data.imageUrl}
                       alt="Post image"
-                      className="rounded-md max-h-72 object-contain mx-auto"
+                      className="rounded-md max-h-80 object-contain w-full"
                     />
                   </div>
                 )}
@@ -159,12 +170,8 @@ export function CommentsPage() {
       </div>
 
       {user && (
-        <div className="sticky bottom-0 border-t bg-background p-4">
-          <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-            <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage src={user.imageUrl || undefined} alt={user.username} />
-              <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
+        <div className="border-t p-4 bg-background">
+          <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
               placeholder="Add a comment..."
               value={comment}
