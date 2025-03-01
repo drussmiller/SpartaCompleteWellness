@@ -111,7 +111,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Fetching notifications for user:', req.user.id);
       const notifications = await storage.getUnreadNotifications(req.user.id);
-      console.log('Found notifications:', notifications);
+      console.log('Found notifications:', notifications.length);
+      console.log('Sample notification data:', notifications[0] || 'No notifications found');
       res.json(notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -904,6 +905,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching user:', error);
       res.status(500).json({ error: "Failed to fetch user data" });
+    }
+  });
+  
+  // Add API endpoint for all users
+  app.get("/api/users", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const allUsers = await storage.getAllUsers();
+      
+      // Add points calculation for each user
+      const usersWithPoints = await Promise.all(
+        allUsers.map(async (user) => {
+          const [result] = await db
+            .select({
+              points: sql`COALESCE((
+                SELECT CAST(SUM(points) AS INTEGER)
+                FROM ${posts}
+                WHERE user_id = ${user.id}
+                AND type != 'comment'
+              ), 0)`
+            })
+            .from(users)
+            .where(eq(users.id, user.id));
+          
+          return {
+            ...user,
+            points: typeof result?.points === 'number' ? result.points : 0
+          };
+        })
+      );
+      
+      res.json(usersWithPoints);
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      res.status(500).json({ error: "Failed to fetch users" });
     }
   });
 

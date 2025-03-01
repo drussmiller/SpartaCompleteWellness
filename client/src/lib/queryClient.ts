@@ -28,6 +28,7 @@ export async function apiRequest(
   if (!res.ok) {
     console.error(`Request failed: ${res.status} ${res.statusText}`);
     console.error('Response headers:', Object.fromEntries(res.headers.entries()));
+    console.error('Request URL:', url);
   }
 
   return res;
@@ -59,14 +60,14 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      staleTime: 0,
+      retry: 1,
     },
     mutations: {
-      retry: false,
+      retry: 1,
     },
   },
 });
