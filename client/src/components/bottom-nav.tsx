@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "wouter";
 import { Home, Calendar, HelpCircle, Bell, User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,8 +23,8 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === href
-                  ? "text-black [&>svg]:text-black"
-                  : "text-muted-foreground"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary transition-colors"
               )}
             >
               <Icon className="h-5 w-5" />
@@ -39,8 +38,8 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
                 location === "/admin"
-                  ? "text-black [&>svg]:text-black"
-                  : "text-muted-foreground"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary transition-colors"
               )}
             >
               <Shield className="h-5 w-5" />
@@ -53,8 +52,8 @@ export function BottomNav() {
             className={cn(
               "flex flex-col items-center justify-center w-full h-full text-sm gap-1",
               location === "/profile"
-                ? "text-black [&>svg]:text-black"
-                : "text-muted-foreground"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-primary transition-colors"
             )}
           >
             <User className="h-5 w-5" />

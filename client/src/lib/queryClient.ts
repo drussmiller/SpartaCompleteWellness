@@ -12,7 +12,6 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  console.log(`Making ${method} request to ${url}`);
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -20,10 +19,7 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  if (!res.ok) {
-    console.error(`Request failed: ${res.status} ${res.statusText}`);
-  }
-
+  await throwIfResNotOk(res);
   return res;
 }
 
@@ -33,16 +29,12 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    console.log(`Fetching data for queryKey: ${queryKey[0]}`);
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
     });
 
-    if (res.status === 401) {
-      console.log("Received 401 response, handling according to behavior:", unauthorizedBehavior);
-      if (unauthorizedBehavior === "returnNull") {
-        return null;
-      }
+    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      return null;
     }
 
     await throwIfResNotOk(res);
@@ -53,9 +45,8 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
-      refetchOnMount: false,
+      refetchInterval: false,
       refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
       staleTime: Infinity,
       retry: false,
     },

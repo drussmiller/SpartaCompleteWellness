@@ -974,7 +974,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user?.isAdmin) return res.sendStatus(403);
     try {
       const users = await storage.getAllUsers();
-      console.log("Fetched users count:", users.length);
 
       // Calculate program start dates for all users
       const enhancedUsers = await Promise.all(users.map(async (user) => {
@@ -982,25 +981,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let firstMonday = null;
         if (user.teamJoinedAt) {
-          // Set the program start date to the first Monday on or after the join date
           const joinDate = new Date(user.teamJoinedAt);
-          const dayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-          
-
-          // If the user joined on Monday, start that day
-          // Otherwise, find the next Monday
-          const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
-          
-
+          const dayOfWeek = joinDate.getDay();
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
           firstMonday = new Date(joinDate);
           firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
           firstMonday.setHours(0, 0, 0, 0);
-          
-
-          // For Russ specifically (userId 9), hardcode to Feb 10, 2025
-          if (user.id === 9) {
-            firstMonday = new Date('2025-02-10T00:00:00.000Z');
-          }
         }
 
         return {
@@ -1019,71 +1005,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users/:id/team", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
+    const { teamId } = req.body;
     try {
-      const userId = parseInt(req.params.id);
-      const { teamId } = req.body;
-
-      // If teamId is not provided or null, user is being removed from team
-      const updateData = teamId ? {
-        teamId,
-        teamJoinedAt: new Date()
-      } : {
-        teamId: null,
-        teamJoinedAt: null
-      };
-
-      // Update user's team and join date
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      // Send notification to user about team assignment
-      if (teamId) {
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, teamId));
-
-        if (team) {
-          await sendNotification(
-            userId,
-            "Team Assignment",
-            `You have been assigned to team ${team.name}. Your program will start on the first Monday after today.`
-          );
-        }
-      }
-
-      res.json(updatedUser);
+      const user = await storage.updateUserTeam(userId, teamId);
+      res.json(user);
     } catch (error) {
       console.error('Error updating user team:', error);
       res.status(500).json({ error: "Failed to update user team" });
-    }
-  });
-
-  // Update user team join date endpoint
-  app.post("/api/users/:id/team-join-date", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const userId = parseInt(req.params.id);
-      const { teamJoinedAt } = req.body;
-
-      // Update the user's team join date
-      const [updatedUser] = await db
-        .update(users)
-        .set({ teamJoinedAt: new Date(teamJoinedAt) })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(updatedUser);
-    } catch (error) {
-      console.error('Error updating team join date:', error);
-      res.status(500).json({ error: "Failed to update team join date" });
     }
   });
 
@@ -1175,34 +1104,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add this route after your existing routes
-  app.post("/api/activities", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-
+  app.post("/api/activities", requireAdmin, async (req, res) => {
     try {
-      console.log('Received activity data:', req.body);
+      const { workoutVideos, ...activityData } = req.body;
+      const parsedActivityData = insertActivitySchema.parse(activityData); // Parse activity data
 
-      const activityData = insertActivitySchema.parse({
-        ...req.body,
-        week: Number(req.body.week),
-        day: Number(req.body.day),
-        workoutVideos: Array.isArray(req.body.workoutVideos) ? req.body.workoutVideos : []
-      });
+      // First create the activity
+      const [activity] = await db
+        .insert(activities)
+        .values(parsedActivityData)
+        .returning();
 
-      const activity = await storage.createActivity(activityData);
-      res.status(201).json(activity);
-    } catch (error) {
-      console.error('Error in POST /api/activities:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          error: 'Validation Error',
-          details: error.errors 
-        });
+      // Then create associated workout videos if any
+      if (workoutVideos && workoutVideos.length > 0) {
+        await db
+          .insert(workoutVideos)
+          .values(
+            workoutVideos.map((video: { url: string; description: string }) => ({
+              activityId: activity.id,
+              url: video.url,
+              description: video.description
+            }))
+          );
       }
-      res.status(500).json({ 
-        error: 'Failed to create activity',
-        message: error instanceof Error ? error.message : 'Unknown error'
+
+      // Fetch the complete activity with workout videos
+      const [completeActivity] = await db
+        .select({
+          activity: activities,
+          workoutVideos: sql<string>`json_agg(
+            json_build_object(
+              'id', ${workoutVideos}.id,
+              'url', ${workoutVideos}.url,
+              'description', ${workoutVideos}.description
+            )
+          )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(eq(activities.id, activity.id))
+        .groupBy(activities.id);
+
+      res.status(201).json({
+        ...completeActivity.activity,
+        workoutVideos: completeActivity.workoutVideos === '[null]' ? [] : JSON.parse(completeActivity.workoutVideos)
       });
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation Error', details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create activity" });
+      }
     }
   });
 

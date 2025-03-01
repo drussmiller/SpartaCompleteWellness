@@ -169,23 +169,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db
-      .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        isAdmin: users.isAdmin,
-        teamId: users.teamId,
-        points: users.points,
-        imageUrl: users.imageUrl,
-        preferredName: users.preferredName,
-        weight: users.weight,
-        waist: users.waist,
-        createdAt: users.createdAt,
-        teamJoinedAt: users.teamJoinedAt
-      })
-      .from(users)
-      .orderBy(users.username);
+    return await db.select().from(users);
   }
 
   async createPost(post: Post): Promise<Post> {
@@ -411,11 +395,6 @@ export class DatabaseStorage implements IStorage {
       .delete(teams)
       .where(eq(teams.id, teamId));
   }
-
-  async deleteUser(userId: number): Promise<void> {
-    // Delete the user
-    await db.delete(users).where(eq(users.id, userId));
-  }
   async getPostComments(postId: number): Promise<Post[]> {
     return await db
       .select()
@@ -444,31 +423,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createActivity(data: any) {
-    try {
-      console.log('Creating activity with data:', data);
-      const activityData = {
-        week: data.week,
-        day: data.day,
-        memoryVerse: data.memoryVerse,
-        memoryVerseReference: data.memoryVerseReference,
-        scripture: data.scripture || null,
-        tasks: data.tasks || null,
-        description: data.description || null,
-        workout: data.workout || null,
-        workoutVideos: Array.isArray(data.workoutVideos) ? data.workoutVideos : [],
-      };
-
-      const [newActivity] = await db
-        .insert(activities)
-        .values(activityData)
-        .returning();
-
-      console.log('Created activity:', newActivity);
-      return newActivity;
-    } catch (error) {
-      console.error('Error creating activity:', error);
-      throw error;
-    }
+    return await db.insert(activities).values(data).returning();
   }
 
   async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {
@@ -484,53 +439,27 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    // Ensure dates are in UTC
     const joinDate = new Date(user.teamJoinedAt);
-    joinDate.setUTCHours(0, 0, 0, 0);
-
     const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday on or after join date (in UTC)
-    const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-    // If the user joined on Monday, start that day
-    // Otherwise, find the next Monday
-    const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
-    let firstMonday = new Date(joinDate);
-    firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
-    firstMonday.setUTCHours(0, 0, 0, 0);
-    
+    // Find the first Monday after join date
+    const dayOfWeek = joinDate.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const firstMonday = new Date(joinDate);
+    firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+    firstMonday.setHours(0, 0, 0, 0);
+
     // If today is before first Monday, return null
     if (today < firstMonday) {
       return null;
     }
 
-    // Calculate weeks and days since first Monday (in UTC)
+    // Calculate weeks and days since first Monday
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    const week = Math.floor(diffDays / 7) + 1;
-
-    // Convert UTC day to our program day (1 = Monday, 2 = Tuesday, ..., 7 = Sunday)
-    let day = today.getUTCDay();
-    if (day === 0) {
-      day = 7;  // Sunday becomes 7
-    } else {
-      day = day; // Monday (1) stays 1, Tuesday (2) stays 2, etc.
-    }
-    
-    // Add logging to help debug the calculation
-    console.log('Week calculation debug:', {
-      userId,
-      joinDate: joinDate.toISOString(),
-      firstMonday: firstMonday.toISOString(),
-      today: today.toISOString(),
-      todayUTCDay: today.getUTCDay(),
-      adjustedDay: day,
-      diffDays,
-      week,
-      day
-    });
+    const week = Math.floor(diffDays / 7) + 1; 
+    const day = today.getDay() === 0 ? 7 : today.getDay(); 
 
     return { week, day };
   }

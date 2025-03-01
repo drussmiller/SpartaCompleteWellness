@@ -3,7 +3,6 @@ import {
   useQuery,
   useMutation,
   UseMutationResult,
-  QueryClient
 } from "@tanstack/react-query";
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
@@ -20,60 +19,48 @@ type AuthContextType = {
 
 type LoginData = Pick<InsertUser, "username" | "password">;
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
+export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-
   const {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | null, Error>({
+  } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: Infinity, // Don't refetch unless explicitly invalidated
-    retry: false, // Don't retry on failure
+    staleTime: 0, // Don't cache the user data
   });
 
-  const loginMutation = useMutation<SelectUser, Error, LoginData>({
-    mutationFn: async (credentials) => {
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Invalid username or password");
+        throw new Error(error.message || "Invalid username or password"); //Improved error message
       }
-      return res.json();
+      return await res.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/user"], data);
-      toast({
-        description: "Successfully logged in"
-      });
+    onSuccess: (user: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
       console.error('Login error:', error);
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to log in"
-      });
+      // Don't show the toast for login errors, let the UI handle it
     },
   });
 
-  const registerMutation = useMutation<SelectUser, Error, InsertUser>({
-    mutationFn: async (credentials) => {
+  const registerMutation = useMutation({
+    mutationFn: async (credentials: InsertUser) => {
       const res = await apiRequest("POST", "/api/register", credentials);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Registration failed");
       }
-      return res.json();
+      return await res.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/user"], data);
-      toast({
-        description: "Successfully registered and logged in"
-      });
+    onSuccess: (user: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
       toast({
@@ -84,19 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const logoutMutation = useMutation<void, Error>({
+  const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/logout");
-      if (!res.ok) {
-        throw new Error("Failed to log out");
-      }
+      await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
-      queryClient.clear(); // Clear all queries on logout
-      toast({
-        description: "Successfully logged out"
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -107,17 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const value = {
-    user: user ?? null,
-    isLoading,
-    error,
-    loginMutation,
-    logoutMutation,
-    registerMutation,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user: user ?? null,
+        isLoading,
+        error,
+        loginMutation,
+        logoutMutation,
+        registerMutation,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
