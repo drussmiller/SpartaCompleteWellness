@@ -1,6 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import { createServer, type Server } from "http";
 
 // Enhanced error logging
@@ -45,11 +44,23 @@ async function startServer() {
   let server: Server;
 
   try {
-    console.log('Starting server initialization...');
+    // Log environment status
+    console.log('\n=== Environment Check ===');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '[Set]' : '[Not Set]');
+    console.log('SESSION_SECRET:', process.env.SESSION_SECRET ? '[Set]' : '[Not Set]');
+    console.log('=====================\n');
+
+    console.log('[Server] Starting initialization...');
 
     // Create HTTP server and register routes
+    console.log('[Server] Creating HTTP server...');
     server = createServer(app);
+    console.log('[Server] HTTP server created');
+
+    console.log('[Server] Registering routes...');
     await registerRoutes(app);
+    console.log('[Server] Routes registered');
 
     // Setup error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -59,29 +70,32 @@ async function startServer() {
       res.status(status).json({ message });
     });
 
-    // Setup Vite or static files
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
-
     // Start listening
     const port = 5000;
-    server.listen(port, "0.0.0.0", () => {
-      console.log(`Server listening on port ${port}`);
+    console.log(`[Server] Attempting to listen on port ${port}...`);
+
+    await new Promise<void>((resolve, reject) => {
+      server.on('error', (error) => {
+        console.error('[Server] Listen error:', error);
+        reject(error);
+      });
+
+      server.listen(port, "0.0.0.0", () => {
+        console.log(`[Server] Successfully listening on port ${port}`);
+        resolve();
+      });
     });
 
     // Handle shutdown gracefully
     const shutdown = (signal: string) => {
-      console.log(`\nReceived ${signal} signal, shutting down...`);
+      console.log(`\n[Server] Received ${signal} signal, shutting down...`);
       server.close(() => {
-        console.log('Server closed');
+        console.log('[Server] Server closed');
         process.exit(0);
       });
 
       setTimeout(() => {
-        console.error('Forced shutdown after timeout');
+        console.error('[Server] Forced shutdown after timeout');
         process.exit(1);
       }, 5000);
     };
