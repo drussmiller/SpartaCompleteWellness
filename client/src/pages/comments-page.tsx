@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { Send, Loader2, Heart } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -114,15 +114,14 @@ export function CommentsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4"
+              className="h-8 px-4 bg-background hover:bg-background"
             >
-              <Heart className="h-4 w-4 mr-1" />
               Like
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4"
+              className="h-8 px-4 bg-background hover:bg-background"
               onClick={() => setReplyTo({ 
                 id: comment.id, 
                 username: comment.author?.username || null 
