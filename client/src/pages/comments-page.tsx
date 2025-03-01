@@ -10,21 +10,28 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Post } from "@shared/schema";
 import { formatDistance } from "date-fns";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { PostOptionsMenu } from "@/components/post-options-menu";
 
-export function CommentsPage() {
-  const { id } = useParams<{ id: string }>();
-  const postId = parseInt(id);
-  const [, navigate] = useLocation();
+type CommentWithAuthor = Post & {
+  author: {
+    id: number;
+    username: string;
+    imageUrl?: string;
+  };
+  replies?: CommentWithAuthor[];
+  depth?: number;
+};
+
+export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { postId } = useParams();
+  const [, setLocation] = useLocation();
+  const [replyTo, setReplyTo] = useState<number | null>(null);
   const [comment, setComment] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch the original post
   const { data: originalPost, isLoading: isPostLoading } = useQuery({
-    queryKey: ["/api/posts", postId],
+    queryKey: [`/api/posts/${postId}`],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch post");
@@ -33,8 +40,7 @@ export function CommentsPage() {
     enabled: !!postId
   });
 
-  // Fetch the comments for this post
-  const { data: comments = [], isLoading: areCommentsLoading, refetch: refetchComments } = useQuery({
+  const { data: comments = [], isLoading: areCommentsLoading, refetch } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
@@ -44,14 +50,16 @@ export function CommentsPage() {
     enabled: !!postId
   });
 
-  const isLoading = isPostLoading || areCommentsLoading;
+  const createCommentMutation = useMutation({
+    mutationFn: async () => {
+      const parentComment = replyTo ? comments.find(c => c.id === replyTo) : null;
+      const newDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
 
-  const commentMutation = useMutation({
-    mutationFn: async (content: string) => {
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
-        content: content.trim(),
-        parentId: postId,
+        content: comment.trim(),
+        parentId: replyTo || postId,
+        depth: newDepth,
         imageUrl: null
       });
 
@@ -63,9 +71,9 @@ export function CommentsPage() {
     },
     onSuccess: () => {
       setComment("");
-      refetchComments();
-
-      // Invalidate post lists to update comment counts
+      setReplyTo(null);
+      toast({ description: "Comment posted successfully" });
+      refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error: Error) => {
@@ -76,145 +84,174 @@ export function CommentsPage() {
     }
   });
 
-  const handleSubmitComment = () => {
-    if (comment.trim()) {
-      commentMutation.mutate(comment);
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+    createCommentMutation.mutate();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitComment();
+  useEffect(() => {
+    if (replyTo && commentInputRef.current) {
+      commentInputRef.current.focus();
     }
-  };
+  }, [replyTo]);
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Header with back button */}
-      <header className="border-b p-4 flex items-center gap-2">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="inline-flex items-center justify-center rounded-full h-8 w-8 hover:bg-muted"
+    <div className="comments-page">
+      <header className="fixed top-0 left-0 right-0 bg-background z-10 border-b p-2 flex items-center">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setLocation("/")}
+          className="mr-2"
         >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <h1 className="font-semibold">Comments</h1>
+          <ChevronLeft className="h-6 w-6" />
+        </Button>
+        <h2 className="text-lg font-semibold">Comments</h2>
       </header>
 
-      {/* Main content area */}
-      <main className="flex-1 overflow-auto p-4 pb-28">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <main className="flex-1 overflow-auto p-4 pb-28 mt-12">
+        {originalPost && (
+          <div className="mb-6">
+            <div className="mb-6 p-4 border rounded-lg bg-white">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
+                  <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{originalPost.author?.username}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {originalPost.createdAt && new Date(originalPost.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                    {originalPost.content}
+                  </p>
+                  {originalPost.imageUrl && (
+                    <img
+                      src={originalPost.imageUrl}
+                      alt="Post"
+                      className="mt-2 rounded-md max-h-[300px] w-auto"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isPostLoading || areCommentsLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <>
-            {originalPost && (
-              <div className="mb-6">
-                <div className="mb-6 p-4 border rounded-lg bg-white">
+          <div className="space-y-4">
+            {comments.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No comments yet. Be the first to comment!</p>
+            ) : (
+              comments.map((comment: CommentWithAuthor) => (
+                <div 
+                  key={comment.id} 
+                  className="p-3 border rounded-lg bg-white"
+                >
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
-                      <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} />
+                      <AvatarFallback>{comment.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="font-medium">{originalPost.author?.username}</div>
+                        <div className="font-medium text-sm">{comment.author?.username}</div>
                         <p className="text-xs text-muted-foreground">
-                          {originalPost.createdAt && new Date(originalPost.createdAt).toLocaleString()}
+                          {comment.createdAt && formatDistance(new Date(comment.createdAt), new Date(), { addSuffix: true })}
                         </p>
                       </div>
-                      <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                        {originalPost.content}
-                      </p>
-                      {originalPost.imageUrl && (
-                        <img
-                          src={originalPost.imageUrl}
-                          alt="Post"
-                          className="mt-2 rounded-md max-h-[300px] w-auto"
-                        />
-                      )}
+                      <p className="text-sm mt-1 whitespace-pre-wrap break-words">{comment.content}</p>
+
+                      <div className="mt-2 flex items-center gap-3">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 text-xs"
+                          onClick={() => setReplyTo(comment.id)}
+                        >
+                          Reply
+                        </Button>
+                        {user && (user.id === comment.userId || user.isAdmin) && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 px-2 text-xs text-destructive"
+                            onClick={() => {
+                              // Handle delete comment
+                              if (confirm("Are you sure you want to delete this comment?")) {
+                                apiRequest("DELETE", `/api/posts/${comment.id}`)
+                                  .then(res => {
+                                    if (res.ok) {
+                                      toast({ description: "Comment deleted" });
+                                      refetch();
+                                      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+                                    }
+                                  });
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))
             )}
-
-            {/* Comments */}
-            <div className="space-y-4">
-              {comments.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  No comments yet. Be the first to comment!
-                </div>
-              ) : (
-                comments.map((comment: any) => (
-                  <Card key={comment.id} className="border rounded-lg">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} />
-                          <AvatarFallback>{comment.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <div className="font-medium text-sm">{comment.author?.username}</div>
-                            {user?.id === comment.userId && (
-                              <PostOptionsMenu 
-                                onEdit={() => {}} 
-                                onDelete={() => {}} 
-                              />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {comment.createdAt && formatDistance(new Date(comment.createdAt), new Date(), { addSuffix: true })}
-                          </p>
-                          <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                            {comment.content}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </>
+          </div>
         )}
       </main>
 
-      {/* Footer with comment input */}
-      <footer className="fixed bottom-0 left-0 right-0 border-t bg-background p-4">
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Textarea
-              ref={textareaRef}
-              placeholder="Add a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="min-h-[60px]"
-            />
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3">
+        {replyTo && (
+          <div className="flex justify-between items-center mb-2 p-2 bg-muted rounded-md">
+            <p className="text-sm">
+              Replying to: {comments.find(c => c.id === replyTo)?.author?.username}
+            </p>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={() => setReplyTo(null)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
           </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Textarea
+            ref={commentInputRef}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Write a comment..."
+            className="min-h-[50px] resize-none"
+          />
           <Button 
-            variant="default" 
+            type="submit" 
             size="icon" 
-            onClick={handleSubmitComment}
-            disabled={!comment.trim() || commentMutation.isPending}
+            disabled={!comment.trim() || createCommentMutation.isPending}
+            className="h-[50px] w-[50px] flex-shrink-0"
           >
-            {commentMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+            {createCommentMutation.isPending ? 
+              <Loader2 className="h-4 w-4 animate-spin" /> : 
               <Send className="h-4 w-4" />
-            )}
+            }
           </Button>
-        </div>
-      </footer>
+        </form>
+      </div>
     </div>
   );
 }
-
-export default CommentsPage;
 
 function Comment({
   comment,
@@ -418,13 +455,3 @@ function Comment({
     </div>
   );
 }
-
-type CommentWithAuthor = Post & {
-  author: {
-    id: number;
-    username: string;
-    imageUrl?: string;
-  };
-  replies?: CommentWithAuthor[];
-  depth?: number;
-};

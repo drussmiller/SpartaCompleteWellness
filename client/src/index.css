@@ -4,6 +4,30 @@
     transform: translateX(100%);
   }
   100% {
+
+/* Facebook-style slide transition for comment pages */
+.comments-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: white;
+  z-index: 50;
+  animation: slideInFromRight 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
     transform: translateX(0);
   }
 }
