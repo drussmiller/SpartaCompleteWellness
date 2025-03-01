@@ -9,6 +9,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 type PostWithAuthor = Post & {
   author?: {
@@ -30,6 +38,10 @@ export default function CommentsPage() {
     id: null,
     username: null,
   });
+  const [selectedComment, setSelectedComment] = useState<PostWithAuthor | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState("");
 
   const postQuery = useQuery<PostWithAuthor>({
     queryKey: ["/api/posts", postId],
@@ -87,10 +99,81 @@ export default function CommentsPage() {
     },
   });
 
+  const editCommentMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedComment) return;
+      const res = await apiRequest("PATCH", `/api/posts/${selectedComment.id}`, {
+        content: editedContent.trim()
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to edit comment");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ description: "Comment updated successfully" });
+      setIsEditing(false);
+      setIsDrawerOpen(false);
+      setSelectedComment(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to edit comment"
+      });
+    }
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedComment) return;
+      const res = await apiRequest("DELETE", `/api/posts/${selectedComment.id}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete comment");
+      }
+    },
+    onSuccess: () => {
+      toast({ description: "Comment deleted successfully" });
+      setIsDrawerOpen(false);
+      setSelectedComment(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to delete comment"
+      });
+    }
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
     addCommentMutation.mutate();
+  };
+
+  const handleCommentClick = (comment: PostWithAuthor) => {
+    setSelectedComment(comment);
+    setEditedContent(comment.content || "");
+    setIsDrawerOpen(true);
+  };
+
+  const handleCopyComment = () => {
+    if (!selectedComment?.content) return;
+    navigator.clipboard.writeText(selectedComment.content)
+      .then(() => {
+        toast({ description: "Comment copied to clipboard" });
+        setIsDrawerOpen(false);
+      })
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          description: "Failed to copy comment"
+        });
+      });
   };
 
   const renderComment = (comment: PostWithAuthor, depth = 0) => (
@@ -109,7 +192,10 @@ export default function CommentsPage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm">
+          <div 
+            className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm cursor-pointer hover:bg-muted/30"
+            onClick={() => handleCommentClick(comment)}
+          >
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
           </div>
@@ -123,10 +209,13 @@ export default function CommentsPage() {
             <Button
               size="sm"
               className="h-8 px-4 bg-background hover:bg-background/90"
-              onClick={() => setReplyTo({ 
-                id: comment.id, 
-                username: comment.author?.username || null 
-              })}
+              onClick={(e) => {
+                e.stopPropagation();
+                setReplyTo({ 
+                  id: comment.id, 
+                  username: comment.author?.username || null 
+                });
+              }}
             >
               Reply
             </Button>
@@ -272,6 +361,94 @@ export default function CommentsPage() {
           </form>
         </div>
       </div>
+
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-2xl">
+            <DrawerHeader>
+              <DrawerTitle>
+                {isEditing ? "Edit Comment" : "Comment Options"}
+              </DrawerTitle>
+            </DrawerHeader>
+            {isEditing ? (
+              <div className="p-4">
+                <Input
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="mb-4"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => editCommentMutation.mutate()}
+                    disabled={!editedContent.trim() || editCommentMutation.isPending}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 space-y-2">
+                <Button
+                  className="w-full justify-start h-12"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    if (selectedComment) {
+                      setReplyTo({
+                        id: selectedComment.id,
+                        username: selectedComment.author?.username || null
+                      });
+                    }
+                  }}
+                >
+                  Reply
+                </Button>
+                {selectedComment?.author?.id === user.id && (
+                  <>
+                    <Button
+                      className="w-full justify-start h-12"
+                      variant="ghost"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      className="w-full justify-start h-12 text-destructive hover:text-destructive"
+                      variant="ghost"
+                      onClick={() => deleteCommentMutation.mutate()}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
+                <Button
+                  className="w-full justify-start h-12"
+                  variant="ghost"
+                  onClick={handleCopyComment}
+                >
+                  Copy
+                </Button>
+                <DrawerFooter className="p-0">
+                  <DrawerClose asChild>
+                    <Button
+                      className="w-full justify-start h-12"
+                      variant="ghost"
+                    >
+                      Close
+                    </Button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
