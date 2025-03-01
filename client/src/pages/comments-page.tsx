@@ -115,16 +115,14 @@ export default function CommentsPage() {
           </div>
           <div className="flex gap-2 mt-2">
             <Button
-              variant="outline"
               size="sm"
-              className="h-8 px-4 bg-background hover:bg-background"
+              className="h-8 px-4 bg-background hover:bg-background/90"
             >
               Like
             </Button>
             <Button
-              variant="outline"
               size="sm"
-              className="h-8 px-4 bg-background hover:bg-background"
+              className="h-8 px-4 bg-background hover:bg-background/90"
               onClick={() => setReplyTo({ 
                 id: comment.id, 
                 username: comment.author?.username || null 
