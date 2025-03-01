@@ -77,63 +77,55 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
   return (
     <div className="rounded-lg border bg-white shadow-sm relative">
-      <div className="flex justify-between items-center"> {/* Added flex and justify-between */}
-        <div>
-          <div className="p-4">
-            <div className="flex items-center mb-4">
-              <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
-                <img
-                  src={post.author?.imageUrl || "/default-avatar.jpg"}
-                  alt={post.author?.username || "User"}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div>
-                <Link
-                  to={`/profile/${post.author?.id}`}
-                  className="font-semibold text-gray-900 hover:underline"
-                >
-                  {post.author?.username || "Anonymous"}
-                </Link>
-                <div className="text-xs text-gray-500">
-                  {getPostDate(post.createdAt?.toString() || "")}
-                  {" • "}
-                  {getPostTypeLabel(post.type)}
-                  {post.points > 0 && ` • ${post.points} points`}
-                </div>
-              </div>
-            </div>
-            <div className="text-gray-700 mb-4">{post.content}</div>
-            {post.imageUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden">
-                <img
-                  src={post.imageUrl}
-                  alt="Post image"
-                  className="w-full object-cover"
-                />
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setShowComments(!showComments)}
-                className="inline-flex items-center text-gray-500 hover:text-gray-700"
-              >
-                <MessageSquare className="h-5 w-5 mr-1" />
-                <span>{commentCount} comments</span>
-              </button>
+      <PostOptionsMenu 
+        postId={post.id} 
+        onDelete={handleDeletePost} 
+        isOwner={isPostOwner || user?.isAdmin}
+      />
+
+      <div className="p-4">
+        <div className="flex items-center mb-4">
+          <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
+            <img
+              src={post.author?.imageUrl || "/default-avatar.jpg"}
+              alt={post.author?.username || "User"}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div>
+            <Link
+              to={`/profile/${post.author?.id}`}
+              className="font-semibold text-gray-900 hover:underline"
+            >
+              {post.author?.username || "Anonymous"}
+            </Link>
+            <div className="text-xs text-gray-500">
+              {getPostDate(post.createdAt?.toString() || "")}
+              {" • "}
+              {getPostTypeLabel(post.type)}
+              {post.points > 0 && ` • ${post.points} points`}
             </div>
           </div>
         </div>
-        {/* Options button moved to the right */}
-        {user && post.userId === user.id && (
-          <div className="ml-4"> {/* Added margin-left for spacing */}
-            <PostOptionsMenu
-              postId={post.id}
-              onDelete={handleDeletePost}
-              //onEdit={onEdit}  Assuming onEdit is not implemented yet.
+        <div className="text-gray-700 mb-4">{post.content}</div>
+        {post.imageUrl && (
+          <div className="mb-4 rounded-lg overflow-hidden">
+            <img
+              src={post.imageUrl}
+              alt="Post image"
+              className="w-full object-cover"
             />
           </div>
         )}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowComments(!showComments)}
+            className="inline-flex items-center text-gray-500 hover:text-gray-700"
+          >
+            <MessageSquare className="h-5 w-5 mr-1" />
+            <span>{commentCount} comments</span>
+          </button>
+        </div>
       </div>
       {showComments && (
         <div className="border-t p-4">

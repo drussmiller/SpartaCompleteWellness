@@ -1,28 +1,38 @@
-import React, { useState } from "react";
-import { MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { 
-  Drawer, 
-  DrawerContent, 
-  DrawerHeader, 
-  DrawerTitle, 
-  DrawerFooter 
-} from "@/components/ui/drawer";
+import { useState } from "react";
+import { MoreHorizontal, Pencil, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 
-interface PostOptionsMenuProps {
+interface Props {
   postId: number;
-  onDelete: (postId: number) => void;
-  onEdit: (postId: number) => void;
+  isOwner: boolean;
+  onPostDeleted?: () => void;
 }
 
-export function PostOptionsMenu({ postId, onDelete, onEdit }: PostOptionsMenuProps) {
+export function PostOptionsMenu({ postId, isOwner, onPostDeleted }: Props) {
   const { toast } = useToast();
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDeletePost = async () => {
     try {
       const response = await fetch(`/api/posts/${postId}`, {
         method: "DELETE",
@@ -36,7 +46,10 @@ export function PostOptionsMenu({ postId, onDelete, onEdit }: PostOptionsMenuPro
 
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-        onDelete(postId);
+
+        if (onPostDeleted) {
+          onPostDeleted();
+        }
       } else {
         toast({
           title: "Error",
@@ -51,51 +64,62 @@ export function PostOptionsMenu({ postId, onDelete, onEdit }: PostOptionsMenuPro
         variant: "destructive",
       });
     }
-    setOpen(false);
   };
 
-  const handleEdit = () => {
-    onEdit(postId);
-    setOpen(false);
-  };
+  if (!isOwner) {
+    return null;
+  }
 
   return (
     <>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="absolute right-3 top-3 h-7 w-7 hover:bg-gray-100"
-        onClick={() => setOpen(true)}
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem 
+            className="cursor-pointer"
+            onClick={() => {
+              // TODO: Implement edit post
+              toast({
+                title: "Coming soon",
+                description: "Edit functionality is coming soon!",
+              });
+            }}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            className="cursor-pointer text-red-600"
+            onClick={() => setIsDeleteAlertOpen(true)}
+          >
+            <Trash className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Post Options</DrawerTitle>
-          </DrawerHeader>
-          <div className="flex flex-col p-0">
-            <button
-              className="w-full p-4 text-blue-600 font-semibold flex justify-center border-b hover:bg-muted text-lg"
-              onClick={handleEdit}
-            >
-              Edit Post
-            </button>
-            <button
-              className="w-full p-4 text-red-600 font-semibold flex justify-center hover:bg-muted text-lg"
-              onClick={handleDelete}
-            >
-              Delete Post
-            </button>
-          </div>
-          <DrawerFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your post.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePost} className="bg-red-600">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
