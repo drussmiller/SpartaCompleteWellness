@@ -123,11 +123,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         <div className="mb-3">
           <p className="whitespace-pre-wrap break-words">{post.content}</p>
           {post.imageUrl && (
-            <div className="flex justify-center w-full mt-2">
+            <div className="w-full mx-[-1rem] mt-2">
               <img 
                 src={post.imageUrl} 
                 alt="Post image" 
-                className="mt-2 rounded-md max-h-96 object-contain mx-auto" 
+                className="w-full object-contain" 
               />
             </div>
           )}
