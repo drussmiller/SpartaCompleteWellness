@@ -12,7 +12,7 @@ import { InsertUser, insertUserSchema } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 
-type LoginForm = Pick<InsertUser, "email" | "password">;
+type LoginData = Pick<InsertUser, "username" | "password">;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -25,23 +25,20 @@ export default function AuthPage() {
     }
   }, [user, setLocation]);
 
-  const loginForm = useForm<LoginForm>({
-    resolver: zodResolver(insertUserSchema.pick({ email: true, password: true })),
+  const loginForm = useForm<LoginData>({
+    resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
   });
 
   const registerForm = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema.extend({
-      preferredName: z.string().optional()
-    })),
+    resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: "",
       email: "",
       password: "",
-      preferredName: "",
     },
   });
 
@@ -63,10 +60,10 @@ export default function AuthPage() {
                   <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
                     <FormField
                       control={loginForm.control}
-                      name="email"
+                      name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Username</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -87,7 +84,7 @@ export default function AuthPage() {
                     />
                     {loginMutation.error && (
                       <p className="text-red-500 text-sm mb-2">
-                        Please check your email and password and try again.
+                        Please check your username and password and try again.
                       </p>
                     )}
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
@@ -131,18 +128,6 @@ export default function AuthPage() {
                           <FormLabel>Password</FormLabel>
                           <FormControl>
                             <Input type="password" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="preferredName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preferred Name (Optional)</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
                           </FormControl>
                         </FormItem>
                       )}

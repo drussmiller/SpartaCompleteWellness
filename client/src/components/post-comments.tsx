@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageCircle } from "lucide-react";
 import { formatDistance } from "date-fns";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { Post } from "@shared/schema";
 
 type CommentWithAuthor = {
   id: number;
@@ -255,7 +256,7 @@ function Comment({
             </Drawer>
 
             {hasReplies && (
-              <button 
+              <button
                 className="font-medium hover:underline flex items-center"
                 onClick={() => setShowReplies(!showReplies)}
               >
@@ -292,7 +293,7 @@ export function PostComments({ postId }: { postId: number }) {
   const [replyTo, setReplyTo] = useState<{ id: number | null; username: string | null }>({ id: null, username: null });
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: comments = [], isLoading, refetch } = useQuery({
+  const { data: comments = [], isLoading, refetch } = useQuery<CommentWithAuthor[]>({
     queryKey: ["/api/posts/comments", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
