@@ -232,6 +232,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Move notifications routes before the user management routes
+  app.get("/api/notifications", async (req, res) => {
+    console.log('GET /api/notifications - Request received');
+    console.log('User authenticated:', !!req.user);
+    console.log('Headers:', req.headers);
+
+    if (!req.user) {
+      console.log('User not authenticated, returning 401');
+      return res.sendStatus(401);
+    }
+
+    try {
+      console.log('Fetching notifications for user:', req.user.id);
+      const notifications = await storage.getUnreadNotifications(req.user.id);
+      console.log('Found notifications:', notifications);
+      res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    console.log('POST /api/notifications/:id/read - Request received');
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
+      res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", async (req, res) => {
+    console.log('DELETE /api/notifications/:id - Request received');
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      // First check if the notification exists and belongs to the user
+      const [notification] = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.id, parseInt(req.params.id)));
+
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      if (notification.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this notification" });
+      }
+
+      await storage.deleteNotification(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
   // Posts
   app.post("/api/posts", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -815,135 +876,583 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Notification routes
-  app.get("/api/notifications", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    const notifications = await storage.getUnreadNotifications(req.user.id);
-    res.json(notifications);
-  });
 
-  app.post("/api/notifications/:id/read", async (req, res) => {
+  // User
+  app.get("/api/user", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const notification = await storage.markNotificationAsRead(parseInt(req.params.id));
-      res.json(notification);
+      const weekInfo = await storage.getUserWeekInfo(req.user.id);
+
+      // Get the user's first Monday (if they're in a team)
+      let firstMonday = null;
+      if (req.user.teamJoinedAt) {
+        const joinDate = new Date(req.user.teamJoinedAt);
+        const dayOfWeek = joinDate.getDay();
+        const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+        firstMonday = new Date(joinDate);
+        firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+        firstMonday.setHours(0, 0, 0, 0);
+      }
+
+      // Get user with accurate point total by only counting existing posts
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId,
+          imageUrl: users.imageUrl,
+          points: sql`COALESCE((
+            SELECT CAST(SUM(points) AS INTEGER)
+            FROM ${posts}
+            WHERE user_id = ${users.id}
+            AND type != 'comment'
+          ), 0)`,
+          teamJoinedAt: users.teamJoinedAt
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Always return points as a number
+      const sanitizedUser = {
+        ...user,
+        points: typeof user.points ==='number' ? user.points : 0,
+        weekInfo,
+        programStart: firstMonday?.toISOString() || null
+      };
+
+      res.json(sanitizedUser);
     } catch (error) {
-      console.error('Error marking notification as read:', error);
-      res.status(500).json({ message: "Failed to mark notification as read", error: error instanceof Error ? error.message : "Unknown error" });
+      console.error('Error fetching user:', error);
+      res.status(500).json({ error: "Failed to fetch user data" });
     }
   });
 
-  app.delete("/api/notifications/:id", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-
+  app.post("/api/register", async (req, res, next) => {
     try {
-      // First check if the notification exists and belongs to the user
-      const [notification] = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.id, parseInt(req.params.id)));
-
-      if (!notification) {
-        return res.status(404).json({ message: "Notification not found" });
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
       }
 
-      if (notification.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to delete this notification" });
+      const existingEmail = await storage.getUserByEmail(req.body.email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already exists" });
       }
 
-      await storage.deleteNotification(parseInt(req.params.id));
+      const user = await storage.createUser({
+        ...req.body,
+        password: await hashPassword(req.body.password),
+      });
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Login error after registration:', err);
+          return next(err);
+        }
+        res.status(201).json(user);
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: "Failed to create user" });    }
+  });
+
+  app.post("/api/users/:id/reset-password", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const newPassword = req.body.password;
+      if (!newPassword) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+
+      // Hash the new password using the consistent hashing function
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update the user's password
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, parseInt(req.params.id)));
+
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error deleting notification:', error);
-      res.status(500).json({
-        message: "Failed to delete notification",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
+      console.error('Error resetting password:', error);
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
 
-  // Add endpoint for updating comments
-  app.patch("/api/comments/:id", async (req, res) => {
+  app.post("/api/user/password", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-
     try {
-      const commentId = parseInt(req.params.id);
-      const { content } = req.body;
+      const { currentPassword, newPassword } = req.body;
 
-      if (!content || content.trim() === '') {
-        return res.status(400).json({ message: "Comment content cannot be empty" });
+      // Verify current password
+      const user = await storage.getUser(req.user.id);
+      if (!user || !(await comparePasswords(currentPassword, user.password))) {
+        return res.status(400).json({ message: "Current password is incorrect" });
       }
 
-      // First check if the comment exists
-      const [comment] = await db
-        .select()
-        .from(posts)
-        .where(and(
-          eq(posts.id, commentId),
-          eq(posts.type, 'comment')
-        ));
+      // Hash and update the new password
+      const hashedPassword = await hashPassword(newPassword);
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, req.user.id));
 
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
-      }
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error updating password:', error);
+      res.status(500).json({ message: "Failed to update password" });
+    }
+  });
 
-      // Allow users to update their own comments only
-      if (comment.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to update this comment" });
-      }
+  app.post("/api/users/:id/team", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const userId = parseInt(req.params.id);
+      const { teamId } = req.body;
 
-      // Update the comment
-      const [updatedComment] = await db
-        .update(posts)
-        .set({ content })
-        .where(eq(posts.id, commentId))
+      // If teamId is not provided or null, user is being removed from team
+      const updateData = teamId ? {
+        teamId,
+        teamJoinedAt: new Date()
+      } : {
+        teamId: null,
+        teamJoinedAt: null
+      };
+
+      // Update user's team and join date
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
         .returning();
 
-      res.json(updatedComment);
+      // Send notification to user about team assignment
+      if (teamId) {
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, teamId));
+
+        if (team) {
+          await sendNotification(
+            userId,
+            "Team Assignment",
+            `You have been assigned to team ${team.name}. Your program will start on the first Monday after today.`
+          );
+        }
+      }
+
+      res.json(updatedUser);
     } catch (error) {
-      console.error('Error updating comment:', error);
+      console.error('Error updating user team:', error);
+      res.status(500).json({ error: "Failed to update user team" });
+    }
+  });
+
+  // Update user team join date endpoint
+  app.post("/api/users/:id/team-join-date", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const userId = parseInt(req.params.id);
+      const { teamJoinedAt } = req.body;
+
+      // Update the user's team join date
+      const [updatedUser] = await db
+        .update(users)
+        .set({ teamJoinedAt: new Date(teamJoinedAt) })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating team join date:', error);
+      res.status(500).json({ error: "Failed to update team join date" });
+    }
+  });
+
+  app.post("/api/users/:id/toggle-admin", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    const userId = parseInt(req.params.id);
+    const { isAdmin } = req.body;
+
+    try {
+      await db
+        .update(users)
+        .set({ isAdmin })
+        .where(eq(users.id, userId));
+
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update admin status" });
+    }
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await storage.deleteUser(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Add video routes
+  app.get("/api/videos", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const videos = await storage.getVideos(req.user.teamId);
+      res.json(videos);
+    } catch (error) {
+      console.error('Error fetching videos:', error);
       res.status(500).json({
-        message: "Failed to update comment",
+        message: "Failed to fetch videos",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
 
-  // Add endpoint for deleting comments
-  app.delete("/api/comments/:id", async (req, res) => {
+  // Add this route before your existing routes
+  async function getCurrentActivity(req: any, res: any) {
     if (!req.user) return res.sendStatus(401);
 
     try {
-      const commentId = parseInt(req.params.id);
+      const weekInfo = await storage.getUserWeekInfo(req.user.id);
 
-      // First check if the comment exists
-      const [comment] = await db
-        .select()
-        .from(posts)
-        .where(and(
-          eq(posts.id, commentId),
-          eq(posts.type, 'comment')
-        ));
-
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
+      if (!weekInfo) {
+        return res.status(404).json({
+          message: "No activities available yet. Activities will start on the first Monday after joining a team."
+        });
       }
 
-      // Allow users to delete their own comments or if they are admin
-      if (comment.userId !== req.user.id && !req.user.isAdmin) {
-        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      // Get activity for current week and day
+      const [activity] = await db
+        .select({
+          activity: {
+            id: activities.id,
+            week: activities.week,
+            day: activities.day,
+            memoryVerse: activities.memoryVerse,
+            memoryVerseReference: activities.memoryVerseReference,
+            scripture: activities.scripture,
+            workout: activities.workout,
+            tasks: activities.tasks,
+            description: activities.description,
+            isComplete: activities.isComplete,
+            completedAt: activities.completedAt,
+            createdAt: activities.createdAt
+          },
+          workoutVideos: sql<string>`
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', ${workoutVideos.id},
+                  'url', ${workoutVideos.url},
+                  'description', ${workoutVideos.description}
+                )
+              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
+              '[]'::json
+            )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(
+          and(
+            eq(activities.week, weekInfo.week),
+            eq(activities.day, weekInfo.day)
+          )
+        )
+        .groupBy(activities.id);
+
+      if (!activity) {
+        return res.status(404).json({
+          message: `No activity found for Week ${weekInfo.week}, Day ${weekInfo.day}`
+        });
       }
 
-      // Delete the comment
-      await db.delete(posts).where(eq(posts.id, commentId));
+      // Include week info in response
+      res.json({
+        ...activity,
+        currentWeek: weekInfo.week,
+        currentDay: weekInfo.day
+      });
 
+    } catch (error) {
+      console.error('Error fetching current activity:', error);
+      res.status(500).json({ 
+        error: "Failed to fetch activity",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  // Add new route for current activity
+  app.get("/api/activities/current", getCurrentActivity);
+
+  // Activities endpoints
+  app.get("/api/activities", async (req, res) => {
+    const { week, day } = req.query;
+    try {
+      let query = db
+        .select({
+          activity: activities,
+          workoutVideos: sql<string>`json_agg(
+            json_build_object(
+              'id', ${workoutVideos}.id,
+              'url', ${workoutVideos}.url,
+              'description', ${workoutVideos}.description
+            )
+          )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .groupBy(activities.id);
+
+      if (week) {
+        query = query.where(eq(activities.week, Number(week)));
+      }
+      if (day) {
+        query = query.where(eq(activities.day, Number(day)));
+      }
+
+      const results = await query;
+
+      // Map the results to include workout videos
+      const mappedActivities = results.map(result => ({
+        ...result.activity,
+        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ? 
+          (typeof result.workoutVideos === 'string' ? 
+            JSON.parse(result.workoutVideos) : 
+            result.workoutVideos) 
+          : []
+      }));
+
+      res.json(mappedActivities);
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      res.status(500).json({ error: "Failed to fetch activities" });
+    }
+  });
+
+  app.post("/api/activities", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      console.log('Received activity data:', req.body);
+
+      const activityData = insertActivitySchema.parse({
+        ...req.body,
+        week: Number(req.body.week),
+        day: Number(req.body.day),
+        workoutVideos: Array.isArray(req.body.workoutVideos) ? req.body.workoutVideos : []
+      });
+
+      const activity = await storage.createActivity(activityData);
+      res.status(201).json(activity);
+    } catch (error) {
+      console.error('Error in POST /api/activities:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: 'Validation Error',
+          details: error.errors 
+        });
+      }
+      res.status(500).json({ 
+        error: 'Failed to create activity',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.put("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      const activityId = parseInt(req.params.id);
+      const { workoutVideos: newWorkoutVideos, ...activityData } = req.body;
+
+      // Start transaction to ensure data consistency
+      await db.transaction(async (tx) => {
+        try {
+          // Update activity
+          await tx
+            .update(activities)
+            .set(activityData)
+            .where(eq(activities.id, activityId));
+
+          // Handle workout videos within transaction
+          await tx
+            .delete(workoutVideos)
+            .where(eq(workoutVideos.activityId, activityId));
+
+          if (newWorkoutVideos && newWorkoutVideos.length > 0) {
+            await tx
+              .insert(workoutVideos)
+              .values(
+                newWorkoutVideos.map((video: { url: string; description: string }) => ({
+                  activityId,
+                  url: video.url,
+                  description: video.description
+                }))
+              );
+          }
+        } catch (error) {
+          // Rollback on error
+          throw error;
+        }
+      });
+
+      // Fetch updated activity with workout videos after transaction completes
+      const [updatedActivity] = await db
+        .select({
+          activity: activities,
+          workoutVideos: sql<string>`COALESCE(
+            json_agg(
+              json_build_object(
+                                'id', ${workoutVideos}.id,
+                'url', ${workoutVideos}.url,
+                'description', ${workoutVideos}.description
+              )
+            ) FILTER (WHERE ${workoutVideos}.id IS NOT NULL),
+            '[]'::json
+          )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(eq(activities.id, activityId))
+        .groupBy(activities.id);
+
+      if (!updatedActivity) {
+        return res.status(404).json({ error: "Activity not found" });
+      }
+
+      // Parse the workout videos carefully
+      let parsedWorkoutVideos = [];
+      try {
+        parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
+      } catch (error) {
+        console.error('Error parsing workout videos:', error);
+        return res.status(500).json({ 
+          error: "Failed to parse workout videos",
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+
+      res.json({
+        ...updatedActivity.activity,
+        workoutVideos: parsedWorkoutVideos
+      });
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation Error', details: error.errors });
+      } else {
+        res.status(500).json({ 
+          error: "Failed to update activity",
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+  });
+
+  app.delete("/api/activities/:id", requireAdmin, async (req, res) => {
+    try {
+      await db
+        .delete(activities)
+        .where(eq(activities.id, parseInt(req.params.id)));
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      console.error('Error deleting activity:', error);
+      res.status(500).json({ error: "Failed to delete activity" });
+    }
+  });
+
+  app.post("/api/videos", requireAdmin, async (req, res) => {
+    try {
+      const videoData = insertVideoSchema.parse(req.body);
+      const video = await storage.createVideo(videoData);
+      res.status(201).json(video);
+    } catch (e) {      console.error('Error creating video:', e);
+      if (e instanceof z.ZodError) {        res.status(400).json({
+          error: 'Validation Error',
+          details: e.errors        });
+      } else {
+        res.status(500).json({
+          error: 'Internal ServerError',
+          message: e instanceof Error ? e.message : 'Unknown error occurred'
+        });
+      }
+    }
+  });
+
+  app.delete("/api/videos/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      await storage.deleteVideo(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting video:', error);
       res.status(500).json({
-        message: "Failed to delete comment",
+        message: "Failed to delete video",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  app.get("/api/users", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+    try {
+      const users = await storage.getAllUsers();
+      console.log("Fetched users count:", users.length);
+
+      // Calculate program start dates for all users
+      const enhancedUsers = await Promise.all(users.map(async (user) => {
+        const weekInfo = await storage.getUserWeekInfo(user.id);
+
+        let firstMonday = null;
+        if (user.teamJoinedAt) {
+          // Set the program start date to the first Monday on or after the join date
+          const joinDate = new Date(user.teamJoinedAt);
+          const dayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          
+
+          // If the user joined on Monday, start that day
+          // Otherwise, find the next Monday
+          const daysUntilMonday = dayOfWeek === 1 ? 0 : (dayOfWeek === 0 ? 1 : 8 - dayOfWeek);
+          
+
+          firstMonday = new Date(joinDate);
+          firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+          firstMonday.setHours(0, 0, 0, 0);
+          
+
+          // For Russ specifically (userId 9), hardcode to Feb 10, 2025
+          if (user.id === 9) {
+            firstMonday = new Date('2025-02-10T00:00:00.000Z');
+          }
+        }
+
+        return {
+          ...user,
+          weekInfo,
+          programStart: firstMonday?.toISOString() || null
+        };
+      }));
+
+      res.json(enhancedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ error: "Failed to fetch users" });
     }
   });
 
@@ -1130,6 +1639,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add this route before your existing routes
+  async function getCurrentActivity(req: any, res: any) {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      const weekInfo = await storage.getUserWeekInfo(req.user.id);
+
+      if (!weekInfo) {
+        return res.status(404).json({
+          message: "No activities available yet. Activities will start on the first Monday after joining a team."
+        });
+      }
+
+      // Get activity for current week and day
+      const [activity] = await db
+        .select({
+          activity: {
+            id: activities.id,
+            week: activities.week,
+            day: activities.day,
+            memoryVerse: activities.memoryVerse,
+            memoryVerseReference: activities.memoryVerseReference,
+            scripture: activities.scripture,
+            workout: activities.workout,
+            tasks: activities.tasks,
+            description: activities.description,
+            isComplete: activities.isComplete,
+            completedAt: activities.completedAt,
+            createdAt: activities.createdAt
+          },
+          workoutVideos: sql<string>`
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'id', ${workoutVideos.id},
+                  'url', ${workoutVideos.url},
+                  'description', ${workoutVideos.description}
+                )
+              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
+              '[]'::json
+            )`
+        })
+        .from(activities)
+        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
+        .where(
+          and(
+            eq(activities.week, weekInfo.week),
+            eq(activities.day, weekInfo.day)
+          )
+        )
+        .groupBy(activities.id);
+
+      if (!activity) {
+        return res.status(404).json({
+          message: `No activity found for Week ${weekInfo.week}, Day ${weekInfo.day}`
+        });
+      }
+
+      // Include week info in response
+      res.json({
+        ...activity,
+        currentWeek: weekInfo.week,
+        currentDay: weekInfo.day
+      });
+
+    } catch (error) {
+      console.error('Error fetching current activity:', error);
+      res.status(500).json({ 
+        error: "Failed to fetch activity",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  // Add new route for current activity
+  app.get("/api/activities/current", getCurrentActivity);
+
   // Activities endpoints
   app.get("/api/activities", async (req, res) => {
     const { week, day } = req.query;
@@ -1175,7 +1761,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add this route after your existing routes
   app.post("/api/activities", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
 
@@ -1285,8 +1870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating activity:', error);
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: 'Validation Error', details: error.errors });
-      } else {
+        res.status(400).json({ error: 'Validation Error', details: error.errors });} else {
         res.status(500).json({ 
           error: "Failed to update activity",
           details: error instanceof Error ? error.message : 'Unknown error'
@@ -1339,156 +1923,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User
-  app.get("/api/user", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const weekInfo = await storage.getUserWeekInfo(req.user.id);
-
-      // Get the user's first Monday (if they're in a team)
-      let firstMonday = null;
-      if (req.user.teamJoinedAt) {
-        const joinDate = new Date(req.user.teamJoinedAt);
-        const dayOfWeek = joinDate.getDay();
-        const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-        firstMonday = new Date(joinDate);
-        firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-        firstMonday.setHours(0, 0, 0, 0);
-      }
-
-      // Get user with accurate point total by only counting existing posts
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          isAdmin: users.isAdmin,
-          teamId: users.teamId,
-          imageUrl: users.imageUrl,
-          points: sql`COALESCE((
-            SELECT CAST(SUM(points) AS INTEGER)
-            FROM ${posts}
-            WHERE user_id = ${users.id}
-            AND type != 'comment'
-          ), 0)`,
-          teamJoinedAt: users.teamJoinedAt
-        })
-        .from(users)
-        .where(eq(users.id, req.user.id));
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      // Always return points as a number
-      const sanitizedUser = {
-        ...user,
-        points: typeof user.points ==='number' ? user.points : 0,
-        weekInfo,
-        programStart: firstMonday?.toISOString() || null
-      };
-
-      res.json(sanitizedUser);
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      res.status(500).json({ error: "Failed to fetch user data" });
-    }
-  });
-
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ error: "Username already exists" });
-      }
-
-      const existingEmail = await storage.getUserByEmail(req.body.email);
-      if (existingEmail) {
-        return res.status(400).json({ error: "Email already exists" });
-      }
-
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-      });
-
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Login error after registration:', err);
-          return next(err);
-        }
-        res.status(201).json(user);
-      });
-    } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ error: "Failed to create user" });    }
-  });
-
-  app.post("/api/users/:id/reset-password", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
-    try {
-      const newPassword = req.body.password;
-      if (!newPassword) {
-        return res.status(400).json({ error: "Password is required" });
-      }
-
-      // Hash the new password using the consistent hashing function
-      const hashedPassword = await hashPassword(newPassword);
-
-      // Update the user's password
-      await db
-        .update(users)
-        .set({ password: hashedPassword })
-        .where(eq(users.id, parseInt(req.params.id)));
-
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      res.status(500).json({ error: "Failed to reset password" });
-    }
-  });
-
-  app.post("/api/user/password", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const { currentPassword, newPassword } = req.body;
-
-      // Verify current password
-      const user = await storage.getUser(req.user.id);
-      if (!user || !(await comparePasswords(currentPassword, user.password))) {
-        return res.status(400).json({ message: "Current password is incorrect" });
-      }
-
-      // Hash and update the new password
-      const hashedPassword = await hashPassword(newPassword);
-      await db
-        .update(users)
-        .set({ password: hashedPassword })
-        .where(eq(users.id, req.user.id));
-
-      res.sendStatus(200);
-    } catch (error) {
-      console.error('Error updating password:', error);
-      res.status(500).json({ message: "Failed to update password" });
-    }
-  });
-
-  const httpServer = createServer(app);
-
-  // Setup WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  wss.on('connection', (ws, req) => {
-    const userId = req.url?.split('userId=')[1];
-    if (userId) {
-      clients.set(parseInt(userId), ws);
-
-      ws.on('close', () => {
-        clients.delete(parseInt(userId));
-      });
-    }
-  });
-
   // Add test endpoint after existing routes
   app.get("/api/points/test", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -1532,82 +1966,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add this before the activities endpoints
-  async function getCurrentActivity(req: any, res: any) {
-    if (!req.user) return res.sendStatus(401);
+  const httpServer = createServer(app);
 
-    try {
-      const weekInfo = await storage.getUserWeekInfo(req.user.id);
+  // Setup WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-      if (!weekInfo) {
-        return res.status(404).json({
-          message: "No activities available yet. Activities will start on the first Monday after joining a team."
-        });
-      }
+  wss.on('connection', (ws, req) => {
+    const userId = req.url?.split('userId=')[1];
+    if (userId) {
+      clients.set(parseInt(userId), ws);
 
-      // Get activity for current week and day
-      const [activity] = await db
-        .select({
-          activity: {
-            id: activities.id,
-            week: activities.week,
-            day: activities.day,
-            memoryVerse: activities.memoryVerse,
-            memoryVerseReference: activities.memoryVerseReference,
-            scripture: activities.scripture,
-            workout: activities.workout,
-            tasks: activities.tasks,
-            description: activities.description,
-            isComplete: activities.isComplete,
-            completedAt: activities.completedAt,
-            createdAt: activities.createdAt
-          },
-          workoutVideos: sql<string>`
-            COALESCE(
-              json_agg(
-                json_build_object(
-                  'id', ${workoutVideos.id},
-                  'url', ${workoutVideos.url},
-                  'description', ${workoutVideos.description}
-                )
-              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
-              '[]'::json
-            )`
-        })
-        .from(activities)
-        .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
-        .where(
-          and(
-            eq(activities.week, weekInfo.week),
-            eq(activities.day, weekInfo.day)
-          )
-        )
-        .groupBy(activities.id);
-
-      if (!activity) {
-        return res.status(404).json({
-          message: `No activity found for Week ${weekInfo.week}, Day ${weekInfo.day}`
-        });
-      }
-
-      // Include week info in response
-      res.json({
-        ...activity,
-        currentWeek: weekInfo.week,
-        currentDay: weekInfo.day
-      });
-
-    } catch (error) {
-      console.error('Error fetching current activity:', error);
-      res.status(500).json({ 
-        error: "Failed to fetch activity",
-        message: error instanceof Error ? error.message : "Unknown error"
+      ws.on('close', () => {
+        clients.delete(parseInt(userId));
       });
     }
-  }
-
-  // Add new route for current activity
-  app.get("/api/activities/current", getCurrentActivity);
+  });
 
   return httpServer;
 }

@@ -20,12 +20,20 @@ export default function NotificationsPage() {
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications", user?.id],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/notifications`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to fetch notifications");
+      try {
+        const res = await apiRequest("GET", `/api/notifications`);
+        if (!res.ok) {
+          const error = await res.json();
+          console.error('Failed to fetch notifications:', error);
+          throw new Error(error.message || "Failed to fetch notifications");
+        }
+        const data = await res.json();
+        console.log('Fetched notifications:', data);
+        return data;
+      } catch (error) {
+        console.error('Error in notifications query:', error);
+        throw error;
       }
-      return res.json();
     },
     enabled: !!user
   });
@@ -46,7 +54,6 @@ export default function NotificationsPage() {
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: number) => {
-      // Prevent duplicate deletion attempts
       if (deletingIds.includes(notificationId)) {
         return;
       }
@@ -76,13 +83,11 @@ export default function NotificationsPage() {
       });
     },
     onSettled: (_, __, notificationId) => {
-      // Clear the deleting state regardless of success or failure
       setDeletingIds(prev => prev.filter(id => id !== notificationId));
     }
   });
 
   useEffect(() => {
-    // Clean up any existing connection and timeout
     const cleanup = () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -94,7 +99,6 @@ export default function NotificationsPage() {
       setWsConnected(false);
     };
 
-    // Only establish WebSocket connection if user is authenticated
     if (!user) {
       cleanup();
       return;
@@ -128,7 +132,6 @@ export default function NotificationsPage() {
       ws.onclose = () => {
         console.log('WebSocket disconnected, attempting to reconnect...');
         setWsConnected(false);
-        // Attempt to reconnect after 5 seconds
         reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
       };
 
