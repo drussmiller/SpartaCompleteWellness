@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -48,7 +47,7 @@ function CommentActions({
         <div className="text-center py-3 border-b border-gray-200 font-semibold text-lg">
           Comment Actions
         </div>
-        
+
         {showReply && (
           <button
             className="w-full p-4 text-blue-500 font-semibold flex justify-center border-b hover:bg-gray-50"
@@ -60,7 +59,7 @@ function CommentActions({
             Reply
           </button>
         )}
-        
+
         <button
           className="w-full p-4 text-blue-500 font-semibold flex justify-center border-b hover:bg-gray-50"
           onClick={() => {
@@ -70,7 +69,7 @@ function CommentActions({
         >
           Edit
         </button>
-        
+
         <button
           className="w-full p-4 text-red-500 font-semibold flex justify-center border-b hover:bg-gray-50"
           onClick={() => {
@@ -80,7 +79,7 @@ function CommentActions({
         >
           Delete
         </button>
-        
+
         <button
           className="w-full p-4 text-gray-700 font-semibold flex justify-center border-b hover:bg-gray-50"
           onClick={() => {
@@ -90,7 +89,7 @@ function CommentActions({
         >
           Copy
         </button>
-        
+
         <button
           className="w-full p-4 bg-gray-200 text-gray-700 font-semibold flex justify-center mt-2 mb-safe"
           onClick={onClose}
@@ -121,11 +120,11 @@ function Comment({
   const [editText, setEditText] = useState(comment.content);
   const [showReplies, setShowReplies] = useState(depth < 1);
   const [showActions, setShowActions] = useState(false);
-  
+
   // Maximum nesting level
   const maxDepth = 3;
   const canShowMoreReplies = depth < maxDepth;
-  
+
   const deleteCommentMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
@@ -197,11 +196,11 @@ function Comment({
             <AvatarFallback>{comment.author.username.charAt(0).toUpperCase()}</AvatarFallback>
           )}
         </Avatar>
-        
+
         <div className="flex-1">
           <div className="bg-gray-100 rounded-2xl px-3 py-2">
             <div className="font-semibold text-sm">{comment.author.username}</div>
-            
+
             {isEditing ? (
               <div className="mt-1">
                 <Textarea
@@ -234,10 +233,10 @@ function Comment({
               <p className="text-sm whitespace-pre-line">{comment.content}</p>
             )}
           </div>
-          
+
           <div className="flex items-center mt-1 space-x-3 text-xs text-gray-500">
             <span>{formatDistance(new Date(comment.createdAt), new Date(), { addSuffix: true })}</span>
-            
+
             <Drawer>
               <DrawerTrigger asChild>
                 <button className="font-medium hover:underline">Reply</button>
@@ -254,7 +253,7 @@ function Comment({
                 />
               </DrawerContent>
             </Drawer>
-            
+
             {hasReplies && (
               <button 
                 className="font-medium hover:underline flex items-center"
@@ -266,7 +265,7 @@ function Comment({
           </div>
         </div>
       </div>
-      
+
       {/* Render nested replies */}
       {showReplies && hasReplies && (
         <div className="mt-2">
@@ -307,7 +306,7 @@ export function PostComments({ postId }: { postId: number }) {
     mutationFn: async (content: string) => {
       const parentId = replyTo.id || postId;
       const depth = replyTo.id ? 1 : 0; // Set depth based on if it's a reply
-      
+
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
         content: content.trim(),
@@ -315,12 +314,12 @@ export function PostComments({ postId }: { postId: number }) {
         depth,
         imageUrl: null
       });
-      
+
       if (!res.ok) {
         const error = await res.json().catch(() => ({ message: "Failed to post comment" }));
         throw new Error(error.message || "Failed to post comment");
       }
-      
+
       return res.json();
     },
     onSuccess: () => {
@@ -383,7 +382,7 @@ export function PostComments({ postId }: { postId: number }) {
             )}
           </div>
 
-          {/* Comment input */}
+          {/* Comment input - Facebook style */}
           <div className="border rounded-lg overflow-hidden mt-4 bg-white">
             <div className="flex items-start p-3">
               <Avatar className="h-8 w-8 mr-2">
@@ -393,21 +392,41 @@ export function PostComments({ postId }: { postId: number }) {
                   <AvatarFallback>{user?.username.charAt(0).toUpperCase()}</AvatarFallback>
                 )}
               </Avatar>
-              
+
               <div className="flex-1">
-                <Textarea
-                  ref={commentInputRef}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder={replyTo.id ? `Reply to ${replyTo.username}...` : "Write a comment..."}
-                  className="min-h-[80px] border-0 focus-visible:ring-0 p-0 text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.ctrlKey) {
-                      handleSubmitComment();
-                    }
-                  }}
-                />
-                
+                <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-2">
+                  <Textarea
+                    ref={commentInputRef}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={replyTo.id ? `Reply to ${replyTo.username}...` : "Write a comment..."}
+                    className="flex-1 bg-transparent border-none resize-none min-h-0 px-0 py-0 focus-visible:ring-0 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.ctrlKey) {
+                        handleSubmitComment();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleSubmitComment}
+                    disabled={!comment.trim() || createCommentMutation.isPending}
+                    className="rounded-full p-2 h-8 w-8"
+                  >
+                    {createCommentMutation.isPending ? (
+                      <span className="flex items-center">
+                        <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                        Posting...
+                      </span>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                        <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                      </svg>
+                    )}
+                  </Button>
+                </div>
+
                 {replyTo.id && (
                   <div className="flex items-center text-xs text-blue-500 mb-2">
                     <span>Replying to {replyTo.username}</span>
@@ -419,24 +438,6 @@ export function PostComments({ postId }: { postId: number }) {
                     </button>
                   </div>
                 )}
-                
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={handleSubmitComment}
-                    disabled={!comment.trim() || createCommentMutation.isPending}
-                    className="mt-2"
-                  >
-                    {createCommentMutation.isPending ? (
-                      <span className="flex items-center">
-                        <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                        Posting...
-                      </span>
-                    ) : (
-                      "Post"
-                    )}
-                  </Button>
-                </div>
               </div>
             </div>
           </div>

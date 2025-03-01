@@ -150,25 +150,56 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       )}
 
       {post.type !== "comment" && (
-        <Drawer>
-          <DrawerTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowComments(!showComments)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <MessageSquare className="h-4 w-4 mr-1" />
-              {post.commentCount || 0} Comments
-            </Button>
-          </DrawerTrigger>
-          <DrawerContent className="px-4 py-4">
-            <div className="max-w-md mx-auto">
-              <h3 className="font-semibold text-lg mb-4">Comments</h3>
-              <PostComments postId={post.id} />
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowComments(true)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <MessageSquare className="h-4 w-4 mr-1" />
+            {post.commentCount || 0} Comments
+          </Button>
+          
+          {/* Facebook-style slide-over panel */}
+          {showComments && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div className="absolute inset-0 overflow-hidden">
+                {/* Backdrop */}
+                <div 
+                  className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+                  onClick={() => setShowComments(false)}
+                />
+                
+                {/* Slide-over panel */}
+                <div className="fixed inset-y-0 right-0 max-w-full flex">
+                  <div className="w-screen max-w-md transform transition ease-in-out duration-300 translate-x-0">
+                    <div className="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b">
+                        <h2 className="text-lg font-semibold">Comments</h2>
+                        <button
+                          onClick={() => setShowComments(false)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <span className="sr-only">Close panel</span>
+                          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      {/* Comment content */}
+                      <div className="flex-1 p-4">
+                        <PostComments postId={post.id} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </DrawerContent>
-        </Drawer>
+          )}
+        </>
       )}
     </div>
   );
