@@ -177,22 +177,22 @@ export default function CommentsPage() {
   };
 
   const renderComment = (comment: PostWithAuthor, depth = 0) => (
-    <div 
-      key={comment.id} 
+    <div
+      key={comment.id}
       className={`flex flex-col space-y-2 ${depth > 0 ? 'ml-8 pl-4 border-l border-border' : ''}`}
     >
       <div className="flex items-start space-x-3">
         <Avatar className="h-8 w-8">
-          <AvatarImage 
-            src={comment.author?.imageUrl || undefined} 
-            alt={comment.author?.username || ''} 
+          <AvatarImage
+            src={comment.author?.imageUrl || undefined}
+            alt={comment.author?.username || ''}
           />
           <AvatarFallback>
             {comment.author?.username?.[0]?.toUpperCase() || '?'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div 
+          <div
             className="rounded-lg bg-muted/25 p-3 border-[1.5px] border-border/75 shadow-sm cursor-pointer hover:bg-muted/30"
             onClick={() => handleCommentClick(comment)}
           >
@@ -211,9 +211,9 @@ export default function CommentsPage() {
               className="h-8 px-4 bg-background hover:bg-background/90"
               onClick={(e) => {
                 e.stopPropagation();
-                setReplyTo({ 
-                  id: comment.id, 
-                  username: comment.author?.username || null 
+                setReplyTo({
+                  id: comment.id,
+                  username: comment.author?.username || null
                 });
               }}
             >
@@ -245,17 +245,19 @@ export default function CommentsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <div className="container max-w-2xl mx-auto flex-1 pb-24 bg-white">
-        <div className="p-4 bg-white">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/")}
-            className="mr-2"
-          >
-            &lt;
-          </Button>
-          <h1 className="font-bold text-xl inline-block">Comments</h1>
-        </div>
+        <header className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="p-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation("/")}
+              className="mr-2"
+            >
+              &lt;
+            </Button>
+            <h1 className="font-bold text-xl inline-block">Comments</h1>
+          </div>
+        </header>
 
         {postQuery.isLoading ? (
           <div className="flex justify-center p-4 bg-white">
@@ -269,9 +271,9 @@ export default function CommentsPage() {
           <div className="mb-6 bg-white">
             <div className="flex items-start space-x-3 p-4 bg-white">
               <Avatar className="h-10 w-10">
-                <AvatarImage 
-                  src={postQuery.data.author?.imageUrl || undefined} 
-                  alt={postQuery.data.author?.username || ''} 
+                <AvatarImage
+                  src={postQuery.data.author?.imageUrl || undefined}
+                  alt={postQuery.data.author?.username || ''}
                 />
                 <AvatarFallback>
                   {postQuery.data.author?.username?.[0]?.toUpperCase() || '?'}
@@ -333,7 +335,7 @@ export default function CommentsPage() {
           )}
           <form onSubmit={handleSubmit} className="flex items-center space-x-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage 
+              <AvatarImage
                 src={user.imageUrl || undefined}
                 alt={user.username}
               />
@@ -347,7 +349,7 @@ export default function CommentsPage() {
               placeholder={replyTo.id ? "Write a reply..." : "Add a comment..."}
               className="flex-1"
             />
-            <Button 
+            <Button
               type="submit"
               disabled={!comment.trim() || addCommentMutation.isPending}
               size="icon"
