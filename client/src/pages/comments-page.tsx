@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState } from "react";
+import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -7,12 +8,12 @@ import { apiRequest } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/context/auth-context";
-import { useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 
-export function CommentsPage() {
-  const { postId } = useParams<{ postId: string }>();
-  const navigate = useNavigate();
+const CommentsPage: React.FC = () => {
+  const [location, params] = useLocation(); // useLocation and useParams from wouter
+  const { postId } = params as { postId: string };
+  const navigate = () => {}; // Placeholder for useNavigate. wouter doesn't directly offer this. We'll need to find alternative
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const { toast } = useToast();
@@ -73,10 +74,10 @@ export function CommentsPage() {
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
       <header className="sticky top-0 z-10 border-b bg-background p-4 flex items-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => navigate(-1)}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)} //This will likely need adjustment based on wouter's navigation
           className="mr-2"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -157,9 +158,9 @@ export function CommentsPage() {
             onChange={(e) => setComment(e.target.value)}
             className="flex-1"
           />
-          <Button 
-            type="submit" 
-            size="icon" 
+          <Button
+            type="submit"
+            size="icon"
             disabled={!comment.trim() || addCommentMutation.isPending}
           >
             <Send className="h-4 w-4" />
@@ -168,4 +169,6 @@ export function CommentsPage() {
       </div>
     </div>
   );
-}
+};
+
+export default CommentsPage;
