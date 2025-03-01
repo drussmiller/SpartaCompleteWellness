@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Heart, MessageCircle, Trash2, MoreHorizontal } from "lucide-react";
+import { MessageCircle, Trash2, MoreHorizontal } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,7 +16,6 @@ import {
 import { Card } from "@/components/ui/card";
 import { Post } from "@shared/schema";
 import { formatDistance } from "date-fns";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 type PostCardProps = {
   post: Post & {
@@ -36,8 +35,6 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   const [, setLocation] = useLocation();
 
   const isOwnPost = user?.id === post.userId;
-  const isAdmin = user?.isAdmin;
-  const canDelete = isOwnPost || isAdmin;
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
@@ -108,7 +105,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           <div className="flex items-center">
             {getPostTypeTag()}
 
-            {canDelete && (
+            {isOwnPost && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -152,9 +149,9 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           </div>
           <div className="flex items-center">
             <Button 
-              variant="ghost" 
-              size="sm" 
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 bg-background hover:bg-background/90"
+              variant="ghost"
+              size="sm"
               onClick={handleCommentClick}
             >
               <MessageCircle className="h-4 w-4" />
