@@ -21,9 +21,10 @@ export function ProtectedRoute({
 
   return (
     <Route path={path}>
-      {() => {
+      {(params) => {
         console.log('Protected route evaluation:', {
           path,
+          params,
           isAuthenticated: !!user,
           userId: user?.id,
           username: user?.username

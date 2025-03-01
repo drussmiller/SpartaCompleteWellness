@@ -17,30 +17,24 @@ import ActivityManagementPage from "@/pages/activity-management";
 import CommentsPage from "@/pages/comments-page";
 import UsersPage from "@/pages/users-page";
 
-function AppRoutes() {
-  return (
-    <Router>
-      <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/profile" component={ProfilePage} />
-      <ProtectedRoute path="/admin" component={AdminPage} />
-      <ProtectedRoute path="/notifications" component={NotificationsPage} />
-      <ProtectedRoute path="/help" component={HelpPage} />
-      <ProtectedRoute path="/library" component={LibraryPage} />
-      <ProtectedRoute path="/activity" component={ActivityPage} />
-      <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
-      <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
-      <ProtectedRoute path="/users" component={UsersPage} />
-      <Route path="*" component={NotFound} />
-    </Router>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppRoutes />
+        <Router>
+          <Route path="/auth" component={AuthPage} />
+          <ProtectedRoute path="/" component={HomePage} />
+          <ProtectedRoute path="/profile" component={ProfilePage} />
+          <ProtectedRoute path="/admin" component={AdminPage} />
+          <ProtectedRoute path="/notifications" component={NotificationsPage} />
+          <ProtectedRoute path="/help" component={HelpPage} />
+          <ProtectedRoute path="/library" component={LibraryPage} />
+          <ProtectedRoute path="/activity" component={ActivityPage} />
+          <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
+          <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
+          <ProtectedRoute path="/users" component={UsersPage} />
+          <Route path="*" component={NotFound} />
+        </Router>
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
