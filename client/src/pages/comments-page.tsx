@@ -105,14 +105,16 @@ export function CommentsPage() {
             {comment.author?.username?.[0]?.toUpperCase() || '?'}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 space-y-1">
-          <span className="font-semibold">{comment.author?.username}</span>
-          <p className="text-sm">{comment.content}</p>
-          <div className="flex gap-2 mt-2">
+        <div className="flex-1">
+          <div className="rounded-lg bg-muted p-3">
+            <span className="font-semibold">{comment.author?.username}</span>
+            <p className="text-sm mt-1">{comment.content}</p>
+          </div>
+          <div className="flex gap-2 mt-2 px-3">
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4 bg-white"
+              className="h-8 px-4 bg-background"
             >
               <Heart className="h-4 w-4 mr-1" />
               Like
@@ -120,7 +122,7 @@ export function CommentsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-4 bg-white"
+              className="h-8 px-4 bg-background"
               onClick={() => setReplyTo({ 
                 id: comment.id, 
                 username: comment.author?.username || null 
