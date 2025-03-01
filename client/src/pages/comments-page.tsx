@@ -110,7 +110,7 @@ export function CommentsPage() {
             <span className="font-semibold">{comment.author?.username}</span>
             <p className="text-sm mt-1">{comment.content}</p>
           </div>
-          <div className="flex gap-2 mt-2 px-3">
+          <div className="flex gap-2 mt-2">
             <Button
               variant="outline"
               size="sm"
