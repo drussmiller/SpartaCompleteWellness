@@ -15,31 +15,38 @@ export default function NotificationsPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const [deletingIds, setDeletingIds] = useState<number[]>([]);
 
   const { data: notifications } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications"],
-    enabled: !!user // Only fetch notifications when user is authenticated
+    queryKey: ["/api/posts/notifications"],
+    enabled: !!user
   });
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: number) => {
       const res = await apiRequest(
         "POST",
-        `/api/notifications/${notificationId}/read`
+        `/api/posts/notifications/${notificationId}/read`
       );
       if (!res.ok) throw new Error("Failed to mark notification as read");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/notifications"] });
     },
   });
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (notificationId: number) => {
+      // Prevent duplicate deletion attempts
+      if (deletingIds.includes(notificationId)) {
+        return;
+      }
+      setDeletingIds(prev => [...prev, notificationId]);
+
       const res = await apiRequest(
         "DELETE",
-        `/api/notifications/${notificationId}`
+        `/api/posts/notifications/${notificationId}`
       );
       if (!res.ok) {
         const error = await res.json();
@@ -47,7 +54,7 @@ export default function NotificationsPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/notifications"] });
       toast({
         title: "Success",
         description: "Notification deleted successfully",
@@ -60,6 +67,10 @@ export default function NotificationsPage() {
         variant: "destructive",
       });
     },
+    onSettled: (_, __, notificationId) => {
+      // Clear the deleting state regardless of success or failure
+      setDeletingIds(prev => prev.filter(id => id !== notificationId));
+    }
   });
 
   useEffect(() => {
@@ -100,7 +111,7 @@ export default function NotificationsPage() {
             title: notification.title,
             description: notification.message,
           });
-          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/posts/notifications"] });
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }
@@ -164,7 +175,7 @@ export default function NotificationsPage() {
                       {notification.message}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(notification.createdAt).toLocaleString()}
+                      {notification.createdAt && new Date(notification.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -183,7 +194,7 @@ export default function NotificationsPage() {
                       variant="ghost"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => deleteNotificationMutation.mutate(notification.id)}
-                      disabled={deleteNotificationMutation.isPending}
+                      disabled={deleteNotificationMutation.isPending || deletingIds.includes(notification.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
