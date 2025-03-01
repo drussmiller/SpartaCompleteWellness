@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { createServer, type Server } from "http";
+import { createServer } from "http";
 
 // Enhanced error logging
 function logError(prefix: string, error: Error) {
@@ -37,71 +37,54 @@ app.use((req, res, next) => {
 });
 
 // Body parsing middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 async function startServer() {
-  let server: Server;
-
   try {
-    // Log environment status
-    console.log('\n=== Environment Check ===');
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '[Set]' : '[Not Set]');
-    console.log('SESSION_SECRET:', process.env.SESSION_SECRET ? '[Set]' : '[Not Set]');
-    console.log('=====================\n');
+    console.log('[Server] Starting server initialization...');
+    console.log('[Server] Setting up Express application...');
 
-    console.log('[Server] Starting initialization...');
-
-    // Create HTTP server and register routes
-    console.log('[Server] Creating HTTP server...');
-    server = createServer(app);
-    console.log('[Server] HTTP server created');
-
-    console.log('[Server] Registering routes...');
+    // Register routes first
+    console.log('[Server] Beginning route registration...');
     await registerRoutes(app);
-    console.log('[Server] Routes registered');
+    console.log('[Server] Routes registered successfully');
 
     // Setup error handling middleware
+    console.log('[Server] Setting up error handling middleware...');
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       logError('Express Error', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       res.status(status).json({ message });
     });
+    console.log('[Server] Error handling middleware configured');
 
-    // Start listening
+    // Create and start the HTTP server
     const port = 5000;
-    console.log(`[Server] Attempting to listen on port ${port}...`);
+    console.log(`[Server] Creating HTTP server on port ${port}...`);
+    const server = createServer(app);
 
-    await new Promise<void>((resolve, reject) => {
-      server.on('error', (error) => {
-        console.error('[Server] Listen error:', error);
-        reject(error);
-      });
-
+    await new Promise<void>((resolve) => {
       server.listen(port, "0.0.0.0", () => {
-        console.log(`[Server] Successfully listening on port ${port}`);
+        console.log(`[Server] Server successfully listening on port ${port}`);
         resolve();
       });
     });
 
-    // Handle shutdown gracefully
+    // Graceful shutdown handlers
     const shutdown = (signal: string) => {
       console.log(`\n[Server] Received ${signal} signal, shutting down...`);
       server.close(() => {
         console.log('[Server] Server closed');
         process.exit(0);
       });
-
-      setTimeout(() => {
-        console.error('[Server] Forced shutdown after timeout');
-        process.exit(1);
-      }, 5000);
     };
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
+    console.log('[Server] Server startup complete, ready to handle requests');
 
   } catch (error) {
     logError('Server Startup Error', error as Error);
