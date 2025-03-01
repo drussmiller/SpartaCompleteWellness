@@ -1,77 +1,82 @@
+import React, { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import { MoreVertical, Edit, Trash } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-import { useState } from "react";
-import { MoreVertical, Trash2, Edit } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-interface PostOptionsMenuProps {
+export function PostOptionsMenu({ 
+  postId, 
+  onDelete 
+}: { 
   postId: number;
-  onDelete: (id: number) => void;
-  onEdit?: (id: number) => void;
-  isOwner: boolean;
-}
+  onDelete?: () => void;
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [showOptions, setShowOptions] = useState(false);
 
-export function PostOptionsMenu({ postId, onDelete, onEdit, isOwner }: PostOptionsMenuProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deletePostMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/posts/${postId}`);
+      if (!res.ok) {
+        throw new Error("Failed to delete post");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({ description: "Post deleted successfully" });
+      if (onDelete) onDelete();
+      setShowOptions(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to delete post"
+      });
+    }
+  });
 
-  if (!isOwner) return null;
+  if (!user) return null;
 
   return (
-    <div className="absolute top-2 right-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-200">
-          <MoreVertical className="h-5 w-5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {onEdit && (
-            <DropdownMenuItem onClick={() => onEdit(postId)}>
-              <Edit className="mr-2 h-4 w-4" />
-              <span>Edit</span>
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem 
-            onClick={() => setShowDeleteConfirm(true)}
-            className="text-red-600 focus:text-red-600"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            <span>Delete</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="relative mr-2">
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowOptions(!showOptions);
+        }}
+        className="p-1 rounded-full hover:bg-gray-100"
+      >
+        <MoreVertical className="h-5 w-5 text-gray-500" />
+      </button>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Post</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this post? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => onDelete(postId)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showOptions && (
+        <div className="absolute right-0 top-8 w-36 bg-white shadow-lg rounded-md overflow-hidden z-10 border border-gray-200">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Handle edit
+              setShowOptions(false);
+            }}
+            className="flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              deletePostMutation.mutate();
+            }}
+            className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100"
+          >
+            <Trash className="h-4 w-4 mr-2" />
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }
