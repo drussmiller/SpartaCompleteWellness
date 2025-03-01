@@ -1,7 +1,5 @@
-import React, { useState } from "react";
-import { useParams, useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Post } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,6 +7,8 @@ import { Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from "react";
 
 type PostWithAuthor = Post & {
   author?: {
@@ -20,12 +20,12 @@ type PostWithAuthor = Post & {
   depth?: number;
 };
 
-export function CommentsPage() {
+export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
   const [_, setLocation] = useLocation();
   const { user } = useAuth();
-  const [comment, setComment] = useState("");
   const { toast } = useToast();
+  const [comment, setComment] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: number | null; username: string | null }>({
     id: null,
     username: null,
@@ -35,20 +35,24 @@ export function CommentsPage() {
     queryKey: ["/api/posts", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) throw new Error('Failed to fetch post');
+      if (!res.ok) {
+        throw new Error("Failed to fetch post");
+      }
       return res.json();
     },
-    enabled: !!postId
+    enabled: !!postId && !!user,
   });
 
   const commentsQuery = useQuery<PostWithAuthor[]>({
     queryKey: ["/api/posts/comments", postId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) throw new Error('Failed to fetch comments');
+      if (!res.ok) {
+        throw new Error("Failed to fetch comments");
+      }
       return res.json();
     },
-    enabled: !!postId
+    enabled: !!postId && !!user,
   });
 
   const addCommentMutation = useMutation({
@@ -62,10 +66,9 @@ export function CommentsPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ message: "Failed to post comment" }));
-        throw new Error(error.message || "Failed to post comment");
+        const error = await res.json();
+        throw new Error(error.message || "Failed to add comment");
       }
-
       return res.json();
     },
     onSuccess: () => {
@@ -81,7 +84,7 @@ export function CommentsPage() {
         variant: "destructive",
         description: error.message || "Failed to add comment"
       });
-    }
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -139,7 +142,15 @@ export function CommentsPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Please log in to view comments.</p>
+        <p className="text-lg text-muted-foreground">Please log in to view comments</p>
+      </div>
+    );
+  }
+
+  if (!postId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-muted-foreground">Invalid post ID</p>
       </div>
     );
   }
@@ -167,7 +178,7 @@ export function CommentsPage() {
           <div className="p-4 text-destructive">
             {postQuery.error instanceof Error ? postQuery.error.message : 'Failed to load post'}
           </div>
-        ) : postQuery.data && (
+        ) : postQuery.data ? (
           <div className="mb-6">
             <div className="flex items-start space-x-3 p-4">
               <Avatar className="h-10 w-10">
@@ -192,7 +203,7 @@ export function CommentsPage() {
               />
             )}
           </div>
-        )}
+        ) : null}
 
         <div className="divide-y divide-border">
           <h2 className="font-semibold text-lg p-4">Comments</h2>
@@ -234,11 +245,11 @@ export function CommentsPage() {
           <form onSubmit={handleSubmit} className="flex items-center space-x-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarImage 
-                src={user?.imageUrl || undefined} 
-                alt={user?.username || ''} 
+                src={user.imageUrl || undefined}
+                alt={user.username}
               />
               <AvatarFallback>
-                {user?.username?.[0]?.toUpperCase() || '?'}
+                {user.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <Input
