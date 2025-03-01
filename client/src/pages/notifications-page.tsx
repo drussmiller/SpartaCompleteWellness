@@ -28,31 +28,43 @@ export default function NotificationsPage() {
     refetchOnWindowFocus: true
   });
 
-  useEffect(() => {
-    if (user) {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
-      const ws = new WebSocket(wsUrl);
+useEffect(() => {
+  if (user) {
+    console.log('Setting up WebSocket connection for user:', user.id);
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+    console.log('Connecting to WebSocket URL:', wsUrl);
+    const ws = new WebSocket(wsUrl);
 
-      ws.onopen = () => {
-        console.log('WebSocket connection established');
-      };
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
 
-      ws.onmessage = (event) => {
+    ws.onmessage = (event) => {
+      console.log('Received WebSocket message:', event.data);
+      try {
         const notification = JSON.parse(event.data);
-        console.log('Received notification:', notification);
+        console.log('Parsed notification:', notification);
         refetch();
-      };
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
 
-      return () => {
-        ws.close();
-      };
-    }
-  }, [user]);
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    return () => {
+      console.log('Cleaning up WebSocket connection');
+      ws.close();
+    };
+  }
+}, [user]);
 
   async function markAsRead(id: number) {
     setIsMarking(id);

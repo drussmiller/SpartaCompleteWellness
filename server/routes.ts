@@ -5,7 +5,7 @@ import multer from "multer";
 import { db } from "./db";
 import { queryClient } from "../client/src/lib/queryClient";
 import { eq, and, desc, sql, or, gte, lte } from "drizzle-orm";
-import { 
+import {
   posts, notifications, videos, users, teams, activities, workoutVideos,
   insertTeamSchema, insertPostSchema, insertMeasurementSchema,
   insertNotificationSchema, insertVideoSchema, insertActivitySchema
@@ -33,10 +33,10 @@ const requireAdmin = (req: any, res: any, next: any) => {
 async function sendNotification(userId: number, title: string, message: string) {
   try {
     const notificationData = insertNotificationSchema.parse({
-      userId, 
-      title, 
-      message, 
-      read: false, 
+      userId,
+      title,
+      message,
+      read: false,
       createdAt: new Date()
     });
     const notification = await storage.createNotification(notificationData);
@@ -311,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         await tx
           .update(users)
-          .set({ 
+          .set({
             points: sql`COALESCE((
               SELECT CAST(SUM(points) AS INTEGER)
               FROM ${posts}
@@ -349,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(users.id, req.user.id));
 
       // Return both post and updated user data
-      res.status(201).json({ 
+      res.status(201).json({
         post,
         user: updatedUser
       });
@@ -516,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const today = new Date();
 
         // Compare only the date part
-        const isFromPreviousDay = 
+        const isFromPreviousDay =
           postDate.getUTCFullYear() !== today.getUTCFullYear() ||
           postDate.getUTCMonth() !== today.getUTCMonth() ||
           postDate.getUTCDate() !== today.getUTCDate();
@@ -537,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update user's points to reflect the accurate sum
         await tx
           .update(users)
-          .set({ 
+          .set({
             points: sql`COALESCE((
               SELECT CAST(SUM(points) AS INTEGER)
               FROM ${posts}
@@ -577,9 +577,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Updated user points after deletion:', sanitizedUser.points);
 
       // Return success along with updated user data
-      res.json({ 
-        success: true, 
-        user: sanitizedUser 
+      res.json({
+        success: true,
+        user: sanitizedUser
       });
 
     } catch (error) {
@@ -898,7 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always return points as a number
       const sanitizedUser = {
         ...user,
-        points: typeof user.points ==='number' ? user.points : 0,
+        points: typeof user.points === 'number' ? user.points : 0,
         weekInfo,
         programStart: firstMonday?.toISOString() || null
       };
@@ -909,13 +909,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch user data" });
     }
   });
-  
+
   // Add API endpoint for all users
   app.get("/api/users", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const allUsers = await storage.getAllUsers();
-      
+
       // Add points calculation for each user
       const usersWithPoints = await Promise.all(
         allUsers.map(async (user) => {
@@ -930,14 +930,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .from(users)
             .where(eq(users.id, user.id));
-          
-          return {            
-            ...user,
-          points: typeof result?.points === 'number' ? result.points : 0
+
+          return { ...user,
+            points: typeof result?.points === 'number' ? result.points: 0
           };
         })
       );
-      
+
       res.json(usersWithPoints);
     } catch (error) {
       console.error('Error fetching all users:', error);
@@ -1203,7 +1202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Error fetching current activity:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to fetch activity",
         message: error instanceof Error ? error.message : "Unknown error"
       });
@@ -1244,10 +1243,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map the results to include workout videos
       const mappedActivities = results.map(result => ({
         ...result.activity,
-        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ? 
-          (typeof result.workoutVideos === 'string' ? 
-            JSON.parse(result.workoutVideos) : 
-            result.workoutVideos) 
+        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ?
+          (typeof result.workoutVideos === 'string' ?
+            JSON.parse(result.workoutVideos) :
+            result.workoutVideos)
           : []
       }));
 
@@ -1276,12 +1275,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error in POST /api/activities:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Validation Error',
-          details: error.errors 
+          details: error.errors
         });
       }
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to create activity',
         message: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -1354,7 +1353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
       } catch (error) {
         console.error('Error parsing workout videos:', error);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: "Failed to parse workout videos",
           details: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -1368,7 +1367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error updating activity:', error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: 'Validation Error', details: error.errors });} else {
-        res.status(500).json({ 
+        res.status(500).json({
           error: "Failed to update activity",
           details: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -1463,23 +1462,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Setup WebSocket server
+  // existing WebSocket setup at bottom remains unchanged
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws, req) => {
-    console.log('WebSocket connection established');
+    console.log('WebSocket connection attempt');
     const userId = req.url?.split('userId=')[1];
     if (userId) {
       console.log('WebSocket client connected for user:', userId);
       clients.set(parseInt(userId), ws);
 
+      ws.on('message', (data) => {
+        console.log('Received message from user:', userId, data.toString());
+      });
+
       ws.on('close', () => {
         console.log('WebSocket client disconnected for user:', userId);
         clients.delete(parseInt(userId));
       });
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error for user:', userId, error);
+      });
+    } else {
+      console.log('WebSocket connection attempted without userId');
+      ws.close();
     }
   });
 
   return httpServer;
+
 }

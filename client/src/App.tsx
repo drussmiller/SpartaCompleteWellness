@@ -31,7 +31,7 @@ function AppRoutes() {
       <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
       <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
       <ProtectedRoute path="/users" component={UsersPage} />
-      <Route component={NotFound} />
+      <Route path="*" component={NotFound} />
     </>
   );
 }
