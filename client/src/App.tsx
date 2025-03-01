@@ -15,6 +15,7 @@ import LibraryPage from "@/pages/library-page";
 import ActivityPage from "@/pages/activity-page";
 import ActivityManagementPage from "@/pages/activity-management";
 import CommentsPage from "@/pages/comments-page";
+import UsersPage from "@/pages/users-page";
 
 function AppRoutes() {
   return (
@@ -29,6 +30,7 @@ function AppRoutes() {
       <ProtectedRoute path="/activity" component={ActivityPage} />
       <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
       <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
+      <ProtectedRoute path="/users" component={UsersPage} />
       <Route path="/:rest*" component={NotFound} />
     </>
   );
