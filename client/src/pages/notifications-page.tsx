@@ -17,8 +17,16 @@ export default function NotificationsPage() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const [deletingIds, setDeletingIds] = useState<number[]>([]);
 
-  const { data: notifications } = useQuery<Notification[]>({
-    queryKey: ["/api/posts/notifications"],
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications", user?.id],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/notifications`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to fetch notifications");
+      }
+      return res.json();
+    },
     enabled: !!user
   });
 
@@ -26,13 +34,13 @@ export default function NotificationsPage() {
     mutationFn: async (notificationId: number) => {
       const res = await apiRequest(
         "POST",
-        `/api/posts/notifications/${notificationId}/read`
+        `/api/notifications/${notificationId}/read`
       );
       if (!res.ok) throw new Error("Failed to mark notification as read");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     },
   });
 
@@ -46,7 +54,7 @@ export default function NotificationsPage() {
 
       const res = await apiRequest(
         "DELETE",
-        `/api/posts/notifications/${notificationId}`
+        `/api/notifications/${notificationId}`
       );
       if (!res.ok) {
         const error = await res.json();
@@ -54,7 +62,7 @@ export default function NotificationsPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       toast({
         title: "Success",
         description: "Notification deleted successfully",
@@ -111,7 +119,7 @@ export default function NotificationsPage() {
             title: notification.title,
             description: notification.message,
           });
-          queryClient.invalidateQueries({ queryKey: ["/api/posts/notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }
