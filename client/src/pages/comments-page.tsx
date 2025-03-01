@@ -1,23 +1,31 @@
 import React, { useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, Send } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+
+type PostWithAuthor = Post & {
+  author?: {
+    id: number;
+    username: string;
+    imageUrl?: string;
+  };
+};
 
 export function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const [_, navigate] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const postQuery = useQuery({
+  const postQuery = useQuery<PostWithAuthor>({
     queryKey: ["post", postId],
     queryFn: async () => {
       const res = await fetch(`/api/posts/${postId}`);
@@ -26,7 +34,7 @@ export function CommentsPage() {
     },
   });
 
-  const commentsQuery = useQuery({
+  const commentsQuery = useQuery<PostWithAuthor[]>({
     queryKey: ["comments", postId],
     queryFn: async () => {
       const res = await fetch(`/api/posts/${postId}/comments`);
@@ -95,13 +103,18 @@ export function CommentsPage() {
           <div className="mb-6">
             <div className="flex items-start space-x-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={postQuery.data.author?.imageUrl} alt={postQuery.data.author?.username} />
-                <AvatarFallback>{postQuery.data.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                <AvatarImage 
+                  src={postQuery.data?.author?.imageUrl || undefined} 
+                  alt={postQuery.data?.author?.username} 
+                />
+                <AvatarFallback>
+                  {postQuery.data?.author?.username?.[0]?.toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-semibold">{postQuery.data.author?.username}</div>
-                <p className="mt-1">{postQuery.data.content}</p>
-                {postQuery.data.imageUrl && (
+                <div className="font-semibold">{postQuery.data?.author?.username}</div>
+                <p className="mt-1">{postQuery.data?.content}</p>
+                {postQuery.data?.imageUrl && (
                   <img
                     src={postQuery.data.imageUrl}
                     alt="Post image"
@@ -119,15 +132,20 @@ export function CommentsPage() {
           <div className="flex justify-center p-4">Loading comments...</div>
         ) : commentsQuery.error ? (
           <div className="text-red-500 p-4">Error loading comments: {commentsQuery.error.message}</div>
-        ) : commentsQuery.data.length === 0 ? (
+        ) : commentsQuery.data?.length === 0 ? (
           <div className="text-center text-gray-500 p-4">No comments yet. Be the first to comment!</div>
         ) : (
           <div className="space-y-4">
-            {commentsQuery.data.map((comment: Post) => (
+            {commentsQuery.data?.map((comment) => (
               <div key={comment.id} className="flex items-start space-x-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={comment.author?.imageUrl} alt={comment.author?.username} />
-                  <AvatarFallback>{comment.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                  <AvatarImage 
+                    src={comment.author?.imageUrl || undefined} 
+                    alt={comment.author?.username} 
+                  />
+                  <AvatarFallback>
+                    {comment.author?.username?.[0]?.toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="font-semibold">{comment.author?.username}</div>
@@ -143,8 +161,8 @@ export function CommentsPage() {
         <div className="sticky bottom-0 border-t bg-background p-4">
           <form onSubmit={handleSubmit} className="flex items-center space-x-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage src={user?.imageUrl} alt={user?.username} />
-              <AvatarFallback>{user?.username?.[0]?.toUpperCase()}</AvatarFallback>
+              <AvatarImage src={user.imageUrl || undefined} alt={user.username} />
+              <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
             </Avatar>
             <Input
               placeholder="Add a comment..."
