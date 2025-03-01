@@ -3,15 +3,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { queryClient } from "../client/src/lib/queryClient";
 import { eq, and, desc, sql, or, gte, lte } from "drizzle-orm";
 import {
   posts, notifications, videos, users, teams, activities, workoutVideos,
   insertTeamSchema, insertPostSchema, insertMeasurementSchema,
   insertNotificationSchema, insertVideoSchema, insertActivitySchema
 } from "@shared/schema";
-import { setupAuth, hashPassword, comparePasswords } from "./auth";
-import { WebSocketServer, WebSocket } from 'ws';
+import { setupAuth } from "./auth";
 import { z } from 'zod';
 
 // Configure multer for file uploads
@@ -20,83 +18,13 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// Keep track of connected clients
-const clients = new Map<number, WebSocket>();
-
-// Admin middleware
-const requireAdmin = (req: any, res: any, next: any) => {
-  if (!req.user?.isAdmin) return res.sendStatus(403);
-  next();
-};
-
-// Helper function to send notification
-async function sendNotification(userId: number, title: string, message: string) {
-  try {
-    const notificationData = insertNotificationSchema.parse({
-      userId,
-      title,
-      message,
-      read: false,
-      createdAt: new Date()
-    });
-    const notification = await storage.createNotification(notificationData);
-
-    const ws = clients.get(userId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(notification));
-    }
-
-    return notification;
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    if (error instanceof z.ZodError) {
-      console.error('Zod error sending notification:', error.errors);
-    }
-    throw error;
-  }
-}
-
-// Add week start/end date calculation helper
-function getWeekBounds(date: Date) {
-  const curr = new Date(date);
-  // Adjust to Monday start (1) and Sunday end (0)
-  const day = curr.getDay();
-  const diff = curr.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-
-  const weekStart = new Date(curr.setDate(diff));
-  weekStart.setHours(0, 0, 0, 0);
-
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
-
-  return { weekStart, weekEnd };
-}
-
-// Update weekly post count function in routes.ts
-async function getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
-  const { weekStart, weekEnd } = getWeekBounds(date);
-
-  const weeklyPosts = await db
-    .select()
-    .from(posts)
-    .where(
-      and(
-        eq(posts.userId, userId),
-        eq(posts.type, type),
-        gte(posts.createdAt!, weekStart),
-        lte(posts.createdAt!, weekEnd)
-      )
-    );
-
-  return weeklyPosts.length;
-}
-
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
+  console.log('[Routes] Setting up authentication...');
   setupAuth(app);
+  console.log('[Routes] Authentication setup complete');
 
-  // Move notifications routes to top priority
+  // Notification routes
   app.get("/api/notifications", async (req, res) => {
     console.log('\n=== GET /api/notifications ===');
     console.log('Request details:', {
@@ -118,13 +46,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Fetching notifications for user:', req.user.id);
       const notifications = await storage.getUnreadNotifications(req.user.id);
       console.log('Notifications found:', notifications.length);
-
-      if (notifications.length > 0) {
-        console.log('Sample notification:', notifications[0]);
-      } else {
-        console.log('No notifications found');
-      }
-
       res.json(notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -133,7 +54,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: error instanceof Error ? error.message : "Unknown error"
       });
     }
-    console.log('=== End notifications request ===\n');
   });
 
   app.post("/api/notifications/:id/read", async (req, res) => {
@@ -1489,35 +1409,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // existing WebSocket setup at bottom remains unchanged
+  // Create HTTP server
+  console.log('[Routes] Creating HTTP server...');
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  wss.on('connection', (ws, req) => {
-    console.log('WebSocket connection attempt');
-    const userId = req.url?.split('userId=')[1];
-    if (userId) {
-      console.log('WebSocket client connected for user:', userId);
-      clients.set(parseInt(userId), ws);
-
-      ws.on('message', (data) => {
-        console.log('Received message from user:', userId, data.toString());
-      });
-
-      ws.on('close', () => {
-        console.log('WebSocket client disconnected for user:', userId);
-        clients.delete(parseInt(userId));
-      });
-
-      ws.on('error', (error) => {
-        console.error('WebSocket error for user:', userId, error);
-      });
-    } else {
-      console.log('WebSocket connection attempted without userId');
-      ws.close();
-    }
-  });
+  console.log('[Routes] HTTP server created');
 
   return httpServer;
-
 }
+
+// Helper function to send notification
+async function sendNotification(userId: number, title: string, message: string) {
+  try {
+    const notificationData = insertNotificationSchema.parse({
+      userId,
+      title,
+      message,
+      read: false,
+      createdAt: new Date()
+    });
+    const notification = await storage.createNotification(notificationData);
+
+    // WebSocket functionality is temporarily disabled
+    // const ws = clients.get(userId);
+    // if (ws && ws.readyState === WebSocket.OPEN) {
+    //   ws.send(JSON.stringify(notification));
+    // }
+
+    return notification;
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    if (error instanceof z.ZodError) {
+      console.error('Zod error sending notification:', error.errors);
+    }
+    throw error;
+  }
+}
+
+// Add week start/end date calculation helper
+function getWeekBounds(date: Date) {
+  const curr = new Date(date);
+  // Adjust to Monday start (1) and Sunday end (0)
+  const day = curr.getDay();
+  const diff = curr.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+
+  const weekStart = new Date(curr.setDate(diff));
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return { weekStart, weekEnd };
+}
+
+// Update weekly post count function in routes.ts
+async function getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
+  const { weekStart, weekEnd } = getWeekBounds(date);
+
+  const weeklyPosts = await db
+    .select()
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        eq(posts.type, type),
+        gte(posts.createdAt!, weekStart),
+        lte(posts.createdAt!, weekEnd)
+      )
+    );
+
+  return weeklyPosts.length;
+}
+
+//The WebSocketServer related imports and code have been removed.  The function
+//remains, but the WebSocket functionality is disabled within sendNotification.
+//The authentication logging has been enhanced within the setupAuth call.

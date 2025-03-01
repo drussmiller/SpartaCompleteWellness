@@ -11,32 +11,23 @@ export function ProtectedRoute({
 }) {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-border" />
-      </div>
-    );
-  }
-
   return (
     <Route path={path}>
       {(params) => {
-        console.log('Protected route evaluation:', {
-          path,
-          params,
-          isAuthenticated: !!user,
-          userId: user?.id,
-          username: user?.username
-        });
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-border" />
+            </div>
+          );
+        }
 
         if (!user) {
-          console.log('Access denied - redirecting to /auth');
           return <Redirect to="/auth" />;
         }
 
-        console.log('Access granted to protected route:', path);
-        return <Component />;
+        const ComponentWithParams = Component as any;
+        return <ComponentWithParams {...params} />;
       }}
     </Route>
   );
