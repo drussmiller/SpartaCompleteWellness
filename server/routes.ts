@@ -733,7 +733,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/posts/limits", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
+    console.log('GET /api/posts/limits - Request received');
+    if (!req.user) {
+      console.log('User not authenticated');
+      return res.sendStatus(401);
+    }
+    
     try {
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
@@ -928,9 +933,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Add API endpoint for all users
   app.get("/api/users", async (req, res) => {
+    console.log('GET /api/users - Request received');
+    console.log('User authenticated:', !!req.user);
+    console.log('Request user:', req.user);
+    
     if (!req.user) return res.sendStatus(401);
     try {
+      console.log('Fetching all users');
       const allUsers = await storage.getAllUsers();
+      console.log('Users found:', allUsers.length);
 
       // Add points calculation for each user
       const usersWithPoints = await Promise.all(
@@ -952,6 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
+      console.log('Returning users with points');
       res.json(usersWithPoints);
     } catch (error) {
       console.error('Error fetching all users:', error);

@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Bell, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import Layout from "@/components/layout";
 
 interface Notification {
   id: number;
@@ -17,181 +17,117 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
-  const [isMarking, setIsMarking] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data: notifications = [], isLoading, error, refetch } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications"],
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
+  const { data: notifications = [], isLoading: isLoadingNotifications } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications'],
+    queryFn: () => apiRequest('/api/notifications')
   });
 
-useEffect(() => {
-  if (user) {
-    console.log('Setting up WebSocket connection for user:', user.id);
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
-    console.log('Connecting to WebSocket URL:', wsUrl);
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-    };
-
-    ws.onmessage = (event) => {
-      console.log('Received WebSocket message:', event.data);
-      try {
-        const notification = JSON.parse(event.data);
-        console.log('Parsed notification:', notification);
-        refetch();
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    return () => {
-      console.log('Cleaning up WebSocket connection');
-      ws.close();
-    };
-  }
-}, [user]);
-
-  async function markAsRead(id: number) {
-    setIsMarking(id);
+  const handleMarkAsRead = async (id: number) => {
+    setIsLoading(true);
     try {
-      await apiRequest("POST", `/api/notifications/${id}/read`);
-      await refetch();
+      await apiRequest(`/api/notifications/${id}/read`, {
+        method: 'POST'
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       toast({
         title: "Success",
-        description: "Notification marked as read",
+        description: "Notification marked as read"
       });
     } catch (error) {
+      console.error('Error marking notification as read:', error);
       toast({
         title: "Error",
         description: "Failed to mark notification as read",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
-      setIsMarking(null);
+      setIsLoading(false);
     }
-  }
+  };
 
-  async function deleteNotification(id: number) {
-    setIsDeleting(id);
+  const handleDelete = async (id: number) => {
+    setIsLoading(true);
     try {
-      await apiRequest("DELETE", `/api/notifications/${id}`);
-      await refetch();
+      await apiRequest(`/api/notifications/${id}`, {
+        method: 'DELETE'
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       toast({
         title: "Success",
-        description: "Notification deleted",
+        description: "Notification deleted"
       });
     } catch (error) {
+      console.error('Error deleting notification:', error);
       toast({
         title: "Error",
         description: "Failed to delete notification",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
-      setIsDeleting(null);
+      setIsLoading(false);
     }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-border" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container py-6">
-        <h1 className="text-3xl font-bold mb-6">Notifications</h1>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-red-500">Error loading notifications. Please try again later.</p>
-            <Button 
-              onClick={() => refetch()} 
-              variant="outline" 
-              className="mt-4"
-            >
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className="container py-6">
-      <h1 className="text-3xl font-bold mb-6">Notifications</h1>
-
-      {notifications.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-lg text-muted-foreground">No notifications</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {notifications.map((notification) => (
-            <Card key={notification.id} className={notification.read ? "opacity-50" : ""}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold">{notification.title}</h3>
-                    <p className="text-sm mt-1">{notification.message}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    {!notification.read && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => markAsRead(notification.id)}
-                        disabled={isMarking === notification.id}
-                      >
-                        {isMarking === notification.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          "Mark as read"
-                        )}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteNotification(notification.id)}
-                      disabled={isDeleting === notification.id}
-                    >
-                      {isDeleting === notification.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+    <Layout>
+      <div className="container py-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Notifications</h1>
+          <Bell className="h-5 w-5" />
         </div>
-      )}
-    </div>
+
+        {isLoadingNotifications ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-border" />
+          </div>
+        ) : notifications.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-center">
+              <p className="text-muted-foreground">No notifications yet</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {notifications.map((notification) => (
+              <Card key={notification.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{notification.title}</h3>
+                      <p className="text-sm mt-1">{notification.message}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled={isLoading} 
+                        onClick={() => handleMarkAsRead(notification.id)}
+                      >
+                        Mark as Read
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled={isLoading}
+                        onClick={() => handleDelete(notification.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </Layout>
   );
 }
