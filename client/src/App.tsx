@@ -9,7 +9,7 @@ import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
-import NotificationsPage from "@/pages/notifications-page";
+import NotificationsPage from "./pages/notifications-page";
 import HelpPage from "@/pages/help-page";
 import LibraryPage from "@/pages/library-page";
 import ActivityPage from "@/pages/activity-page";

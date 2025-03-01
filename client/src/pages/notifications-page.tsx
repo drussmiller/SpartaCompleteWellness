@@ -60,60 +60,41 @@ export default function NotificationsPage() {
       setDeletingIds(prev => [...prev, notificationId]);
 
       const res = await apiRequest(
-        "DELETE",
+        "DELETE", 
         `/api/notifications/${notificationId}`
       );
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete notification");
-      }
+
+      if (!res.ok) throw new Error("Failed to delete notification");
+      return notificationId;
     },
-    onSuccess: () => {
+    onSuccess: (notificationId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      toast({
-        title: "Success",
-        description: "Notification deleted successfully",
-      });
+      setDeletingIds(prev => prev.filter(id => id !== notificationId));
     },
-    onError: (error: Error) => {
+    onError: (_, notificationId) => {
+      setDeletingIds(prev => prev.filter(id => id !== notificationId));
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to delete notification",
         variant: "destructive",
       });
-    },
-    onSettled: (_, __, notificationId) => {
-      setDeletingIds(prev => prev.filter(id => id !== notificationId));
     }
   });
 
   useEffect(() => {
-    const cleanup = () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      setWsConnected(false);
-    };
-
-    if (!user) {
-      cleanup();
-      return;
-    }
+    if (!user) return;
 
     const connectWebSocket = () => {
-      cleanup();
-
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+      console.log('Connecting to WebSocket...');
+      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws?userId=${user.id}`;
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         console.log('WebSocket connected');
         setWsConnected(true);
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
       };
 
       ws.onmessage = (event) => {
@@ -144,6 +125,15 @@ export default function NotificationsPage() {
     };
 
     connectWebSocket();
+
+    const cleanup = () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
 
     return cleanup;
   }, [user, toast]);
