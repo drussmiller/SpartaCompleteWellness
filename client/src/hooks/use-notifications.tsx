@@ -17,73 +17,85 @@ export function useNotifications() {
 
     console.log('Initializing WebSocket connection for user:', user.id);
 
-    // Construct WebSocket URL with auth info
+    // Construct WebSocket URL with auth info and correct port
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+    // In development, always use port 5000, in production use the host as is
+    const host = process.env.NODE_ENV === 'development' ? 'localhost:5000' : window.location.host;
+    const wsUrl = `${protocol}//${host}/ws?userId=${user.id}`;
 
     console.log('Attempting WebSocket connection to:', wsUrl);
 
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    setConnectionStatus('connecting');
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+      setConnectionStatus('connecting');
 
-    // Connection opened
-    ws.addEventListener('open', (event) => {
-      console.log('WebSocket connection established successfully');
-      setConnectionStatus('connected');
+      // Connection opened
+      ws.addEventListener('open', (event) => {
+        console.log('WebSocket connection established successfully');
+        setConnectionStatus('connected');
 
-      // Send a test message to verify connection
-      try {
-        ws.send(JSON.stringify({ type: 'connection_test', userId: user.id }));
-      } catch (error) {
-        console.error('Error sending test message:', error);
-      }
-    });
+        // Send a test message to verify connection
+        try {
+          ws.send(JSON.stringify({ type: 'connection_test', userId: user.id }));
+        } catch (error) {
+          console.error('Error sending test message:', error);
+        }
+      });
 
-    // Listen for messages
-    ws.addEventListener('message', (event) => {
-      try {
-        const notification = JSON.parse(event.data);
-        console.log('Received notification:', notification);
+      // Listen for messages
+      ws.addEventListener('message', (event) => {
+        try {
+          const notification = JSON.parse(event.data);
+          console.log('Received notification:', notification);
 
-        // Show toast notification
+          // Show toast notification
+          toast({
+            title: notification.title,
+            description: notification.message,
+          });
+
+          // Invalidate notifications query to refresh the list
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        } catch (error) {
+          console.error('Error processing notification:', error);
+        }
+      });
+
+      // Handle connection errors
+      ws.addEventListener('error', (error) => {
+        console.error('WebSocket error:', error);
+        setConnectionStatus('disconnected');
         toast({
-          title: notification.title,
-          description: notification.message,
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Failed to connect to notification service"
         });
+      });
 
-        // Invalidate notifications query to refresh the list
-        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      } catch (error) {
-        console.error('Error processing notification:', error);
-      }
-    });
+      // Connection closed
+      ws.addEventListener('close', (event) => {
+        console.log('WebSocket connection closed:', event);
+        setConnectionStatus('disconnected');
+      });
 
-    // Handle connection errors
-    ws.addEventListener('error', (error) => {
-      console.error('WebSocket error:', error);
+      // Cleanup on unmount or when user changes
+      return () => {
+        console.log('Cleaning up WebSocket connection');
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.close();
+        }
+        setConnectionStatus('disconnected');
+      };
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
       setConnectionStatus('disconnected');
       toast({
         variant: "destructive",
         title: "Connection Error",
-        description: "Failed to connect to notification service"
+        description: "Failed to establish WebSocket connection"
       });
-    });
-
-    // Connection closed
-    ws.addEventListener('close', (event) => {
-      console.log('WebSocket connection closed:', event);
-      setConnectionStatus('disconnected');
-    });
-
-    // Cleanup on unmount or when user changes
-    return () => {
-      console.log('Cleaning up WebSocket connection');
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.close();
-      }
-      setConnectionStatus('disconnected');
-    };
+    }
   }, [user?.id, toast]); // Only recreate connection when user ID changes
 
   return { connectionStatus };

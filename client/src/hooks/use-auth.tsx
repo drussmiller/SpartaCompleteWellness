@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0, // Don't cache the user data
+    retry: false, // Don't retry failed requests
   });
 
   const loginMutation = useMutation({
@@ -37,16 +38,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/login", credentials);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Invalid username or password"); //Improved error message
+        throw new Error(error.message || "Invalid username or password");
       }
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      console.log('Login successful, user data:', user);
     },
     onError: (error: Error) => {
       console.error('Login error:', error);
-      // Don't show the toast for login errors, let the UI handle it
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -61,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      console.log('Registration successful, user data:', user);
     },
     onError: (error: Error) => {
       toast({
@@ -73,10 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      const res = await apiRequest("POST", "/api/logout");
+      if (!res.ok) {
+        throw new Error("Logout failed");
+      }
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      console.log('Logout successful');
     },
     onError: (error: Error) => {
       toast({
@@ -86,6 +97,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+
+  // Log authentication state changes
+  useEffect(() => {
+    console.log('Auth state changed:', {
+      user: user ?? null,
+      isLoading,
+      error: error?.message
+    });
+  }, [user, isLoading, error]);
 
   return (
     <AuthContext.Provider
