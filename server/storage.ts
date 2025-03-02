@@ -495,7 +495,7 @@ export class DatabaseStorage implements IStorage {
       }
     });
 
-    // If today is before first Monday, user hasn't started program yet
+    // If today is before first Monday, program hasn't started yet
     if (today.getTime() < firstMonday.getTime()) {
       console.log('Before program start:', { 
         userId, 
@@ -505,27 +505,24 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    // Calculate days since first Monday
+    // Calculate days since first Monday (Day 1)
     const diffTime = today.getTime() - firstMonday.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     // Calculate week (1-based) and day (1 = Monday, 7 = Sunday)
-    const week = Math.floor(diffDays / 7) + 1;
-    const currentDayOfWeek = today.getUTCDay();
-    // Convert day number so Monday=1, Tuesday=2, ..., Sunday=7
-    const day = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
+    const week = Math.floor(daysSinceStart / 7) + 1;
+    const day = (daysSinceStart % 7) + 1;
 
     // Check if completed 84 days (12 weeks) for Spartan status
-    const isSpartan = diffDays >= 84;
+    const isSpartan = daysSinceStart >= 84;
 
     console.log('Program progress:', {
       userId,
       diffTime,
-      diffDays,
+      daysSinceStart,
       week,
       day,
       isSpartan,
-      currentDayOfWeek,
       today: today.toISOString()
     });
 
