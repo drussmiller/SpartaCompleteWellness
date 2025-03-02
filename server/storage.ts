@@ -6,6 +6,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import type { PgSelectQueryBuilder } from 'drizzle-orm/pg-core';
+import * as z from 'zod';
 
 const PostgresSessionStore = connectPg(session);
 
@@ -112,9 +113,9 @@ export class DatabaseStorage implements IStorage {
   async updateUserTeam(userId: number, teamId: number | null): Promise<User> {
     const [updatedUser] = await db
       .update(users)
-      .set({ 
+      .set({
         teamId,
-        teamJoinedAt: teamId ? new Date() : null 
+        teamJoinedAt: teamId ? new Date() : null
       })
       .where(eq(users.id, userId))
       .returning();
@@ -272,20 +273,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNotification(notification: Omit<Notification, 'id'>): Promise<Notification> {
-    const notificationData = {
-      userId: notification.userId,
-      title: notification.title,
-      message: notification.message,
-      read: notification.read ?? false,
-      createdAt: notification.createdAt ?? new Date()
-    };
+    try {
+      // Explicitly type and structure the notification data
+      const notificationData: Omit<Notification, 'id'> = {
+        userId: notification.userId,
+        title: notification.title,
+        message: notification.message,
+        read: notification.read ?? false,
+        createdAt: notification.createdAt ?? new Date()
+      };
 
-    const [newNotification] = await db
-      .insert(notifications)
-      .values(notificationData)
-      .returning();
+      console.log('Creating notification:', notificationData);
 
-    return newNotification;
+      const [newNotification] = await db
+        .insert(notifications)
+        .values(notificationData)
+        .returning();
+
+      if (!newNotification) {
+        throw new Error('Failed to create notification');
+      }
+
+      console.log('Created notification:', newNotification);
+
+      return newNotification;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod error creating notification:', error.errors);
+      }
+      throw error;
+    }
   }
 
   async getUnreadNotifications(userId: number): Promise<Notification[]> {
@@ -453,7 +471,7 @@ export class DatabaseStorage implements IStorage {
 
     // Find the first Monday after join date
     const dayOfWeek = joinDate.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
     const firstMonday = new Date(joinDate);
     firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
     firstMonday.setHours(0, 0, 0, 0);
@@ -467,8 +485,8 @@ export class DatabaseStorage implements IStorage {
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    const week = Math.floor(diffDays / 7) + 1; 
-    const day = today.getDay() === 0 ? 7 : today.getDay(); 
+    const week = Math.floor(diffDays / 7) + 1;
+    const day = today.getDay() === 0 ? 7 : today.getDay();
 
     return { week, day };
   }
