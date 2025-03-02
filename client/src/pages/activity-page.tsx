@@ -28,6 +28,31 @@ export default function ActivityPage() {
     enabled: !!user?.teamId
   });
 
+  if (!user?.teamId) {
+    return (
+      <div className="max-w-2xl mx-auto p-4">
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Join a team to start your program
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If weekInfo is null, the program hasn't started yet
+  if (!weekInfo) {
+    return (
+      <div className="max-w-2xl mx-auto p-4">
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Your program will start on the first Monday after joining a team
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Get all activities
   const { data: activities } = useQuery<Activity[]>({
     queryKey: ["/api/activities"],
@@ -81,18 +106,6 @@ export default function ActivityPage() {
   });
 
 
-  if (!user?.teamId) {
-    return (
-      <div className="max-w-2xl mx-auto p-4">
-        <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            Join a team to start your program
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <ScrollArea className="h-[calc(100vh-80px)]">
@@ -108,150 +121,140 @@ export default function ActivityPage() {
         </header>
 
         <main className="p-4 space-y-4">
-          {!weekInfo ? (
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {[...Array(12)].map((_, i) => (
+              <Button
+                key={i + 1}
+                variant={selectedWeek === i + 1 ? "default" : "outline"}
+                onClick={() => setSelectedWeek(i + 1)}
+                disabled={i + 1 > weekInfo.currentWeek}
+              >
+                Week {i + 1}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {[...Array(7)].map((_, i) => (
+              <Button
+                key={i + 1}
+                variant={selectedDay === i + 1 ? "default" : "outline"}
+                onClick={() => setSelectedDay(i + 1)}
+                disabled={
+                  selectedWeek === weekInfo.currentWeek &&
+                  i + 1 > weekInfo.currentDay
+                }
+              >
+                {i === 0 ? "Monday" :
+                 i === 1 ? "Tuesday" :
+                 i === 2 ? "Wednesday" :
+                 i === 3 ? "Thursday" :
+                 i === 4 ? "Friday" :
+                 i === 5 ? "Saturday" :
+                 "Sunday"}
+              </Button>
+            ))}
+          </div>
+
+          {currentActivity ? (
             <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                Your program will start on the first Monday after joining a team
+              <CardHeader>
+                <CardTitle>
+                  Week {currentActivity.week} - Day {currentActivity.day}
+                </CardTitle>
+                {user?.isAdmin && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
+                      onClick={() => {
+                        form.reset(currentActivity);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
+                      onClick={() => {
+                        if (confirm("Are you sure you want to delete this activity?")) {
+                          deleteActivityMutation.mutate();
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="prose max-w-none">
+                  <h2>Memory Verse</h2>
+                  <blockquote>
+                    {currentActivity.memoryVerseReference} - "{currentActivity.memoryVerse}"
+                  </blockquote>
+
+                  {currentActivity.scripture && (
+                    <>
+                      <h2>Scripture Reading</h2>
+                      <p>{currentActivity.scripture}</p>
+                    </>
+                  )}
+
+                  {currentActivity.tasks && (
+                    <>
+                      <h2>Tasks</h2>
+                      <div dangerouslySetInnerHTML={{ __html: currentActivity.tasks }} />
+                    </>
+                  )}
+
+                  {currentActivity.description && (
+                    <>
+                      <h2>Description</h2>
+                      <p className="whitespace-pre-line">
+                        {currentActivity.description}
+                      </p>
+                    </>
+                  )}
+
+                  {currentActivity.workout && (
+                    <>
+                      <h2>Workout</h2>
+                      {currentActivity.workoutVideos && currentActivity.workoutVideos.length > 0 && (
+                        <div className="space-y-4 mb-4">
+                          {currentActivity.workoutVideos.map((video, index) => (
+                            <div key={index} className="space-y-2">
+                              <p className="font-medium">{video.description}</p>
+                              <div className="aspect-video">
+                                <iframe
+                                  className="w-full h-full"
+                                  src={`https://www.youtube.com/embed/${video.url.split(/[/?]/)[3]}`}
+                                  title="Workout Video"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="whitespace-pre-line">
+                        {currentActivity.workout}
+                      </p>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ) : (
-            <>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {[...Array(12)].map((_, i) => (
-                  <Button
-                    key={i + 1}
-                    variant={selectedWeek === i + 1 ? "default" : "outline"}
-                    onClick={() => setSelectedWeek(i + 1)}
-                    disabled={i + 1 > weekInfo.currentWeek}
-                  >
-                    Week {i + 1}
-                  </Button>
-                ))}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {[...Array(7)].map((_, i) => (
-                  <Button
-                    key={i + 1}
-                    variant={selectedDay === i + 1 ? "default" : "outline"}
-                    onClick={() => setSelectedDay(i + 1)}
-                    disabled={
-                      selectedWeek === weekInfo.currentWeek &&
-                      i + 1 > weekInfo.currentDay
-                    }
-                  >
-                    {i === 0 ? "Monday" :
-                     i === 1 ? "Tuesday" :
-                     i === 2 ? "Wednesday" :
-                     i === 3 ? "Thursday" :
-                     i === 4 ? "Friday" :
-                     i === 5 ? "Saturday" :
-                     "Sunday"}
-                  </Button>
-                ))}
-              </div>
-
-              {currentActivity ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      Week {currentActivity.week} - Day {currentActivity.day}
-                    </CardTitle>
-                    {user?.isAdmin && (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
-                          onClick={() => {
-                            form.reset(currentActivity);
-                            setEditDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
-                          onClick={() => {
-                            if (confirm("Are you sure you want to delete this activity?")) {
-                              deleteActivityMutation.mutate();
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose max-w-none">
-                      <h2>Memory Verse</h2>
-                      <blockquote>
-                        {currentActivity.memoryVerseReference} - "{currentActivity.memoryVerse}"
-                      </blockquote>
-
-                      {currentActivity.scripture && (
-                        <>
-                          <h2>Scripture Reading</h2>
-                          <p>{currentActivity.scripture}</p>
-                        </>
-                      )}
-
-                      {currentActivity.tasks && (
-                        <>
-                          <h2>Tasks</h2>
-                          <div dangerouslySetInnerHTML={{ __html: currentActivity.tasks }} />
-                        </>
-                      )}
-
-                      {currentActivity.description && (
-                        <>
-                          <h2>Description</h2>
-                          <p className="whitespace-pre-line">
-                            {currentActivity.description}
-                          </p>
-                        </>
-                      )}
-
-                      {currentActivity.workout && (
-                        <>
-                          <h2>Workout</h2>
-                          {currentActivity.workoutVideos && currentActivity.workoutVideos.length > 0 && (
-                            <div className="space-y-4 mb-4">
-                              {currentActivity.workoutVideos.map((video, index) => (
-                                <div key={index} className="space-y-2">
-                                  <p className="font-medium">{video.description}</p>
-                                  <div className="aspect-video">
-                                    <iframe
-                                      className="w-full h-full"
-                                      src={`https://www.youtube.com/embed/${video.url.split(/[/?]/)[3]}`}
-                                      title="Workout Video"
-                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                      allowFullScreen
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <p className="whitespace-pre-line">
-                            {currentActivity.workout}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    No activity found for this day
-                  </CardContent>
-                </Card>
-              )}
-            </>
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                No activity found for this day
+              </CardContent>
+            </Card>
           )}
         </main>
       </ScrollArea>
