@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "./lib/protected-route";
+import { useNotifications } from "@/hooks/use-notifications";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
@@ -15,6 +16,11 @@ import LibraryPage from "@/pages/library-page";
 import ActivityPage from "@/pages/activity-page";
 import ActivityManagementPage from "@/pages/activity-management";
 import CommentsPage from "@/pages/comments-page";
+
+function NotificationHandler() {
+  useNotifications(); // This will set up the WebSocket connection
+  return null;
+}
 
 function Router() {
   return (
@@ -38,6 +44,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <NotificationHandler />
         <Router />
         <Toaster />
       </AuthProvider>
