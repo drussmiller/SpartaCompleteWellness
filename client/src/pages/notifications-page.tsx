@@ -82,14 +82,14 @@ export default function NotificationsPage() {
   }, [user, toast]);
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4">
+    <div className="min-h-screen bg-background pb-20">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 max-w-screen-2xl items-center">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </header>
 
-      <main className="p-4 space-y-4">
+      <main className="container max-w-2xl mx-auto p-4 space-y-4 overflow-y-auto">
         {notifications?.length === 0 ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
