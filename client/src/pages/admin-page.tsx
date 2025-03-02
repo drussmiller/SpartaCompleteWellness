@@ -286,25 +286,29 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <header>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
-          </Button>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 max-w-screen-2xl items-center">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+              <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Button>
+            <h1 className="text-xl font-bold">Admin Dashboard</h1>
+          </div>
         </div>
-        <div className="flex gap-2 mt-4 justify-center">
+      </header>
+
+      <main className="container max-w-screen-2xl mx-auto space-y-8 p-6">
+        <div className="flex justify-center gap-4 mb-8">
           <Dialog>
             <DialogTrigger asChild>
-              <Button size="default" className="px-4">
+              <Button size="default">
                 <Plus className="h-4 w-4 mr-2" />
                 New Team
               </Button>
             </DialogTrigger>
-            <DialogContent aria-describedby="new-team-description">
-              <p id="new-team-description" className="sr-only">Create a new team form</p>
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Team</DialogTitle>
               </DialogHeader>
@@ -341,164 +345,169 @@ export default function AdminPage() {
               </Form>
             </DialogContent>
           </Dialog>
-          <Button onClick={() => window.location.href = '/activity-management'} size="default" className="ml-2">
+          <Button onClick={() => window.location.href = '/activity-management'} size="default">
             Manage Activities
           </Button>
         </div>
-      </header>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Teams</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {teams.map((team) => (
-                <div
-                  key={team.id}
-                  className="flex items-center justify-between p-2 pr-6 rounded hover:bg-accent"
-                >
-                  <div
-                    className="flex-1 cursor-pointer"
-                    onClick={() => setSelectedTeam(selectedTeam === team.id ? null : team.id)}
-                  >
-                    <p className="font-medium">{team.name}</p>
-                    <p className="text-sm text-muted-foreground">{team.description}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditTeam(team)}
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[calc(100vh-20rem)] pr-4">
+                <div className="space-y-4">
+                  {teams.map((team) => (
+                    <div
+                      key={team.id}
+                      className="flex items-center justify-between p-4 rounded-lg border bg-card text-card-foreground hover:bg-accent transition-colors"
                     >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteTeam(team.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {selectedTeam === team.id && (
-                    <div className="w-2 h-2 rounded-full bg-primary ml-2" />
-                  )}
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => setSelectedTeam(selectedTeam === team.id ? null : team.id)}
+                      >
+                        <p className="font-medium">{team.name}</p>
+                        <p className="text-sm text-muted-foreground">{team.description}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditTeam(team)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteTeam(team.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {selectedTeam === team.id && (
+                        <div className="w-2 h-2 rounded-full bg-primary ml-2" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {users.map((u) => (
-                <div key={u.id} className="flex flex-wrap items-start justify-between p-2 gap-2">
-                  <div className="min-w-[200px]">
-                    <p className="font-medium">{u.username}</p>
-                    <p className="text-sm text-muted-foreground">{u.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
-                    </p>
-                    {u.teamId && (
-                      <>
-                        {u.programStart ? (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-sm">
-                              <span className="text-muted-foreground">Start Date: </span>
-                              <span className="font-medium">
-                                {format(new Date(u.programStart), 'PP')}
-                              </span>
-                            </p>
-                            {u.weekInfo && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Progress: </span>
-                                <span className="font-medium">
-                                  Week {u.weekInfo.week}, Day {u.weekInfo.day}
-                                </span>
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Program starts next Monday
+          <Card>
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[calc(100vh-20rem)] pr-4">
+                <div className="space-y-4">
+                  {users.map((u) => (
+                    <div key={u.id} className="flex flex-col p-4 rounded-lg border bg-card text-card-foreground">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                          <p className="font-medium">{u.username}</p>
+                          <p className="text-sm text-muted-foreground">{u.email}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
                           </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 min-w-[140px]">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (selectedTeam) {
-                          updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
-                        }
-                      }}
-                      disabled={!selectedTeam || updateUserTeamMutation.isPending}
-                    >
-                      {updateUserTeamMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : null}
-                      {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleResetPassword(u.id)}
-                    >
-                      Reset Password
-                    </Button>
-                    <Button
-                      variant={u.isAdmin ? "destructive" : "outline"}
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
-                            isAdmin: !u.isAdmin
-                          });
-                          queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-                          toast({ 
-                            title: "Success", 
-                            description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "Error",
-                            description: "Failed to update admin status",
-                            variant: "destructive"
-                          });
-                        }
-                      }}
-                    >
-                      {u.isAdmin ? "Remove Admin" : "Make Admin"}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this user?")) {
-                          deleteUserMutation.mutate(u.id);
-                        }
-                      }}
-                    >
-                      Delete User
-                    </Button>
-                  </div>
+                          {u.teamId && (
+                            <>
+                              {u.programStart ? (
+                                <div className="mt-2 space-y-1">
+                                  <p className="text-sm">
+                                    <span className="text-muted-foreground">Start Date: </span>
+                                    <span className="font-medium">
+                                      {format(new Date(u.programStart), 'PP')}
+                                    </span>
+                                  </p>
+                                  {u.weekInfo && (
+                                    <p className="text-sm">
+                                      <span className="text-muted-foreground">Progress: </span>
+                                      <span className="font-medium">
+                                        Week {u.weekInfo.week}, Day {u.weekInfo.day}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                  Program starts next Monday
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (selectedTeam) {
+                                updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
+                              }
+                            }}
+                            disabled={!selectedTeam || updateUserTeamMutation.isPending}
+                          >
+                            {updateUserTeamMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResetPassword(u.id)}
+                          >
+                            Reset Password
+                          </Button>
+                          <Button
+                            variant={u.isAdmin ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
+                                  isAdmin: !u.isAdmin
+                                });
+                                queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                                toast({ 
+                                  title: "Success", 
+                                  description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
+                                });
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to update admin status",
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this user?")) {
+                                deleteUserMutation.mutate(u.id);
+                              }
+                            }}
+                          >
+                            Delete User
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
 
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
         <DialogContent>
