@@ -43,7 +43,7 @@ export interface IStorage {
   deleteTeam(teamId: number): Promise<void>;
   getActivities(week?: number, day?: number): Promise<Activity[]>;
   createActivity(data: Activity): Promise<Activity[]>;
-  getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null>;
+  getUserWeekInfo(userId: number): Promise<{ week: number; day: number; isSpartan: boolean; } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -453,7 +453,7 @@ export class DatabaseStorage implements IStorage {
     return await db.insert(activities).values(data).returning();
   }
 
-  async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {
+  async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; isSpartan: boolean; } | null> {
     const [user] = await db
       .select({
         teamJoinedAt: users.teamJoinedAt,
@@ -463,6 +463,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
 
     if (!user?.teamId || !user?.teamJoinedAt) {
+      console.log('User not in team or no join date:', { userId });
       return null;
     }
 
@@ -470,25 +471,50 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
 
     // Find the first Monday after join date
-    const dayOfWeek = joinDate.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    const dayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; // If Sunday, next day is Monday, otherwise calculate days until next Monday
     const firstMonday = new Date(joinDate);
     firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
     firstMonday.setHours(0, 0, 0, 0);
 
+    console.log('Program timing calculation:', {
+      userId,
+      joinDate: joinDate.toISOString(),
+      firstMonday: firstMonday.toISOString(),
+      daysUntilMonday,
+      dayOfWeek
+    });
+
     // If today is before first Monday, return null
     if (today < firstMonday) {
+      console.log('Before program start:', { userId, today: today.toISOString() });
       return null;
     }
 
-    // Calculate weeks and days since first Monday
+    // Calculate days since first Monday
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+    // Calculate week (1-based) and day (1 = Monday, 7 = Sunday)
     const week = Math.floor(diffDays / 7) + 1;
-    const day = today.getDay() === 0 ? 7 : today.getDay();
+    const day = today.getDay() === 0 ? 7 : today.getDay(); // Convert Sunday from 0 to 7
 
-    return { week, day };
+    // Check if completed 84 days (12 weeks) for Spartan status
+    const isSpartan = diffDays >= 84;
+
+    console.log('Program progress:', {
+      userId,
+      diffDays,
+      week,
+      day,
+      isSpartan
+    });
+
+    return { 
+      week, 
+      day,
+      isSpartan 
+    };
   }
 }
 
