@@ -283,7 +283,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: notification.createdAt ?? new Date()
       };
 
-      console.log('Creating notification:', notificationData);
+      console.log('Creating notification with data:', notificationData);
 
       const [newNotification] = await db
         .insert(notifications)
@@ -294,13 +294,13 @@ export class DatabaseStorage implements IStorage {
         throw new Error('Failed to create notification');
       }
 
-      console.log('Created notification:', newNotification);
+      console.log('Successfully created notification:', newNotification);
 
       return newNotification;
     } catch (error) {
       console.error('Error creating notification:', error);
       if (error instanceof z.ZodError) {
-        console.error('Zod error creating notification:', error.errors);
+        console.error('Zod validation error:', error.errors);
       }
       throw error;
     }

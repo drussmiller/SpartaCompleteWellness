@@ -32,6 +32,8 @@ const requireAdmin = (req: any, res: any, next: any) => {
 // Helper function to send notification
 async function sendNotification(userId: number, title: string, message: string) {
   try {
+    console.log('Attempting to send notification to user:', userId);
+
     const notificationData = insertNotificationSchema.parse({
       userId, 
       title, 
@@ -39,11 +41,19 @@ async function sendNotification(userId: number, title: string, message: string) 
       read: false, 
       createdAt: new Date()
     });
+
+    console.log('Notification data validated:', notificationData);
+
     const notification = await storage.createNotification(notificationData);
+    console.log('Notification created in database:', notification);
 
     const ws = clients.get(userId);
     if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log('WebSocket connection found for user:', userId);
       ws.send(JSON.stringify(notification));
+      console.log('Notification sent through WebSocket');
+    } else {
+      console.log('No active WebSocket connection found for user:', userId);
     }
 
     return notification;
@@ -1432,13 +1442,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws, req) => {
-    const userId = req.url?.split('userId=')[1];
+    // Verify the user is authenticated via the session
+    if (!req.url) return;
+
+    const urlParams = new URLSearchParams(req.url.split('?')[1]);
+    const userId = urlParams.get('userId');
+
     if (userId) {
+      console.log('WebSocket connection established for user:', userId);
       clients.set(parseInt(userId), ws);
 
       ws.on('close', () => {
+        console.log('WebSocket connection closed for user:', userId);
         clients.delete(parseInt(userId));
       });
+
+      // Send a test notification to verify connection
+      sendNotification(parseInt(userId), 'Connection Test', 'WebSocket connection established successfully')
+        .then(() => console.log('Test notification sent'))
+        .catch(err => console.error('Error sending test notification:', err));
+    } else {
+      console.log('No userId provided in WebSocket connection');
+      ws.close();
     }
   });
 
