@@ -42,7 +42,7 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
 
-  // Add cookie parser middleware
+  // Cookie parser should be used before session middleware
   app.use(cookieParser(process.env.SESSION_SECRET));
 
   const sessionSettings: session.SessionOptions = {
@@ -56,8 +56,7 @@ export function setupAuth(app: Express) {
       sameSite: 'lax', // Allow WebSocket connections
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
-    name: 'connect.sid', // Explicitly set the cookie name
-    rolling: true // Extend session lifetime on activity
+    name: 'connect.sid'
   };
 
   app.set("trust proxy", 1);
@@ -65,6 +64,7 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Set up local strategy with email/username login
   passport.use(
     new LocalStrategy({
       usernameField: 'email',
@@ -126,7 +126,7 @@ export function setupAuth(app: Express) {
     console.log('Is Authenticated:', req.isAuthenticated());
     console.log('User:', req.user);
     console.log('Session Cookie:', req.cookies['connect.sid']); 
-    console.log('Signed Cookies:', req.signedCookies); 
+    console.log('Signed Cookies:', req.signedCookies);
 
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');

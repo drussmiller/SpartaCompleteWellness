@@ -397,108 +397,106 @@ export default function AdminPage() {
               <CardTitle>Users</CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[calc(100vh-20rem)] pr-4">
-                <div className="space-y-4">
-                  {users.map((u) => (
-                    <div key={u.id} className="flex flex-col p-4 rounded-lg border bg-card text-card-foreground">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <p className="font-medium">{u.username}</p>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
-                          </p>
-                          {u.teamId && (
-                            <>
-                              {u.programStart ? (
-                                <div className="mt-2 space-y-1">
+              <div className="space-y-4">
+                {users.map((u) => (
+                  <div key={u.id} className="flex flex-col p-4 rounded-lg border bg-card text-card-foreground">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <p className="font-medium">{u.username}</p>
+                        <p className="text-sm text-muted-foreground">{u.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Team: {teams.find((t) => t.id === u.teamId)?.name || "None"}
+                        </p>
+                        {u.teamId && (
+                          <>
+                            {u.programStart ? (
+                              <div className="mt-2 space-y-1">
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Start Date: </span>
+                                  <span className="font-medium">
+                                    {format(new Date(u.programStart), 'PP')}
+                                  </span>
+                                </p>
+                                {u.weekInfo && (
                                   <p className="text-sm">
-                                    <span className="text-muted-foreground">Start Date: </span>
+                                    <span className="text-muted-foreground">Progress: </span>
                                     <span className="font-medium">
-                                      {format(new Date(u.programStart), 'PP')}
+                                      Week {u.weekInfo.week}, Day {u.weekInfo.day}
                                     </span>
                                   </p>
-                                  {u.weekInfo && (
-                                    <p className="text-sm">
-                                      <span className="text-muted-foreground">Progress: </span>
-                                      <span className="font-medium">
-                                        Week {u.weekInfo.week}, Day {u.weekInfo.day}
-                                      </span>
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground mt-2">
-                                  Program starts next Monday
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              if (selectedTeam) {
-                                updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
-                              }
-                            }}
-                            disabled={!selectedTeam || updateUserTeamMutation.isPending}
-                          >
-                            {updateUserTeamMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : null}
-                            {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleResetPassword(u.id)}
-                          >
-                            Reset Password
-                          </Button>
-                          <Button
-                            variant={u.isAdmin ? "destructive" : "outline"}
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
-                                  isAdmin: !u.isAdmin
-                                });
-                                queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-                                toast({ 
-                                  title: "Success", 
-                                  description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
-                                });
-                              } catch (error) {
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to update admin status",
-                                  variant: "destructive"
-                                });
-                              }
-                            }}
-                          >
-                            {u.isAdmin ? "Remove Admin" : "Make Admin"}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this user?")) {
-                                deleteUserMutation.mutate(u.id);
-                              }
-                            }}
-                          >
-                            Delete User
-                          </Button>
-                        </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground mt-2">
+                                Program starts next Monday
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (selectedTeam) {
+                              updateUserTeamMutation.mutate({ userId: u.id, teamId: selectedTeam });
+                            }
+                          }}
+                          disabled={!selectedTeam || updateUserTeamMutation.isPending}
+                        >
+                          {updateUserTeamMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : null}
+                          {u.teamId === selectedTeam ? "Already Assigned" : "Assign to Team"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleResetPassword(u.id)}
+                        >
+                          Reset Password
+                        </Button>
+                        <Button
+                          variant={u.isAdmin ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await apiRequest("POST", `/api/users/${u.id}/toggle-admin`, {
+                                isAdmin: !u.isAdmin
+                              });
+                              queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                              toast({ 
+                                title: "Success", 
+                                description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to update admin status",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm("Are you sure you want to delete this user?")) {
+                              deleteUserMutation.mutate(u.id);
+                            }
+                          }}
+                        >
+                          Delete User
+                        </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
