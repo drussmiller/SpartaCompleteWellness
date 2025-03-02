@@ -14,7 +14,7 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
-const KEY_LENGTH = 64; // Consistent key length for both hashing and comparison
+const KEY_LENGTH = 64;
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -48,8 +48,11 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+    },
+    name: 'connect.sid' // Explicitly set the cookie name
   };
 
   app.set("trust proxy", 1);
@@ -104,6 +107,7 @@ export function setupAuth(app: Express) {
         console.log('User not found during deserialization:', id);
         return done(null, false);
       }
+      console.log('Successfully deserialized user:', user.id);
       done(null, user);
     } catch (error) {
       console.error('Deserialization error:', error);
@@ -112,6 +116,11 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
+    console.log('Session ID:', req.sessionID);
+    console.log('Session:', req.session);
+    console.log('Is Authenticated:', req.isAuthenticated());
+    console.log('User:', req.user);
+
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
       return res.sendStatus(401);
@@ -137,6 +146,7 @@ export function setupAuth(app: Express) {
           return next(err);
         }
         console.log('Login successful for:', user.username);
+        console.log('Session ID after login:', req.sessionID);
         res.json(user);
       });
     })(req, res, next);
