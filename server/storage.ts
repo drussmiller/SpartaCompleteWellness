@@ -475,8 +475,8 @@ export class DatabaseStorage implements IStorage {
     today.setUTCHours(0, 0, 0, 0);
 
     // Find the first Monday after join date
-    const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ...
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; // If Sunday, next day is Monday
+    const joinDay = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ...
+    const daysUntilMonday = joinDay === 0 ? 1 : 8 - joinDay; // If Sunday, next day is Monday
     const firstMonday = new Date(joinDate);
     firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
     firstMonday.setUTCHours(0, 0, 0, 0);
@@ -486,7 +486,7 @@ export class DatabaseStorage implements IStorage {
       joinDate: joinDate.toISOString(),
       firstMonday: firstMonday.toISOString(),
       daysUntilMonday,
-      dayOfWeek,
+      dayOfWeek: joinDay,
       today: today.toISOString(),
       comparison: {
         todayTime: today.getTime(),
