@@ -467,70 +467,58 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    // Create date objects and standardize to UTC midnight
+    // Get join date and today, normalize to UTC midnight
     const joinDate = new Date(user.teamJoinedAt);
     joinDate.setUTCHours(0, 0, 0, 0);
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday after join date
-    const joinDay = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ...
-    const daysUntilMonday = joinDay === 0 ? 1 : 8 - joinDay; // If Sunday, next day is Monday
-    const firstMonday = new Date(joinDate);
-    firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
-    firstMonday.setUTCHours(0, 0, 0, 0);
+    // Find next Monday after join date
+    let firstMonday = new Date(joinDate);
+    while (firstMonday.getUTCDay() !== 1) { // 1 = Monday
+      firstMonday.setUTCDate(firstMonday.getUTCDate() + 1);
+    }
 
-    console.log('Program timing calculation:', {
+    console.log('Program dates:', {
       userId,
       joinDate: joinDate.toISOString(),
-      firstMonday: firstMonday.toISOString(),
-      daysUntilMonday,
-      dayOfWeek: joinDay,
       today: today.toISOString(),
-      comparison: {
-        todayTime: today.getTime(),
-        firstMondayTime: firstMonday.getTime(),
-        isDayBefore: today.getTime() < firstMonday.getTime()
-      }
+      firstMonday: firstMonday.toISOString(),
+      joinDay: joinDate.getUTCDay(),
+      beforeStart: today < firstMonday
     });
 
-    // If today is before first Monday, program hasn't started yet
-    if (today.getTime() < firstMonday.getTime()) {
-      console.log('Before program start:', { 
-        userId, 
+    // If today is before first Monday, program hasn't started
+    if (today < firstMonday) {
+      console.log('Program not started yet:', {
+        userId,
         today: today.toISOString(),
         firstMonday: firstMonday.toISOString()
       });
       return null;
     }
 
-    // Calculate days since first Monday (Day 1)
-    const diffTime = today.getTime() - firstMonday.getTime();
-    const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Calculate days since program start (first Monday = day 1)
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysSinceStart = Math.floor((today.getTime() - firstMonday.getTime()) / msPerDay) + 1;
 
-    // Calculate week (1-based) and day (1 = Monday, 7 = Sunday)
-    const week = Math.floor(daysSinceStart / 7) + 1;
-    const day = (daysSinceStart % 7) + 1;
+    // Calculate week (1-based) and day (1-7, Monday to Sunday)
+    const week = Math.floor((daysSinceStart - 1) / 7) + 1;
+    const day = ((daysSinceStart - 1) % 7) + 1;
 
-    // Check if completed 84 days (12 weeks) for Spartan status
+    // Spartan status after 84 days
     const isSpartan = daysSinceStart >= 84;
 
     console.log('Program progress:', {
       userId,
-      diffTime,
       daysSinceStart,
       week,
       day,
-      isSpartan,
-      today: today.toISOString()
+      isSpartan
     });
 
-    return { 
-      week, 
-      day,
-      isSpartan 
-    };
+    return { week, day, isSpartan };
   }
 }
 
