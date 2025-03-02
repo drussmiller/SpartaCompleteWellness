@@ -200,7 +200,7 @@ export class DatabaseStorage implements IStorage {
         userId: posts.userId,
         parentId: posts.parentId,
         createdAt: posts.createdAt,
-        depth: posts.depth
+        depth: posts.depth  // Added missing field
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
@@ -217,7 +217,7 @@ export class DatabaseStorage implements IStorage {
         userId: posts.userId,
         parentId: posts.parentId,
         createdAt: posts.createdAt,
-        depth: posts.depth
+        depth: posts.depth  // Added missing field
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
@@ -245,7 +245,7 @@ export class DatabaseStorage implements IStorage {
         userId: posts.userId,
         parentId: posts.parentId,
         createdAt: posts.createdAt,
-        depth: posts.depth
+        depth: posts.depth  // Added missing field
       })
       .from(posts)
       .where(
