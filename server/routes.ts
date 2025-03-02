@@ -950,7 +950,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Allow users to delete their own comments or if they are admin
-      if (comment.userId !== req.user.id && !req.user.isAdmin) {        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      if (comment.userId !== req.user.id &&!req.user.isAdmin) {        return res.status(403).json({ message: "Not authorized to delete this comment" });
       }
 
       // Delete the comment
@@ -990,11 +990,26 @@ export function registerRoutes(app: Express): Server {
 
   // Add team assignment route
   app.get("/api/users", async (req, res) => {
-    if (!req.user?.isAdmin) return res.sendStatus(403);
+    console.log('GET /api/users request:', {
+      authenticated: req.isAuthenticated(),
+      user: req.user,
+      isAdmin: req.user?.isAdmin
+    });
+
+    if (!req.isAuthenticated()) {
+      console.log('Unauthenticated request to /api/users');
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    if (!req.user?.isAdmin) {
+      console.log('Non-admin access attempt:', { userId: req.user?.id });
+      return res.status(403).json({ error: "Admin access required" });
+    }
 
     try {
       console.log('Admin fetching all users');
       const users = await storage.getAllUsers();
+      console.log('Found users:', users.length);
 
       // Calculate program start dates for all users
       const enhancedUsers = await Promise.all(users.map(async (user) => {
@@ -1009,14 +1024,15 @@ export function registerRoutes(app: Express): Server {
         if (user.teamJoinedAt) {
           const joinDate = new Date(user.teamJoinedAt);
           let firstMonday = new Date(joinDate);
+          firstMonday.setUTCHours(0, 0, 0, 0);
           while (firstMonday.getUTCDay() !== 1) { // 1 = Monday
             firstMonday.setUTCDate(firstMonday.getUTCDate() + 1);
           }
           programStart = firstMonday.toISOString();
         }
 
-        // Get current points from valid posts
-        const points = await db
+        // Get user's points from valid posts
+        const [pointsResult] = await db
           .select({
             total: sql<number>`COALESCE(
               SUM(CASE WHEN type != 'comment' THEN points ELSE 0 END),
@@ -1030,11 +1046,19 @@ export function registerRoutes(app: Express): Server {
           ...user,
           weekInfo,
           programStart,
-          points: points[0].total || 0
+          points: pointsResult.total
         };
       }));
 
-      console.log('Enhanced users data:', enhancedUsers.length);
+      console.log('Sending enhanced users data:', {
+        count: enhancedUsers.length,
+        sampleUser: enhancedUsers[0] ? {
+          id: enhancedUsers[0].id,
+          hasWeekInfo: !!enhancedUsers[0].weekInfo,
+          hasProgramStart: !!enhancedUsers[0].programStart
+        } : null
+      });
+
       res.json(enhancedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);

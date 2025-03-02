@@ -152,7 +152,7 @@ export function setupAuth(app: Express) {
           console.error('Login error:', loginErr);
           return res.status(500).json({ error: "Failed to establish session" });
         }
-        console.log('Login successful:', { 
+        console.log('Login successful:', {
           userId: user.id,
           sessionId: req.sessionID,
           cookies: req.cookies,
@@ -176,3 +176,29 @@ export function setupAuth(app: Express) {
     });
   });
 }
+
+//This part was added based on the edited code snippet.  Assumed it is part of the storage object.  Adjust as needed based on your actual storage implementation.
+  async function getUserByUsername(username: string): Promise<User | undefined> {
+    console.log('Looking up user by username:', username);
+    const [user] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        password: users.password,
+        isAdmin: users.isAdmin,
+        teamId: users.teamId,
+        points: users.points,
+        imageUrl: users.imageUrl,
+        preferredName: users.preferredName,
+        weight: users.weight,
+        waist: users.waist,
+        createdAt: users.createdAt,
+        teamJoinedAt: users.teamJoinedAt
+      })
+      .from(users)
+      .where(eq(users.username, username));
+
+    console.log('User lookup result:', user ? { id: user.id, isAdmin: user.isAdmin } : 'not found');
+    return user;
+  }
