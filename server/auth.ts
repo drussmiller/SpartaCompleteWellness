@@ -49,10 +49,11 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax', // Allow WebSocket connections
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
-    name: 'connect.sid' // Explicitly set the cookie name
+    name: 'connect.sid', // Explicitly set the cookie name
+    rolling: true // Extend session lifetime on activity
   };
 
   app.set("trust proxy", 1);
@@ -117,9 +118,10 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     console.log('Session ID:', req.sessionID);
-    console.log('Session:', req.session);
+    console.log('Session data:', req.session);
     console.log('Is Authenticated:', req.isAuthenticated());
     console.log('User:', req.user);
+    console.log('Session Cookie:', req.cookies['connect.sid']); // Added logging for session cookie
 
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
