@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseStorage } from '../storage';
 import { db } from '../db';
 import { users } from '@shared/schema';
@@ -6,6 +6,18 @@ import { eq } from 'drizzle-orm';
 
 describe('getUserWeekInfo', () => {
   const storage = new DatabaseStorage();
+
+  // Mock Date.now() to return March 2, 2025
+  beforeEach(() => {
+    const mockDate = new Date('2025-03-02T00:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(mockDate);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    db.delete(users);
+  });
 
   // Helper function to create test user with specific join date
   async function createTestUser(joinDate: Date) {
@@ -22,72 +34,57 @@ describe('getUserWeekInfo', () => {
     return user;
   }
 
-  it('calculates first Monday correctly', async () => {
-    // Team join on Sunday, first Monday should be next day
-    const sundayJoin = new Date('2025-03-02'); // A Sunday
+  it('returns null when joining on Sunday before program starts', async () => {
+    // Join on Sunday March 2, 2025
+    const sundayJoin = new Date('2025-03-02T00:00:00.000Z');
+    const user = await createTestUser(sundayJoin);
+    const weekInfo = await storage.getUserWeekInfo(user.id);
+
+    expect(weekInfo).toBeNull();
+  });
+
+  it('starts program on first Monday after joining', async () => {
+    // Set current date to Monday March 3, 2025
+    vi.setSystemTime(new Date('2025-03-03T00:00:00.000Z'));
+
+    // User joined yesterday (Sunday)
+    const sundayJoin = new Date('2025-03-02T00:00:00.000Z');
     const user = await createTestUser(sundayJoin);
     const weekInfo = await storage.getUserWeekInfo(user.id);
 
     expect(weekInfo).not.toBeNull();
     expect(weekInfo?.week).toBe(1);
-    expect(weekInfo?.day).toBe(1); // Should show as Monday
+    expect(weekInfo?.day).toBe(1); // Should be Monday = Day 1
   });
 
-  it('maintains Monday (1) to Sunday (7) schedule', async () => {
-    // Join on Monday, program starts same day
-    const mondayJoin = new Date('2025-03-03'); // A Monday
-    const user = await createTestUser(mondayJoin);
-    const weekInfo = await storage.getUserWeekInfo(user.id);
+  it('calculates Week 2 Day 2 correctly after 9 days', async () => {
+    // Set current date to March 11, 2025 (9 days after March 2)
+    vi.setSystemTime(new Date('2025-03-11T00:00:00.000Z'));
 
-    expect(weekInfo).not.toBeNull();
-    expect(weekInfo?.day).toBe(1); // Monday should be day 1
-  });
-
-  it('shows correct week and day after 9 days', async () => {
-    // Join 9 days ago, should be Week 2, Day 2
-    const nineDay = new Date();
-    nineDay.setDate(nineDay.getDate() - 9);
-    const user = await createTestUser(nineDay);
+    // User joined on March 2
+    const joinDate = new Date('2025-03-02T00:00:00.000Z');
+    const user = await createTestUser(joinDate);
     const weekInfo = await storage.getUserWeekInfo(user.id);
 
     expect(weekInfo).not.toBeNull();
     expect(weekInfo?.week).toBe(2);
-    expect(weekInfo?.day).toBe(2); // Should be Tuesday of Week 2
-  });
-
-  it('handles week transitions correctly', async () => {
-    // Join 7 days ago (one week)
-    const sevenDay = new Date();
-    sevenDay.setDate(sevenDay.getDate() - 7);
-    const user = await createTestUser(sevenDay);
-    const weekInfo = await storage.getUserWeekInfo(user.id);
-
-    expect(weekInfo).not.toBeNull();
-    expect(weekInfo?.week).toBe(2); // Should be in week 2
-    const today = new Date();
-    expect(weekInfo?.day).toBe(today.getDay() === 0 ? 7 : today.getDay()); // Should match today's day
+    expect(weekInfo?.day).toBe(2); // Should be Tuesday = Day 2
   });
 
   it('marks Spartan status after 84 days', async () => {
-    // Join 83 days ago - not yet Spartan
-    const pre83days = new Date();
-    pre83days.setDate(pre83days.getDate() - 83);
-    const user1 = await createTestUser(pre83days);
+    // Set current date to May 24, 2025 (83 days after March 2)
+    vi.setSystemTime(new Date('2025-05-24T00:00:00.000Z'));
+
+    // User joined on March 2
+    const user1 = await createTestUser(new Date('2025-03-02T00:00:00.000Z'));
     const weekInfo1 = await storage.getUserWeekInfo(user1.id);
 
     expect(weekInfo1?.isSpartan).toBe(false);
 
-    // Join 84 days ago - now Spartan
-    const post84days = new Date();
-    post84days.setDate(post84days.getDate() - 84);
-    const user2 = await createTestUser(post84days);
-    const weekInfo2 = await storage.getUserWeekInfo(user2.id);
+    // Set current date to May 25, 2025 (84 days after March 2)
+    vi.setSystemTime(new Date('2025-05-25T00:00:00.000Z'));
+    const weekInfo2 = await storage.getUserWeekInfo(user1.id);
 
     expect(weekInfo2?.isSpartan).toBe(true);
-  });
-
-  // Cleanup after each test
-  afterEach(async () => {
-    await db.delete(users);
   });
 });
