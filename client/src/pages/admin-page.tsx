@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, UserPlus, Plus, Edit, Trash2, Video, X, ChevronLeft } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -286,16 +287,10 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 max-w-screen-2xl items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Back</span>
-            </Button>
-            <h1 className="text-xl font-bold">Admin Dashboard</h1>
-          </div>
+          <h1 className="text-xl font-bold">Admin Dashboard</h1>
         </div>
       </header>
 
@@ -508,6 +503,8 @@ export default function AdminPage() {
           </Card>
         </div>
       </main>
+
+      <BottomNav />
 
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
         <DialogContent>
