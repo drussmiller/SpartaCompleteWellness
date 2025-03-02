@@ -115,15 +115,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 max-w-screen-2xl items-center">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => setLocation("/")}
-            className="mr-auto"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold">Profile</h1>
+          <h1 className="text-xl font-bold mr-auto">Profile</h1>
           <Button 
             variant="outline" 
             size="sm"
@@ -135,7 +127,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto p-4 space-y-6 overflow-y-auto"> {/* Added overflow-y-auto */}
+      <main className="container max-w-2xl mx-auto p-4 space-y-6 overflow-y-auto">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
             <div className="relative">
