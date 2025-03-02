@@ -42,7 +42,6 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
 
-  // Cookie parser should be used before session middleware
   app.use(cookieParser(process.env.SESSION_SECRET));
 
   const sessionSettings: session.SessionOptions = {
@@ -51,20 +50,18 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Set to false for development
       httpOnly: true,
-      sameSite: 'lax', // Allow WebSocket connections
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
-    name: 'connect.sid'
+    name: 'sid'
   };
 
-  app.set("trust proxy", 1);
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Set up local strategy with email/username login
   passport.use(
     new LocalStrategy({
       usernameField: 'email',
@@ -75,7 +72,6 @@ export function setupAuth(app: Express) {
         let user = await storage.getUserByEmail(emailOrUsername);
 
         if (!user) {
-          // Try username if email lookup failed
           user = await storage.getUserByUsername(emailOrUsername);
         }
 
@@ -121,53 +117,41 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    console.log('Session ID:', req.sessionID);
-    console.log('Session data:', req.session);
-    console.log('Is Authenticated:', req.isAuthenticated());
-    console.log('User:', req.user);
-    console.log('Session Cookie:', req.cookies['connect.sid']); 
-    console.log('Signed Cookies:', req.signedCookies);
-
     if (!req.isAuthenticated()) {
-      console.log('Unauthenticated request to /api/user');
-      return res.sendStatus(401);
+      return res.status(401).json({ error: "Not authenticated" });
     }
-    console.log('Authenticated user:', req.user.id);
     res.json(req.user);
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log('Login attempt for:', req.body.email);
-    passport.authenticate("local", (err: any, user: any, info: any) => {
+    console.log('Login attempt:', { email: req.body.email });
+    passport.authenticate("local", (err: any, user: any) => {
       if (err) {
-        console.error('Login error:', err);
-        return next(err);
+        console.error('Authentication error:', err);
+        return res.status(500).json({ error: "Internal server error" });
       }
       if (!user) {
-        console.log('Login failed for:', req.body.email);
-        return res.status(401).json({ error: "Invalid email or password" });
+        return res.status(401).json({ error: "Invalid credentials" });
       }
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Session creation error:', err);
-          return next(err);
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error('Login error:', loginErr);
+          return res.status(500).json({ error: "Failed to establish session" });
         }
-        console.log('Login successful for:', user.username);
-        console.log('Session ID after login:', req.sessionID);
+        console.log('Login successful:', { userId: user.id });
         res.json(user);
       });
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", (req, res) => {
     const userId = req.user?.id;
-    console.log('Logout request for user:', userId);
     req.logout((err) => {
       if (err) {
         console.error('Logout error:', err);
-        return next(err);
+        return res.status(500).json({ error: "Failed to logout" });
       }
-      console.log('Logout successful for user:', userId);
+      console.log('Logout successful:', { userId });
       res.sendStatus(200);
     });
   });
