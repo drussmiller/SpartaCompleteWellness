@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import cookieParser from 'cookie-parser';
 
 declare global {
   namespace Express {
@@ -40,6 +41,9 @@ export function setupAuth(app: Express) {
   if (!process.env.SESSION_SECRET) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
+
+  // Add cookie parser middleware
+  app.use(cookieParser(process.env.SESSION_SECRET));
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET,
@@ -121,7 +125,8 @@ export function setupAuth(app: Express) {
     console.log('Session data:', req.session);
     console.log('Is Authenticated:', req.isAuthenticated());
     console.log('User:', req.user);
-    console.log('Session Cookie:', req.cookies['connect.sid']); // Added logging for session cookie
+    console.log('Session Cookie:', req.cookies['connect.sid']); 
+    console.log('Signed Cookies:', req.signedCookies); 
 
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
@@ -132,15 +137,15 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log('Login attempt for:', req.body.username);
+    console.log('Login attempt for:', req.body.email);
     passport.authenticate("local", (err, user, info) => {
       if (err) {
         console.error('Login error:', err);
         return next(err);
       }
       if (!user) {
-        console.log('Login failed for:', req.body.username);
-        return res.status(401).json({ error: "Invalid username or password" });
+        console.log('Login failed for:', req.body.email);
+        return res.status(401).json({ error: "Invalid email or password" });
       }
       req.login(user, (err) => {
         if (err) {
