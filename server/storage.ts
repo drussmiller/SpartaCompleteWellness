@@ -512,7 +512,8 @@ export class DatabaseStorage implements IStorage {
     // Calculate week (1-based) and day (1 = Monday, 7 = Sunday)
     const week = Math.floor(diffDays / 7) + 1;
     const currentDayOfWeek = today.getUTCDay();
-    const day = currentDayOfWeek === 0 ? 7 : currentDayOfWeek; // Convert Sunday from 0 to 7
+    // Convert day number so Monday=1, Tuesday=2, ..., Sunday=7
+    const day = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
 
     // Check if completed 84 days (12 weeks) for Spartan status
     const isSpartan = diffDays >= 84;
