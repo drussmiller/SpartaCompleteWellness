@@ -467,27 +467,41 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
+    // Create date objects and standardize to UTC midnight
     const joinDate = new Date(user.teamJoinedAt);
+    joinDate.setUTCHours(0, 0, 0, 0);
+
     const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
 
     // Find the first Monday after join date
-    const dayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, ...
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; // If Sunday, next day is Monday, otherwise calculate days until next Monday
+    const dayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ...
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; // If Sunday, next day is Monday
     const firstMonday = new Date(joinDate);
-    firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-    firstMonday.setHours(0, 0, 0, 0);
+    firstMonday.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
+    firstMonday.setUTCHours(0, 0, 0, 0);
 
     console.log('Program timing calculation:', {
       userId,
       joinDate: joinDate.toISOString(),
       firstMonday: firstMonday.toISOString(),
       daysUntilMonday,
-      dayOfWeek
+      dayOfWeek,
+      today: today.toISOString(),
+      comparison: {
+        todayTime: today.getTime(),
+        firstMondayTime: firstMonday.getTime(),
+        isDayBefore: today.getTime() < firstMonday.getTime()
+      }
     });
 
-    // If today is before first Monday, return null
-    if (today < firstMonday) {
-      console.log('Before program start:', { userId, today: today.toISOString() });
+    // If today is before first Monday, user hasn't started program yet
+    if (today.getTime() < firstMonday.getTime()) {
+      console.log('Before program start:', { 
+        userId, 
+        today: today.toISOString(),
+        firstMonday: firstMonday.toISOString()
+      });
       return null;
     }
 
@@ -497,17 +511,21 @@ export class DatabaseStorage implements IStorage {
 
     // Calculate week (1-based) and day (1 = Monday, 7 = Sunday)
     const week = Math.floor(diffDays / 7) + 1;
-    const day = today.getDay() === 0 ? 7 : today.getDay(); // Convert Sunday from 0 to 7
+    const currentDayOfWeek = today.getUTCDay();
+    const day = currentDayOfWeek === 0 ? 7 : currentDayOfWeek; // Convert Sunday from 0 to 7
 
     // Check if completed 84 days (12 weeks) for Spartan status
     const isSpartan = diffDays >= 84;
 
     console.log('Program progress:', {
       userId,
+      diffTime,
       diffDays,
       week,
       day,
-      isSpartan
+      isSpartan,
+      currentDayOfWeek,
+      today: today.toISOString()
     });
 
     return { 
