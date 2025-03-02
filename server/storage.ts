@@ -480,21 +480,27 @@ export class DatabaseStorage implements IStorage {
       firstMonday.setUTCDate(firstMonday.getUTCDate() + 1);
     }
 
-    // If we haven't reached the first Monday yet, calculate negative days
+    // If we haven't reached the first Monday yet, calculate days until start
     if (today < firstMonday) {
       const msPerDay = 24 * 60 * 60 * 1000;
-      const daysBeforeStart = Math.floor((firstMonday.getTime() - today.getTime()) / msPerDay);
+      const daysUntilStart = Math.floor((firstMonday.getTime() - today.getTime()) / msPerDay);
+
+      // Calculate day number relative to program start
+      // Sunday = 0, Saturday = -1, etc.
+      const dayNumber = -daysUntilStart;
 
       console.log('Before program start:', {
         userId,
+        joinDate: joinDate.toISOString(),
         today: today.toISOString(),
         firstMonday: firstMonday.toISOString(),
-        daysBeforeStart: -daysBeforeStart // Convert to negative number
+        daysUntilStart,
+        dayNumber
       });
 
       return {
         week: 0,
-        day: -daysBeforeStart, // Will be 0 for Sunday, -1 for Saturday, etc.
+        day: dayNumber,
         isSpartan: false
       };
     }
@@ -512,6 +518,9 @@ export class DatabaseStorage implements IStorage {
 
     console.log('Program progress:', {
       userId,
+      joinDate: joinDate.toISOString(),
+      today: today.toISOString(),
+      firstMonday: firstMonday.toISOString(),
       daysSinceStart,
       week,
       day,
