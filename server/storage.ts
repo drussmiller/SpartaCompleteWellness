@@ -474,29 +474,29 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    // Find next Monday after join date
+    // Find the first Monday after join (when program starts)
     let firstMonday = new Date(joinDate);
     while (firstMonday.getUTCDay() !== 1) { // 1 = Monday
       firstMonday.setUTCDate(firstMonday.getUTCDate() + 1);
     }
 
-    console.log('Program dates:', {
-      userId,
-      joinDate: joinDate.toISOString(),
-      today: today.toISOString(),
-      firstMonday: firstMonday.toISOString(),
-      joinDay: joinDate.getUTCDay(),
-      beforeStart: today < firstMonday
-    });
-
-    // If today is before first Monday, program hasn't started
+    // If we haven't reached the first Monday yet, calculate negative days
     if (today < firstMonday) {
-      console.log('Program not started yet:', {
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const daysBeforeStart = Math.floor((firstMonday.getTime() - today.getTime()) / msPerDay);
+
+      console.log('Before program start:', {
         userId,
         today: today.toISOString(),
-        firstMonday: firstMonday.toISOString()
+        firstMonday: firstMonday.toISOString(),
+        daysBeforeStart: -daysBeforeStart // Convert to negative number
       });
-      return null;
+
+      return {
+        week: 0,
+        day: -daysBeforeStart, // Will be 0 for Sunday, -1 for Saturday, etc.
+        isSpartan: false
+      };
     }
 
     // Calculate days since program start (first Monday = day 1)
