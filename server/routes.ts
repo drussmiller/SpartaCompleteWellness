@@ -950,8 +950,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Allow users to delete their own comments or if they are admin
-      if (comment.userId !== req.user.id && !req.user.isAdmin) {
-        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      if (comment.userId !== req.user.id && !req.user.isAdmin) {        return res.status(403).json({ message: "Not authorized to delete this comment" });
       }
 
       // Delete the comment
@@ -992,34 +991,57 @@ export function registerRoutes(app: Express): Server {
   // Add team assignment route
   app.get("/api/users", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
+
     try {
+      console.log('Admin fetching all users');
       const users = await storage.getAllUsers();
 
       // Calculate program start dates for all users
       const enhancedUsers = await Promise.all(users.map(async (user) => {
-        const weekInfo = await storage.getUserWeekInfo(user.id);
+        console.log('Processing user:', user.id);
 
-        let firstMonday = null;
+        // Get week info
+        const weekInfo = await storage.getUserWeekInfo(user.id);
+        console.log('Week info for user:', { userId: user.id, weekInfo });
+
+        // Calculate program start (first Monday after join)
+        let programStart = null;
         if (user.teamJoinedAt) {
           const joinDate = new Date(user.teamJoinedAt);
-          const dayOfWeek = joinDate.getDay();
-          const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-          firstMonday = new Date(joinDate);
-          firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-          firstMonday.setHours(0, 0, 0, 0);
+          let firstMonday = new Date(joinDate);
+          while (firstMonday.getUTCDay() !== 1) { // 1 = Monday
+            firstMonday.setUTCDate(firstMonday.getUTCDate() + 1);
+          }
+          programStart = firstMonday.toISOString();
         }
+
+        // Get current points from valid posts
+        const points = await db
+          .select({
+            total: sql<number>`COALESCE(
+              SUM(CASE WHEN type != 'comment' THEN points ELSE 0 END),
+              0
+            )`
+          })
+          .from(posts)
+          .where(eq(posts.userId, user.id));
 
         return {
           ...user,
           weekInfo,
-          programStart: firstMonday?.toISOString() || null
+          programStart,
+          points: points[0].total || 0
         };
       }));
 
+      console.log('Enhanced users data:', enhancedUsers.length);
       res.json(enhancedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      res.status(500).json({ error: "Failed to fetch users" });
+      res.status(500).json({ 
+        error: "Failed to fetch users",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
