@@ -264,10 +264,10 @@ export function CreatePostDialog() {
               )}
             />
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col gap-2">
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-14 bg-gray-200 text-black hover:bg-gray-300"
                 disabled={
                   createPostMutation.isPending ||
                   !canPost[form.watch("type") as keyof typeof canPost]
@@ -276,12 +276,12 @@ export function CreatePostDialog() {
                 {createPostMutation.isPending ? "Creating..." : "Create Post"}
               </Button>
               <Button
-                variant="outline"
+                variant="default"
                 onClick={() => {
                   setOpen(false);
                   form.reset();
                 }}
-                className="bg-gray-400 hover:bg-gray-500 text-black font-bold h-14 w-full"
+                className="w-full h-14 bg-gray-200 text-black hover:bg-gray-300"
               >
                 Close
               </Button>
