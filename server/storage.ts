@@ -1,10 +1,11 @@
 import { users, teams, posts, measurements, notifications, videos, activities, passwordResetTokens } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
+import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo, Activity } from "@shared/schema";
 import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import type { PgSelectQueryBuilder } from 'drizzle-orm/pg-core';
 
 const PostgresSessionStore = connectPg(session);
 
@@ -13,7 +14,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUserTeam(userId: number, teamId: number): Promise<User>;
+  updateUserTeam(userId: number, teamId: number | null): Promise<User>;
   updateUserPoints(userId: number, points: number): Promise<User>;
   updateUserImage(userId: number, imageUrl: string): Promise<User>;
   createTeam(team: Team): Promise<Team>;
@@ -39,8 +40,8 @@ export interface IStorage {
   getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number>;
   sessionStore: session.Store;
   deleteTeam(teamId: number): Promise<void>;
-  getActivities(week?: number, day?: number): Promise<any>;
-  createActivity(data: any): Promise<any>;
+  getActivities(week?: number, day?: number): Promise<Activity[]>;
+  createActivity(data: Activity): Promise<Activity[]>;
   getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null>;
 }
 
@@ -108,7 +109,7 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async updateUserTeam(userId: number, teamId: number): Promise<User> {
+  async updateUserTeam(userId: number, teamId: number | null): Promise<User> {
     const [updatedUser] = await db
       .update(users)
       .set({ 
@@ -198,7 +199,8 @@ export class DatabaseStorage implements IStorage {
         points: posts.points,
         userId: posts.userId,
         parentId: posts.parentId,
-        createdAt: posts.createdAt
+        createdAt: posts.createdAt,
+        depth: posts.depth
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
@@ -214,37 +216,25 @@ export class DatabaseStorage implements IStorage {
         points: posts.points,
         userId: posts.userId,
         parentId: posts.parentId,
-        createdAt: posts.createdAt
+        createdAt: posts.createdAt,
+        depth: posts.depth
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
   }
 
-  async updateUserTeam(userId: number, teamId: number): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ teamId })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
-  }
-
   async getPostsByTeam(teamId: number): Promise<Post[]> {
-    // First get all users in this team
     const teamUsers = await db
       .select({
-        id: users.id,
-        username: users.username,
-        teamId: users.teamId
+        id: users.id
       })
       .from(users)
       .where(eq(users.teamId, teamId));
+
     const userIds = teamUsers.map(u => u.id);
 
-    // Even if there are no users in the team, still return an empty array
     if (userIds.length === 0) return [];
 
-    // Get all posts from team members
     return await db
       .select({
         id: posts.id,
@@ -254,7 +244,8 @@ export class DatabaseStorage implements IStorage {
         points: posts.points,
         userId: posts.userId,
         parentId: posts.parentId,
-        createdAt: posts.createdAt
+        createdAt: posts.createdAt,
+        depth: posts.depth
       })
       .from(posts)
       .where(
@@ -281,7 +272,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNotification(notification: Omit<Notification, 'id'>): Promise<Notification> {
-    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    const notificationData = {
+      userId: notification.userId,
+      title: notification.title,
+      message: notification.message,
+      read: notification.read ?? false,
+      createdAt: notification.createdAt ?? new Date()
+    };
+
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notificationData)
+      .returning();
+
     return newNotification;
   }
 
@@ -408,21 +411,27 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(posts.createdAt));
   }
 
-  async getActivities(week?: number, day?: number) {
-    let query = db.select().from(activities);
+  async getActivities(week?: number, day?: number): Promise<Activity[]> {
+    let queryBuilder = db
+      .select()
+      .from(activities) as PgSelectQueryBuilder<
+        typeof activities,
+        Record<string, unknown>
+      >;
+
     if (week !== undefined) {
-      query = query.where(eq(activities.week, week));
+      queryBuilder = queryBuilder.where(eq(activities.week, week));
       if (day !== undefined) {
-        query = query.where(and(
-          eq(activities.week, week),
-          eq(activities.day, day)
-        ));
+        queryBuilder = queryBuilder.where(
+          and(eq(activities.week, week), eq(activities.day, day))
+        );
       }
     }
-    return await query;
+
+    return await queryBuilder;
   }
 
-  async createActivity(data: any) {
+  async createActivity(data: Activity): Promise<Activity[]> {
     return await db.insert(activities).values(data).returning();
   }
 
