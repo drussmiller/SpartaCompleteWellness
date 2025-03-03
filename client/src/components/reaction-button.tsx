@@ -185,18 +185,8 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "gap-1.5 text-sm",
-            userReaction && reactionEmojis[userReaction]?.color
-          )}
         >
-          {userReaction ? (
-            reactionEmojis[userReaction].emoji
-          ) : mostCommonReaction ? (
-            reactionEmojis[mostCommonReaction].emoji
-          ) : (
-            <ThumbsUp className="h-4 w-4" />
-          )}
+          <ThumbsUp className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="p-2 grid grid-cols-6 gap-1 w-60">
