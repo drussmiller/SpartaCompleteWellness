@@ -9,7 +9,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { insertTeamSchema, type Team, type Activity, type User, type InsertTeam } from "@shared/schema";
+import { insertTeamSchema, type Team, type User, type InsertTeam } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -271,9 +271,11 @@ export default function AdminPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <Select
-                            defaultValue={user.teamId?.toString()}
+                            defaultValue={user.teamId?.toString() || "none"}
                             onValueChange={(value) => {
-                              const teamId = value === "" ? null : parseInt(value);
+                              console.log('Team selection changed:', value);
+                              const teamId = value === "none" ? null : parseInt(value);
+                              console.log('Converting to teamId:', teamId);
                               updateUserTeamMutation.mutate({ userId: user.id, teamId });
                             }}
                           >
@@ -281,7 +283,7 @@ export default function AdminPage() {
                               <SelectValue placeholder="Select a team" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">No Team</SelectItem>
+                              <SelectItem value="none">No Team</SelectItem>
                               {teams?.map((team) => (
                                 <SelectItem key={team.id} value={team.id.toString()}>
                                   {team.name}

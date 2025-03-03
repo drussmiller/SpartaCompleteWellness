@@ -41,16 +41,38 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
 
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  console.log('Environment:', isDevelopment ? 'development' : 'production');
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    name: 'sparta.sid', // Custom cookie name
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      secure: !isDevelopment, // Only use secure cookies in production
+      sameSite: isDevelopment ? 'lax' : 'strict',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      httpOnly: true,
+      path: '/',
     }
   };
+
+  // Add CORS settings if in development
+  if (isDevelopment) {
+    app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', req.headers.origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+  }
 
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
@@ -121,22 +143,22 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log('Login attempt for:', req.body.username);
+    console.log('Login attempt for:', req.body.email);
     passport.authenticate("local", (err, user, info) => {
       if (err) {
         console.error('Login error:', err);
         return next(err);
       }
       if (!user) {
-        console.log('Login failed for:', req.body.username);
-        return res.status(401).json({ error: "Invalid username or password" });
+        console.log('Login failed for:', req.body.email);
+        return res.status(401).json({ error: "Invalid email or password" });
       }
       req.login(user, (err) => {
         if (err) {
           console.error('Session creation error:', err);
           return next(err);
         }
-        console.log('Login successful for:', user.username);
+        console.log('Login successful for:', user.email);
         res.json(user);
       });
     })(req, res, next);
