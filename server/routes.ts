@@ -19,27 +19,12 @@ import {
   insertActivitySchema
 } from "@shared/schema";
 import { setupAuth } from "./auth";
-import { WebSocketServer, WebSocket } from 'ws';
-import { z } from 'zod';
-import type { IncomingMessage } from "http";
 
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
-
-// Keep track of connected clients
-const clients = new Map<number, WebSocket>();
-
-// WebSocket helper function to send error response
-function sendError(ws: WebSocket, message: string) {
-  try {
-    ws.send(JSON.stringify({ type: 'error', message }));
-  } catch (error) {
-    console.error('Error sending error message:', error);
-  }
-}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
@@ -48,7 +33,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
 
-  // Add CORS headers for all requests including WebSocket upgrades
+  // Add CORS headers for all requests
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin) {
@@ -64,93 +49,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Setup WebSocket server with detailed logging
-  const wss = new WebSocketServer({
-    server: httpServer,
-    path: '/ws',
-    verifyClient: ({ origin, req }, callback) => {
-      console.log('WebSocket connection attempt from origin:', origin);
-      console.log('Headers:', req.headers);
-      callback(true);
-    }
-  });
-
-  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
-    console.log('New WebSocket connection attempt');
-    console.log('Request headers:', req.headers);
-
-    let authenticated = false;
-    let userId: number | null = null;
-
-    // Set timeout for authentication
-    const authTimeout = setTimeout(() => {
-      if (!authenticated) {
-        console.log('WebSocket authentication timeout');
-        sendError(ws, 'Authentication timeout');
-        ws.close(1008, 'Authentication timeout');
-      }
-    }, 5000);
-
-    try {
-      // Wait for authentication message
-      ws.once('message', async (message: string) => {
-        try {
-          console.log('Received message:', message.toString());
-          const data = JSON.parse(message.toString());
-
-          if (data.type !== 'authenticate' || !data.userId) {
-            console.log('Invalid authentication message:', data);
-            sendError(ws, 'Invalid authentication message');
-            ws.close(1008, 'Invalid authentication message');
-            return;
-          }
-
-          userId = data.userId;
-          console.log('Attempting to authenticate WebSocket for user:', userId);
-
-          // Verify user exists
-          const user = await storage.getUser(userId);
-          if (!user) {
-            console.log('WebSocket authentication failed - user not found:', userId);
-            sendError(ws, 'User not found');
-            ws.close(1008, 'User not found');
-            return;
-          }
-
-          authenticated = true;
-          clearTimeout(authTimeout);
-          console.log('WebSocket authenticated for user:', userId);
-          clients.set(userId, ws);
-
-          // Send authentication success message
-          ws.send(JSON.stringify({ type: 'authenticated', userId }));
-        } catch (error) {
-          console.error('Error processing authentication message:', error);
-          sendError(ws, 'Authentication error');
-          ws.close(1008, 'Authentication error');
-        }
-      });
-
-      ws.on('close', (code, reason) => {
-        console.log('WebSocket closed:', { code, reason });
-        if (userId) {
-          console.log('Removing client for user:', userId);
-          clients.delete(userId);
-        }
-      });
-
-      ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
-        if (userId) {
-          clients.delete(userId);
-        }
-      });
-
-    } catch (error) {
-      console.error('Error in WebSocket connection handler:', error);
-      sendError(ws, 'Server error');
-      ws.close(1008, 'Server error');
-    }
+  // Add detailed request logging middleware
+  app.use((req, res, next) => {
+    console.log('Request:', {
+      method: req.method,
+      path: req.path,
+      headers: req.headers,
+      cookies: req.cookies,
+      session: req.session,
+      isAuthenticated: req.isAuthenticated(),
+      user: req.user?.id
+    });
+    next();
   });
 
   // Rest of your routes...
