@@ -1,0 +1,110 @@
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+
+type ConnectionStatus = "connected" | "connecting" | "disconnected";
+
+export function useNotifications() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const maxReconnectAttempts = 5;
+  const reconnectDelay = 2000; // 2 seconds
+
+  useEffect(() => {
+    if (!user) {
+      console.log('No authenticated user found, skipping WebSocket connection');
+      return;
+    }
+
+    const connectWebSocket = () => {
+      try {
+        console.log('Initializing WebSocket connection for user:', user.id);
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+
+        console.log('Attempting WebSocket connection to:', wsUrl);
+
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+        setConnectionStatus("connecting");
+
+        ws.addEventListener('open', () => {
+          console.log('WebSocket connection established successfully');
+          setConnectionStatus("connected");
+          reconnectAttemptRef.current = 0; // Reset reconnect attempts on success
+        });
+
+        ws.addEventListener('message', (event) => {
+          try {
+            const notification = JSON.parse(event.data);
+            console.log('Received notification:', notification);
+
+            if (notification.type === 'connected') {
+              console.log('Connection confirmed with userId:', notification.userId);
+              return;
+            }
+
+            toast({
+              title: notification.title,
+              description: notification.message,
+            });
+
+            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          } catch (error) {
+            console.error('Error processing notification:', error);
+          }
+        });
+
+        ws.addEventListener('error', (error) => {
+          console.error('WebSocket error:', error);
+          setConnectionStatus("disconnected");
+        });
+
+        ws.addEventListener('close', (event) => {
+          console.log('WebSocket connection closed:', event);
+          setConnectionStatus("disconnected");
+          handleReconnect();
+        });
+
+      } catch (error) {
+        console.error('Error establishing WebSocket connection:', error);
+        setConnectionStatus("disconnected");
+        handleReconnect();
+      }
+    };
+
+    const handleReconnect = () => {
+      if (reconnectAttemptRef.current >= maxReconnectAttempts) {
+        console.log('Max reconnection attempts reached');
+        return;
+      }
+
+      reconnectAttemptRef.current++;
+      console.log(`Reconnection attempt ${reconnectAttemptRef.current} of ${maxReconnectAttempts}`);
+
+      setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.CLOSED) {
+          connectWebSocket();
+        }
+      }, reconnectDelay);
+    };
+
+    connectWebSocket();
+
+    return () => {
+      console.log('Cleaning up WebSocket connection');
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setConnectionStatus("disconnected");
+    };
+  }, [user, toast]); // Only recreate connection when user changes
+
+  return { connectionStatus };
+}

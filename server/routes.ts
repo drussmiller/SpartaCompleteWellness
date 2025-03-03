@@ -3,16 +3,25 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { queryClient } from "../client/src/lib/queryClient";
-import { eq, and, desc, sql, or, gte, lte } from "drizzle-orm";
-import { 
-  posts, notifications, videos, users, teams, activities, workoutVideos,
-  insertTeamSchema, insertPostSchema, insertMeasurementSchema,
-  insertNotificationSchema, insertVideoSchema, insertActivitySchema
+import { eq, and, desc, sql, gte, lte, or } from "drizzle-orm";
+import {
+  posts,
+  notifications,
+  users,
+  teams,
+  activities,
+  workoutVideos,
+  insertTeamSchema,
+  insertPostSchema,
+  insertMeasurementSchema,
+  insertNotificationSchema,
+  insertVideoSchema,
+  insertActivitySchema
 } from "@shared/schema";
-import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { setupAuth } from "./auth";
 import { WebSocketServer, WebSocket } from 'ws';
 import { z } from 'zod';
+import type { IncomingMessage } from "http";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -29,39 +38,11 @@ const requireAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
-// Helper function to send notification
-async function sendNotification(userId: number, title: string, message: string) {
-  try {
-    const notificationData = insertNotificationSchema.parse({
-      userId, 
-      title, 
-      message, 
-      read: false, 
-      createdAt: new Date()
-    });
-    const notification = await storage.createNotification(notificationData);
-
-    const ws = clients.get(userId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(notification));
-    }
-
-    return notification;
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    if (error instanceof z.ZodError) {
-      console.error('Zod error sending notification:', error.errors);
-    }
-    throw error;
-  }
-}
-
-// Add week start/end date calculation helper
+// Helper functions remain unchanged
 function getWeekBounds(date: Date) {
   const curr = new Date(date);
-  // Adjust to Monday start (1) and Sunday end (0)
   const day = curr.getDay();
-  const diff = curr.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const diff = curr.getDate() - day + (day === 0 ? -6 : 1);
 
   const weekStart = new Date(curr.setDate(diff));
   weekStart.setHours(0, 0, 0, 0);
@@ -73,7 +54,7 @@ function getWeekBounds(date: Date) {
   return { weekStart, weekEnd };
 }
 
-// Update weekly post count function in routes.ts
+// Helper function to get weekly post count
 async function getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
   const { weekStart, weekEnd } = getWeekBounds(date);
 
@@ -92,9 +73,97 @@ async function getWeeklyPostCount(userId: number, type: string, date: Date): Pro
   return weeklyPosts.length;
 }
 
+// Helper function to send notification
+async function sendNotification(userId: number, title: string, message: string) {
+  try {
+    const notificationData = insertNotificationSchema.parse({
+      userId,
+      title,
+      message,
+      read: false,
+      createdAt: new Date()
+    });
+
+    const notification = await storage.createNotification(notificationData);
+
+    const ws = clients.get(userId);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(notification));
+    }
+
+    return notification;
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    throw error;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   setupAuth(app);
+
+  // Create HTTP server only once
+  const httpServer = createServer(app);
+
+  // Setup WebSocket server
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: '/ws'
+  });
+
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
+    console.log('WebSocket connection attempt:', req.url);
+
+    try {
+      // Get user ID from query parameter
+      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const userId = parseInt(url.searchParams.get('userId') || '');
+
+      if (!userId) {
+        console.log('WebSocket connection rejected - no user ID');
+        ws.close();
+        return;
+      }
+
+      // Verify user exists before accepting connection
+      const user = await storage.getUser(userId);
+      if (!user) {
+        console.log('WebSocket connection rejected - user not found:', userId);
+        ws.close();
+        return;
+      }
+
+      console.log('WebSocket connection established for user:', userId);
+      clients.set(userId, ws);
+
+      ws.on('close', () => {
+        console.log('WebSocket connection closed for user:', userId);
+        clients.delete(userId);
+      });
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error for user:', userId, error);
+        clients.delete(userId);
+      });
+
+      // Send initial connection success message
+      ws.send(JSON.stringify({ type: 'connected', userId }));
+
+    } catch (error) {
+      console.error('Error establishing WebSocket connection:', error);
+      ws.close();
+    }
+  });
+
+  // The rest of your routes remain unchanged
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log('Unauthenticated request to /api/user');
+      return res.sendStatus(401);
+    }
+    console.log('Authenticated user:', req.user?.id);
+    res.json(req.user);
+  });
 
   app.post("/api/login", async (req, res) => {
     try {
@@ -272,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         await tx
           .update(users)
-          .set({ 
+          .set({
             points: sql`COALESCE((
               SELECT CAST(SUM(points) AS INTEGER)
               FROM ${posts}
@@ -310,7 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(users.id, req.user.id));
 
       // Return both post and updated user data
-      res.status(201).json({ 
+      res.status(201).json({
         post,
         user: updatedUser
       });
@@ -477,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const today = new Date();
 
         // Compare only the date part
-        const isFromPreviousDay = 
+        const isFromPreviousDay =
           postDate.getUTCFullYear() !== today.getUTCFullYear() ||
           postDate.getUTCMonth() !== today.getUTCMonth() ||
           postDate.getUTCDate() !== today.getUTCDate();
@@ -498,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update user's points to reflect the accurate sum
         await tx
           .update(users)
-          .set({ 
+          .set({
             points: sql`COALESCE((
               SELECT CAST(SUM(points) AS INTEGER)
               FROM ${posts}
@@ -538,9 +607,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Updated user points after deletion:', sanitizedUser.points);
 
       // Return success along with updated user data
-      res.json({ 
-        success: true, 
-        user: sanitizedUser 
+      res.json({
+        success: true,
+        user: sanitizedUser
       });
 
     } catch (error) {
@@ -1090,10 +1159,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map the results to include workout videos
       const mappedActivities = results.map(result => ({
         ...result.activity,
-        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ? 
-          (typeof result.workoutVideos === 'string' ? 
-            JSON.parse(result.workoutVideos) : 
-            result.workoutVideos) 
+        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ?
+          (typeof result.workoutVideos === 'string' ?
+            JSON.parse(result.workoutVideos) :
+            result.workoutVideos)
           : []
       }));
 
@@ -1225,7 +1294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parsedWorkoutVideos = JSON.parse(updatedActivity.workoutVideos);
       } catch (error) {
         console.error('Error parsing workout videos:', error);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: "Failed to parse workout videos",
           details: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -1240,7 +1309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: 'Validation Error', details: error.errors });
       } else {
-        res.status(500).json({ 
+        res.status(500).json({
           error: "Failed to update activity",
           details: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -1265,10 +1334,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const videoData = insertVideoSchema.parse(req.body);
       const video = await storage.createVideo(videoData);
       res.status(201).json(video);
-    } catch (e) {      console.error('Error creating video:', e);
-      if (e instanceof z.ZodError) {        res.status(400).json({
+    } catch (e) {
+      console.error('Error creating video:', e);
+      if (e instanceof z.ZodError) {
+        res.status(400).json({
           error: 'Validation Error',
-          details: e.errors        });
+          details: e.errors
+        });
       } else {
         res.status(500).json({
           error: 'Internal ServerError',
@@ -1336,7 +1408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always return points as a number
       const sanitizedUser = {
         ...user,
-        points: typeof user.points ==='number' ? user.points : 0,
+        points: typeof user.points === 'number' ? user.points : 0,
         weekInfo,
         programStart: firstMonday?.toISOString() || null
       };
@@ -1374,7 +1446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: "Failed to create user" });    }
+      res.status(500).json({ error: "Failed to create user" });
+    }
   });
 
   app.post("/api/users/:id/reset-password", async (req, res) => {
@@ -1426,23 +1499,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-
-  // Setup WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  wss.on('connection', (ws, req) => {
-    const userId = req.url?.split('userId=')[1];
-    if (userId) {
-      clients.set(parseInt(userId), ws);
-
-      ws.on('close', () => {
-        clients.delete(parseInt(userId));
-      });
-    }
-  });
-
-  // Add test endpoint after existing routes
   app.get("/api/points/test", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
@@ -1552,7 +1608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Error fetching current activity:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to fetch activity",
         message: error instanceof Error ? error.message : "Unknown error"
       });
