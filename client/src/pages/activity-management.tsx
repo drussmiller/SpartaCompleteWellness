@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function ActivityManagementPage() {
+  // All hooks at the top level
   const { user } = useAuth();
   const { toast } = useToast();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
@@ -23,62 +24,9 @@ export default function ActivityManagementPage() {
   const [workoutVideos, setWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
   const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
 
-  // Query activities with error handling
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
-    queryKey: ["/api/activities"],
-    onError: (error: Error) => {
-      console.error('Error fetching activities:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load activities. Please try again.",
-        variant: "destructive"
-      });
-    }
+    queryKey: ["/api/activities"]
   });
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading activities...</span>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
-            <p className="text-gray-600">{error.message}</p>
-            <Button 
-              className="mt-4"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
-            >
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show unauthorized state
-  if (!user?.isAdmin) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <h2 className="text-xl font-bold text-red-500 mb-2">Unauthorized</h2>
-            <p className="text-gray-600">You do not have permission to manage activities.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const updateActivityMutation = useMutation({
     mutationFn: async (data: Partial<Activity>) => {
@@ -125,6 +73,7 @@ export default function ActivityManagementPage() {
     },
   });
 
+  // Handler functions
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     setEditingWorkoutVideos(activity.workoutVideos || []);
@@ -137,22 +86,53 @@ export default function ActivityManagementPage() {
     }
   };
 
-  const handleAddWorkoutVideo = () => {
-    setWorkoutVideos([...workoutVideos, { url: '', description: '' }]);
-  };
+  // Render loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading activities...</span>
+      </div>
+    );
+  }
 
-  const handleEditWorkoutVideo = (index: number, field: 'url' | 'description', value: string) => {
-    const updatedVideos = [...editingWorkoutVideos];
-    updatedVideos[index][field] = value;
-    setEditingWorkoutVideos(updatedVideos);
-  };
+  // Render error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
+            <p className="text-gray-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
+            <Button 
+              className="mt-4"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  const handleRemoveEditWorkoutVideo = (index: number) => {
-    setEditingWorkoutVideos(editingWorkoutVideos.filter((_, i) => i !== index));
-  };
+  // Render unauthorized state
+  if (!user?.isAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-red-500 mb-2">Unauthorized</h2>
+            <p className="text-gray-600">You do not have permission to manage activities.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  // Main render
   return (
-    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right px-6"> {/* Added px-6 here */}
+    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Activity Management</h1>
         <Button variant="outline" onClick={() => window.history.back()}>
@@ -201,7 +181,6 @@ export default function ActivityManagementPage() {
               });
             }
           }} className="space-y-4">
-            {/* Form fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="week">Week</Label>
@@ -310,7 +289,6 @@ export default function ActivityManagementPage() {
                 };
                 updateActivityMutation.mutate(data);
               }} className="space-y-4">
-                {/* Edit form fields */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="week">Week</Label>
