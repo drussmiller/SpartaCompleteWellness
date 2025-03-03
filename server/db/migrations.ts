@@ -12,6 +12,13 @@ export async function runMigrations() {
       ADD COLUMN IF NOT EXISTS is_team_lead BOOLEAN DEFAULT false
     `);
 
+    // Add progress tracking columns
+    await db.execute(sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 1,
+      ADD COLUMN IF NOT EXISTS current_day INTEGER DEFAULT 1
+    `);
+
     // Create users table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS users (

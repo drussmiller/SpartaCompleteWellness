@@ -264,7 +264,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update team
       const [updatedTeam] = await db
         .update(teams)
-        .set({ name, description })
+        .set({
+          name: name || team.name,
+          description: description || team.description
+        })
         .where(eq(teams.id, teamId))
         .returning();
 
@@ -960,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add endpoint for updating comments
-  app.patch("/api/comments/:id", async (reqres) => {
+  app.patch("/api/comments/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
     try {
@@ -1139,6 +1142,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(200);
     } catch (error) {
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Add this endpoint for updating users
+  app.patch("/api/users/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      const userId = parseInt(req.params.id);
+      const { username, email } = req.body;
+
+      // Check if user exists
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if username or email already exists
+      if (username) {
+        const [existingUser] = await db
+          .select()
+          .from(users)
+          .where(and(
+            eq(users.username, username),
+            sql`${users.id} != ${userId}`
+          ));
+
+        if (existingUser) {
+          return res.status(400).json({ message: "Username already exists" });
+        }
+      }
+
+      if (email) {
+        const [existingUser] = await db
+          .select()
+          .from(users)
+          .where(and(
+            eq(users.email, email),
+            sql`${users.id} != ${userId}`
+          ));
+
+        if (existingUser) {
+          return res.status(400).json({ message: "Email already exists" });
+        }
+      }
+
+      // Update user
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          username: username || user.username,
+          email: email || user.email,
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
@@ -1680,6 +1750,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error updating user role:', error);
       res.status(500).json({
         message: "Failed to update user role",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add this endpoint for updating teams
+  app.patch("/api/teams/:id", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      const teamId = parseInt(req.params.id);
+      const { name, description } = req.body;
+
+      // Check if team exists
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId));
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Update team
+      const [updatedTeam] = await db
+        .update(teams)
+        .set({
+          name: name || team.name,
+          description: description || team.description
+        })
+        .where(eq(teams.id, teamId))
+        .returning();
+
+      res.json(updatedTeam);
+    } catch (error) {
+      console.error('Error updating team:', error);
+      res.status(500).json({
+        message: "Failed to update team",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }

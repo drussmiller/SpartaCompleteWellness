@@ -79,6 +79,14 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Debug middleware to log session and authentication state
+  app.use((req, res, next) => {
+    console.log('Session ID:', req.sessionID);
+    console.log('Is Authenticated:', req.isAuthenticated());
+    console.log('User:', req.user?.id);
+    next();
+  });
+
   passport.use(
     new LocalStrategy({
       usernameField: 'email',
@@ -134,11 +142,13 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
+    console.log('GET /api/user - Session:', req.sessionID);
+    console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
       return res.sendStatus(401);
     }
-    console.log('Authenticated user:', req.user.id);
+    console.log('Authenticated user:', req.user?.id);
     res.json(req.user);
   });
 

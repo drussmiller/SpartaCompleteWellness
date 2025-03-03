@@ -9,7 +9,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
-  isTeamLead: boolean("is_team_lead").default(false), // Add isTeamLead field
+  isTeamLead: boolean("is_team_lead").default(false),
   teamId: integer("team_id"),
   points: integer("points").default(0),
   weight: integer("weight"),
@@ -17,6 +17,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
   teamJoinedAt: timestamp("team_joined_at"),
+  currentWeek: integer("current_week").default(1),
+  currentDay: integer("current_day").default(1),
 });
 
 export const teams = pgTable("teams", {
@@ -33,8 +35,8 @@ export const posts = pgTable("posts", {
   imageUrl: text("image_url"),
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  parentId: integer("parent_id"), // Reference to parent post/comment
-  depth: integer("depth").default(0), // New field for comment nesting level
+  parentId: integer("parent_id"),
+  depth: integer("depth").default(0),
 });
 
 export const measurements = pgTable("measurements", {
@@ -68,7 +70,7 @@ export const videos = pgTable("videos", {
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   week: integer("week").notNull(),
-  day: integer("day").notNull(), // 1 = Monday, 7 = Sunday
+  day: integer("day").notNull(),
   memoryVerse: text("memory_verse").notNull(),
   memoryVerseReference: text("memory_verse_reference").notNull(),
   scripture: text("scripture"),

@@ -30,6 +30,8 @@ export default function AdminPage() {
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -148,6 +150,58 @@ export default function AdminPage() {
     },
   });
 
+  const updateTeamMutation = useMutation({
+    mutationFn: async ({ teamId, data }: { teamId: number; data: Partial<Team> }) => {
+      const res = await apiRequest("PATCH", `/api/teams/${teamId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update team");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Team updated successfully",
+      });
+      setEditingTeam(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: number; data: Partial<User> }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update user");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+      setEditingUser(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (teamsLoading || usersLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -182,10 +236,7 @@ export default function AdminPage() {
     );
   }
 
-  // Sort teams by name
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
-
-  // Sort users by ID
   const sortedUsers = [...(users || [])].sort((a, b) => a.id - b.id);
 
   return (
@@ -250,28 +301,80 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            {/* Teams Column */}
-            <div>
+            <div className="border rounded-lg p-4">
               <h2 className="text-2xl font-semibold mb-4">Teams</h2>
               <div className="space-y-4">
                 {sortedTeams?.map((team) => (
                   <Card key={team.id}>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
-                        <CardTitle>{team.name}</CardTitle>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm("Are you sure you want to delete this team?")) {
-                              deleteTeamMutation.mutate(team.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex-1">
+                          {editingTeam?.id === team.id ? (
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              const formData = new FormData(e.currentTarget);
+                              updateTeamMutation.mutate({
+                                teamId: team.id,
+                                data: {
+                                  name: formData.get('name') as string,
+                                  description: formData.get('description') as string,
+                                }
+                              });
+                            }}>
+                              <div className="space-y-2">
+                                <Input
+                                  name="name"
+                                  defaultValue={team.name}
+                                  className="font-semibold"
+                                />
+                                <Textarea
+                                  name="description"
+                                  defaultValue={team.description || ''}
+                                  className="text-sm"
+                                />
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm">Save</Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingTeam(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <CardTitle>{team.name}</CardTitle>
+                              <CardDescription className="line-clamp-2">
+                                {team.description}
+                              </CardDescription>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingTeam(team)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this team?")) {
+                                deleteTeamMutation.mutate(team.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <CardDescription className="line-clamp-2">{team.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm">
@@ -284,8 +387,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Users Column */}
-            <div>
+            <div className="border rounded-lg p-4">
               <h2 className="text-2xl font-semibold mb-4">Users</h2>
               <div className="space-y-4">
                 {sortedUsers?.map((user) => (
@@ -293,8 +395,64 @@ export default function AdminPage() {
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle>{user.preferredName || user.username}</CardTitle>
-                          <CardDescription>{user.email}</CardDescription>
+                          {editingUser?.id === user.id ? (
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              const formData = new FormData(e.currentTarget);
+                              updateUserMutation.mutate({
+                                userId: user.id,
+                                data: {
+                                  username: formData.get('username') as string,
+                                  email: formData.get('email') as string,
+                                }
+                              });
+                            }}>
+                              <div className="space-y-2">
+                                <Input
+                                  name="username"
+                                  defaultValue={user.username}
+                                  className="font-semibold"
+                                />
+                                <Input
+                                  name="email"
+                                  defaultValue={user.email}
+                                  type="email"
+                                  className="text-sm"
+                                />
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm">Save</Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingUser(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <CardTitle>{user.preferredName || user.username}</CardTitle>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingUser(user)}
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                              <CardDescription>{user.email}</CardDescription>
+                              <div className="mt-1 text-sm text-muted-foreground">
+                                Start Date: {new Date(user.createdAt!).toLocaleDateString()}
+                              </div>
+                              <div className="mt-1 text-sm text-muted-foreground">
+                                Progress: Week {user.currentWeek}, Day {user.currentDay}
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {user.isAdmin && <Badge variant="default">Admin</Badge>}
