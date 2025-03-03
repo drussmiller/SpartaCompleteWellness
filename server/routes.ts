@@ -16,7 +16,7 @@ import {
   insertMeasurementSchema 
 } from "@shared/schema";
 import type { IncomingMessage } from "http";
-import { setupAuth, sessionMiddleware, hashPassword, comparePasswords } from "./auth";
+import { setupAuth } from "./auth";
 import { z } from 'zod';
 
 // Configure multer for file uploads
@@ -50,49 +50,23 @@ function getWeekBounds(date: Date) {
   return { weekStart, weekEnd };
 }
 
-// WebSocket server setup with session handling
+// WebSocket server setup
 function setupWebSocketServer(httpServer: Server) {
   const wss = new WebSocketServer({
     server: httpServer,
     path: '/ws'
   });
 
-  // Parse session from request
-  const parseSession = (req: IncomingMessage): Promise<number | null> => {
-    return new Promise((resolve) => {
-      if (!req.headers.cookie) {
-        console.log('No cookie found in WebSocket request');
-        resolve(null);
-        return;
-      }
-
-      console.log('WebSocket request cookies:', req.headers.cookie);
-
-      // Use the session middleware from auth.ts
-      const middleware = sessionMiddleware(process.env.SESSION_SECRET!);
-      middleware(req as any, {} as any, () => {
-        const session = (req as any).session;
-        const userId = session?.passport?.user;
-        console.log('WebSocket session parsed:', { 
-          hasSession: !!session,
-          userId,
-          sessionContent: session 
-        });
-        resolve(userId || null);
-      });
-    });
-  };
-
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     console.log('WebSocket connection attempt');
-    console.log('Headers:', req.headers);
 
     try {
-      // Get user ID from session
-      const userId = await parseSession(req);
+      // Get user ID from query parameter
+      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const userId = parseInt(url.searchParams.get('userId') || '');
 
       if (!userId) {
-        console.log('WebSocket connection rejected - no session found');
+        console.log('WebSocket connection rejected - no user ID');
         ws.close();
         return;
       }
@@ -111,7 +85,6 @@ function setupWebSocketServer(httpServer: Server) {
       ws.on('close', () => {
         console.log('WebSocket connection closed for user:', userId);
         clients.delete(userId);
-        console.log('Remaining active connections:', clients.size);
       });
 
       ws.on('error', (error) => {
@@ -119,9 +92,8 @@ function setupWebSocketServer(httpServer: Server) {
         clients.delete(userId);
       });
 
-      // Send initial connection success message
+      // Send connection confirmation  
       ws.send(JSON.stringify({ type: 'connected', userId }));
-      console.log('Total active connections:', clients.size);
 
     } catch (error) {
       console.error('Error establishing WebSocket connection:', error);

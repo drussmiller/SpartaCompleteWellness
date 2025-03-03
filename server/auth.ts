@@ -36,21 +36,6 @@ export async function comparePasswords(supplied: string, stored: string) {
   }
 }
 
-// Export the session middleware configuration for use in WebSocket server
-export const sessionMiddleware = (secret: string) => session({
-  secret,
-  resave: false,
-  saveUninitialized: false,
-  store: storage.sessionStore,
-  cookie: {
-    secure: false, // Set to false for development
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  },
-  name: 'sid'
-});
-
 export function setupAuth(app: Express) {
   // Ensure we have a session secret
   if (!process.env.SESSION_SECRET) {
@@ -59,7 +44,19 @@ export function setupAuth(app: Express) {
 
   // Order matters: cookie parser -> session -> passport
   app.use(cookieParser(process.env.SESSION_SECRET));
-  app.use(sessionMiddleware(process.env.SESSION_SECRET));
+  app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: storage.sessionStore,
+    cookie: {
+      secure: false, // Set to false for development
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
+    name: 'sid'
+  }));
   app.use(passport.initialize());
   app.use(passport.session());
 
