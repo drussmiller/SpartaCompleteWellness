@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from 'next/router';
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -32,6 +33,7 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const router = useRouter();
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -294,6 +296,13 @@ export default function AdminPage() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <Button
+              size="default"
+              className="px-4"
+              onClick={() => router.push("/activity-management")}
+            >
+              Activity Management
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
