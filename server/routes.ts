@@ -200,15 +200,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const postId = parseInt(req.params.id);
       const userId = req.user.id;
 
-      // Get the post to verify ownership
-      const post = await storage.getPost(postId);
+      // Get all posts and find the specific one
+      const posts = await storage.getAllPosts();
+      const post = posts.find(p => p.id === postId);
 
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
 
       // Check if user owns the post
-      if (post.userId !== userId) {
+      if (post.userId !== userId && !req.user.isAdmin) {
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
