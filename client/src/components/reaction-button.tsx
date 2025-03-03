@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { Heart, ThumbsUp, Smile, Medal, Hand } from "lucide-react";
+import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,23 +14,37 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Reaction } from "@shared/schema";
 
-const reactionIcons = {
-  like: ThumbsUp,
-  heart: Heart,
-  smile: Smile,
-  celebrate: Medal,
-  support: Hand,
+const reactionEmojis = {
+  like: { emoji: "👍", color: "text-blue-500" },
+  love: { emoji: "❤️", color: "text-red-500" },
+  laugh: { emoji: "😂", color: "text-yellow-500" },
+  wow: { emoji: "😮", color: "text-yellow-500" },
+  sad: { emoji: "😢", color: "text-blue-500" },
+  angry: { emoji: "😡", color: "text-red-500" },
+  celebrate: { emoji: "🎉", color: "text-purple-500" },
+  clap: { emoji: "👏", color: "text-yellow-500" },
+  fire: { emoji: "🔥", color: "text-orange-500" },
+  pray: { emoji: "🙏", color: "text-amber-500" },
+  support: { emoji: "🤗", color: "text-green-500" },
+  muscle: { emoji: "💪", color: "text-blue-500" },
 } as const;
 
 const reactionLabels = {
   like: "Like",
-  heart: "Love",
-  smile: "Smile",
+  love: "Love",
+  laugh: "Laugh",
+  wow: "Wow",
+  sad: "Sad",
+  angry: "Angry",
   celebrate: "Celebrate",
+  clap: "Applause",
+  fire: "Fire",
+  pray: "Pray",
   support: "Support",
+  muscle: "Strength",
 } as const;
 
-type ReactionType = keyof typeof reactionIcons;
+type ReactionType = keyof typeof reactionEmojis;
 
 interface ReactionButtonProps {
   postId: number;
@@ -84,14 +99,14 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
   });
 
   const reactionCounts = reactions.reduce((acc: Record<ReactionType, number>, reaction) => {
-    if (reaction.type in reactionIcons) {
+    if (reaction.type in reactionEmojis) {
       acc[reaction.type as ReactionType] = (acc[reaction.type as ReactionType] || 0) + 1;
     }
     return acc;
   }, {} as Record<ReactionType, number>);
 
   const handleReaction = (type: ReactionType) => {
-    const hasReacted = reactions.some((r) => r.type === type);
+    const hasReacted = reactions.some((r) => r.type === type && r.userId === Number(localStorage.getItem('userId')));
     if (hasReacted) {
       removeReactionMutation.mutate(type);
     } else {
@@ -101,6 +116,17 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
   };
 
   const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
+  
+  // Get the most common reaction type to display if any exist
+  let mostCommonReaction: ReactionType | null = null;
+  let maxCount = 0;
+  
+  Object.entries(reactionCounts).forEach(([type, count]) => {
+    if (count > maxCount) {
+      maxCount = count;
+      mostCommonReaction = type as ReactionType;
+    }
+  });
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -110,29 +136,35 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
           size="sm"
           className="gap-2"
         >
-          <ThumbsUp className="h-4 w-4" />
+          {mostCommonReaction ? (
+            <span className="text-lg">{reactionEmojis[mostCommonReaction].emoji}</span>
+          ) : (
+            <ThumbsUp className="h-4 w-4" />
+          )}
           {totalReactions > 0 && <span>{totalReactions}</span>}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {(Object.keys(reactionIcons) as ReactionType[]).map((type) => {
-          const Icon = reactionIcons[type];
+      <DropdownMenuContent align="start" className="grid grid-cols-4 gap-1 p-2 min-w-[220px]">
+        {(Object.keys(reactionEmojis) as ReactionType[]).map((type) => {
+          const { emoji } = reactionEmojis[type];
           const count = reactionCounts[type] || 0;
-          const hasReacted = reactions.some((r) => r.type === type);
-
+          const hasReacted = reactions.some(
+            (r) => r.type === type && r.userId === Number(localStorage.getItem('userId'))
+          );
+          
           return (
             <DropdownMenuItem
               key={type}
               onClick={() => handleReaction(type)}
               className={cn(
-                "flex items-center gap-2 cursor-pointer",
+                "flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted p-2 rounded-md",
                 hasReacted && "bg-muted"
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span>{reactionLabels[type]}</span>
+              <span className="text-xl">{emoji}</span>
+              <span className="text-xs text-center">{reactionLabels[type]}</span>
               {count > 0 && (
-                <span className="ml-auto text-muted-foreground">{count}</span>
+                <span className="text-xs text-muted-foreground">{count}</span>
               )}
             </DropdownMenuItem>
           );

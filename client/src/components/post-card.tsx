@@ -14,6 +14,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
+  const canDelete = isOwnPost; // Added for clarity;  Could be a more complex condition later
 
   const { data: commentCount = 0 } = useQuery<number>({
     queryKey: ["/api/posts", post.id, "comment-count"],
@@ -67,7 +68,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isOwnPost && (
+          {canDelete && (
             <Button 
               variant="ghost" 
               size="sm" 
