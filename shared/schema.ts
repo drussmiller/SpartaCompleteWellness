@@ -2,7 +2,6 @@ import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Keep existing tables
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -10,13 +9,14 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
+  isTeamLead: boolean("is_team_lead").default(false), // Add isTeamLead field
   teamId: integer("team_id"),
   points: integer("points").default(0),
   weight: integer("weight"),
   waist: integer("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
-  teamJoinedAt: timestamp("team_joined_at"), // New field to track when user joins a team
+  teamJoinedAt: timestamp("team_joined_at"),
 });
 
 export const teams = pgTable("teams", {

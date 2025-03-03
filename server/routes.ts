@@ -110,12 +110,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
-    console.log('WebSocket connection attempt:', req.url);
+    console.log('WebSocket connection attempt');
 
     try {
       // Wait for authentication message
       ws.once('message', async (message: string) => {
         try {
+          console.log('Received authentication message:', message.toString());
           const data = JSON.parse(message.toString());
 
           if (data.type !== 'authenticate' || !data.userId) {
@@ -148,25 +149,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Set timeout for authentication
       setTimeout(() => {
-        if (!clients.has(parseInt(req.url?.split('userId=')[1] || ''))) {
+        if (!ws.readyState) {
           console.log('WebSocket authentication timeout');
           ws.close();
         }
       }, 5000);
 
       ws.on('close', () => {
-        const userId = parseInt(req.url?.split('userId=')[1] || '');
-        if (userId) {
-          console.log('WebSocket connection closed for user:', userId);
-          clients.delete(userId);
+        // Find and remove client from the map
+        for (const [userId, client] of clients.entries()) {
+          if (client === ws) {
+            console.log('WebSocket connection closed for user:', userId);
+            clients.delete(userId);
+            break;
+          }
         }
       });
 
       ws.on('error', (error) => {
         console.error('WebSocket error:', error);
-        const userId = parseInt(req.url?.split('userId=')[1] || '');
-        if (userId) {
-          clients.delete(userId);
+        // Find and remove client from the map
+        for (const [userId, client] of clients.entries()) {
+          if (client === ws) {
+            clients.delete(userId);
+            break;
+          }
         }
       });
 
@@ -953,7 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add endpoint for updating comments
-  app.patch("/api/comments/:id", async (req, res) => {
+  app.patch("/api/comments/:id", async (reqres) => {
     if (!req.user) return res.sendStatus(401);
 
     try {
@@ -1639,6 +1646,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Add new route for current activity
   app.get("/api/activities/current", getCurrentActivity);
+
+  // Add this endpoint to handle user role updates
+  app.patch("/api/users/:id/role", async (req, res) => {
+    if (!req.user?.isAdmin) return res.sendStatus(403);
+
+    try {
+      const userId = parseInt(req.params.id);
+      const { isAdmin, isTeamLead } = req.body;
+
+      // Check if user exists
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user roles
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          isAdmin: isAdmin !== undefined ? isAdmin : user.isAdmin,
+          isTeamLead: isTeamLead !== undefined ? isTeamLead : user.isTeamLead
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      res.status(500).json({
+        message: "Failed to update user role",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   return httpServer;
 }
