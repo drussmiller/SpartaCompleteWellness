@@ -205,8 +205,12 @@ export default function ActivityManagementPage() {
             };
 
             try {
+              console.log('Submitting activity data:', data);
               const res = await apiRequest("POST", "/api/activities", data);
-              if (!res.ok) throw new Error('Failed to create activity');
+              if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to create activity');
+              }
 
               toast({
                 title: "Success",

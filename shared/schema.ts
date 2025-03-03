@@ -149,7 +149,7 @@ export const insertActivitySchema = createInsertSchema(activities)
         content: z.string(),
         title: z.string()
       })
-    )
+    ).default([])
   });
 
 export const insertWorkoutVideoSchema = createInsertSchema(workoutVideos);

@@ -443,14 +443,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createActivity(data: any) {
-    const [newActivity] = await db.insert(activities).values({
-      week: data.week,
-      day: data.day,
-      contentFields: data.contentFields || [],
-      isComplete: false,
-      createdAt: new Date()
-    }).returning();
-    return newActivity;
+    try {
+      const [newActivity] = await db.insert(activities).values({
+        week: data.week,
+        day: data.day,
+        contentFields: data.contentFields || [],
+        isComplete: false,
+        createdAt: new Date()
+      }).returning();
+      return newActivity;
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      throw new Error('Failed to create activity in database');
+    }
   }
 
   async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {

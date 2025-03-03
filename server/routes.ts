@@ -109,8 +109,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized" });
       }
 
+      console.log('Creating activity with data:', JSON.stringify(req.body, null, 2));
+
       const parsedData = insertActivitySchema.safeParse(req.body);
       if (!parsedData.success) {
+        console.error('Validation errors:', parsedData.error.errors);
         return res.status(400).json({
           message: "Invalid activity data",
           errors: parsedData.error.errors
@@ -121,7 +124,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(201).json(activity);
     } catch (error) {
       console.error('Error creating activity:', error);
-      res.status(500).json({ message: "Failed to create activity" });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create activity" });
     }
   });
 
@@ -130,15 +133,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
+
+      console.log('Updating activity with data:', JSON.stringify(req.body, null, 2));
+
+      const parsedData = insertActivitySchema.safeParse(req.body);
+      if (!parsedData.success) {
+        console.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid activity data",
+          errors: parsedData.error.errors
+        });
+      }
+
       const [activity] = await db
         .update(activities)
-        .set(req.body)
+        .set(parsedData.data)
         .where(eq(activities.id, parseInt(req.params.id)))
         .returning();
       res.json(activity);
     } catch (error) {
       console.error('Error updating activity:', error);
-      res.status(500).json({ message: "Failed to update activity" });
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update activity" });
     }
   });
 
