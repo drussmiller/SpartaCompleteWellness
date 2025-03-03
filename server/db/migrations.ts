@@ -6,6 +6,12 @@ export async function runMigrations() {
   try {
     console.log('Running migrations...');
 
+    // Add isTeamLead column to users table
+    await db.execute(sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS is_team_lead BOOLEAN DEFAULT false
+    `);
+
     // Create users table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS users (

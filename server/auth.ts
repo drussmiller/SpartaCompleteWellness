@@ -45,7 +45,7 @@ export function setupAuth(app: Express) {
   console.log('Environment:', isDevelopment ? 'development' : 'production');
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
