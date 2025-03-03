@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { insertTeamSchema, type Team, type User } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BottomNav } from "@/components/bottom-nav";
@@ -40,7 +39,7 @@ export default function AdminPage() {
     queryKey: ["/api/users"],
   });
 
-  const form = useForm<InsertTeam>({
+  const form = useForm({
     resolver: zodResolver(insertTeamSchema),
     defaultValues: {
       name: "",
@@ -49,7 +48,7 @@ export default function AdminPage() {
   });
 
   const createTeamMutation = useMutation({
-    mutationFn: async (data: InsertTeam) => {
+    mutationFn: async (data) => {
       const res = await apiRequest("POST", "/api/teams", data);
       if (!res.ok) {
         const error = await res.json();
@@ -183,8 +182,14 @@ export default function AdminPage() {
     );
   }
 
+  // Sort teams by name
+  const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Sort users by ID
+  const sortedUsers = [...(users || [])].sort((a, b) => a.id - b.id);
+
   return (
-    <div className="max-w-6xl mx-auto pb-20">
+    <div className="max-w-7xl mx-auto pb-20">
       <ScrollArea className="h-[calc(100vh-80px)]">
         <header className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4 flex items-center gap-4">
@@ -196,7 +201,7 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <main className="p-4 space-y-8">
+        <main className="p-4">
           <div className="flex gap-2 mt-4 justify-center">
             <Dialog>
               <DialogTrigger asChild>
@@ -244,15 +249,12 @@ export default function AdminPage() {
             </Dialog>
           </div>
 
-          <Tabs defaultValue="teams">
-            <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="teams">Teams</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="teams" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teams?.map((team) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            {/* Teams Column */}
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">Teams</h2>
+              <div className="space-y-4">
+                {sortedTeams?.map((team) => (
                   <Card key={team.id}>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
@@ -274,17 +276,19 @@ export default function AdminPage() {
                     <CardContent>
                       <p className="text-sm">
                         <span className="font-medium">Members: </span>
-                        {users?.filter((u) => u.teamId === team.id).length || 0}
+                        {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
                       </p>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            </TabsContent>
+            </div>
 
-            <TabsContent value="users" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {users?.map((user) => (
+            {/* Users Column */}
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">Users</h2>
+              <div className="space-y-4">
+                {sortedUsers?.map((user) => (
                   <Card key={user.id}>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
@@ -313,7 +317,7 @@ export default function AdminPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">No Team</SelectItem>
-                            {teams?.map((team) => (
+                            {sortedTeams?.map((team) => (
                               <SelectItem key={team.id} value={team.id.toString()}>
                                 {team.name}
                               </SelectItem>
@@ -372,8 +376,8 @@ export default function AdminPage() {
                   </Card>
                 ))}
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
         </main>
       </ScrollArea>
 
