@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import {
   Card,
   CardContent,
@@ -23,7 +24,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useRouter } from 'next/router';
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -33,7 +33,7 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const router = useRouter();
+  const [location, setLocation] = useLocation();
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -299,7 +299,7 @@ export default function AdminPage() {
             <Button
               size="default"
               className="px-4"
-              onClick={() => router.push("/activity-management")}
+              onClick={() => setLocation("/activity-management")}
             >
               Activity Management
             </Button>
