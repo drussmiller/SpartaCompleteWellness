@@ -1,10 +1,10 @@
-import { useLocation, useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { Home, Calendar, HelpCircle, Bell, User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 
 export function BottomNav() {
-  const [location, navigate] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
   const items = [
@@ -32,7 +32,7 @@ export function BottomNav() {
         {items.map(({ icon: Icon, label, href }) => (
           <div
             key={href}
-            onClick={() => navigate(href)}
+            onClick={() => setLocation(href)}
             className={cn(
               "flex flex-col items-center justify-center w-full text-sm gap-1 cursor-pointer",
               // Mobile styles
@@ -50,7 +50,7 @@ export function BottomNav() {
         ))}
         {user?.isAdmin && (
           <div
-            onClick={() => navigate("/admin")}
+            onClick={() => setLocation("/admin")}
             className={cn(
               "flex flex-col items-center justify-center w-full text-sm gap-1 cursor-pointer",
               // Mobile styles
@@ -67,7 +67,7 @@ export function BottomNav() {
           </div>
         )}
         <div
-          onClick={() => navigate("/profile")}
+          onClick={() => setLocation("/profile")}
           className={cn(
             "flex flex-col items-center justify-center w-full text-sm gap-1 cursor-pointer",
             // Mobile styles

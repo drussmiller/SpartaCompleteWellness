@@ -5,8 +5,16 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
+import { Route, Switch } from "wouter";
+import { ProtectedRoute } from "./lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
+import ActivityPage from "@/pages/activity-page";
+import HelpPage from "@/pages/help-page";
+import NotificationsPage from "@/pages/notifications-page";
+import ProfilePage from "@/pages/profile-page";
+import AdminPage from "@/pages/admin-page";
+import { BottomNav } from "@/components/bottom-nav";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -35,8 +43,25 @@ function MainContent() {
     );
   }
 
-  // Show AuthPage if not authenticated, HomePage if authenticated
-  return user ? <HomePage /> : <AuthPage />;
+  // If not authenticated, show auth page
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  // If authenticated, show the app with routes
+  return (
+    <div className="min-h-screen">
+      <Switch>
+        <Route path="/" component={HomePage} />
+        <Route path="/activity" component={ActivityPage} />
+        <Route path="/help" component={HelpPage} />
+        <Route path="/notifications" component={NotificationsPage} />
+        <Route path="/profile" component={ProfilePage} />
+        {user.isAdmin && <Route path="/admin" component={AdminPage} />}
+      </Switch>
+      <BottomNav />
+    </div>
+  );
 }
 
 function App() {
