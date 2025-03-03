@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ const reactionEmojis = {
   wow: { emoji: "😮", color: "text-yellow-500" },
   sad: { emoji: "😢", color: "text-blue-500" },
   angry: { emoji: "😡", color: "text-red-500" },
-  
+
   // Wellness & Fitness
   celebrate: { emoji: "🎉", color: "text-purple-500" },
   clap: { emoji: "👏", color: "text-yellow-500" },
@@ -31,29 +30,29 @@ const reactionEmojis = {
   pray: { emoji: "🙏", color: "text-amber-500" },
   support: { emoji: "🤗", color: "text-green-500" },
   muscle: { emoji: "💪", color: "text-blue-500" },
-  
+
   // Additional positive emojis
   star: { emoji: "⭐", color: "text-yellow-500" },
   heart_eyes: { emoji: "😍", color: "text-red-500" },
   raised_hands: { emoji: "🙌", color: "text-amber-500" },
   trophy: { emoji: "🏆", color: "text-yellow-500" },
   thumbs_down: { emoji: "👎", color: "text-slate-500" },
-  
+
   // Food related
   salad: { emoji: "🥗", color: "text-green-500" },
   fruit: { emoji: "🍎", color: "text-red-500" },
   water: { emoji: "💧", color: "text-blue-500" },
-  
+
   // Exercise related
   run: { emoji: "🏃", color: "text-purple-500" },
   bike: { emoji: "🚴", color: "text-green-500" },
   weight: { emoji: "🏋️", color: "text-indigo-500" },
-  
+
   // Spiritual
   angel: { emoji: "😇", color: "text-sky-500" },
   dove: { emoji: "🕊️", color: "text-white-500" },
   church: { emoji: "⛪", color: "text-stone-500" },
-  
+
   // Motivational
   idea: { emoji: "💡", color: "text-yellow-500" },
   rocket: { emoji: "🚀", color: "text-indigo-500" },
@@ -165,11 +164,11 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
   };
 
   const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
-  
+
   // Get the most common reaction type to display if any exist
   let mostCommonReaction: ReactionType | null = null;
   let maxCount = 0;
-  
+
   Object.entries(reactionCounts).forEach(([type, count]) => {
     if (count > maxCount) {
       maxCount = count;
@@ -198,7 +197,6 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
           ) : (
             <ThumbsUp className="h-4 w-4" />
           )}
-          {totalReactions > 0 && totalReactions}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="p-2 grid grid-cols-6 gap-1 w-60">
@@ -209,6 +207,7 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
             onClick={() => handleReaction(type as ReactionType)}
           >
             <span className="text-lg">{emoji}</span>
+            <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
