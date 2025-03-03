@@ -60,7 +60,7 @@ function ReactionSummary({ postId }: { postId: number }) {
       rocket: { emoji: "🚀", color: "text-indigo-500" },
       sparkles: { emoji: "✨", color: "text-purple-500" },
     };
-    
+
     return allEmojis[type]?.emoji || "👍";
   };
 
@@ -187,10 +187,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               {new Date(post.createdAt!).toLocaleDateString()}
             </span>
           </div>
-          
+
           {/* Reaction summary display */}
           <ReactionSummary postId={post.id} />
-          
+
           <div className="flex items-center gap-2">
             <ReactionButton postId={post.id} />
             <Link href={`/comments/${post.id}`}>
