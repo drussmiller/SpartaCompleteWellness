@@ -27,9 +27,16 @@ export function useNotifications() {
           return;
         }
 
+        // Close existing connection if any
+        if (wsRef.current) {
+          console.log('Closing existing WebSocket connection');
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+
         console.log('Initializing WebSocket connection for user:', user.id);
 
-        // Ensure we're using the correct protocol and include credentials
+        // Build WebSocket URL from current location
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
 
@@ -40,12 +47,9 @@ export function useNotifications() {
         setConnectionStatus("connecting");
 
         ws.addEventListener('open', () => {
-          console.log('WebSocket connection established successfully');
-          setConnectionStatus("connected");
-          reconnectAttemptRef.current = 0;
-
-          // Send authentication message immediately after connection
-          ws.send(JSON.stringify({ 
+          console.log('WebSocket connection opened, sending authentication');
+          // Send authentication message immediately
+          ws.send(JSON.stringify({
             type: 'authenticate',
             userId: user.id
           }));
@@ -58,6 +62,18 @@ export function useNotifications() {
 
             if (data.type === 'authenticated') {
               console.log('WebSocket authentication successful');
+              setConnectionStatus("connected");
+              reconnectAttemptRef.current = 0;
+              return;
+            }
+
+            if (data.type === 'error') {
+              console.error('WebSocket error message:', data.message);
+              toast({
+                title: 'Connection Error',
+                description: data.message,
+                variant: 'destructive'
+              });
               return;
             }
 
@@ -95,6 +111,11 @@ export function useNotifications() {
     const handleReconnect = () => {
       if (reconnectAttemptRef.current >= maxReconnectAttempts) {
         console.log('Max reconnection attempts reached');
+        toast({
+          title: 'Connection Error',
+          description: 'Unable to establish real-time connection. Please refresh the page.',
+          variant: 'destructive'
+        });
         return;
       }
 
@@ -105,7 +126,7 @@ export function useNotifications() {
         if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
           connectWebSocket();
         }
-      }, reconnectDelay * Math.pow(2, reconnectAttemptRef.current - 1)); // Exponential backoff
+      }, reconnectDelay);
     };
 
     connectWebSocket();
@@ -118,7 +139,7 @@ export function useNotifications() {
       }
       setConnectionStatus("disconnected");
     };
-  }, [user, toast]); // Only recreate connection when user changes
+  }, [user, toast]);
 
   return { connectionStatus };
 }

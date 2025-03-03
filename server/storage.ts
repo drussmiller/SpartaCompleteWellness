@@ -1,5 +1,5 @@
-import { users, teams, posts, measurements, notifications, videos, activities, passwordResetTokens } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
+import { users, teams, posts, measurements, notifications, videos, activities, passwordResetTokens, reactions } from "@shared/schema";
+import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo, Reaction, InsertReaction } from "@shared/schema";
 import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
@@ -42,6 +42,10 @@ export interface IStorage {
   getActivities(week?: number, day?: number): Promise<any>;
   createActivity(data: any): Promise<any>;
   getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null>;
+  createReaction(reaction: InsertReaction): Promise<Reaction>;
+  deleteReaction(userId: number, postId: number, type: string): Promise<void>;
+  getReactionsByPost(postId: number): Promise<Reaction[]>;
+  getReactionsByUser(userId: number): Promise<Reaction[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -464,6 +468,27 @@ export class DatabaseStorage implements IStorage {
     const day = today.getDay() === 0 ? 7 : today.getDay(); 
 
     return { week, day };
+  }
+  async createReaction(reaction: InsertReaction): Promise<Reaction> {
+    const [newReaction] = await db.insert(reactions).values(reaction).returning();
+    return newReaction;
+  }
+
+  async deleteReaction(userId: number, postId: number, type: string): Promise<void> {
+    await db.delete(reactions)
+      .where(and(
+        eq(reactions.userId, userId),
+        eq(reactions.postId, postId),
+        eq(reactions.type, type)
+      ));
+  }
+
+  async getReactionsByPost(postId: number): Promise<Reaction[]> {
+    return await db.select().from(reactions).where(eq(reactions.postId, postId));
+  }
+
+  async getReactionsByUser(userId: number): Promise<Reaction[]> {
+    return await db.select().from(reactions).where(eq(reactions.userId, userId));
   }
 }
 

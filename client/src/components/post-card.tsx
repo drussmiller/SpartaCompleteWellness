@@ -3,15 +3,17 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Trash2 } from "lucide-react";
+import { ReactionButton } from "@/components/reaction-button";
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
+  const isOwnPost = currentUser?.id === post.author?.id;
 
   const { data: commentCount = 0 } = useQuery<number>({
     queryKey: ["/api/posts", post.id, "comment-count"],
@@ -27,10 +29,26 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         return 0;
       }
     },
-    // Add staleTime and refetchInterval to ensure counts stay updated
-    staleTime: 1000, // Consider data stale after 1 second
-    refetchInterval: 3000 // Refetch every 3 seconds
+    staleTime: 1000,
+    refetchInterval: 3000
   });
+
+  const deletePostMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/posts/${post.id}`);
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] }); //Invalidate cache
+    },
+    onSuccess: () => {
+      console.log("Post deleted successfully!");
+    },
+    onError: (error) => {
+      console.error("Error deleting post:", error);
+    }
+  });
+
+  const handleDeletePost = () => {
+    deletePostMutation.mutate();
+  };
 
   return (
     <Card>
@@ -46,6 +64,22 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <div>
             <p className="font-semibold">{post.author.username}</p>
             <p className="text-sm text-muted-foreground">{post.author.points} points</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isOwnPost && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleDeletePost}
+              disabled={deletePostMutation.isPending}
+              className="h-6 w-6 p-0"
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
+          <div className="text-xs text-muted-foreground">
+            {new Date(post.createdAt!).toLocaleString()}
           </div>
         </div>
       </CardHeader>
@@ -66,12 +100,15 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
-          <Link href={`/comments/${post.id}`}>
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <MessageCircle className="h-4 w-4" />
-              {commentCount}
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 ml-auto">
+            <ReactionButton postId={post.id} />
+            <Link href={`/comments/${post.id}`}>
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <MessageCircle className="h-4 w-4" />
+                {commentCount}
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardContent>
     </Card>

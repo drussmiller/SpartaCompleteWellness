@@ -99,6 +99,16 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const reactions = pgTable("reactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  postId: integer("post_id").notNull(),
+  type: text("type", {
+    enum: ["like", "heart", "smile", "celebrate", "support"]
+  }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertPostSchema = createInsertSchema(posts)
   .omit({
     id: true,
@@ -136,6 +146,12 @@ export const insertActivitySchema = createInsertSchema(activities)
 
 export const insertWorkoutVideoSchema = createInsertSchema(workoutVideos);
 
+export const insertReactionSchema = createInsertSchema(reactions)
+  .omit({
+    id: true,
+    createdAt: true
+  });
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Team = typeof teams.$inferSelect;
@@ -157,6 +173,8 @@ export type WorkoutVideo = typeof workoutVideos.$inferSelect;
 export type InsertWorkoutVideo = z.infer<typeof insertWorkoutVideoSchema>;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type Reaction = typeof reactions.$inferSelect;
+export type InsertReaction = z.infer<typeof insertReactionSchema>;
 
 // Add a new type for structured comments
 export type CommentWithAuthor = Post & {
