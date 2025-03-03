@@ -17,9 +17,9 @@ export function BottomNav() {
   return (
     <nav className={cn(
       // Base styles
-      "bg-background border-border",
+      "bg-background z-[100] shadow-lg",
       // Mobile styles (bottom nav)
-      "lg:hidden fixed bottom-0 left-0 right-0 border-t",
+      "lg:hidden fixed bottom-0 left-0 right-0 border-t border-border",
       // Desktop styles (side nav)
       "lg:fixed lg:left-0 lg:top-0 lg:h-full lg:w-16 lg:border-r lg:flex lg:flex-col"
     )}>
@@ -31,58 +31,52 @@ export function BottomNav() {
       )}>
         {items.map(({ icon: Icon, label, href }) => (
           <Link key={href} href={href}>
-            <button
-              className={cn(
-                "flex flex-col items-center justify-center w-full text-sm gap-1",
-                // Mobile styles
-                "h-full",
-                // Desktop styles
-                "lg:h-16 lg:w-16",
-                location === href
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary transition-colors"
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="text-xs">{label}</span>
-            </button>
-          </Link>
-        ))}
-        {user?.isAdmin && (
-          <Link href="/admin">
-            <button
-              className={cn(
-                "flex flex-col items-center justify-center w-full text-sm gap-1",
-                // Mobile styles
-                "h-full",
-                // Desktop styles
-                "lg:h-16 lg:w-16",
-                location === "/admin"
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary transition-colors"
-              )}
-            >
-              <Shield className="h-5 w-5" />
-              <span className="text-xs">Admin</span>
-            </button>
-          </Link>
-        )}
-        <Link href="/profile">
-          <button
-            className={cn(
+            <a className={cn(
               "flex flex-col items-center justify-center w-full text-sm gap-1",
               // Mobile styles
               "h-full",
               // Desktop styles
               "lg:h-16 lg:w-16",
-              location === "/profile"
+              location === href
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
-            )}
-          >
+            )}>
+              <Icon className="h-5 w-5" />
+              <span className="text-xs">{label}</span>
+            </a>
+          </Link>
+        ))}
+        {user?.isAdmin && (
+          <Link href="/admin">
+            <a className={cn(
+              "flex flex-col items-center justify-center w-full text-sm gap-1",
+              // Mobile styles
+              "h-full",
+              // Desktop styles
+              "lg:h-16 lg:w-16",
+              location === "/admin"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-primary transition-colors"
+            )}>
+              <Shield className="h-5 w-5" />
+              <span className="text-xs">Admin</span>
+            </a>
+          </Link>
+        )}
+        <Link href="/profile">
+          <a className={cn(
+            "flex flex-col items-center justify-center w-full text-sm gap-1",
+            // Mobile styles
+            "h-full",
+            // Desktop styles
+            "lg:h-16 lg:w-16",
+            location === "/profile"
+              ? "text-primary"
+              : "text-muted-foreground hover:text-primary transition-colors"
+          )}>
             <User className="h-5 w-5" />
             <span className="text-xs">Profile</span>
-          </button>
+          </a>
         </Link>
       </div>
     </nav>
