@@ -6,7 +6,6 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import cookieParser from 'cookie-parser';
 
 declare global {
   namespace Express {
@@ -15,7 +14,7 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
-const KEY_LENGTH = 64;
+const KEY_LENGTH = 64; // Consistent key length for both hashing and comparison
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -42,21 +41,19 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
 
-  // Order matters: cookie parser -> session -> passport
-  app.use(cookieParser(process.env.SESSION_SECRET));
-  app.use(session({
+  const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
-      secure: false, // Set to false for development
-      httpOnly: true,
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    },
-    name: 'sid'
-  }));
+    }
+  };
+
+  app.set("trust proxy", 1);
+  app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -70,6 +67,7 @@ export function setupAuth(app: Express) {
         let user = await storage.getUserByEmail(emailOrUsername);
 
         if (!user) {
+          // Try username if email lookup failed
           user = await storage.getUserByUsername(emailOrUsername);
         }
 
@@ -85,7 +83,6 @@ export function setupAuth(app: Express) {
           return done(null, false);
         }
 
-        console.log('Login successful for user:', user.id);
         return done(null, user);
       } catch (error) {
         console.error('Login error:', error);
@@ -107,7 +104,6 @@ export function setupAuth(app: Express) {
         console.log('User not found during deserialization:', id);
         return done(null, false);
       }
-      console.log('Successfully deserialized user:', user.id);
       done(null, user);
     } catch (error) {
       console.error('Deserialization error:', error);
@@ -115,43 +111,46 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Auth routes
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+      console.log('Unauthenticated request to /api/user');
+      return res.sendStatus(401);
     }
+    console.log('Authenticated user:', req.user.id);
     res.json(req.user);
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log('Login attempt:', { email: req.body.email });
-    passport.authenticate("local", (err: any, user: any) => {
+    console.log('Login attempt for:', req.body.username);
+    passport.authenticate("local", (err, user, info) => {
       if (err) {
-        console.error('Authentication error:', err);
-        return res.status(500).json({ error: "Internal server error" });
+        console.error('Login error:', err);
+        return next(err);
       }
       if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
+        console.log('Login failed for:', req.body.username);
+        return res.status(401).json({ error: "Invalid username or password" });
       }
-      req.login(user, (loginErr) => {
-        if (loginErr) {
-          console.error('Login error:', loginErr);
-          return res.status(500).json({ error: "Failed to establish session" });
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Session creation error:', err);
+          return next(err);
         }
-        console.log('Login successful:', { userId: user.id });
+        console.log('Login successful for:', user.username);
         res.json(user);
       });
     })(req, res, next);
   });
 
-  app.post("/api/logout", (req, res) => {
+  app.post("/api/logout", (req, res, next) => {
     const userId = req.user?.id;
+    console.log('Logout request for user:', userId);
     req.logout((err) => {
       if (err) {
         console.error('Logout error:', err);
-        return res.status(500).json({ error: "Failed to logout" });
+        return next(err);
       }
-      console.log('Logout successful:', { userId });
+      console.log('Logout successful for user:', userId);
       res.sendStatus(200);
     });
   });

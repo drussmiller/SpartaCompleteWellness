@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut, ArrowLeft, ChevronLeft } from "lucide-react"; 
+import { LogOut, ArrowLeft, ChevronLeft } from "lucide-react"; // Added ChevronLeft import
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
@@ -18,7 +18,6 @@ import { useMutation } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation } from "wouter";
 import { format } from "date-fns";
-import { BottomNav } from "@/components/bottom-nav";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
@@ -32,6 +31,7 @@ export default function ProfilePage() {
     enabled: !!authUser,
   });
 
+  // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements", user?.id],
     queryFn: async () => {
@@ -64,6 +64,7 @@ export default function ProfilePage() {
     logoutMutation.mutate();
   };
 
+  // Add measurement form
   const form = useForm({
     resolver: zodResolver(insertMeasurementSchema.omit({ userId: true, date: true })),
     defaultValues: {
@@ -74,10 +75,12 @@ export default function ProfilePage() {
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
+      // Ensure we're sending at least one measurement
       if (data.weight === undefined && data.waist === undefined) {
         throw new Error("Please enter at least one measurement");
       }
 
+      // Only send fields that have values
       const payload = {
         ...(data.weight !== undefined && { weight: data.weight }),
         ...(data.waist !== undefined && { waist: data.waist })
@@ -112,22 +115,29 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 max-w-screen-2xl items-center">
-          <h1 className="text-xl font-bold mr-auto">Profile</h1>
+    <div className="max-w-2xl mx-auto pb-20">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setLocation("/")}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold">Profile</h1>
+          </div>
           <Button 
             variant="outline" 
             size="sm"
             onClick={handleRefresh}
-            className="ml-auto"
           >
             Refresh Data
           </Button>
         </div>
       </header>
-
-      <main className="container max-w-2xl mx-auto p-4 space-y-6 overflow-y-auto">
+      <main className="p-4 space-y-6">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
             <div className="relative">
@@ -163,9 +173,16 @@ export default function ProfilePage() {
                       }
 
                       await refetchUser();
+                      // Invalidate all queries to ensure profile image is updated everywhere
+                      await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+                      await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
+                      
+                      // Clear the entire cache to make sure everything refreshes
                       queryClient.clear();
+                      
+                      // Force refresh the home page data
                       await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
-
+                      
                       toast({
                         title: "Success",
                         description: "Profile image updated successfully"
@@ -393,13 +410,11 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending} className="w-full mt-6">
+        <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending}>
           {logoutMutation.isPending ? "Logging out..." : "Logout"}
           <LogOut className="ml-2 h-4 w-4"/>
         </Button>
       </main>
-
-      <BottomNav />
     </div>
   );
 }
