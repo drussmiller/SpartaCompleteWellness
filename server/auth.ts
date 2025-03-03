@@ -42,10 +42,6 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
 
-  // Trust proxy for secure session cookies in environments like Replit
-  app.set("trust proxy", 1);
-
-  // Ensure cookies are parsed before session setup
   app.use(cookieParser(process.env.SESSION_SECRET));
 
   const sessionSettings: session.SessionOptions = {
@@ -54,12 +50,12 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
-      secure: false, // false in dev; true in production
+      secure: false, // Set to false for development
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
-    name: 'sid' // consistent session cookie name
+    name: 'sid'
   };
 
   app.use(session(sessionSettings));
@@ -121,8 +117,6 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    console.log('GET /api/user - Auth status:', req.isAuthenticated());
-    console.log('Session ID:', req.sessionID);
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
