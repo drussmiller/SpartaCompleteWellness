@@ -6,13 +6,15 @@ import { Loader2 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { TopNav } from "@/components/top-nav";
+import { getQueryFn } from "@/lib/queryClient";
 
 export default function HomePage() {
   const { user } = useAuth();
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
-    enabled: !!user
+    queryFn: getQueryFn(),
+    enabled: !!user,
   });
 
   if (isLoading) {
@@ -25,30 +27,29 @@ export default function HomePage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-destructive">
-        Error loading posts: {error instanceof Error ? error.message : 'Unknown error'}
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-destructive">
+          <h2 className="text-xl font-bold mb-2">Error loading posts</h2>
+          <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
       </div>
     );
   }
 
-  // Filter out comments from the posts
-  const nonCommentPosts = posts?.filter(post => post.type !== "comment");
-
   return (
     <div className="max-w-2xl mx-auto pb-20">
       <TopNav />
-
       <main className="p-4 space-y-4">
-        {nonCommentPosts?.map((post) => (
+        <CreatePostDialog />
+        {posts?.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
-        {nonCommentPosts?.length === 0 && (
+        {!posts?.length && (
           <p className="text-center text-muted-foreground py-8">
             No posts yet. Be the first to share!
           </p>
         )}
       </main>
-
       <BottomNav />
     </div>
   );
