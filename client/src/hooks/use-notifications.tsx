@@ -44,7 +44,7 @@ export function useNotifications() {
           setConnectionStatus("connected");
           reconnectAttemptRef.current = 0;
 
-          // Send authentication message after connection
+          // Send authentication message immediately after connection
           ws.send(JSON.stringify({ 
             type: 'authenticate',
             userId: user.id
@@ -63,7 +63,7 @@ export function useNotifications() {
 
             if (data.type === 'notification') {
               toast({
-                title: data.title,
+                title: data.title || 'New Notification',
                 description: data.message,
               });
               queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
