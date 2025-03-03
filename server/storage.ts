@@ -443,7 +443,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createActivity(data: any) {
-    return await db.insert(activities).values(data).returning();
+    const [newActivity] = await db.insert(activities).values({
+      week: data.week,
+      day: data.day,
+      contentFields: data.contentFields || [],
+      isComplete: false,
+      createdAt: new Date()
+    }).returning();
+    return newActivity;
   }
 
   async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {
