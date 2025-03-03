@@ -38,7 +38,7 @@ const requireAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
-// Helper functions remain unchanged
+// Helper functions
 function getWeekBounds(date: Date) {
   const curr = new Date(date);
   const day = curr.getDay();
@@ -54,7 +54,6 @@ function getWeekBounds(date: Date) {
   return { weekStart, weekEnd };
 }
 
-// Helper function to get weekly post count
 async function getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
   const { weekStart, weekEnd } = getWeekBounds(date);
 
@@ -73,7 +72,6 @@ async function getWeeklyPostCount(userId: number, type: string, date: Date): Pro
   return weeklyPosts.length;
 }
 
-// Helper function to send notification
 async function sendNotification(userId: number, title: string, message: string) {
   try {
     const notificationData = insertNotificationSchema.parse({
@@ -115,39 +113,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('WebSocket connection attempt:', req.url);
 
     try {
-      // Get user ID from query parameter
-      const url = new URL(req.url!, `http://${req.headers.host}`);
-      const userId = parseInt(url.searchParams.get('userId') || '');
+      // Wait for authentication message
+      ws.once('message', async (message: string) => {
+        try {
+          const data = JSON.parse(message.toString());
 
-      if (!userId) {
-        console.log('WebSocket connection rejected - no user ID');
-        ws.close();
-        return;
-      }
+          if (data.type !== 'authenticate' || !data.userId) {
+            console.log('Invalid authentication message:', data);
+            ws.close();
+            return;
+          }
 
-      // Verify user exists before accepting connection
-      const user = await storage.getUser(userId);
-      if (!user) {
-        console.log('WebSocket connection rejected - user not found:', userId);
-        ws.close();
-        return;
-      }
+          const userId = data.userId;
+          console.log('Attempting to authenticate WebSocket for user:', userId);
 
-      console.log('WebSocket connection established for user:', userId);
-      clients.set(userId, ws);
+          // Verify user exists before accepting connection
+          const user = await storage.getUser(userId);
+          if (!user) {
+            console.log('WebSocket authentication failed - user not found:', userId);
+            ws.close();
+            return;
+          }
+
+          console.log('WebSocket authenticated for user:', userId);
+          clients.set(userId, ws);
+
+          // Send authentication success message
+          ws.send(JSON.stringify({ type: 'authenticated', userId }));
+        } catch (error) {
+          console.error('Error processing authentication message:', error);
+          ws.close();
+        }
+      });
+
+      // Set timeout for authentication
+      setTimeout(() => {
+        if (!clients.has(parseInt(req.url?.split('userId=')[1] || ''))) {
+          console.log('WebSocket authentication timeout');
+          ws.close();
+        }
+      }, 5000);
 
       ws.on('close', () => {
-        console.log('WebSocket connection closed for user:', userId);
-        clients.delete(userId);
+        const userId = parseInt(req.url?.split('userId=')[1] || '');
+        if (userId) {
+          console.log('WebSocket connection closed for user:', userId);
+          clients.delete(userId);
+        }
       });
 
       ws.on('error', (error) => {
-        console.error('WebSocket error for user:', userId, error);
-        clients.delete(userId);
+        console.error('WebSocket error:', error);
+        const userId = parseInt(req.url?.split('userId=')[1] || '');
+        if (userId) {
+          clients.delete(userId);
+        }
       });
-
-      // Send initial connection success message
-      ws.send(JSON.stringify({ type: 'connected', userId }));
 
     } catch (error) {
       console.error('Error establishing WebSocket connection:', error);
@@ -155,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // The rest of your routes remain unchanged
+  //The rest of the routes
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
@@ -969,6 +990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
 
       res.json(updatedComment);
+
     } catch (error) {
       console.error('Error updating comment:', error);
       res.status(500).json({
