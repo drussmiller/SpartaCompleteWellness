@@ -79,8 +79,7 @@ function ReactionSummary({ postId }: { postId: number }) {
             <Tooltip key={type}>
               <TooltipTrigger asChild>
                 <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span className="mr-1">{getEmojiForType(type)}</span>
-                  <span className="text-xs">{count}</span>
+                  <span>{getEmojiForType(type)}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import type { Reaction } from "@shared/schema";
 
@@ -50,10 +50,11 @@ const reactionEmojis = {
 
   // Spiritual
   angel: { emoji: "😇", color: "text-sky-500" },
-  dove: { emoji: "🕊️", color: "text-white-500" },
-  church: { emoji: "⛪", color: "text-stone-500" },
-
-  // Motivational
+  dove: { emoji: "🕊️", color: "text-sky-500" },
+  church: { emoji: "⛪", color: "text-slate-500" },
+  bible: { emoji: "📖", color: "text-amber-500" },
+  cross: { emoji: "✝️", color: "text-red-500" },
+  faith: { emoji: "🙌", color: "text-amber-500" },
   idea: { emoji: "💡", color: "text-yellow-500" },
   rocket: { emoji: "🚀", color: "text-indigo-500" },
   sparkles: { emoji: "✨", color: "text-purple-500" },
@@ -85,7 +86,10 @@ const reactionLabels = {
   weight: "Weightlifting",
   angel: "Blessed",
   dove: "Peace",
-  church: "Faith",
+  church: "Church",
+  bible: "Scripture",
+  cross: "Faith",
+  faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
   sparkles: "Magic",
@@ -146,13 +150,6 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     },
   });
 
-  const reactionCounts = reactions.reduce((acc: Record<ReactionType, number>, reaction) => {
-    if (reaction.type in reactionEmojis) {
-      acc[reaction.type as ReactionType] = (acc[reaction.type as ReactionType] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<ReactionType, number>);
-
   const handleReaction = (type: ReactionType) => {
     const userReactions = reactions.filter(r => r.userId === Number(localStorage.getItem('userId')));
     const hasReactedWithSameType = userReactions.some(r => r.type === type);
@@ -174,22 +171,6 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     
     setIsOpen(false);
   };
-
-  const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
-
-  // Get the most common reaction type to display if any exist
-  let mostCommonReaction: ReactionType | null = null;
-  let maxCount = 0;
-
-  Object.entries(reactionCounts).forEach(([type, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      mostCommonReaction = type as ReactionType;
-    }
-  });
-
-  // Get user's reaction if any
-  const userReaction = reactions.find(r => r.userId === Number(localStorage.getItem('userId')))?.type as ReactionType | undefined;
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
