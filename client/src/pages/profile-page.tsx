@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut, ArrowLeft, ChevronLeft } from "lucide-react"; // Added ChevronLeft import
+import { LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
@@ -18,6 +18,7 @@ import { useMutation } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default function ProfilePage() {
   const { user: authUser, logoutMutation } = useAuth();
@@ -115,29 +116,14 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
+    <div className="min-h-screen pb-20 relative">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setLocation("/")}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-bold">Profile</h1>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleRefresh}
-          >
-            Refresh Data
-          </Button>
+        <div className="p-4">
+          <h1 className="text-xl font-bold">Profile</h1>
         </div>
       </header>
-      <main className="p-4 space-y-6">
+
+      <main className="p-4 space-y-6 pb-24">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
             <div className="relative">
@@ -176,13 +162,13 @@ export default function ProfilePage() {
                       // Invalidate all queries to ensure profile image is updated everywhere
                       await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
                       await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
-                      
+
                       // Clear the entire cache to make sure everything refreshes
                       queryClient.clear();
-                      
+
                       // Force refresh the home page data
                       await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
-                      
+
                       toast({
                         title: "Success",
                         description: "Profile image updated successfully"
@@ -281,9 +267,9 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Weight (lbs)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter weight" 
+                          <Input
+                            type="number"
+                            placeholder="Enter weight"
                             {...field}
                             onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                           />
@@ -298,9 +284,9 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Waist (inches)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Enter waist" 
+                          <Input
+                            type="number"
+                            placeholder="Enter waist"
                             {...field}
                             onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                           />
@@ -415,6 +401,10 @@ export default function ProfilePage() {
           <LogOut className="ml-2 h-4 w-4"/>
         </Button>
       </main>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <BottomNav />
+      </div>
     </div>
   );
 }
