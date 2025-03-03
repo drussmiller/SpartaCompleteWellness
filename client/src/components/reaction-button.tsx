@@ -154,21 +154,20 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     const userReactions = reactions.filter(r => r.userId === Number(localStorage.getItem('userId')));
     const hasReactedWithSameType = userReactions.some(r => r.type === type);
     
-    // If user already reacted with any type, remove those reactions first
-    if (userReactions.length > 0) {
+    // If user already reacted with a different type, remove that reaction first
+    if (userReactions.length > 0 && !hasReactedWithSameType) {
       // Remove all existing user reactions
       userReactions.forEach(reaction => {
         removeReactionMutation.mutate(reaction.type as ReactionType);
       });
     }
     
-    // Add the new reaction if it's not the same as the one being removed
-    if (!hasReactedWithSameType) {
+    // Toggle the current reaction
+    if (hasReactedWithSameType) {
+      removeReactionMutation.mutate(type);
+    } else {
       addReactionMutation.mutate(type);
     }
-    
-    setIsOpen(false);
-  };
     
     setIsOpen(false);
   };

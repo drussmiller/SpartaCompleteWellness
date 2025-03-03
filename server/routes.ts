@@ -211,34 +211,36 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
 
+  // Delete post endpoint
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
-      const postId = parseInt(req.params.id);
-
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Get the post first to check permissions
-      const post = await storage.getPost(postId);
-      console.log('Attempting to delete post:', postId, 'Post found:', post ? 'yes' : 'no');
+      const postId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      // Get all posts and find the specific one
+      const posts = await storage.getAllPosts();
+      const post = posts.find(p => p.id === postId);
 
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
 
-      // Check authorization
-      if (post.userId !== req.user?.id && !req.user?.isAdmin) {
+      // Check if user owns the post
+      if (post.userId !== userId && !req.user.isAdmin) {
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
       // Delete the post
       await storage.deletePost(postId);
 
-      return res.status(200).json({ message: "Post deleted successfully" });
+      res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      console.error('Delete post error:', error);
-      return res.status(500).json({ message: "Failed to delete post" });
+      console.error('Error deleting post:', error);
+      res.status(500).json({ message: "Failed to delete post" });
     }
   });
 
