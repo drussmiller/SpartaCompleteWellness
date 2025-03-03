@@ -1,176 +1,64 @@
-
 import express, { Router, Request, Response } from "express";
 import { db } from "./db";
 import {
   Post,
   User,
   Team,
-  Comment,
   Reaction,
 } from "@shared/schema";
 import { eq, desc, isNull, and, sql, like, asc, SQL } from "drizzle-orm";
-import { authenticate, hashPassword, comparePassword } from "./auth";
+import { authenticate } from "./auth";
 import { Server as HttpServer } from "http";
-import { uploadImage } from "./storage";
+import { storage } from "./storage";
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
   const router = Router();
 
-  // Authentication routes
-  router.post("/api/auth/register", async (req: Request, res: Response) => {
-    try {
-      const { username, email, password, preferredName } = req.body;
-
-      // Check if username already exists
-      const existingUser = await db.query.User.findFirst({
-        where: eq(User.username, username),
-      });
-
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-
-      // Check if email already exists
-      const existingEmail = await db.query.User.findFirst({
-        where: eq(User.email, email),
-      });
-
-      if (existingEmail) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
-
-      // Hash password
-      const hashedPassword = await hashPassword(password);
-
-      // Create user
-      const [newUser] = await db
-        .insert(User)
-        .values({
-          username,
-          email,
-          password: hashedPassword,
-          preferredName: preferredName || null,
-          isAdmin: false,
-          isTeamLead: false,
-          teamId: null,
-          points: 0,
-          currentDay: 1,
-          currentWeek: 1,
-        })
-        .returning();
-
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = newUser;
-
-      return res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error registering user:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+  // Debug middleware to log all requests
+  router.use((req, res, next) => {
+    console.log('Request:', {
+      method: req.method,
+      path: req.path,
+      headers: req.headers,
+      session: req.session,
+      isAuthenticated: req.isAuthenticated?.() || false,
+      user: req.user?.id
+    });
+    next();
   });
 
-  router.post("/api/auth/login", async (req: Request, res: Response) => {
-    try {
-      const { username, password } = req.body;
-
-      // Find user by username
-      const user = await db.query.User.findFirst({
-        where: eq(User.username, username),
-      });
-
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Compare password
-      const isPasswordValid = await comparePassword(password, user.password);
-
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Create session
-      const { password: _, ...userWithoutPassword } = user;
-
-      return res.status(200).json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error logging in:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+  // Simple ping endpoint to verify API functionality
+  router.get("/api/ping", (req, res) => {
+    console.log('Ping endpoint called');
+    res.json({ message: "pong" });
   });
 
-  router.get("/api/auth/me", authenticate, async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.body;
-
-      const user = await db.query.User.findFirst({
-        where: eq(User.id, userId),
-      });
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const { password: _, ...userWithoutPassword } = user;
-
-      return res.status(200).json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error getting current user:", error);
-      return res.status(500).json({ message: "Internal server error" });
+  // Posts endpoints
+  router.get("/api/posts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log('Unauthenticated request to /api/posts');
+      return res.status(401).json({ message: "Unauthorized" });
     }
-  });
 
-  router.post("/api/auth/logout", authenticate, async (_: Request, res: Response) => {
     try {
-      return res.status(200).json({ message: "Logged out successfully" });
+      console.log('Fetching posts for user:', req.user?.id);
+      const posts = await storage.getAllPosts();
+      console.log('Raw posts:', posts);
+
+      // For each post, get its author information
+      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+        const author = await storage.getUser(post.userId);
+        return {
+          ...post,
+          author: author || null
+        };
+      }));
+
+      console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
+      res.json(postsWithAuthors);
     } catch (error) {
-      console.error("Error logging out:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Posts routes
-  router.get("/api/posts", authenticate, async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.body;
-
-      // Get current user
-      const currentUser = await db.query.User.findFirst({
-        where: eq(User.id, userId),
-      });
-
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Get all posts by user's team members
-      const posts = await db.query.Post.findMany({
-        with: {
-          user: true,
-          comments: {
-            with: {
-              user: true,
-            },
-            orderBy: (comments, { asc }) => [asc(comments.createdAt)],
-          },
-          reactions: {
-            with: {
-              user: true,
-            },
-          },
-        },
-        where: currentUser.isAdmin
-          ? undefined // Admins see all posts
-          : currentUser.teamId
-          ? sql`${Post.userId} IN (SELECT ${User.id} FROM ${User} WHERE ${User.teamId} = ${currentUser.teamId})`
-          : eq(Post.userId, userId), // If user has no team, only show their own posts
-        orderBy: (posts, { desc }) => [desc(posts.createdAt)],
-      });
-
-      return res.status(200).json(posts);
-    } catch (error) {
-      console.error("Error getting posts:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      console.error('Error fetching posts:', error);
+      res.status(500).json({ message: "Failed to fetch posts" });
     }
   });
 
@@ -273,7 +161,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Delete all comments for this post
       await db.delete(Comment).where(eq(Comment.postId, postId));
-      
+
       // Delete all reactions for this post
       await db.delete(Reaction).where(eq(Reaction.postId, postId));
 
@@ -775,9 +663,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   app.use(router);
-  
-  // Create HTTP server for the Express app
-  const server = new HttpServer(app);
-  
-  return server;
+
+  // Create HTTP server
+  const httpServer = new HttpServer(app);
+
+  return httpServer;
 };

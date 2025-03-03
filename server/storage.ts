@@ -1,223 +1,211 @@
-import { Database } from 'better-sqlite3';
 import session from 'express-session';
-import SqliteStore from 'better-sqlite3-session-store';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import memorystore from 'memorystore';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import * as schema from './db/schema';
-import BetterSqlite3 from 'better-sqlite3';
+import * as schema from '@shared/schema';
 import { 
-  InsertPost, InsertUser, InsertTeam, InsertMeasurement, 
-  InsertComment, InsertReaction 
+  InsertPost, InsertUser, InsertReaction 
 } from '@shared/schema';
 
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
+
 // Initialize database connection
-const sqlite = new BetterSqlite3('sqlite.db');
-const db = drizzle(sqlite, { schema });
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client);
 
 // Set up session store
-const Store = SqliteStore(session);
-const sessionStore = new Store({
-  client: sqlite,
-  expired: {
-    clear: true,
-    intervalMs: 900000 // 15min
-  }
+const MemoryStore = memorystore(session);
+const sessionStore = new MemoryStore({
+  checkPeriod: 86400000 // Prune expired entries every 24h
 });
 
 // Storage service for all database operations
 export const storage = {
   sessionStore,
-  
+
   // User operations
   async getUser(id: number) {
-    const result = await db.select().from(schema.users).where(eq(schema.users.id, id));
-    return result[0] || null;
+    try {
+      const result = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error getting user:', error);
+      throw error;
+    }
   },
-  
+
   async getUserByUsername(username: string) {
-    const result = await db.select().from(schema.users).where(eq(schema.users.username, username));
-    return result[0] || null;
+    try {
+      const result = await db.select().from(schema.users).where(eq(schema.users.username, username));
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error getting user by username:', error);
+      throw error;
+    }
   },
-  
+
   async createUser(user: InsertUser) {
-    const result = await db.insert(schema.users).values(user).returning();
-    return result[0];
+    try {
+      const result = await db.insert(schema.users).values(user).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   },
-  
+
   async updateUser(id: number, data: Partial<InsertUser>) {
-    const result = await db.update(schema.users).set(data).where(eq(schema.users.id, id)).returning();
-    return result[0];
-  },
-  
-  async getAllUsers() {
-    return db.select().from(schema.users).orderBy(schema.users.username);
-  },
-  
-  // Team operations
-  async getTeam(id: number) {
-    const result = await db.select().from(schema.teams).where(eq(schema.teams.id, id));
-    return result[0] || null;
-  },
-  
-  async getAllTeams() {
-    return db.select().from(schema.teams);
-  },
-  
-  async createTeam(team: InsertTeam) {
-    const result = await db.insert(schema.teams).values(team).returning();
-    return result[0];
-  },
-  
-  async updateTeam(id: number, data: Partial<InsertTeam>) {
-    const result = await db.update(schema.teams).set(data).where(eq(schema.teams.id, id)).returning();
-    return result[0];
-  },
-  
-  async deleteTeam(id: number) {
-    // Update any users in this team to have null teamId
-    await db.update(schema.users).set({ teamId: null }).where(eq(schema.users.teamId, id));
-    
-    // Delete the team
-    const result = await db.delete(schema.teams).where(eq(schema.teams.id, id)).returning();
-    return result[0];
-  },
-  
-  // Post operations
-  async createPost(post: InsertPost) {
-    const result = await db.insert(schema.posts).values(post).returning();
-    return result[0];
-  },
-  
-  async getAllPosts() {
-    return db.select()
-      .from(schema.posts)
-      .leftJoin(schema.users, eq(schema.posts.userId, schema.users.id))
-      .orderBy(desc(schema.posts.createdAt));
-  },
-  
-  async getPost(id: number) {
-    const result = await db.select()
-      .from(schema.posts)
-      .where(eq(schema.posts.id, id))
-      .leftJoin(schema.users, eq(schema.posts.userId, schema.users.id));
-    return result[0] || null;
-  },
-  
-  async updatePost(id: number, data: Partial<InsertPost>) {
-    const result = await db.update(schema.posts).set(data).where(eq(schema.posts.id, id)).returning();
-    return result[0];
-  },
-  
-  async deletePost(id: number) {
-    // Delete associated comments and reactions first
-    await db.delete(schema.comments).where(eq(schema.comments.postId, id));
-    await db.delete(schema.reactions).where(eq(schema.reactions.postId, id));
-    
-    const result = await db.delete(schema.posts).where(eq(schema.posts.id, id)).returning();
-    return result[0];
-  },
-  
-  // Comment operations
-  async createComment(comment: InsertComment) {
-    const result = await db.insert(schema.comments).values(comment).returning();
-    return result[0];
-  },
-  
-  async getPostComments(postId: number) {
-    return db.select()
-      .from(schema.comments)
-      .where(eq(schema.comments.postId, postId))
-      .leftJoin(schema.users, eq(schema.comments.userId, schema.users.id))
-      .orderBy(schema.comments.createdAt);
-  },
-  
-  async countPostComments(postId: number) {
-    const result = await db.select({ count: sql<number>`count(*)` })
-      .from(schema.comments)
-      .where(eq(schema.comments.postId, postId));
-    return result[0]?.count || 0;
-  },
-  
-  // Measurement operations
-  async createMeasurement(measurement: InsertMeasurement) {
-    const result = await db.insert(schema.measurements).values(measurement).returning();
-    return result[0];
-  },
-  
-  async getUserMeasurements(userId: number) {
-    return db.select()
-      .from(schema.measurements)
-      .where(eq(schema.measurements.userId, userId))
-      .orderBy(schema.measurements.date);
-  },
-  
-  // Reaction operations
-  async getPostReactions(postId: number) {
-    return db.select()
-      .from(schema.reactions)
-      .where(eq(schema.reactions.postId, postId))
-      .leftJoin(schema.users, eq(schema.reactions.userId, schema.users.id));
-  },
-  
-  async getReaction(userId: number, postId: number) {
-    const result = await db.select()
-      .from(schema.reactions)
-      .where(and(
-        eq(schema.reactions.userId, userId),
-        eq(schema.reactions.postId, postId)
-      ));
-    return result[0] || null;
-  },
-  
-  async createReaction(reaction: InsertReaction) {
-    // Check if the user already has a reaction on this post
-    const existing = await this.getReaction(reaction.userId, reaction.postId);
-    
-    if (existing) {
-      // If trying to add the same reaction, remove it
-      if (existing.emoji === reaction.emoji) {
-        const result = await db.delete(schema.reactions)
-          .where(eq(schema.reactions.id, existing.id))
-          .returning();
-        return result[0];
-      }
-      
-      // Otherwise update the existing reaction
-      const result = await db.update(schema.reactions)
-        .set({ emoji: reaction.emoji })
-        .where(eq(schema.reactions.id, existing.id))
+    try {
+      const result = await db.update(schema.users)
+        .set(data)
+        .where(eq(schema.users.id, id))
         .returning();
       return result[0];
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
     }
-    
-    // Create a new reaction
-    const result = await db.insert(schema.reactions).values(reaction).returning();
-    return result[0];
   },
-  
+
+  async getAllUsers() {
+    try {
+      return db.select().from(schema.users).orderBy(schema.users.username);
+    } catch (error) {
+      console.error('Error getting all users:', error);
+      throw error;
+    }
+  },
+
+  // Post operations
+  async getAllPosts() {
+    try {
+      return db.select().from(schema.posts).orderBy(desc(schema.posts.createdAt));
+    } catch (error) {
+      console.error('Error getting all posts:', error);
+      throw error;
+    }
+  },
+
+  async getPost(id: number) {
+    try {
+      const result = await db.select()
+        .from(schema.posts)
+        .where(eq(schema.posts.id, id));
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error getting post:', error);
+      throw error;
+    }
+  },
+
+  async createPost(post: InsertPost) {
+    try {
+      const result = await db.insert(schema.posts).values(post).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating post:', error);
+      throw error;
+    }
+  },
+
+  async updatePost(id: number, data: Partial<InsertPost>) {
+    try {
+      const result = await db.update(schema.posts)
+        .set(data)
+        .where(eq(schema.posts.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error updating post:', error);
+      throw error;
+    }
+  },
+
+  async deletePost(id: number) {
+    try {
+      const result = await db.delete(schema.posts)
+        .where(eq(schema.posts.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      throw error;
+    }
+  },
+
+  // Reaction operations
+  async getPostReactions(postId: number) {
+    try {
+      return db.select()
+        .from(schema.reactions)
+        .where(eq(schema.reactions.postId, postId))
+        .leftJoin(schema.users, eq(schema.reactions.userId, schema.users.id));
+    } catch (error) {
+      console.error('Error getting post reactions:', error);
+      throw error;
+    }
+  },
+
+  async getReaction(userId: number, postId: number) {
+    try {
+      const result = await db.select()
+        .from(schema.reactions)
+        .where(and(
+          eq(schema.reactions.userId, userId),
+          eq(schema.reactions.postId, postId)
+        ));
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error getting reaction:', error);
+      throw error;
+    }
+  },
+
+  async createReaction(reaction: InsertReaction) {
+    try {
+      const result = await db.insert(schema.reactions).values(reaction).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating reaction:', error);
+      throw error;
+    }
+  },
   async getReactionsByEmoji(postId: number) {
-    const result = await db.select({
-      emoji: schema.reactions.emoji,
-      count: sql<number>`count(*)`,
-    })
-    .from(schema.reactions)
-    .where(eq(schema.reactions.postId, postId))
-    .groupBy(schema.reactions.emoji);
-    
-    return result;
+    try {
+      const result = await db.select({
+        emoji: schema.reactions.emoji,
+        count: sql<number>`count(*)`,
+      })
+      .from(schema.reactions)
+      .where(eq(schema.reactions.postId, postId))
+      .groupBy(schema.reactions.emoji);
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting reactions by emoji:', error);
+      throw error;
+    }
   },
   
   async getReactionUsers(postId: number, emoji: string) {
-    return db.select({
-      userId: schema.users.id,
-      username: schema.users.username,
-      preferredName: schema.users.preferredName,
-    })
-    .from(schema.reactions)
-    .where(and(
-      eq(schema.reactions.postId, postId),
-      eq(schema.reactions.emoji, emoji)
-    ))
-    .innerJoin(schema.users, eq(schema.reactions.userId, schema.users.id));
+    try {
+      return db.select({
+        userId: schema.users.id,
+        username: schema.users.username,
+        preferredName: schema.users.preferredName,
+      })
+      .from(schema.reactions)
+      .where(and(
+        eq(schema.reactions.postId, postId),
+        eq(schema.reactions.emoji, emoji)
+      ))
+      .innerJoin(schema.users, eq(schema.reactions.userId, schema.users.id));
+    } catch (error) {
+      console.error('Error getting reaction users:', error);
+      throw error;
+    }
   }
 };
