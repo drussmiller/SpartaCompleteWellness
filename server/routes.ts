@@ -108,7 +108,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      const activity = await storage.createActivity(req.body);
+
+      const parsedData = insertActivitySchema.safeParse(req.body);
+      if (!parsedData.success) {
+        return res.status(400).json({
+          message: "Invalid activity data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const activity = await storage.createActivity(parsedData.data);
       res.status(201).json(activity);
     } catch (error) {
       console.error('Error creating activity:', error);
