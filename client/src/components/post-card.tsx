@@ -7,7 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { MessageCircle, Trash2, X } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -16,18 +16,22 @@ function ReactionSummary({ postId }: { postId: number }) {
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
   });
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+  const [selectedReactionType, setSelectedReactionType] = useState<string | null>(null);
+  const [showReactionUsers, setShowReactionUsers] = useState(false);
 
-  // Count each type of reaction
+  // Count reactions by type
   const reactionCounts: Record<string, number> = {};
-  reactions.forEach(reaction => {
-    if (reaction.type) {
-      reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
+  reactions.forEach((reaction) => {
+    if (!reactionCounts[reaction.type]) {
+      reactionCounts[reaction.type] = 0;
     }
+    reactionCounts[reaction.type]++;
   });
 
-  // Get the emoji mapping from imported module
-  // This is a little hack to access the same emoji data from reaction-button
-  // A better approach would be to move this to a shared constants file
+  // Get the emoji for a reaction type
   const getEmojiForType = (type: string): string => {
     const allEmojis: Record<string, { emoji: string, color: string }> = {
       like: { emoji: "👍", color: "text-blue-500" },
@@ -60,8 +64,17 @@ function ReactionSummary({ postId }: { postId: number }) {
       rocket: { emoji: "🚀", color: "text-indigo-500" },
       sparkles: { emoji: "✨", color: "text-purple-500" },
     };
-    
+
     return allEmojis[type]?.emoji || "👍";
+  };
+
+  // Get users who reacted with a specific type
+  const getUsersForReactionType = (type: string) => {
+    const userIds = reactions
+      .filter(reaction => reaction.type === type)
+      .map(reaction => reaction.userId);
+
+    return users.filter(user => userIds.includes(user.id));
   };
 
   // Sort reaction types by count (most frequent first)
@@ -71,26 +84,63 @@ function ReactionSummary({ postId }: { postId: number }) {
 
   if (sortedReactions.length === 0) return null;
 
+  const handleEmojiClick = (type: string) => {
+    setSelectedReactionType(type);
+    setShowReactionUsers(true);
+  };
+
+  const closeUserDrawer = () => {
+    setShowReactionUsers(false);
+  };
+
   return (
-    <div className="flex items-center gap-1 text-sm">
-      <TooltipProvider>
+    <>
+      <div className="flex items-center gap-1 text-sm">
         <div className="flex flex-wrap gap-1">
           {sortedReactions.map(([type, count]) => (
-            <Tooltip key={type}>
-              <TooltipTrigger asChild>
-                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span className="mr-1">{getEmojiForType(type)}</span>
-                  <span className="text-xs">{count}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{type.replace('_', ' ')}</p>
-              </TooltipContent>
-            </Tooltip>
+            <div 
+              key={type} 
+              className="flex items-center bg-muted rounded-full px-2 py-0.5 cursor-pointer"
+              onClick={() => handleEmojiClick(type)}
+            >
+              <span className="mr-1">{getEmojiForType(type)}</span>
+              {/* Removed count display */}
+            </div>
           ))}
         </div>
-      </TooltipProvider>
-    </div>
+      </div>
+
+      {/* Drawer to show users who reacted */}
+      {showReactionUsers && selectedReactionType && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center pb-[96px]" onClick={closeUserDrawer}>
+          <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+          <div 
+            className="relative w-full max-w-md rounded-t-lg bg-background p-4 shadow-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-medium">
+                {getEmojiForType(selectedReactionType)} {selectedReactionType.replace('_', ' ')}
+              </h3>
+              <Button variant="ghost" size="sm" onClick={closeUserDrawer}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {getUsersForReactionType(selectedReactionType).map(user => (
+                <div key={user.id} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.imageUrl || undefined} alt={user.username} />
+                    <AvatarFallback>{(user.username || "").substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span>{user.preferredName || user.username}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -187,18 +237,18 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               {new Date(post.createdAt!).toLocaleDateString()}
             </span>
           </div>
-          
-          {/* Reaction summary display */}
-          <ReactionSummary postId={post.id} />
-          
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center space-x-2">
             <ReactionButton postId={post.id} />
             <Link href={`/comments/${post.id}`}>
-              <Button variant="ghost" size="sm" className="gap-1.5">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-sm">
                 <MessageCircle className="h-4 w-4" />
-                {commentCount}
+                {commentCount || ''}
               </Button>
             </Link>
+          </div>
+          <div className="mt-2">
+            <ReactionSummary postId={post.id} />
           </div>
         </div>
       </CardContent>

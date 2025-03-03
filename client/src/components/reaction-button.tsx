@@ -193,12 +193,9 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
         >
           {userReaction ? (
             reactionEmojis[userReaction].emoji
-          ) : mostCommonReaction ? (
-            reactionEmojis[mostCommonReaction].emoji
           ) : (
             <ThumbsUp className="h-4 w-4" />
           )}
-          {totalReactions > 0 && totalReactions}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="p-2 grid grid-cols-6 gap-1 w-60">
