@@ -23,12 +23,7 @@ import {
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { WebSocketServer, WebSocket } from 'ws';
 import { z } from 'zod';
-
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
-});
+import cookieParser from 'cookie-parser';
 
 // Keep track of connected clients
 const clients = new Map<number, WebSocket>();
@@ -39,112 +34,61 @@ const requireAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
-// Helper function to send notification
-async function sendNotification(userId: number, title: string, message: string) {
-  try {
-    console.log('Attempting to send notification to user:', userId);
-
-    const notificationData = insertNotificationSchema.parse({
-      userId,
-      title,
-      message,
-      read: false,
-      createdAt: new Date()
-    });
-
-    console.log('Notification data validated:', notificationData);
-
-    const notification = await storage.createNotification(notificationData);
-    console.log('Notification created in database:', notification);
-
-    const ws = clients.get(userId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log('WebSocket connection found for user:', userId);
-      ws.send(JSON.stringify(notification));
-      console.log('Notification sent through WebSocket');
-    } else {
-      console.log('No active WebSocket connection found for user:', userId);
-    }
-
-    return notification;
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    if (error instanceof z.ZodError) {
-      console.error('Zod error sending notification:', error.errors);
-    }
-    throw error;
-  }
-}
-
-// Add week start/end date calculation helper
-function getWeekBounds(date: Date) {
-  const curr = new Date(date);
-  // Adjust to Monday start (1) and Sunday end (0)
-  const day = curr.getDay();
-  const diff = curr.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-
-  const weekStart = new Date(curr.setDate(diff));
-  weekStart.setHours(0, 0, 0, 0);
-
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
-
-  return { weekStart, weekEnd };
-}
-
-// Update weekly post count function in routes.ts
-async function getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number> {
-  const { weekStart, weekEnd } = getWeekBounds(date);
-
-  const weeklyPosts = await db
-    .select()
-    .from(posts)
-    .where(
-      and(
-        eq(posts.userId, userId),
-        eq(posts.type, type),
-        gte(posts.createdAt!, weekStart),
-        lte(posts.createdAt!, weekEnd)
-      )
-    );
-
-  return weeklyPosts.length;
-}
-
 // Add WebSocket server setup near the top of the file after imports
 const setupWebSocketServer = (httpServer: Server) => {
   const wss = new WebSocketServer({
     server: httpServer,
-    path: '/ws'
+    path: '/ws',
+    verifyClient: (info, done) => {
+      console.log('WebSocket connection verification:', info.req.url);
+      // Parse session from cookies
+      const cookies = cookieParser.signedCookies(info.req.headers.cookie, process.env.SESSION_SECRET!);
+      const sessionId = cookies['sid'];
+
+      if (!sessionId) {
+        console.log('No session ID found in WebSocket request');
+        done(false, 401, 'Unauthorized');
+        return;
+      }
+
+      // Get session from storage
+      storage.sessionStore.get(sessionId, (err, session) => {
+        if (err || !session?.passport?.user) {
+          console.log('Invalid session for WebSocket:', err || 'No user in session');
+          done(false, 401, 'Unauthorized');
+          return;
+        }
+
+        console.log('Valid session found for WebSocket user:', session.passport.user);
+        info.req.session = session;
+        done(true);
+      });
+    }
   });
 
   wss.on('connection', (ws: WebSocket, req) => {
-    console.log('WebSocket connection attempt:', req.url);
+    console.log('WebSocket connection established');
 
-    // Get user ID from session
-    const userId = (req as any).session?.passport?.user;
+    const userId = req.session?.passport?.user;
     if (!userId) {
-      console.log('WebSocket connection rejected - no user ID in session');
+      console.log('No user ID in WebSocket session');
       ws.close();
       return;
     }
 
-    console.log('WebSocket connection established for user:', userId);
+    console.log('WebSocket connected for user:', userId);
     clients.set(userId, ws);
 
     ws.on('close', () => {
-      console.log('WebSocket connection closed for user:', userId);
+      console.log('WebSocket disconnected for user:', userId);
       clients.delete(userId);
-      console.log('Remaining active connections:', clients.size);
     });
 
     ws.on('error', (error) => {
       console.error('WebSocket error for user:', userId, error);
       clients.delete(userId);
+      ws.close();
     });
-
-    console.log('Total active connections:', clients.size);
   });
 
   return wss;
@@ -152,6 +96,7 @@ const setupWebSocketServer = (httpServer: Server) => {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
+  app.use(cookieParser(process.env.SESSION_SECRET!)); // Added cookie parser middleware
   setupAuth(app);
 
   const httpServer = createServer(app);
@@ -291,6 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
 
 
   // Posts
@@ -949,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Allow users to update their own comments only
-      if (comment.userId !== requser.id) {
+      if (comment.userId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to update this comment" });
       }
 
@@ -1001,7 +947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(200);
     } catch (error) {
       console.error('Error deleting comment:', error);
-      res.status(500).json({
+      res.status(500).json{
         message: "Failed to delete comment",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -1128,14 +1074,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           activity: activities,
           workoutVideos: sql`COALESCE(
-            array_agg(
-              json_build_object(
-                'id', ${workoutVideos}.id,
-                'url', ${workoutVideos}.url,
-                'description', ${workoutVideos}.description
-              )
+            jsonb_agg(
+              CASE WHEN ${workoutVideos}.id IS NOT NULL THEN
+                jsonb_build_object(
+                  'id', ${workoutVideos}.id,
+                  'url', ${workoutVideos}.url,
+                  'description', ${workoutVideos}.description
+                )
+              END
             ) FILTER (WHERE ${workoutVideos}.id IS NOT NULL),
-            '[]'::json
+            '[]'::jsonb
           )`
         })
         .from(activities)
@@ -1154,11 +1102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map the results to include workout videos
       const mappedActivities = results.map(result => ({
         ...result.activity,
-        workoutVideos: result.workoutVideos && result.workoutVideos !== '[null]' ?
-          (typeof result.workoutVideos === 'string' ?
-            JSON.parse(result.workoutVideos) :
-            result.workoutVideos)
-          : []
+        workoutVideos: result.workoutVideos || []
       }));
 
       res.json(mappedActivities);
@@ -1575,7 +1519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               json_agg(
                 json_build_object(
                   'id', ${workoutVideos.id},
-                  'url', ${workoutVideos.url},
+                  'url', ${workoutVideos}.url,
                   'description', ${workoutVideos}.description
                 )
               ) FILTER (WHERE ${workoutVideos}.id IS NOT NULL),
