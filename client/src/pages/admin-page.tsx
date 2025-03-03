@@ -237,17 +237,13 @@ export default function AdminPage() {
   }
 
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedUsers = [...(users || [])].sort((a, b) => a.id - b.id);
+  const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   return (
     <div className="max-w-7xl mx-auto pb-20">
       <ScrollArea className="h-[calc(100vh-80px)]">
         <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4 flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Back</span>
-            </Button>
+          <div className="p-4">
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           </div>
         </header>
