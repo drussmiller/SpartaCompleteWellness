@@ -28,28 +28,36 @@ export default function ActivityPage() {
     enabled: !!user?.teamId
   });
 
+  // First, wrap content in a container that will always show BottomNav
+  const PageWrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className="max-w-2xl mx-auto p-4 pb-20">
+      {children}
+      <BottomNav />
+    </div>
+  );
+
   if (!user?.teamId) {
     return (
-      <div className="max-w-2xl mx-auto p-4">
+      <PageWrapper>
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             Join a team to start your program
           </CardContent>
         </Card>
-      </div>
+      </PageWrapper>
     );
   }
 
   // If weekInfo is null, the program hasn't started yet
   if (!weekInfo) {
     return (
-      <div className="max-w-2xl mx-auto p-4">
+      <PageWrapper>
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             Your program will start on the first Monday after joining a team
           </CardContent>
         </Card>
-      </div>
+      </PageWrapper>
     );
   }
 
@@ -107,7 +115,7 @@ export default function ActivityPage() {
 
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
+    <PageWrapper>
       <ScrollArea className="h-[calc(100vh-80px)]">
         <header className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4">
@@ -146,12 +154,12 @@ export default function ActivityPage() {
                 }
               >
                 {i === 0 ? "Monday" :
-                 i === 1 ? "Tuesday" :
-                 i === 2 ? "Wednesday" :
-                 i === 3 ? "Thursday" :
-                 i === 4 ? "Friday" :
-                 i === 5 ? "Saturday" :
-                 "Sunday"}
+                  i === 1 ? "Tuesday" :
+                  i === 2 ? "Wednesday" :
+                  i === 3 ? "Thursday" :
+                  i === 4 ? "Friday" :
+                  i === 5 ? "Saturday" :
+                  "Sunday"}
               </Button>
             ))}
           </div>
@@ -346,7 +354,6 @@ export default function ActivityPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-      <BottomNav />
-    </div>
+    </PageWrapper>
   );
 }
