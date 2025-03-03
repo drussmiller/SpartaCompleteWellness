@@ -1,12 +1,10 @@
 import { users, teams, posts, measurements, notifications, videos, activities, passwordResetTokens } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo, Activity } from "@shared/schema";
+import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo } from "@shared/schema";
 import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-import type { PgSelectQueryBuilder } from 'drizzle-orm/pg-core';
-import * as z from 'zod';
 
 const PostgresSessionStore = connectPg(session);
 
@@ -15,7 +13,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUserTeam(userId: number, teamId: number | null): Promise<User>;
+  updateUserTeam(userId: number, teamId: number): Promise<User>;
   updateUserPoints(userId: number, points: number): Promise<User>;
   updateUserImage(userId: number, imageUrl: string): Promise<User>;
   createTeam(team: Team): Promise<Team>;
@@ -41,9 +39,9 @@ export interface IStorage {
   getWeeklyPostCount(userId: number, type: string, date: Date): Promise<number>;
   sessionStore: session.Store;
   deleteTeam(teamId: number): Promise<void>;
-  getActivities(week?: number, day?: number): Promise<Activity[]>;
-  createActivity(data: Activity): Promise<Activity[]>;
-  getUserWeekInfo(userId: number): Promise<{ week: number; day: number; isSpartan: boolean; } | null>;
+  getActivities(week?: number, day?: number): Promise<any>;
+  createActivity(data: any): Promise<any>;
+  getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -110,12 +108,12 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async updateUserTeam(userId: number, teamId: number | null): Promise<User> {
+  async updateUserTeam(userId: number, teamId: number): Promise<User> {
     const [updatedUser] = await db
       .update(users)
-      .set({
+      .set({ 
         teamId,
-        teamJoinedAt: teamId ? new Date() : null
+        teamJoinedAt: teamId ? new Date() : null 
       })
       .where(eq(users.id, userId))
       .returning();
@@ -200,8 +198,7 @@ export class DatabaseStorage implements IStorage {
         points: posts.points,
         userId: posts.userId,
         parentId: posts.parentId,
-        createdAt: posts.createdAt,
-        depth: posts.depth  // Added missing field
+        createdAt: posts.createdAt
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
@@ -217,25 +214,37 @@ export class DatabaseStorage implements IStorage {
         points: posts.points,
         userId: posts.userId,
         parentId: posts.parentId,
-        createdAt: posts.createdAt,
-        depth: posts.depth  // Added missing field
+        createdAt: posts.createdAt
       })
       .from(posts)
       .orderBy(desc(posts.createdAt));
   }
 
+  async updateUserTeam(userId: number, teamId: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ teamId })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async getPostsByTeam(teamId: number): Promise<Post[]> {
+    // First get all users in this team
     const teamUsers = await db
       .select({
-        id: users.id
+        id: users.id,
+        username: users.username,
+        teamId: users.teamId
       })
       .from(users)
       .where(eq(users.teamId, teamId));
-
     const userIds = teamUsers.map(u => u.id);
 
+    // Even if there are no users in the team, still return an empty array
     if (userIds.length === 0) return [];
 
+    // Get all posts from team members
     return await db
       .select({
         id: posts.id,
@@ -245,8 +254,7 @@ export class DatabaseStorage implements IStorage {
         points: posts.points,
         userId: posts.userId,
         parentId: posts.parentId,
-        createdAt: posts.createdAt,
-        depth: posts.depth  // Added missing field
+        createdAt: posts.createdAt
       })
       .from(posts)
       .where(
@@ -273,37 +281,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNotification(notification: Omit<Notification, 'id'>): Promise<Notification> {
-    try {
-      // Explicitly type and structure the notification data
-      const notificationData: Omit<Notification, 'id'> = {
-        userId: notification.userId,
-        title: notification.title,
-        message: notification.message,
-        read: notification.read ?? false,
-        createdAt: notification.createdAt ?? new Date()
-      };
-
-      console.log('Creating notification with data:', notificationData);
-
-      const [newNotification] = await db
-        .insert(notifications)
-        .values(notificationData)
-        .returning();
-
-      if (!newNotification) {
-        throw new Error('Failed to create notification');
-      }
-
-      console.log('Successfully created notification:', newNotification);
-
-      return newNotification;
-    } catch (error) {
-      console.error('Error creating notification:', error);
-      if (error instanceof z.ZodError) {
-        console.error('Zod validation error:', error.errors);
-      }
-      throw error;
-    }
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
   }
 
   async getUnreadNotifications(userId: number): Promise<Notification[]> {
@@ -429,31 +408,25 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(posts.createdAt));
   }
 
-  async getActivities(week?: number, day?: number): Promise<Activity[]> {
-    let queryBuilder = db
-      .select()
-      .from(activities) as PgSelectQueryBuilder<
-        typeof activities,
-        Record<string, unknown>
-      >;
-
+  async getActivities(week?: number, day?: number) {
+    let query = db.select().from(activities);
     if (week !== undefined) {
-      queryBuilder = queryBuilder.where(eq(activities.week, week));
+      query = query.where(eq(activities.week, week));
       if (day !== undefined) {
-        queryBuilder = queryBuilder.where(
-          and(eq(activities.week, week), eq(activities.day, day))
-        );
+        query = query.where(and(
+          eq(activities.week, week),
+          eq(activities.day, day)
+        ));
       }
     }
-
-    return await queryBuilder;
+    return await query;
   }
 
-  async createActivity(data: Activity): Promise<Activity[]> {
+  async createActivity(data: any) {
     return await db.insert(activities).values(data).returning();
   }
 
-  async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; isSpartan: boolean; } | null> {
+  async getUserWeekInfo(userId: number): Promise<{ week: number; day: number; } | null> {
     const [user] = await db
       .select({
         teamJoinedAt: users.teamJoinedAt,
@@ -463,62 +436,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
 
     if (!user?.teamId || !user?.teamJoinedAt) {
-      console.log('User not in team or no join date:', { userId });
       return null;
     }
 
-    // Get join date and today, normalize to UTC midnight
     const joinDate = new Date(user.teamJoinedAt);
-    joinDate.setUTCHours(0, 0, 0, 0);
-
     const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
 
-    // Find the first Monday after join (when program starts)
-    let firstMonday = new Date(joinDate);
-    while (firstMonday.getUTCDay() !== 1) { // 1 = Monday
-      firstMonday.setUTCDate(firstMonday.getUTCDate() + 1);
-    }
+    // Find the first Monday after join date
+    const dayOfWeek = joinDate.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const firstMonday = new Date(joinDate);
+    firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
+    firstMonday.setHours(0, 0, 0, 0);
 
-    // If we haven't reached the first Monday yet, calculate negative days
+    // If today is before first Monday, return null
     if (today < firstMonday) {
-      const msPerDay = 24 * 60 * 60 * 1000;
-      const daysBeforeStart = Math.floor((firstMonday.getTime() - today.getTime()) / msPerDay);
-
-      console.log('Before program start:', {
-        userId,
-        today: today.toISOString(),
-        firstMonday: firstMonday.toISOString(),
-        daysBeforeStart: -daysBeforeStart // Convert to negative number
-      });
-
-      return {
-        week: 0,
-        day: -daysBeforeStart, // Will be 0 for Sunday, -1 for Saturday, etc.
-        isSpartan: false
-      };
+      return null;
     }
 
-    // Calculate days since program start (first Monday = day 1)
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const daysSinceStart = Math.floor((today.getTime() - firstMonday.getTime()) / msPerDay) + 1;
+    // Calculate weeks and days since first Monday
+    const diffTime = today.getTime() - firstMonday.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // Calculate week (1-based) and day (1-7, Monday to Sunday)
-    const week = Math.floor((daysSinceStart - 1) / 7) + 1;
-    const day = ((daysSinceStart - 1) % 7) + 1;
+    const week = Math.floor(diffDays / 7) + 1; 
+    const day = today.getDay() === 0 ? 7 : today.getDay(); 
 
-    // Spartan status after 84 days
-    const isSpartan = daysSinceStart >= 84;
-
-    console.log('Program progress:', {
-      userId,
-      daysSinceStart,
-      week,
-      day,
-      isSpartan
-    });
-
-    return { week, day, isSpartan };
+    return { week, day };
   }
 }
 
