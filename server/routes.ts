@@ -120,5 +120,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Posts endpoints
+  app.get("/api/posts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log('Unauthenticated request to /api/posts');
+      return res.sendStatus(401);
+    }
+
+    try {
+      console.log('Fetching posts for user:', req.user?.id);
+      const posts = await storage.getPosts();
+
+      // For each post, get its author information
+      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+        const author = await storage.getUser(post.userId);
+        return {
+          ...post,
+          author: author || null
+        };
+      }));
+
+      res.json(postsWithAuthors);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      res.status(500).json({ message: "Failed to fetch posts" });
+    }
+  });
+
+
   return httpServer;
 }
