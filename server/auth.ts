@@ -16,6 +16,14 @@ declare global {
 const scryptAsync = promisify(scrypt);
 const KEY_LENGTH = 64;
 
+// Authentication middleware
+export function authenticate(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+}
+
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
@@ -109,7 +117,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Setup auth routes
+  // Auth routes
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log('Registration attempt:', req.body.username);
@@ -142,7 +150,7 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", (req, res, next) => {
     console.log('Login attempt for:', req.body.username);
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err, user) => {
       if (err) {
         console.error('Login error:', err);
         return next(err);
@@ -185,12 +193,4 @@ export function setupAuth(app: Express) {
       res.sendStatus(200);
     });
   });
-}
-
-// Export middleware for protecting routes
-export function authenticate(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
 }

@@ -1,10 +1,57 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import multer from "multer";
+import { db } from "./db";
+import { eq, and, desc, sql, gte, lte, or } from "drizzle-orm";
+import {
+  posts,
+  notifications,
+  users,
+  teams,
+  activities,
+  workoutVideos,
+  insertTeamSchema,
+  insertPostSchema,
+  insertMeasurementSchema,
+  insertNotificationSchema,
+  insertVideoSchema,
+  insertActivitySchema
+} from "@shared/schema";
+import { setupAuth, authenticate } from "./auth";
 import express, { Router } from "express";
 import { Server as HttpServer } from "http";
-import { authenticate } from "./auth";
-import { storage } from "./storage";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
-  const router = Router();
+  const router = express.Router();
+
+  // Add CORS headers for all requests
+  router.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+    } else {
+      next();
+    }
+  });
+
+  // Add JSON content type header for all API routes
+  router.use('/api', (req, res, next) => {
+    res.setHeader('Content-Type', 'application/json');
+    next();
+  });
 
   // Debug middleware to log all requests
   router.use((req, res, next) => {
@@ -21,13 +68,60 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Simple ping endpoint to verify API functionality
   router.get("/api/ping", (req, res) => {
-    console.log('Ping endpoint called');
     res.json({ message: "pong" });
   });
 
   // Protected endpoint example
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
+  });
+
+
+  // Add reactions endpoints
+  router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const postId = parseInt(req.params.postId);
+      const { type } = req.body;
+
+      const reactionData = {
+        userId: req.user.id,
+        postId,
+        type
+      };
+
+      const reaction = await storage.createReaction(reactionData);
+      res.status(201).json(reaction);
+    } catch (error) {
+      console.error('Error creating reaction:', error);
+      res.status(500).json({ error: "Failed to create reaction" });
+    }
+  });
+
+  router.delete("/api/posts/:postId/reactions/:type", authenticate, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const postId = parseInt(req.params.postId);
+      const { type } = req.params;
+
+      await storage.deleteReaction(req.user.id, postId, type);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting reaction:', error);
+      res.status(500).json({ error: "Failed to delete reaction" });
+    }
+  });
+
+  router.get("/api/posts/:postId/reactions", authenticate, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const postId = parseInt(req.params.postId);
+      const reactions = await storage.getReactionsByPost(postId);
+      res.json(reactions);
+    } catch (error) {
+      console.error('Error fetching reactions:', error);
+      res.status(500).json({ error: "Failed to fetch reactions" });
+    }
   });
 
   // Posts endpoints
@@ -54,10 +148,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Error handling middleware
+  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('API Error:', err);
+    res.status(err.status || 500).json({
+      message: err.message || "Internal server error"
+    });
+  });
+
   app.use(router);
 
   // Create HTTP server
-  const httpServer = new HttpServer(app);
+  const httpServer = createServer(app);
 
   return httpServer;
 };
