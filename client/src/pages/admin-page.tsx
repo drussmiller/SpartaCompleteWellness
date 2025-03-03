@@ -19,7 +19,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { BottomNav } from "@/components/bottom-nav";
-import { TopNav } from "@/components/top-nav";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -49,18 +48,10 @@ export default function AdminPage() {
 
   const form = useForm({
     resolver: zodResolver(insertTeamSchema),
-    defaultValues: {
-      name: "",
-      description: ""
-    }
   });
 
   const editTeamForm = useForm({
     resolver: zodResolver(insertTeamSchema),
-    defaultValues: {
-      name: "",
-      description: ""
-    }
   });
 
   const updateTeamMutation = useMutation({
@@ -296,9 +287,14 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
-      <TopNav />
-      <main className="p-4 space-y-4">
+    <div className="min-h-screen bg-background pb-20">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 max-w-screen-2xl items-center">
+          <h1 className="text-xl font-bold">Admin Dashboard</h1>
+        </div>
+      </header>
+
+      <main className="container max-w-screen-2xl mx-auto space-y-8 p-6">
         <div className="flex justify-center gap-4 mb-8">
           <Dialog>
             <DialogTrigger asChild>
@@ -311,35 +307,37 @@ export default function AdminPage() {
               <DialogHeader>
                 <DialogTitle>Create New Team</DialogTitle>
               </DialogHeader>
-              <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={createTeamMutation.isPending}>
-                  {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                </Button>
-              </form>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={createTeamMutation.isPending}>
+                    {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                  </Button>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
           <Button onClick={() => window.location.href = '/activity-management'} size="default">
@@ -514,52 +512,54 @@ export default function AdminPage() {
               <X className="h-4 w-4" />
             </Button>
           </DialogHeader>
-          <form
-            onSubmit={editTeamForm.handleSubmit(async (data) => {
-              if (!editingTeam) return;
-              try {
-                await updateTeamMutation.mutateAsync({
-                  id: editingTeam.id,
-                  data: {
-                    name: data.name,
-                    description: data.description
-                  }
-                });
-                setEditTeamOpen(false);
-              } catch (error) {
-                console.error('Error in form submission:', error);
-              }
-            })}
-            className="space-y-4"
-          >
-            <FormField
-              control={editTeamForm.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={editTeamForm.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={updateTeamMutation.isPending}>
-              {updateTeamMutation.isPending ? "Updating..." : "Update Team"}
-            </Button>
-          </form>
+          <Form {...editTeamForm}>
+            <form
+              onSubmit={editTeamForm.handleSubmit(async (data) => {
+                if (!editingTeam) return;
+                try {
+                  await updateTeamMutation.mutateAsync({ 
+                    id: editingTeam.id, 
+                    data: {
+                      name: data.name,
+                      description: data.description
+                    }
+                  });
+                  setEditTeamOpen(false);
+                } catch (error) {
+                  console.error('Error in form submission:', error);
+                }
+              })}
+              className="space-y-4"
+            >
+              <FormField
+                control={editTeamForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editTeamForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={updateTeamMutation.isPending}>
+                {updateTeamMutation.isPending ? "Updating..." : "Update Team"}
+              </Button>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
