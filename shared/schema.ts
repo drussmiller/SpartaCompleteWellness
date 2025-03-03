@@ -25,7 +25,18 @@ export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Create insert schema for teams with proper validation
+export const insertTeamSchema = createInsertSchema(teams).extend({
+  name: z.string().min(1, "Team name is required"),
+  description: z.string().optional(),
+});
+
+// Types
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -130,7 +141,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
-export const insertTeamSchema = createInsertSchema(teams);
+
 export const insertMeasurementSchema = createInsertSchema(measurements);
 export const insertNotificationSchema = createInsertSchema(notifications);
 export const insertVideoSchema = createInsertSchema(videos);
@@ -154,7 +165,7 @@ export const insertReactionSchema = createInsertSchema(reactions)
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
-export type Team = typeof teams.$inferSelect;
+
 export type Post = typeof posts.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;

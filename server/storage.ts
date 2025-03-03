@@ -1,5 +1,5 @@
 import { users, teams, posts, measurements, notifications, videos, activities, passwordResetTokens, reactions } from "@shared/schema";
-import type { User, InsertUser, Team, Post, Measurement, Notification, Video, InsertVideo, Reaction, InsertReaction } from "@shared/schema";
+import type { User, InsertUser, Team, InsertTeam, Post, Measurement, Notification, Video, InsertVideo, Reaction, InsertReaction } from "@shared/schema";
 import { eq, desc, and, lt, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import session from "express-session";
@@ -16,7 +16,7 @@ export interface IStorage {
   updateUserTeam(userId: number, teamId: number): Promise<User>;
   updateUserPoints(userId: number, points: number): Promise<User>;
   updateUserImage(userId: number, imageUrl: string): Promise<User>;
-  createTeam(team: Team): Promise<Team>;
+  createTeam(team: InsertTeam): Promise<Team>;
   getTeams(): Promise<Team[]>;
   createPost(post: Post): Promise<Post>;
   getPosts(): Promise<Post[]>;
@@ -117,9 +117,9 @@ export class DatabaseStorage implements IStorage {
   async updateUserTeam(userId: number, teamId: number): Promise<User> {
     const [updatedUser] = await db
       .update(users)
-      .set({ 
+      .set({
         teamId,
-        teamJoinedAt: teamId ? new Date() : null 
+        teamJoinedAt: teamId ? new Date() : null
       })
       .where(eq(users.id, userId))
       .returning();
@@ -153,13 +153,24 @@ export class DatabaseStorage implements IStorage {
     await db.delete(teams);
   }
 
-  async createTeam(team: Team): Promise<Team> {
-    const [newTeam] = await db.insert(teams).values(team).returning();
-    return newTeam;
+  async createTeam(team: InsertTeam): Promise<Team> {
+    try {
+      const [newTeam] = await db.insert(teams).values(team).returning();
+      return newTeam;
+    } catch (error) {
+      console.error('Error creating team:', error);
+      throw new Error('Failed to create team');
+    }
   }
 
   async getTeams(): Promise<Team[]> {
-    return await db.select().from(teams);
+    try {
+      const allTeams = await db.select().from(teams);
+      return allTeams;
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      throw new Error('Failed to fetch teams');
+    }
   }
 
   async getUserWithTeam(userId: number) {
@@ -390,16 +401,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTeam(teamId: number): Promise<void> {
-    // First update all users in this team to have no team
-    await db
-      .update(users)
-      .set({ teamId: null })
-      .where(eq(users.teamId, teamId));
+    try {
+      // First update all users in this team to have no team
+      await db
+        .update(users)
+        .set({ teamId: null, teamJoinedAt: null })
+        .where(eq(users.teamId, teamId));
 
-    // Then delete the team
-    await db
-      .delete(teams)
-      .where(eq(teams.id, teamId));
+      // Then delete the team
+      await db.delete(teams).where(eq(teams.id, teamId));
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      throw new Error('Failed to delete team');
+    }
   }
   async getPostComments(postId: number): Promise<Post[]> {
     return await db
@@ -450,7 +464,7 @@ export class DatabaseStorage implements IStorage {
 
     // Find the first Monday after join date
     const dayOfWeek = joinDate.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
     const firstMonday = new Date(joinDate);
     firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
     firstMonday.setHours(0, 0, 0, 0);
@@ -464,8 +478,8 @@ export class DatabaseStorage implements IStorage {
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    const week = Math.floor(diffDays / 7) + 1; 
-    const day = today.getDay() === 0 ? 7 : today.getDay(); 
+    const week = Math.floor(diffDays / 7) + 1;
+    const day = today.getDay() === 0 ? 7 : today.getDay();
 
     return { week, day };
   }

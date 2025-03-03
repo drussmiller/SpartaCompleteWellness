@@ -77,6 +77,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
 
+  // Teams endpoints
+  router.get("/api/teams", authenticate, async (req, res) => {
+    try {
+      const teams = await storage.getTeams();
+      res.json(teams);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
+  router.get("/api/users", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // Add reactions endpoints
   router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
