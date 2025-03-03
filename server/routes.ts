@@ -172,6 +172,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add user role management endpoints
+  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const { role, value } = req.body;
+      if (!role || typeof value !== 'boolean' || !['isAdmin', 'isTeamLead'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role update data" });
+      }
+
+      // Update user role in database
+      const [updatedUser] = await db
+        .update(users)
+        .set({ [role]: value })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
   // Error handling middleware
   router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('API Error:', err);

@@ -133,10 +133,9 @@ export default function AdminPage() {
 
   const updateUserRoleMutation = useMutation({
     mutationFn: async ({ userId, role, value }: { userId: number; role: 'isAdmin' | 'isTeamLead'; value: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { [role]: value });
+      const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role, value });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user's role");
+        throw new Error(await res.text());
       }
       return res.json();
     },
