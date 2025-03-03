@@ -1,17 +1,25 @@
+import { sql } from "drizzle-orm";
 import express, { type Request, Response, NextFunction } from "express";
+import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { Server as HttpServer } from "http";
+import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
-import { Server as HttpServer } from "http";
 
 const execAsync = promisify(exec);
 
 const app = express();
+
+// Basic middleware setup
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
-// Add request logging middleware
+// Setup auth first (includes session middleware)
+setupAuth(app);
+
+// Add request logging middleware (modified from original)
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -25,27 +33,53 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (capturedJsonResponse) {
+      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
-  });
 
+    if (logLine.length > 80) {
+      logLine = logLine.slice(0, 79) + "…";
+    }
+
+    log(logLine);
+  });
+  next();
+});
+
+// Ensure API requests respond with JSON
+app.use('/api', (req, res, next) => {
+  res.setHeader('Content-Type', 'application/json');
   next();
 });
 
 (async () => {
-  let server: HttpServer;
   try {
-    server = await registerRoutes(app);
+    console.log("[Startup] Beginning server initialization...");
+    const startTime = Date.now();
+
+    // Verify database connection
+    console.log("[Startup] Verifying database connection...");
+    try {
+      await db.execute(sql`SELECT 1`);
+      console.log("[Startup] Database connection verified", Date.now() - startTime, "ms");
+    } catch (error) {
+      console.error("[Startup] Database connection failed:", error);
+      throw error;
+    }
+
+    // Register API routes before Vite middleware
+    console.log("[Startup] Registering routes...");
+    const server = await registerRoutes(app);
+    console.log("[Startup] Routes registered", Date.now() - startTime, "ms");
+
+    // Global API error handler
+    app.use('/api', (err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error('[API Error]:', err);
+      res.status(err.status || 500).json({
+        message: err.message || "Internal Server Error"
+      });
+    });
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Express error handler:', err);
@@ -54,8 +88,12 @@ app.use((req, res, next) => {
       res.status(status).json({ message });
     });
 
+
+    // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {
+      console.log("[Startup] Setting up Vite...");
       await setupVite(app, server);
+      console.log("[Startup] Vite setup complete", Date.now() - startTime, "ms");
     } else {
       serveStatic(app);
     }
@@ -65,7 +103,7 @@ app.use((req, res, next) => {
     // ALWAYS serve the app on port 5000
     const port = 5000;
 
-    // Enhanced port cleanup function with detailed logging
+    // Enhanced port cleanup function with detailed logging (from original)
     const killPort = async (port: number): Promise<void> => {
       try {
         console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
@@ -99,8 +137,8 @@ app.use((req, res, next) => {
         // Verify port is free
         await new Promise(resolve => setTimeout(resolve, 2000));
         const { stdout: verifyOutput } = await execAsync(
-          process.platform === "win32" 
-            ? `netstat -ano | findstr :${port}` 
+          process.platform === "win32"
+            ? `netstat -ano | findstr :${port}`
             : `lsof -i :${port}`
         );
         console.log(`[Port Cleanup] Port status after cleanup:`, verifyOutput || 'Port is free');
@@ -110,7 +148,7 @@ app.use((req, res, next) => {
       }
     };
 
-    // Enhanced server cleanup and startup mechanism
+    // Enhanced server cleanup and startup mechanism (from original, adapted)
     let currentServer: HttpServer | null = null;
     const cleanupAndStartServer = async (retries = 5, delay = 3000): Promise<HttpServer> => {
       try {
@@ -176,7 +214,7 @@ app.use((req, res, next) => {
       }
     };
 
-    // Handle graceful shutdown
+    // Handle graceful shutdown (from original)
     const gracefulShutdown = () => {
       console.log('[Server Shutdown] Received shutdown signal. Closing HTTP server...');
       if (currentServer) {
@@ -195,7 +233,7 @@ app.use((req, res, next) => {
       }
     };
 
-    // Handle various shutdown signals
+    // Handle various shutdown signals (from original)
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
 

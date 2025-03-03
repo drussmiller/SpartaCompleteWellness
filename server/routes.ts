@@ -18,7 +18,9 @@ import {
   insertVideoSchema,
   insertActivitySchema
 } from "@shared/schema";
-import { setupAuth } from "./auth";
+import { setupAuth, authenticate } from "./auth";
+import express, { Router } from "express";
+import { Server as HttpServer } from "http";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -26,15 +28,11 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication first
-  setupAuth(app);
-
-  // Create HTTP server
-  const httpServer = createServer(app);
+export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
+  const router = express.Router();
 
   // Add CORS headers for all requests
-  app.use((req, res, next) => {
+  router.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin) {
       res.header('Access-Control-Allow-Origin', origin);
@@ -49,32 +47,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add detailed request logging middleware
-  app.use((req, res, next) => {
+  // Add JSON content type header for all API routes
+  router.use('/api', (req, res, next) => {
+    res.setHeader('Content-Type', 'application/json');
+    next();
+  });
+
+  // Debug middleware to log all requests
+  router.use((req, res, next) => {
     console.log('Request:', {
       method: req.method,
       path: req.path,
       headers: req.headers,
-      cookies: req.cookies,
       session: req.session,
-      isAuthenticated: req.isAuthenticated(),
+      isAuthenticated: req.isAuthenticated?.() || false,
       user: req.user?.id
     });
     next();
   });
 
-  // Rest of your routes...
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('Unauthenticated request to /api/user');
-      return res.sendStatus(401);
-    }
-    console.log('Authenticated user:', req.user?.id);
-    res.json(req.user);
+  // Simple ping endpoint to verify API functionality
+  router.get("/api/ping", (req, res) => {
+    res.json({ message: "pong" });
   });
 
+  // Protected endpoint example
+  router.get("/api/protected", authenticate, (req, res) => {
+    res.json({ message: "This is a protected endpoint", user: req.user?.id });
+  });
+
+
   // Add reactions endpoints
-  app.post("/api/posts/:postId/reactions", async (req, res) => {
+  router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const postId = parseInt(req.params.postId);
@@ -94,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/posts/:postId/reactions/:type", async (req, res) => {
+  router.delete("/api/posts/:postId/reactions/:type", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const postId = parseInt(req.params.postId);
@@ -108,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/posts/:postId/reactions", async (req, res) => {
+  router.get("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const postId = parseInt(req.params.postId);
@@ -121,15 +125,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Posts endpoints
-  app.get("/api/posts", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('Unauthenticated request to /api/posts');
-      return res.sendStatus(401);
-    }
-
+  router.get("/api/posts", authenticate, async (req, res) => {
     try {
       console.log('Fetching posts for user:', req.user?.id);
-      const posts = await storage.getPosts();
+      const posts = await storage.getAllPosts();
+      console.log('Raw posts:', posts);
 
       // For each post, get its author information
       const postsWithAuthors = await Promise.all(posts.map(async (post) => {
@@ -140,6 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
 
+      console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
       res.json(postsWithAuthors);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -147,6 +148,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Error handling middleware
+  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('API Error:', err);
+    res.status(err.status || 500).json({
+      message: err.message || "Internal server error"
+    });
+  });
+
+  app.use(router);
+
+  // Create HTTP server
+  const httpServer = createServer(app);
 
   return httpServer;
-}
+};
