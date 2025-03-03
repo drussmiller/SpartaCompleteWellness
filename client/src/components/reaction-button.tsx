@@ -168,10 +168,7 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     }
     
     setIsOpen(false);
-  };e(type);
-    } else {
-      addReactionMutation.mutate(type);
-    }
+  };
     
     setIsOpen(false);
   };
