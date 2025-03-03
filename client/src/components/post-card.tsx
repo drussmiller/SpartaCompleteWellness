@@ -60,7 +60,7 @@ function ReactionSummary({ postId }: { postId: number }) {
       rocket: { emoji: "🚀", color: "text-indigo-500" },
       sparkles: { emoji: "✨", color: "text-purple-500" },
     };
-    
+
     return allEmojis[type]?.emoji || "👍";
   };
 
@@ -79,8 +79,7 @@ function ReactionSummary({ postId }: { postId: number }) {
             <Tooltip key={type}>
               <TooltipTrigger asChild>
                 <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span className="mr-1">{getEmojiForType(type)}</span>
-                  <span className="text-xs">{count}</span>
+                  <span>{getEmojiForType(type)}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -187,10 +186,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               {new Date(post.createdAt!).toLocaleDateString()}
             </span>
           </div>
-          
+
           {/* Reaction summary display */}
           <ReactionSummary postId={post.id} />
-          
+
           <div className="flex items-center gap-2">
             <ReactionButton postId={post.id} />
             <Link href={`/comments/${post.id}`}>

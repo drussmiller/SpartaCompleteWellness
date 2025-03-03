@@ -11,7 +11,6 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import type { Reaction } from "@shared/schema";
 
@@ -23,7 +22,7 @@ const reactionEmojis = {
   wow: { emoji: "😮", color: "text-yellow-500" },
   sad: { emoji: "😢", color: "text-blue-500" },
   angry: { emoji: "😡", color: "text-red-500" },
-  
+
   // Wellness & Fitness
   celebrate: { emoji: "🎉", color: "text-purple-500" },
   clap: { emoji: "👏", color: "text-yellow-500" },
@@ -31,30 +30,31 @@ const reactionEmojis = {
   pray: { emoji: "🙏", color: "text-amber-500" },
   support: { emoji: "🤗", color: "text-green-500" },
   muscle: { emoji: "💪", color: "text-blue-500" },
-  
+
   // Additional positive emojis
   star: { emoji: "⭐", color: "text-yellow-500" },
   heart_eyes: { emoji: "😍", color: "text-red-500" },
   raised_hands: { emoji: "🙌", color: "text-amber-500" },
   trophy: { emoji: "🏆", color: "text-yellow-500" },
   thumbs_down: { emoji: "👎", color: "text-slate-500" },
-  
+
   // Food related
   salad: { emoji: "🥗", color: "text-green-500" },
   fruit: { emoji: "🍎", color: "text-red-500" },
   water: { emoji: "💧", color: "text-blue-500" },
-  
+
   // Exercise related
   run: { emoji: "🏃", color: "text-purple-500" },
   bike: { emoji: "🚴", color: "text-green-500" },
   weight: { emoji: "🏋️", color: "text-indigo-500" },
-  
+
   // Spiritual
   angel: { emoji: "😇", color: "text-sky-500" },
-  dove: { emoji: "🕊️", color: "text-white-500" },
-  church: { emoji: "⛪", color: "text-stone-500" },
-  
-  // Motivational
+  dove: { emoji: "🕊️", color: "text-sky-500" },
+  church: { emoji: "⛪", color: "text-slate-500" },
+  bible: { emoji: "📖", color: "text-amber-500" },
+  cross: { emoji: "✝️", color: "text-red-500" },
+  faith: { emoji: "🙌", color: "text-amber-500" },
   idea: { emoji: "💡", color: "text-yellow-500" },
   rocket: { emoji: "🚀", color: "text-indigo-500" },
   sparkles: { emoji: "✨", color: "text-purple-500" },
@@ -86,7 +86,10 @@ const reactionLabels = {
   weight: "Weightlifting",
   angel: "Blessed",
   dove: "Peace",
-  church: "Faith",
+  church: "Church",
+  bible: "Scripture",
+  cross: "Faith",
+  faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
   sparkles: "Magic",
@@ -147,38 +150,27 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     },
   });
 
-  const reactionCounts = reactions.reduce((acc: Record<ReactionType, number>, reaction) => {
-    if (reaction.type in reactionEmojis) {
-      acc[reaction.type as ReactionType] = (acc[reaction.type as ReactionType] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<ReactionType, number>);
-
   const handleReaction = (type: ReactionType) => {
-    const hasReacted = reactions.some((r) => r.type === type && r.userId === Number(localStorage.getItem('userId')));
-    if (hasReacted) {
+    const userReactions = reactions.filter(r => r.userId === Number(localStorage.getItem('userId')));
+    const hasReactedWithSameType = userReactions.some(r => r.type === type);
+    
+    // If user already reacted with a different type, remove that reaction first
+    if (userReactions.length > 0 && !hasReactedWithSameType) {
+      // Remove all existing user reactions
+      userReactions.forEach(reaction => {
+        removeReactionMutation.mutate(reaction.type as ReactionType);
+      });
+    }
+    
+    // Toggle the current reaction
+    if (hasReactedWithSameType) {
       removeReactionMutation.mutate(type);
     } else {
       addReactionMutation.mutate(type);
     }
+    
     setIsOpen(false);
   };
-
-  const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
-  
-  // Get the most common reaction type to display if any exist
-  let mostCommonReaction: ReactionType | null = null;
-  let maxCount = 0;
-  
-  Object.entries(reactionCounts).forEach(([type, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      mostCommonReaction = type as ReactionType;
-    }
-  });
-
-  // Get user's reaction if any
-  const userReaction = reactions.find(r => r.userId === Number(localStorage.getItem('userId')))?.type as ReactionType | undefined;
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -186,19 +178,8 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "gap-1.5 text-sm",
-            userReaction && reactionEmojis[userReaction]?.color
-          )}
         >
-          {userReaction ? (
-            reactionEmojis[userReaction].emoji
-          ) : mostCommonReaction ? (
-            reactionEmojis[mostCommonReaction].emoji
-          ) : (
-            <ThumbsUp className="h-4 w-4" />
-          )}
-          {totalReactions > 0 && totalReactions}
+          <ThumbsUp className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="p-2 grid grid-cols-6 gap-1 w-60">
@@ -209,6 +190,7 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
             onClick={() => handleReaction(type as ReactionType)}
           >
             <span className="text-lg">{emoji}</span>
+            <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
