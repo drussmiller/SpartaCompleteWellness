@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, ThumbsUp, Smile, Medal, HandsClapping } from "lucide-react";
+import { Heart, ThumbsUp, Smile, Medal, HandClap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,14 +11,15 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import type { Reaction } from "@shared/schema";
 
 const reactionIcons = {
   like: ThumbsUp,
   heart: Heart,
   smile: Smile,
   celebrate: Medal,
-  support: HandsClapping,
-};
+  support: HandClap,
+} as const;
 
 const reactionLabels = {
   like: "Like",
@@ -26,7 +27,7 @@ const reactionLabels = {
   smile: "Smile",
   celebrate: "Celebrate",
   support: "Support",
-};
+} as const;
 
 type ReactionType = keyof typeof reactionIcons;
 
@@ -38,7 +39,7 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { data: reactions } = useQuery({
+  const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
   });
 
@@ -82,13 +83,15 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     },
   });
 
-  const reactionCounts = reactions?.reduce((acc, reaction) => {
-    acc[reaction.type] = (acc[reaction.type] || 0) + 1;
+  const reactionCounts = reactions.reduce((acc: Record<ReactionType, number>, reaction) => {
+    if (reaction.type in reactionIcons) {
+      acc[reaction.type as ReactionType] = (acc[reaction.type as ReactionType] || 0) + 1;
+    }
     return acc;
-  }, {} as Record<ReactionType, number>) || {};
+  }, {} as Record<ReactionType, number>);
 
   const handleReaction = (type: ReactionType) => {
-    const hasReacted = reactions?.some(r => r.type === type);
+    const hasReacted = reactions.some((r) => r.type === type);
     if (hasReacted) {
       removeReactionMutation.mutate(type);
     } else {
@@ -96,6 +99,8 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     }
     setIsOpen(false);
   };
+
+  const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -106,15 +111,15 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
           className="gap-2"
         >
           <ThumbsUp className="h-4 w-4" />
-          <span>{Object.values(reactionCounts).reduce((a, b) => a + b, 0) || ""}</span>
+          {totalReactions > 0 && <span>{totalReactions}</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {(Object.keys(reactionIcons) as ReactionType[]).map((type) => {
           const Icon = reactionIcons[type];
           const count = reactionCounts[type] || 0;
-          const hasReacted = reactions?.some(r => r.type === type);
-          
+          const hasReacted = reactions.some((r) => r.type === type);
+
           return (
             <DropdownMenuItem
               key={type}
