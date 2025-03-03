@@ -190,6 +190,38 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ error: "Failed to fetch reactions" });
     }
   });
+  // Delete post endpoint
+  router.delete("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const postId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      // Get the post to verify ownership
+      const post = await storage.getPost(postId);
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user owns the post
+      if (post.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Delete the post
+      await storage.deletePost(postId);
+
+      res.status(200).json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
   // Error handling middleware
   router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('API Error:', err);
