@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { useState, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,7 @@ export function CreatePostDialog() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { canPost, counts } = usePostLimits();
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   console.log('Current post counts:', counts);
   console.log('Can post status:', canPost);
@@ -142,18 +143,46 @@ export function CreatePostDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+            setOpen(isOpen);
+            if (!isOpen) {
+              // Reset preview and form when dialog closes
+              setImagePreview(null);
+              form.reset();
+            }
+          }}>
       <DialogTrigger asChild>
         <Button size="icon" className="h-10 w-10 bg-gray-200 hover:bg-gray-300">
           <Plus className="h-9 w-9 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create Post</DialogTitle>
-        </DialogHeader>
+        <div className="flex justify-between items-center mb-4">
+          <DialogClose asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              X
+            </Button>
+          </DialogClose>
+          <DialogTitle className="flex-1 text-center">Create Post</DialogTitle>
+          <Button
+            type="submit"
+            form="create-post-form"
+            variant="default"
+            size="sm"
+            className="h-8 bg-violet-700 hover:bg-violet-800"
+            disabled={
+              createPostMutation.isPending ||
+              !canPost[form.watch("type") as keyof typeof canPost]
+            }
+          >
+            Post
+          </Button>
+        </div>
+        <DialogDescription className="text-center">
+          Share your wellness journey with your team
+        </DialogDescription>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="type"
@@ -217,6 +246,7 @@ export function CreatePostDialog() {
                             reader.readAsDataURL(file);
                           }
                         }}
+                        ref={fileInputRef}
                       />
                     </FormControl>
                     {imagePreview && (
@@ -263,29 +293,6 @@ export function CreatePostDialog() {
                 </FormItem>
               )}
             />
-
-            <DialogFooter className="flex flex-col space-y-2 sm:space-y-0">
-              <Button
-                type="submit"
-                className="w-full h-14"
-                disabled={
-                  createPostMutation.isPending ||
-                  !canPost[form.watch("type") as keyof typeof canPost]
-                }
-              >
-                {createPostMutation.isPending ? "Creating..." : "Create Post"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setOpen(false);
-                  form.reset();
-                }}
-                className="w-full h-14 bg-gray-200 hover:bg-gray-300 text-black font-bold"
-              >
-                Close
-              </Button>
-            </DialogFooter>
           </form>
         </Form>
       </DialogContent>
