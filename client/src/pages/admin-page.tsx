@@ -1,6 +1,4 @@
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTeamSchema, insertActivitySchema } from "@shared/schema";
 import type { Team, User, Activity, WorkoutVideo } from "@shared/schema";
@@ -9,24 +7,20 @@ import { Loader2, ChevronDown, PlusCircle, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -44,9 +38,16 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function AdminPage() {
@@ -87,64 +88,22 @@ export default function AdminPage() {
     resolver: zodResolver(insertTeamSchema),
   });
 
-  const editTeamForm = useForm({
-    resolver: zodResolver(insertTeamSchema),
-  });
-
-  const createActivityForm = useForm({
-    resolver: zodResolver(insertActivitySchema),
-  });
-
-  const editActivityForm = useForm({
-    resolver: zodResolver(insertActivitySchema),
-  });
-
-  const queryClient = useQueryClient();
-
-  const createTeamMutation = useMutation({
-    mutationFn: async (values: any) => {
-      const res = await fetch("/api/teams", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      });
-      if (!res.ok) throw new Error("Failed to create team");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Success", description: "Team created successfully" });
-      form.reset();
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to create team",
-        variant: "destructive",
-      });
-    },
-  });
-
   const updateTeamMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/teams/${id}`, {
+    mutationFn: async (data: { id: number; name: string; description: string }) => {
+      return await apiRequest(`/api/teams/${data.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        data,
       });
-      if (!res.ok) throw new Error("Failed to update team");
-      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Success", description: "Team updated successfully" });
+      toast({
+        title: "Team updated",
+        description: "The team has been updated successfully",
+      });
       setEditTeamOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to update team",
@@ -154,17 +113,19 @@ export default function AdminPage() {
   });
 
   const deleteTeamMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/teams/${id}`, {
+    mutationFn: async (teamId: number) => {
+      return await apiRequest(`/api/teams/${teamId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete team");
     },
     onSuccess: () => {
+      toast({
+        title: "Team deleted",
+        description: "The team has been deleted successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Success", description: "Team deleted successfully" });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to delete team",
@@ -173,23 +134,45 @@ export default function AdminPage() {
     },
   });
 
-  const updateUserTeamMutation = useMutation({
-    mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
-      const res = await fetch(`/api/users/${userId}/team`, {
+  const createTeamMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertTeamSchema>) => {
+      return await apiRequest("/api/teams", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ teamId }),
+        data,
       });
-      if (!res.ok) throw new Error("Failed to update user team");
-      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Success", description: "User team updated successfully" });
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({
+        title: "Team created",
+        description: "The team has been created successfully",
+      });
     },
-    onError: () => {
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create team",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserTeamMutation = useMutation({
+    mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
+      return await apiRequest(`/api/users/${userId}/team`, {
+        method: "POST",
+        data: { teamId },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "User updated",
+        description: "User team has been updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to update user team",
@@ -198,70 +181,74 @@ export default function AdminPage() {
     },
   });
 
-  const resetPasswordMutation = useMutation({
-    mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
-      const res = await fetch(`/api/users/${userId}/reset-password`, {
+  const toggleAdminMutation = useMutation({
+    mutationFn: async ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) => {
+      return await apiRequest(`/api/users/${userId}/toggle-admin`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password }),
+        data: { isAdmin },
       });
-      if (!res.ok) throw new Error("Failed to reset password");
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Password reset successfully" });
-      setResetPasswordOpen(false);
-      setNewPassword("");
+      toast({
+        title: "User updated",
+        description: "User admin status has been updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to reset password",
+        description: "Failed to update user admin status",
         variant: "destructive",
       });
     },
   });
 
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await fetch(`/api/users/${userId}`, {
-        method: "DELETE",
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
+      return await apiRequest(`/api/users/${userId}/reset-password`, {
+        method: "POST",
+        data: { password },
       });
-      if (!res.ok) throw new Error("Failed to delete user");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Success", description: "User deleted successfully" });
+      setResetPasswordOpen(false);
+      setNewPassword("");
+      toast({
+        title: "Password reset",
+        description: "User password has been reset successfully",
+      });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to delete user",
+        description: "Failed to reset user password",
         variant: "destructive",
       });
     },
+  });
+
+  const activityForm = useForm({
+    resolver: zodResolver(insertActivitySchema),
   });
 
   const createActivityMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch("/api/activities", {
+      return await apiRequest("/api/activities", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        data,
       });
-      if (!res.ok) throw new Error("Failed to create activity");
-      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      toast({ title: "Success", description: "Activity created successfully" });
-      createActivityForm.reset();
+      activityForm.reset();
       setWorkoutVideos([]);
+      toast({
+        title: "Activity created",
+        description: "The activity has been created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to create activity",
@@ -271,23 +258,21 @@ export default function AdminPage() {
   });
 
   const updateActivityMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/activities/${id}`, {
+    mutationFn: async (data: any) => {
+      return await apiRequest(`/api/activities/${data.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        data,
       });
-      if (!res.ok) throw new Error("Failed to update activity");
-      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      toast({ title: "Success", description: "Activity updated successfully" });
       setEditActivityOpen(false);
+      toast({
+        title: "Activity updated",
+        description: "The activity has been updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to update activity",
@@ -298,16 +283,18 @@ export default function AdminPage() {
 
   const deleteActivityMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/activities/${id}`, {
+      return await apiRequest(`/api/activities/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete activity");
     },
     onSuccess: () => {
+      toast({
+        title: "Activity deleted",
+        description: "The activity has been deleted successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      toast({ title: "Success", description: "Activity deleted successfully" });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: "Failed to delete activity",
@@ -316,57 +303,49 @@ export default function AdminPage() {
     },
   });
 
-  const onCreateTeamSubmit = (values: any) => {
-    createTeamMutation.mutate(values);
+  const handleSubmit = (data: z.infer<typeof insertTeamSchema>) => {
+    createTeamMutation.mutate(data);
   };
 
-  const onEditTeamSubmit = (values: any) => {
-    if (editingTeam) {
-      updateTeamMutation.mutate({ id: editingTeam.id, data: values });
-    }
+  const handleCreateActivity = (data: any) => {
+    const activityData = { ...data, workoutVideos };
+    createActivityMutation.mutate(activityData);
   };
 
-  const onCreateActivitySubmit = (values: any) => {
-    const data = {
-      ...values,
-      workoutVideos,
+  const handleUpdateActivity = () => {
+    if (!editingActivity) return;
+    
+    const activityData = {
+      ...editingActivity,
+      workoutVideos: editingWorkoutVideos
     };
-    createActivityMutation.mutate(data);
+    
+    updateActivityMutation.mutate(activityData);
   };
 
-  const onEditActivitySubmit = (values: any) => {
-    if (editingActivity) {
-      const data = {
-        ...values,
-        workoutVideos: editingWorkoutVideos,
-      };
-      updateActivityMutation.mutate({ id: editingActivity.id, data });
-    }
-  };
-
-  const handleResetPassword = () => {
-    if (!selectedUserId || !newPassword) return;
-    resetPasswordMutation.mutate({ userId: selectedUserId, password: newPassword });
-  };
-
-  const handleDeleteActivity = (activityId: number) => {
-    if (confirm("Are you sure you want to delete this activity?")) {
-      deleteActivityMutation.mutate(activityId);
-    }
+  const handleEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    setEditingWorkoutVideos(Array.isArray(activity.workoutVideos) ? activity.workoutVideos : []);
+    setEditActivityOpen(true);
   };
 
   const handleAddWorkoutVideo = () => {
-    setWorkoutVideos([...workoutVideos, { url: '', description: '' }]);
+    setWorkoutVideos([...workoutVideos, { url: "", description: "" }]);
+  };
+
+  const handleUpdateWorkoutVideo = (index: number, field: 'url' | 'description', value: string) => {
+    const updatedVideos = [...workoutVideos];
+    updatedVideos[index][field] = value;
+    setWorkoutVideos(updatedVideos);
   };
 
   const handleRemoveWorkoutVideo = (index: number) => {
     setWorkoutVideos(workoutVideos.filter((_, i) => i !== index));
   };
 
-  const handleWorkoutVideoChange = (index: number, field: 'url' | 'description', value: string) => {
-    const updatedVideos = [...workoutVideos];
-    updatedVideos[index][field] = value;
-    setWorkoutVideos(updatedVideos);
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setEditTeamOpen(true);
   };
 
   const handleEditWorkoutVideo = (index: number, field: 'url' | 'description', value: string) => {
@@ -404,355 +383,265 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="container max-w-screen-2xl pt-4">
-        <Tabs defaultValue="users" className="space-y-4">
+      <main className="container mx-auto py-6 max-w-screen-2xl">
+        <Tabs defaultValue="users">
           <TabsList>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="activities">Activities</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="users">
+
+          <TabsContent value="users" className="p-4">
             <Card>
               <CardHeader>
-                <CardTitle>Users</CardTitle>
+                <CardTitle>Manage Users</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[calc(100vh-200px)] pr-4">
-                  <div className="space-y-4">
-                    {users.map((u) => (
-                      <div
-                        key={u.id}
-                        className="rounded-lg border p-4 flex flex-col space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">
-                              {u.preferredName || u.username} (#
-                              {u.id}) {u.isAdmin && "(Admin)"}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {u.email}
-                            </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {users.map((user) => (
+                      <Card key={user.id} className="overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Avatar>
+                              {user.imageUrl ? (
+                                <AvatarImage src={user.imageUrl} alt={user.username} />
+                              ) : (
+                                <AvatarFallback>
+                                  {user.username.charAt(0)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div>
+                              <h3 className="text-lg font-semibold">
+                                {user.preferredName || user.username}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                @{user.username}
+                              </p>
+                            </div>
                           </div>
-                          <Select
-                            defaultValue={u.teamId?.toString() || ""}
-                            onValueChange={(value) => {
-                              updateUserTeamMutation.mutate({
-                                userId: u.id,
-                                teamId: value ? parseInt(value) : null,
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue placeholder="Select team" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">No Team</SelectItem>
-                              {teams.map((team) => (
-                                <SelectItem
-                                  key={team.id}
-                                  value={team.id.toString()}
+                          <div className="text-sm space-y-1">
+                            <div>
+                              <span className="font-medium">Email:</span> {user.email}
+                            </div>
+                            <div>
+                              <span className="font-medium">Team:</span>{" "}
+                              {user.teamId
+                                ? teams.find((t) => t.id === user.teamId)?.name || "Unknown"
+                                : "None"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Week:</span>{" "}
+                              {user.weekInfo?.week || "Not started"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Role:</span>{" "}
+                              {user.isAdmin ? "Admin" : "User"}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Select
+                                value={user.teamId?.toString() || ""}
+                                onValueChange={(value) => {
+                                  updateUserTeamMutation.mutate({
+                                    userId: user.id,
+                                    teamId: value ? parseInt(value) : null,
+                                  });
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select team" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">No Team</SelectItem>
+                                  {teams.map((team) => (
+                                    <SelectItem key={team.id} value={team.id.toString()}>
+                                      {team.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedUserId(user.id);
+                                  setResetPasswordOpen(true);
+                                }}
+                              >
+                                Reset Password
+                              </Button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                variant={user.isAdmin ? "destructive" : "outline"}
+                                onClick={() => {
+                                  toggleAdminMutation.mutate({
+                                    userId: user.id,
+                                    isAdmin: !user.isAdmin,
+                                  });
+                                }}
+                              >
+                                {user.isAdmin ? "Remove Admin" : "Make Admin"}
+                              </Button>
+
+                              <Button variant="destructive" disabled>
+                                Delete User
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="teams" className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Team</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Team Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="team-name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Team description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" disabled={createTeamMutation.isPending}>
+                        {createTeamMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Create Team
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Manage Teams</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+                    <div className="space-y-4">
+                      {teams.map((team) => (
+                        <Card key={team.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-center">
+                              <CardTitle>{team.name}</CardTitle>
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditTeam(team)}
                                 >
-                                  {team.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <span className="text-muted-foreground mr-2">
-                            {u.weekInfo
-                              ? `Week ${u.weekInfo.week}, Day ${u.weekInfo.day}`
-                              : "Not started"}
-                          </span>
-                          {u.programStart && (
-                            <span className="text-muted-foreground">
-                              Start: {new Date(u.programStart).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedUserId(u.id);
-                              setResetPasswordOpen(true);
-                            }}
-                          >
-                            Reset Password
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const res = await fetch(`/api/users/${u.id}/toggle-admin`, {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({ isAdmin: !u.isAdmin }),
-                                });
-                                
-                                if (!res.ok) throw new Error("Failed to update admin status");
-                                
-                                queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-                                toast({ 
-                                  title: "Success", 
-                                  description: `Admin status ${!u.isAdmin ? 'granted' : 'revoked'}`
-                                });
-                              } catch (error) {
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to update admin status",
-                                  variant: "destructive"
-                                });
-                              }
-                            }}
-                          >
-                            {u.isAdmin ? "Remove Admin" : "Make Admin"}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this user?")) {
-                                deleteUserMutation.mutate(u.id);
-                              }
-                            }}
-                          >
-                            Delete User
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="teams">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Teams</CardTitle>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>Create Team</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create Team</DialogTitle>
-                      <DialogDescription>
-                        Create a new team for users to join.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form
-                        onSubmit={form.handleSubmit(onCreateTeamSubmit)}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Team name" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Team description"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <DialogFooter>
-                          <Button type="submit">Create</Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[calc(100vh-200px)] pr-4">
-                  <div className="space-y-4">
-                    {teams.map((team) => (
-                      <div
-                        key={team.id}
-                        className="rounded-lg border p-4 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{team.name}</p>
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to delete ${team.name}?`)) {
+                                      deleteTeamMutation.mutate(team.id);
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
                             <p className="text-sm text-muted-foreground">
-                              {team.description}
+                              {team.description || "No description"}
                             </p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingTeam(team);
-                                editTeamForm.setValue("name", team.name);
-                                editTeamForm.setValue(
-                                  "description",
-                                  team.description
-                                );
-                                setEditTeamOpen(true);
-                              }}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (
-                                  confirm(
-                                    "Are you sure you want to delete this team? All users will be removed from the team."
-                                  )
-                                ) {
-                                  deleteTeamMutation.mutate(team.id);
-                                }
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Members</h4>
-                          <div className="text-sm text-muted-foreground">
-                            {users.filter((u) => u.teamId === team.id).length} members
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                            <div className="mt-2">
+                              <p className="text-sm font-medium">Members:</p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {users.filter((u) => u.teamId === team.id).length === 0 && (
+                                  <p className="text-sm text-muted-foreground">No members</p>
+                                )}
+                                {users
+                                  .filter((u) => u.teamId === team.id)
+                                  .map((user) => (
+                                    <div
+                                      key={user.id}
+                                      className="flex items-center bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-xs"
+                                    >
+                                      {user.preferredName || user.username}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="activities">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Activities</CardTitle>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>Create Activity</Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                      <DialogTitle>Create Activity</DialogTitle>
-                      <DialogDescription>
-                        Create a new daily activity for the program.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...createActivityForm}>
-                      <form
-                        onSubmit={createActivityForm.handleSubmit(onCreateActivitySubmit)}
-                        className="space-y-4"
-                      >
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={createActivityForm.control}
-                            name="week"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Week</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    placeholder="Week number"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(parseInt(e.target.value))
-                                    }
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={createActivityForm.control}
-                            name="day"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Day</FormLabel>
-                                <FormControl>
-                                  <Select
-                                    onValueChange={(value) =>
-                                      field.onChange(parseInt(value))
-                                    }
-                                    defaultValue={field.value?.toString()}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select day" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="1">Monday</SelectItem>
-                                      <SelectItem value="2">Tuesday</SelectItem>
-                                      <SelectItem value="3">Wednesday</SelectItem>
-                                      <SelectItem value="4">Thursday</SelectItem>
-                                      <SelectItem value="5">Friday</SelectItem>
-                                      <SelectItem value="6">Saturday</SelectItem>
-                                      <SelectItem value="7">Sunday</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+          <TabsContent value="activities" className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Form {...activityForm}>
+                    <form
+                      onSubmit={activityForm.handleSubmit(handleCreateActivity)}
+                      className="space-y-4"
+                    >
+                      <div className="grid grid-cols-2 gap-4">
                         <FormField
-                          control={createActivityForm.control}
-                          name="memoryVerse"
+                          control={activityForm.control}
+                          name="week"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Memory Verse</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Memory verse"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={createActivityForm.control}
-                          name="memoryVerseReference"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Memory Verse Reference</FormLabel>
+                              <FormLabel>Week</FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="e.g. John 3:16"
+                                  type="number"
+                                  placeholder="1"
+                                  min="1"
                                   {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -760,236 +649,279 @@ export default function AdminPage() {
                           )}
                         />
                         <FormField
-                          control={createActivityForm.control}
-                          name="scripture"
+                          control={activityForm.control}
+                          name="day"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Scripture</FormLabel>
+                              <FormLabel>Day</FormLabel>
                               <FormControl>
-                                <Textarea
-                                  placeholder="Scripture reading"
+                                <Input
+                                  type="number"
+                                  placeholder="1"
+                                  min="1"
+                                  max="7"
                                   {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
                                 />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <FormField
-                          control={createActivityForm.control}
-                          name="workout"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Workout</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Workout description"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div>
-                          <Label>Workout Videos</Label>
-                          <div className="space-y-2 mt-2">
-                            {workoutVideos.map((video, index) => (
-                              <div key={index} className="flex space-x-2">
-                                <Input
-                                  placeholder="Video URL"
-                                  value={video.url}
-                                  onChange={(e) =>
-                                    handleWorkoutVideoChange(
-                                      index,
-                                      "url",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-grow"
-                                />
-                                <Input
-                                  placeholder="Description"
-                                  value={video.description}
-                                  onChange={(e) =>
-                                    handleWorkoutVideoChange(
-                                      index,
-                                      "description",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-grow"
-                                />
+                      </div>
+
+                      <FormField
+                        control={activityForm.control}
+                        name="memoryVerse"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Memory Verse</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Verse text" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={activityForm.control}
+                        name="memoryVerseReference"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Verse Reference</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. John 3:16" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={activityForm.control}
+                        name="scripture"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Scripture</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Scripture text" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={activityForm.control}
+                        name="workout"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Workout</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Workout description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div>
+                        <Label>Workout Videos</Label>
+                        <div className="space-y-2 mt-2">
+                          {workoutVideos.map((video, index) => (
+                            <div key={index} className="space-y-2 p-2 border rounded-md">
+                              <div className="flex justify-between items-center">
+                                <Label>Video {index + 1}</Label>
                                 <Button
                                   type="button"
-                                  variant="destructive"
-                                  size="icon"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => handleRemoveWorkoutVideo(index)}
                                 >
                                   <Trash className="h-4 w-4" />
                                 </Button>
                               </div>
-                            ))}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={handleAddWorkoutVideo}
-                              className="w-full"
-                            >
-                              <PlusCircle className="h-4 w-4 mr-2" />
-                              Add Video
-                            </Button>
-                          </div>
+                              <Input
+                                placeholder="Video URL"
+                                value={video.url}
+                                onChange={(e) =>
+                                  handleUpdateWorkoutVideo(index, "url", e.target.value)
+                                }
+                              />
+                              <Input
+                                placeholder="Description"
+                                value={video.description}
+                                onChange={(e) =>
+                                  handleUpdateWorkoutVideo(
+                                    index,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddWorkoutVideo}
+                            className="mt-2"
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add Video
+                          </Button>
                         </div>
-                        
-                        <FormField
-                          control={createActivityForm.control}
-                          name="tasks"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Tasks</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Daily tasks"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={createActivityForm.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Activity description"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <DialogFooter>
-                          <Button type="submit">Create</Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[calc(100vh-200px)] pr-4">
-                  <div className="space-y-4">
-                    {isActivitiesError ? (
-                      <div className="p-4 border border-red-300 bg-red-50 rounded-md">
-                        <p className="text-red-500">Failed to load activities. Please try refreshing the page.</p>
                       </div>
-                    ) : !activities ? (
-                      <div className="flex justify-center p-4">
-                        <Loader2 className="h-8 w-8 animate-spin" />
+
+                      <FormField
+                        control={activityForm.control}
+                        name="tasks"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tasks</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Daily tasks" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={activityForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Activity description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button
+                        type="submit"
+                        disabled={createActivityMutation.isPending}
+                      >
+                        {createActivityMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Create Activity
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Manage Activities</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+                    {activities && activities.length > 0 ? (
+                      <div className="space-y-4">
+                        {activities
+                          .sort((a, b) => a.week - b.week || a.day - b.day)
+                          .map((activity) => (
+                            <Card key={activity.id}>
+                              <CardHeader className="pb-2">
+                                <div className="flex justify-between items-center">
+                                  <CardTitle>
+                                    Week {activity.week}, Day {activity.day}
+                                  </CardTitle>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEditActivity(activity)}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (
+                                          window.confirm(
+                                            `Are you sure you want to delete this activity?`
+                                          )
+                                        ) {
+                                          deleteActivityMutation.mutate(activity.id);
+                                        }
+                                      }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <h3 className="font-semibold">Memory Verse</h3>
+                                    <p className="text-sm">
+                                      {activity.memoryVerse || "None"}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {activity.memoryVerseReference}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <h3 className="font-semibold">Workout</h3>
+                                    <p className="text-sm">{activity.workout || "None"}</p>
+                                    {activity.workoutVideos && 
+                                    Array.isArray(activity.workoutVideos) && 
+                                    activity.workoutVideos.length > 0 && (
+                                      <div className="mt-1">
+                                        <p className="text-xs font-medium">Videos:</p>
+                                        <ul className="text-xs list-disc pl-4">
+                                          {activity.workoutVideos.map((video, idx) => (
+                                            <li key={idx}>
+                                              {video.description || video.url}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
                       </div>
                     ) : (
-                      activities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="rounded-lg border p-4 space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">
-                                Week {activity.week}, Day {activity.day}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {activity.memoryVerseReference}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingActivity(activity);
-                                  editActivityForm.setValue("week", activity.week);
-                                  editActivityForm.setValue("day", activity.day);
-                                  editActivityForm.setValue(
-                                    "memoryVerse",
-                                    activity.memoryVerse
-                                  );
-                                  editActivityForm.setValue(
-                                    "memoryVerseReference",
-                                    activity.memoryVerseReference
-                                  );
-                                  editActivityForm.setValue(
-                                    "scripture",
-                                    activity.scripture || ""
-                                  );
-                                  editActivityForm.setValue(
-                                    "workout",
-                                    activity.workout || ""
-                                  );
-                                  editActivityForm.setValue(
-                                    "tasks",
-                                    activity.tasks || ""
-                                  );
-                                  editActivityForm.setValue(
-                                    "description",
-                                    activity.description || ""
-                                  );
-                                  setEditingWorkoutVideos(
-                                    Array.isArray(activity.workoutVideos)
-                                      ? activity.workoutVideos.map((v) => ({
-                                          url: v.url,
-                                          description: v.description,
-                                        }))
-                                      : []
-                                  );
-                                  setEditActivityOpen(true);
-                                }}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteActivity(activity.id)}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="border-t pt-2 mt-2">
-                            <p className="text-sm font-medium">Memory Verse</p>
-                            <p className="text-sm">{activity.memoryVerse}</p>
-                          </div>
-                        </div>
-                      ))
+                      <div className="text-center p-4">
+                        {isActivitiesError ? (
+                          <p>Error loading activities</p>
+                        ) : (
+                          <p>No activities found</p>
+                        )}
+                      </div>
                     )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
 
+      {/* Reset Password Dialog */}
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-            <DialogDescription>
-              Set a new password for this user.
-            </DialogDescription>
+            <DialogTitle>Reset User Password</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>New Password</Label>
+              <Label htmlFor="new-password">New Password</Label>
               <Input
+                id="new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -998,285 +930,269 @@ export default function AdminPage() {
           </div>
           <DialogFooter>
             <Button
-              onClick={handleResetPassword}
-              disabled={!newPassword}
+              onClick={() => {
+                if (selectedUserId && newPassword) {
+                  resetPasswordMutation.mutate({
+                    userId: selectedUserId,
+                    password: newPassword,
+                  });
+                }
+              }}
+              disabled={!newPassword || resetPasswordMutation.isPending}
             >
+              {resetPasswordMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               Reset Password
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Team Dialog */}
       <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
-            <DialogDescription>
-              Update team information.
-            </DialogDescription>
           </DialogHeader>
-          <Form {...editTeamForm}>
-            <form
-              onSubmit={editTeamForm.handleSubmit(onEditTeamSubmit)}
-              className="space-y-4"
+          {editingTeam && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-team-name">Team Name</Label>
+                <Input
+                  id="edit-team-name"
+                  value={editingTeam.name}
+                  onChange={(e) =>
+                    setEditingTeam({ ...editingTeam, name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-team-description">Description</Label>
+                <Input
+                  id="edit-team-description"
+                  value={editingTeam.description || ""}
+                  onChange={(e) =>
+                    setEditingTeam({
+                      ...editingTeam,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (editingTeam) {
+                  updateTeamMutation.mutate({
+                    id: editingTeam.id,
+                    name: editingTeam.name,
+                    description: editingTeam.description || "",
+                  });
+                }
+              }}
+              disabled={updateTeamMutation.isPending}
             >
-              <FormField
-                control={editTeamForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Team name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editTeamForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Team description"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+              {updateTeamMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Activity Dialog */}
       <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Activity</DialogTitle>
-            <DialogDescription>
-              Update activity details.
-            </DialogDescription>
           </DialogHeader>
-          <Form {...editActivityForm}>
-            <form
-              onSubmit={editActivityForm.handleSubmit(onEditActivitySubmit)}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editActivityForm.control}
-                  name="week"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Week</FormLabel>
-                      <FormControl>
+          {editingActivity && (
+            <ScrollArea className="max-h-[70vh]">
+              <div className="space-y-4 py-4 pr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-week">Week</Label>
+                    <Input
+                      id="edit-week"
+                      type="number"
+                      min="1"
+                      value={editingActivity.week}
+                      onChange={(e) =>
+                        setEditingActivity({
+                          ...editingActivity,
+                          week: parseInt(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-day">Day</Label>
+                    <Input
+                      id="edit-day"
+                      type="number"
+                      min="1"
+                      max="7"
+                      value={editingActivity.day}
+                      onChange={(e) =>
+                        setEditingActivity({
+                          ...editingActivity,
+                          day: parseInt(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-memory-verse">Memory Verse</Label>
+                  <Input
+                    id="edit-memory-verse"
+                    value={editingActivity.memoryVerse || ""}
+                    onChange={(e) =>
+                      setEditingActivity({
+                        ...editingActivity,
+                        memoryVerse: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-verse-reference">Verse Reference</Label>
+                  <Input
+                    id="edit-verse-reference"
+                    value={editingActivity.memoryVerseReference || ""}
+                    onChange={(e) =>
+                      setEditingActivity({
+                        ...editingActivity,
+                        memoryVerseReference: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-scripture">Scripture</Label>
+                  <Textarea
+                    id="edit-scripture"
+                    value={editingActivity.scripture || ""}
+                    onChange={(e) =>
+                      setEditingActivity({
+                        ...editingActivity,
+                        scripture: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-workout">Workout</Label>
+                  <Textarea
+                    id="edit-workout"
+                    value={editingActivity.workout || ""}
+                    onChange={(e) =>
+                      setEditingActivity({
+                        ...editingActivity,
+                        workout: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label>Workout Videos</Label>
+                  <div className="space-y-2 mt-2">
+                    {editingWorkoutVideos.map((video, index) => (
+                      <div key={index} className="space-y-2 p-2 border rounded-md">
+                        <div className="flex justify-between items-center">
+                          <Label>Video {index + 1}</Label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveEditWorkoutVideo(index)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <Input
-                          type="number"
-                          min="1"
-                          placeholder="Week number"
-                          {...field}
+                          placeholder="Video URL"
+                          value={video.url}
                           onChange={(e) =>
-                            field.onChange(parseInt(e.target.value))
+                            handleEditWorkoutVideo(index, "url", e.target.value)
                           }
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editActivityForm.control}
-                  name="day"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Day</FormLabel>
-                      <FormControl>
-                        <Select
-                          onValueChange={(value) =>
-                            field.onChange(parseInt(value))
+                        <Input
+                          placeholder="Description"
+                          value={video.description}
+                          onChange={(e) =>
+                            handleEditWorkoutVideo(
+                              index,
+                              "description",
+                              e.target.value
+                            )
                           }
-                          defaultValue={field.value?.toString()}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select day" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">Monday</SelectItem>
-                            <SelectItem value="2">Tuesday</SelectItem>
-                            <SelectItem value="3">Wednesday</SelectItem>
-                            <SelectItem value="4">Thursday</SelectItem>
-                            <SelectItem value="5">Friday</SelectItem>
-                            <SelectItem value="6">Saturday</SelectItem>
-                            <SelectItem value="7">Sunday</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={editActivityForm.control}
-                name="memoryVerse"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Memory Verse</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Memory verse"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editActivityForm.control}
-                name="memoryVerseReference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Memory Verse Reference</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. John 3:16"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editActivityForm.control}
-                name="scripture"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Scripture</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Scripture reading"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editActivityForm.control}
-                name="workout"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Workout</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Workout description"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div>
-                <Label>Workout Videos</Label>
-                <div className="space-y-2 mt-2">
-                  {editingWorkoutVideos.map((video, index) => (
-                    <div key={index} className="flex space-x-2">
-                      <Input
-                        placeholder="Video URL"
-                        value={video.url}
-                        onChange={(e) =>
-                          handleEditWorkoutVideo(
-                            index,
-                            "url",
-                            e.target.value
-                          )
-                        }
-                        className="flex-grow"
-                      />
-                      <Input
-                        placeholder="Description"
-                        value={video.description}
-                        onChange={(e) =>
-                          handleEditWorkoutVideo(
-                            index,
-                            "description",
-                            e.target.value
-                          )
-                        }
-                        className="flex-grow"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleRemoveEditWorkoutVideo(index)}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setEditingWorkoutVideos([...editingWorkoutVideos, { url: '', description: '' }])}
-                    className="w-full"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Video
-                  </Button>
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingWorkoutVideos([...editingWorkoutVideos, { url: "", description: "" }])}
+                      className="mt-2"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add Video
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tasks">Tasks</Label>
+                  <Textarea
+                    id="edit-tasks"
+                    value={editingActivity.tasks || ""}
+                    onChange={(e) =>
+                      setEditingActivity({
+                        ...editingActivity,
+                        tasks: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editingActivity.description || ""}
+                    onChange={(e) =>
+                      setEditingActivity({
+                        ...editingActivity,
+                        description: e.target.value,
+                      })
+                    }
+                  />
                 </div>
               </div>
-              
-              <FormField
-                control={editActivityForm.control}
-                name="tasks"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tasks</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Daily tasks"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editActivityForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Activity description"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={handleUpdateActivity}
+              disabled={updateActivityMutation.isPending}
+            >
+              {updateActivityMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
