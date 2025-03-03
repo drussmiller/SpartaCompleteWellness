@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, ThumbsUp, Smile, Medal, HandClap } from "lucide-react";
+import { Heart, ThumbsUp, Smile, Medal, Hand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,7 +18,7 @@ const reactionIcons = {
   heart: Heart,
   smile: Smile,
   celebrate: Medal,
-  support: HandClap,
+  support: Hand,
 } as const;
 
 const reactionLabels = {
