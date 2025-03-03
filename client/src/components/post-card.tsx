@@ -2,13 +2,97 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Post, User } from "@shared/schema";
+import { Post, User, Reaction } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// This component shows multiple reaction emojis with counts
+function ReactionSummary({ postId }: { postId: number }) {
+  const { data: reactions = [] } = useQuery<Reaction[]>({
+    queryKey: [`/api/posts/${postId}/reactions`],
+  });
+
+  // Count each type of reaction
+  const reactionCounts: Record<string, number> = {};
+  reactions.forEach(reaction => {
+    if (reaction.type) {
+      reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
+    }
+  });
+
+  // Get the emoji mapping from imported module
+  // This is a little hack to access the same emoji data from reaction-button
+  // A better approach would be to move this to a shared constants file
+  const getEmojiForType = (type: string): string => {
+    const allEmojis: Record<string, { emoji: string, color: string }> = {
+      like: { emoji: "👍", color: "text-blue-500" },
+      love: { emoji: "❤️", color: "text-red-500" },
+      laugh: { emoji: "😂", color: "text-yellow-500" },
+      wow: { emoji: "😮", color: "text-yellow-500" },
+      sad: { emoji: "😢", color: "text-blue-500" },
+      angry: { emoji: "😡", color: "text-red-500" },
+      celebrate: { emoji: "🎉", color: "text-purple-500" },
+      clap: { emoji: "👏", color: "text-yellow-500" },
+      fire: { emoji: "🔥", color: "text-orange-500" },
+      pray: { emoji: "🙏", color: "text-amber-500" },
+      support: { emoji: "🤗", color: "text-green-500" },
+      muscle: { emoji: "💪", color: "text-blue-500" },
+      star: { emoji: "⭐", color: "text-yellow-500" },
+      heart_eyes: { emoji: "😍", color: "text-red-500" },
+      raised_hands: { emoji: "🙌", color: "text-amber-500" },
+      trophy: { emoji: "🏆", color: "text-yellow-500" },
+      thumbs_down: { emoji: "👎", color: "text-slate-500" },
+      salad: { emoji: "🥗", color: "text-green-500" },
+      fruit: { emoji: "🍎", color: "text-red-500" },
+      water: { emoji: "💧", color: "text-blue-500" },
+      run: { emoji: "🏃", color: "text-purple-500" },
+      bike: { emoji: "🚴", color: "text-green-500" },
+      weight: { emoji: "🏋️", color: "text-indigo-500" },
+      angel: { emoji: "😇", color: "text-sky-500" },
+      dove: { emoji: "🕊️", color: "text-white-500" },
+      church: { emoji: "⛪", color: "text-stone-500" },
+      idea: { emoji: "💡", color: "text-yellow-500" },
+      rocket: { emoji: "🚀", color: "text-indigo-500" },
+      sparkles: { emoji: "✨", color: "text-purple-500" },
+    };
+    
+    return allEmojis[type]?.emoji || "👍";
+  };
+
+  // Sort reaction types by count (most frequent first)
+  const sortedReactions = Object.entries(reactionCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5); // Show at most 5 reaction types
+
+  if (sortedReactions.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1 text-sm">
+      <TooltipProvider>
+        <div className="flex flex-wrap gap-1">
+          {sortedReactions.map(([type, count]) => (
+            <Tooltip key={type}>
+              <TooltipTrigger asChild>
+                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
+                  <span className="mr-1">{getEmojiForType(type)}</span>
+                  <span className="text-xs">{count}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{type.replace('_', ' ')}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </TooltipProvider>
+    </div>
+  );
+}
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
@@ -95,13 +179,19 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             className="w-full h-auto object-contain rounded-md mb-4"
           />
         )}
-        <div className="mt-4 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">
-            {new Date(post.createdAt!).toLocaleDateString()}
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
+        <div className="mt-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
+            <span className="text-xs text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground">
+              {new Date(post.createdAt!).toLocaleDateString()}
+            </span>
+          </div>
+          
+          {/* Reaction summary display */}
+          <ReactionSummary postId={post.id} />
+          
+          <div className="flex items-center gap-2">
             <ReactionButton postId={post.id} />
             <Link href={`/comments/${post.id}`}>
               <Button variant="ghost" size="sm" className="gap-1.5">

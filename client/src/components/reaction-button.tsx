@@ -12,21 +12,52 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 import type { Reaction } from "@shared/schema";
 
 const reactionEmojis = {
+  // Basic reactions
   like: { emoji: "👍", color: "text-blue-500" },
   love: { emoji: "❤️", color: "text-red-500" },
   laugh: { emoji: "😂", color: "text-yellow-500" },
   wow: { emoji: "😮", color: "text-yellow-500" },
   sad: { emoji: "😢", color: "text-blue-500" },
   angry: { emoji: "😡", color: "text-red-500" },
+  
+  // Wellness & Fitness
   celebrate: { emoji: "🎉", color: "text-purple-500" },
   clap: { emoji: "👏", color: "text-yellow-500" },
   fire: { emoji: "🔥", color: "text-orange-500" },
   pray: { emoji: "🙏", color: "text-amber-500" },
   support: { emoji: "🤗", color: "text-green-500" },
   muscle: { emoji: "💪", color: "text-blue-500" },
+  
+  // Additional positive emojis
+  star: { emoji: "⭐", color: "text-yellow-500" },
+  heart_eyes: { emoji: "😍", color: "text-red-500" },
+  raised_hands: { emoji: "🙌", color: "text-amber-500" },
+  trophy: { emoji: "🏆", color: "text-yellow-500" },
+  thumbs_down: { emoji: "👎", color: "text-slate-500" },
+  
+  // Food related
+  salad: { emoji: "🥗", color: "text-green-500" },
+  fruit: { emoji: "🍎", color: "text-red-500" },
+  water: { emoji: "💧", color: "text-blue-500" },
+  
+  // Exercise related
+  run: { emoji: "🏃", color: "text-purple-500" },
+  bike: { emoji: "🚴", color: "text-green-500" },
+  weight: { emoji: "🏋️", color: "text-indigo-500" },
+  
+  // Spiritual
+  angel: { emoji: "😇", color: "text-sky-500" },
+  dove: { emoji: "🕊️", color: "text-white-500" },
+  church: { emoji: "⛪", color: "text-stone-500" },
+  
+  // Motivational
+  idea: { emoji: "💡", color: "text-yellow-500" },
+  rocket: { emoji: "🚀", color: "text-indigo-500" },
+  sparkles: { emoji: "✨", color: "text-purple-500" },
 } as const;
 
 const reactionLabels = {
@@ -42,6 +73,23 @@ const reactionLabels = {
   pray: "Pray",
   support: "Support",
   muscle: "Strength",
+  star: "Star",
+  heart_eyes: "Love it",
+  raised_hands: "Praise",
+  trophy: "Achievement",
+  thumbs_down: "Dislike",
+  salad: "Healthy Meal",
+  fruit: "Fruit",
+  water: "Hydration",
+  run: "Running",
+  bike: "Cycling",
+  weight: "Weightlifting",
+  angel: "Blessed",
+  dove: "Peace",
+  church: "Faith",
+  idea: "Inspiration",
+  rocket: "Progress",
+  sparkles: "Magic",
 } as const;
 
 type ReactionType = keyof typeof reactionEmojis;
@@ -52,6 +100,7 @@ interface ReactionButtonProps {
 
 export function ReactionButton({ postId }: ReactionButtonProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   const { data: reactions = [] } = useQuery<Reaction[]>({
@@ -128,47 +177,40 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
     }
   });
 
+  // Get user's reaction if any
+  const userReaction = reactions.find(r => r.userId === Number(localStorage.getItem('userId')))?.type as ReactionType | undefined;
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
-          className="gap-2"
+          className={cn(
+            "gap-1.5 text-sm",
+            userReaction && reactionEmojis[userReaction]?.color
+          )}
         >
-          {mostCommonReaction ? (
-            <span className="text-lg">{reactionEmojis[mostCommonReaction].emoji}</span>
+          {userReaction ? (
+            reactionEmojis[userReaction].emoji
+          ) : mostCommonReaction ? (
+            reactionEmojis[mostCommonReaction].emoji
           ) : (
             <ThumbsUp className="h-4 w-4" />
           )}
-          {totalReactions > 0 && <span>{totalReactions}</span>}
+          {totalReactions > 0 && totalReactions}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="grid grid-cols-4 gap-1 p-2 min-w-[220px]">
-        {(Object.keys(reactionEmojis) as ReactionType[]).map((type) => {
-          const { emoji } = reactionEmojis[type];
-          const count = reactionCounts[type] || 0;
-          const hasReacted = reactions.some(
-            (r) => r.type === type && r.userId === Number(localStorage.getItem('userId'))
-          );
-          
-          return (
-            <DropdownMenuItem
-              key={type}
-              onClick={() => handleReaction(type)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted p-2 rounded-md",
-                hasReacted && "bg-muted"
-              )}
-            >
-              <span className="text-xl">{emoji}</span>
-              <span className="text-xs text-center">{reactionLabels[type]}</span>
-              {count > 0 && (
-                <span className="text-xs text-muted-foreground">{count}</span>
-              )}
-            </DropdownMenuItem>
-          );
-        })}
+      <DropdownMenuContent align="start" className="p-2 grid grid-cols-6 gap-1 w-60">
+        {Object.entries(reactionEmojis).map(([type, { emoji }]) => (
+          <DropdownMenuItem
+            key={type}
+            className="flex-col gap-1 px-2 py-2 cursor-pointer hover:bg-muted"
+            onClick={() => handleReaction(type as ReactionType)}
+          >
+            <span className="text-lg">{emoji}</span>
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
