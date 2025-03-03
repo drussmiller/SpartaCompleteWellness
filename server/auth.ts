@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -49,9 +49,9 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
-    name: 'sparta.sid', // Custom cookie name
+    name: 'sparta.sid',
     cookie: {
-      secure: !isDevelopment, // Only use secure cookies in production
+      secure: !isDevelopment,
       sameSite: isDevelopment ? 'lax' : 'strict',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
@@ -59,43 +59,13 @@ export function setupAuth(app: Express) {
     }
   };
 
-  // Add CORS settings if in development
-  if (isDevelopment) {
-    app.use((req, res, next) => {
-      const origin = req.headers.origin;
-      if (origin) {
-        res.header('Access-Control-Allow-Origin', origin);
-        res.header('Access-Control-Allow-Credentials', 'true');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-      }
-      if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-      } else {
-        next();
-      }
-    });
-  }
-
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Debug middleware to log session and authentication state
-  app.use((req, res, next) => {
-    console.log('Session ID:', req.sessionID);
-    console.log('Is Authenticated:', req.isAuthenticated());
-    console.log('User:', req.user?.id);
-    console.log('Session:', req.session);
-    next();
-  });
-
   passport.use(
-    new LocalStrategy({
-      usernameField: 'username',
-      passwordField: 'password'
-    }, async (username, password, done) => {
+    new LocalStrategy(async (username, password, done) => {
       try {
         console.log('Attempting login for:', username);
         const user = await storage.getUserByUsername(username);
@@ -106,9 +76,8 @@ export function setupAuth(app: Express) {
         }
 
         const isValid = await comparePasswords(password, user.password);
-        console.log('Password validation result:', isValid);
-
         if (!isValid) {
+          console.log('Invalid password for user:', username);
           return done(null, false);
         }
 
@@ -140,6 +109,7 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Setup auth routes
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log('Registration attempt:', req.body.username);
@@ -195,7 +165,6 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     console.log('GET /api/user - Session:', req.sessionID);
     console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
-    console.log('GET /api/user - Full Session:', req.session);
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
       return res.sendStatus(401);
@@ -216,4 +185,12 @@ export function setupAuth(app: Express) {
       res.sendStatus(200);
     });
   });
+}
+
+// Export middleware for protecting routes
+export function authenticate(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
 }
