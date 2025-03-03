@@ -88,6 +88,64 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Activities endpoints
+  router.get("/api/activities", authenticate, async (req, res) => {
+    try {
+      const { week, day } = req.query;
+      const activities = await storage.getActivities(
+        week ? parseInt(week as string) : undefined,
+        day ? parseInt(day as string) : undefined
+      );
+      res.json(activities);
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      res.status(500).json({ message: "Failed to fetch activities" });
+    }
+  });
+
+  router.post("/api/activities", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const activity = await storage.createActivity(req.body);
+      res.status(201).json(activity);
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      res.status(500).json({ message: "Failed to create activity" });
+    }
+  });
+
+  router.put("/api/activities/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const [activity] = await db
+        .update(activities)
+        .set(req.body)
+        .where(eq(activities.id, parseInt(req.params.id)))
+        .returning();
+      res.json(activity);
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      res.status(500).json({ message: "Failed to update activity" });
+    }
+  });
+
+  router.delete("/api/activities/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      await db.delete(activities).where(eq(activities.id, parseInt(req.params.id)));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      res.status(500).json({ message: "Failed to delete activity" });
+    }
+  });
+
   router.get("/api/users", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
