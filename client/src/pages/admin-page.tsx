@@ -24,6 +24,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
+
+// Type definition for form data
+type TeamFormData = z.infer<typeof insertTeamSchema>;
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -33,7 +37,7 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -43,7 +47,7 @@ export default function AdminPage() {
     queryKey: ["/api/users"],
   });
 
-  const form = useForm({
+  const form = useForm<TeamFormData>({
     resolver: zodResolver(insertTeamSchema),
     defaultValues: {
       name: "",
@@ -52,7 +56,7 @@ export default function AdminPage() {
   });
 
   const createTeamMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data: TeamFormData) => {
       const res = await apiRequest("POST", "/api/teams", data);
       if (!res.ok) {
         const error = await res.json();
