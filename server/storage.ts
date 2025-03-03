@@ -46,6 +46,7 @@ export interface IStorage {
   deleteReaction(userId: number, postId: number, type: string): Promise<void>;
   getReactionsByPost(postId: number): Promise<Reaction[]>;
   getReactionsByUser(userId: number): Promise<Reaction[]>;
+  getPost(id: number): Promise<Post | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -117,9 +118,9 @@ export class DatabaseStorage implements IStorage {
   async updateUserTeam(userId: number, teamId: number): Promise<User> {
     const [updatedUser] = await db
       .update(users)
-      .set({ 
+      .set({
         teamId,
-        teamJoinedAt: teamId ? new Date() : null 
+        teamJoinedAt: teamId ? new Date() : null
       })
       .where(eq(users.id, userId))
       .returning();
@@ -311,7 +312,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePost(postId: number): Promise<void> {
-    await db.delete(posts).where(eq(posts.id, postId));
+    try {
+      // Simple deletion without cascading operations
+      await db.delete(posts)
+        .where(eq(posts.id, postId));
+    } catch (error) {
+      console.error('Error in deletePost:', error);
+      throw error;
+    }
   }
 
   async deleteNotification(notificationId: number): Promise<void> {
@@ -450,7 +458,7 @@ export class DatabaseStorage implements IStorage {
 
     // Find the first Monday after join date
     const dayOfWeek = joinDate.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; 
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
     const firstMonday = new Date(joinDate);
     firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
     firstMonday.setHours(0, 0, 0, 0);
@@ -464,8 +472,8 @@ export class DatabaseStorage implements IStorage {
     const diffTime = today.getTime() - firstMonday.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    const week = Math.floor(diffDays / 7) + 1; 
-    const day = today.getDay() === 0 ? 7 : today.getDay(); 
+    const week = Math.floor(diffDays / 7) + 1;
+    const day = today.getDay() === 0 ? 7 : today.getDay();
 
     return { week, day };
   }
@@ -489,6 +497,19 @@ export class DatabaseStorage implements IStorage {
 
   async getReactionsByUser(userId: number): Promise<Reaction[]> {
     return await db.select().from(reactions).where(eq(reactions.userId, userId));
+  }
+
+  async getPost(id: number): Promise<Post | undefined> {
+    try {
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, id));
+      return post;
+    } catch (error) {
+      console.error('Error in getPost:', error);
+      throw error;
+    }
   }
 }
 
