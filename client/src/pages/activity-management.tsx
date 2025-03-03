@@ -7,23 +7,78 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ActivityManagementPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [workoutVideos, setWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
   const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
 
-  const { data: activities } = useQuery<Activity[]>({
+  // Query activities with error handling
+  const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"],
+    onError: (error: Error) => {
+      console.error('Error fetching activities:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load activities. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading activities...</span>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
+            <p className="text-gray-600">{error.message}</p>
+            <Button 
+              className="mt-4"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show unauthorized state
+  if (!user?.isAdmin) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-red-500 mb-2">Unauthorized</h2>
+            <p className="text-gray-600">You do not have permission to manage activities.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const updateActivityMutation = useMutation({
     mutationFn: async (data: Partial<Activity>) => {

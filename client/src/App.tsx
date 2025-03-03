@@ -10,6 +10,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import ActivityPage from "@/pages/activity-page";
+import ActivityManagementPage from "@/pages/activity-management";
 import HelpPage from "@/pages/help-page";
 import NotificationsPage from "@/pages/notifications-page";
 import ProfilePage from "@/pages/profile-page";
@@ -54,6 +55,7 @@ function MainContent() {
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/activity" component={ActivityPage} />
+        <Route path="/activity-management" component={ActivityManagementPage} />
         <Route path="/help" component={HelpPage} />
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/profile" component={ProfilePage} />
