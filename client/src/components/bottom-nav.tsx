@@ -1,5 +1,5 @@
-import { Link, useLocation } from "wouter";
-import { Home, Calendar, HelpCircle, Bell, User, Shield } from "lucide-react";
+import { useLocation, Link } from "wouter";
+import { Home, User, Bell, LucideLibrary, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -7,84 +7,35 @@ export function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
 
-  const items = [
-    { icon: Home, label: "Home", href: "/" },
-    { icon: Calendar, label: "Activity", href: "/activity" },
-    { icon: HelpCircle, label: "Help", href: "/help" },
-    { icon: Bell, label: "Notifications", href: "/notifications" },
+  const isActive = (path: string) => location === path;
+
+  const navItems = [
+    { href: "/", icon: Home, label: "Home" },
+    { href: "/profile", icon: User, label: "Profile" },
+    { href: "/notifications", icon: Bell, label: "Notifications" },
+    { href: "/library", icon: LucideLibrary, label: "Library" },
+    { href: "/help", icon: Menu, label: "Menu" },
   ];
 
   return (
-    <nav className={cn(
-      // Base styles
-      "bg-background border-border",
-      // Mobile styles (bottom nav)
-      "lg:hidden fixed bottom-0 left-0 right-0 border-t",
-      // Desktop styles (side nav)
-      "lg:fixed lg:left-0 lg:top-0 lg:h-full lg:w-16 lg:border-r lg:flex lg:flex-col"
-    )}>
-      <div className={cn(
-        // Mobile layout
-        "flex justify-around items-center h-16",
-        // Desktop layout
-        "lg:flex-col lg:h-full lg:py-4 lg:space-y-4"
-      )}>
-        {items.map(({ icon: Icon, label, href }) => (
-          <Link key={href} href={href}>
-            <button
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border lg:left-16 lg:border-l">
+      <nav className="flex justify-around px-1 py-2">
+        {navItems.map((item) => (
+          <Link key={item.href} href={item.href}>
+            <a
               className={cn(
-                "flex flex-col items-center justify-center w-full text-sm gap-1",
-                // Mobile styles
-                "h-full",
-                // Desktop styles
-                "lg:h-16 lg:w-16",
-                location === href
+                "flex flex-col items-center justify-center p-2 rounded-md",
+                isActive(item.href)
                   ? "text-primary"
-                  : "text-muted-foreground hover:text-primary transition-colors"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className="h-5 w-5" />
-              <span className="text-xs">{label}</span>
-            </button>
+              <item.icon className="h-5 w-5" />
+              <span className="text-xs mt-1">{item.label}</span>
+            </a>
           </Link>
         ))}
-        {user?.isAdmin && (
-          <Link href="/admin">
-            <button
-              className={cn(
-                "flex flex-col items-center justify-center w-full text-sm gap-1",
-                // Mobile styles
-                "h-full",
-                // Desktop styles
-                "lg:h-16 lg:w-16",
-                location === "/admin"
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary transition-colors"
-              )}
-            >
-              <Shield className="h-5 w-5" />
-              <span className="text-xs">Admin</span>
-            </button>
-          </Link>
-        )}
-        <Link href="/profile">
-          <button
-            className={cn(
-              "flex flex-col items-center justify-center w-full text-sm gap-1",
-              // Mobile styles
-              "h-full",
-              // Desktop styles
-              "lg:h-16 lg:w-16",
-              location === "/profile"
-                ? "text-primary"
-                : "text-muted-foreground hover:text-primary transition-colors"
-            )}
-          >
-            <User className="h-5 w-5" />
-            <span className="text-xs">Profile</span>
-          </button>
-        </Link>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
