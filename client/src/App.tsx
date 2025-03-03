@@ -1,47 +1,18 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/hooks/use-auth";
-import { ProtectedRoute } from "./lib/protected-route";
-import NotFound from "@/pages/not-found";
-import AuthPage from "@/pages/auth-page";
-import HomePage from "@/pages/home-page";
-import ProfilePage from "@/pages/profile-page";
-import AdminPage from "@/pages/admin-page";
-import NotificationsPage from "@/pages/notifications-page";
-import HelpPage from "@/pages/help-page";
-import LibraryPage from "@/pages/library-page";
-import ActivityPage from "@/pages/activity-page";
-import ActivityManagementPage from "@/pages/activity-management";
-import CommentsPage from "@/pages/comments-page";
-
-function Router() {
-  return (
-    <Switch>
-      <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/profile" component={ProfilePage} />
-      <ProtectedRoute path="/admin" component={AdminPage} />
-      <ProtectedRoute path="/notifications" component={NotificationsPage} />
-      <ProtectedRoute path="/help" component={HelpPage} />
-      <ProtectedRoute path="/library" component={LibraryPage} />
-      <ProtectedRoute path="/activity" component={ActivityPage} />
-      <ProtectedRoute path="/activity-management" component={ActivityManagementPage} />
-      <ProtectedRoute path="/comments/:postId" component={CommentsPage} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
+import { queryClient } from "./lib/queryClient";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 function App() {
+  console.log('App component rendering');
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <Toaster />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <div className="p-4">
+          <h1 className="text-2xl font-bold">Team Fitness Tracker</h1>
+          <p className="mt-2">Loading application...</p>
+        </div>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
