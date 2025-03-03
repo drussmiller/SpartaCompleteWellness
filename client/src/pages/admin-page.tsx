@@ -13,9 +13,9 @@ import { insertTeamSchema, type Team, type Activity, type User, type InsertTeam 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -82,6 +82,31 @@ export default function AdminPage() {
         description: "Team deleted successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserTeamMutation = useMutation({
+    mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, { teamId });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update user's team");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User's team updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -245,7 +270,25 @@ export default function AdminPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{user.preferredName || user.username}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {teams?.find((t) => t.id === user.teamId)?.name || "No Team"}
+                          <Select
+                            defaultValue={user.teamId?.toString()}
+                            onValueChange={(value) => {
+                              const teamId = value === "" ? null : parseInt(value);
+                              updateUserTeamMutation.mutate({ userId: user.id, teamId });
+                            }}
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue placeholder="Select a team" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">No Team</SelectItem>
+                              {teams?.map((team) => (
+                                <SelectItem key={team.id} value={team.id.toString()}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.points}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.isAdmin ? "Yes" : "No"}</td>

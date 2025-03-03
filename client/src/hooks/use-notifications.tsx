@@ -22,10 +22,16 @@ export function useNotifications() {
 
     const connectWebSocket = () => {
       try {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          console.log('WebSocket already connected');
+          return;
+        }
+
         console.log('Initializing WebSocket connection for user:', user.id);
 
+        // Ensure we're using the correct protocol and include credentials
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
 
         console.log('Attempting WebSocket connection to:', wsUrl);
 
@@ -36,27 +42,34 @@ export function useNotifications() {
         ws.addEventListener('open', () => {
           console.log('WebSocket connection established successfully');
           setConnectionStatus("connected");
-          reconnectAttemptRef.current = 0; // Reset reconnect attempts on success
+          reconnectAttemptRef.current = 0;
+
+          // Send authentication message after connection
+          ws.send(JSON.stringify({ 
+            type: 'authenticate',
+            userId: user.id
+          }));
         });
 
         ws.addEventListener('message', (event) => {
           try {
-            const notification = JSON.parse(event.data);
-            console.log('Received notification:', notification);
+            const data = JSON.parse(event.data);
+            console.log('Received WebSocket message:', data);
 
-            if (notification.type === 'connected') {
-              console.log('Connection confirmed with userId:', notification.userId);
+            if (data.type === 'authenticated') {
+              console.log('WebSocket authentication successful');
               return;
             }
 
-            toast({
-              title: notification.title,
-              description: notification.message,
-            });
-
-            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            if (data.type === 'notification') {
+              toast({
+                title: data.title,
+                description: data.message,
+              });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+            }
           } catch (error) {
-            console.error('Error processing notification:', error);
+            console.error('Error processing WebSocket message:', error);
           }
         });
 
@@ -68,6 +81,7 @@ export function useNotifications() {
         ws.addEventListener('close', (event) => {
           console.log('WebSocket connection closed:', event);
           setConnectionStatus("disconnected");
+          wsRef.current = null;
           handleReconnect();
         });
 
@@ -88,10 +102,10 @@ export function useNotifications() {
       console.log(`Reconnection attempt ${reconnectAttemptRef.current} of ${maxReconnectAttempts}`);
 
       setTimeout(() => {
-        if (wsRef.current?.readyState === WebSocket.CLOSED) {
+        if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
           connectWebSocket();
         }
-      }, reconnectDelay);
+      }, reconnectDelay * Math.pow(2, reconnectAttemptRef.current - 1)); // Exponential backoff
     };
 
     connectWebSocket();
