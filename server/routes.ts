@@ -190,6 +190,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ error: "Failed to fetch reactions" });
     }
   });
+
+  // Get users who reacted with a specific emoji
+  router.get("/api/posts/:postId/reactions/users", authenticate, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const postId = parseInt(req.params.postId);
+      const reactionType = req.query.type;
+
+      if (!reactionType) {
+        return res.status(400).json({ error: "Reaction type is required" });
+      }
+
+      const usersWhoReacted = await storage.getUsersWhoReacted(postId, reactionType);
+      res.json(usersWhoReacted);
+    } catch (error) {
+      console.error("Error fetching users who reacted:", error);
+      res.status(500).json({ error: "Failed to fetch users who reacted" });
+    }
+  });
+
+
   // Delete post endpoint
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
