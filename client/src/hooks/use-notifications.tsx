@@ -13,18 +13,17 @@ export function useNotifications() {
   const reconnectAttemptRef = useRef(0);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user) {
       console.log('No authenticated user found, skipping WebSocket connection');
       return;
     }
 
     const connectWebSocket = () => {
       try {
-        console.log('Initializing WebSocket connection for user:', user.id);
+        console.log('Initializing WebSocket connection');
 
-        // Construct WebSocket URL with auth info
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`;
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
 
         console.log('Attempting WebSocket connection to:', wsUrl);
 
@@ -37,57 +36,47 @@ export function useNotifications() {
         wsRef.current = ws;
         setConnectionStatus('connecting');
 
-        // Connection opened
         ws.addEventListener('open', () => {
           console.log('WebSocket connection established successfully');
           setConnectionStatus('connected');
           reconnectAttemptRef.current = 0; // Reset reconnect attempts on successful connection
-
-          // Send a test message to verify connection
-          try {
-            ws.send(JSON.stringify({ type: 'connection_test', userId: user.id }));
-          } catch (error) {
-            console.error('Error sending test message:', error);
-          }
         });
 
-        // Listen for messages
         ws.addEventListener('message', (event) => {
           try {
-            const notification = JSON.parse(event.data);
-            console.log('Received notification:', notification);
+            const data = JSON.parse(event.data);
+            console.log('Received WebSocket message:', data);
 
-            if (notification.type === 'connection_status') {
-              console.log('Connection status update:', notification.status);
+            if (data.type === 'connected') {
+              console.log('Connection confirmed with userId:', data.userId);
               return;
             }
 
-            // Show toast notification
+            // Show toast notification for other messages
             toast({
-              title: notification.title,
-              description: notification.message,
+              title: data.title || 'New Notification',
+              description: data.message,
             });
 
-            // Invalidate notifications query to refresh the list
+            // Refresh notifications list
             queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
           } catch (error) {
-            console.error('Error processing notification:', error);
+            console.error('Error processing WebSocket message:', error);
           }
         });
 
-        // Handle connection errors
         ws.addEventListener('error', (error) => {
           console.error('WebSocket error:', error);
           setConnectionStatus('disconnected');
           handleReconnect();
         });
 
-        // Connection closed
         ws.addEventListener('close', (event) => {
           console.log('WebSocket connection closed:', event);
           setConnectionStatus('disconnected');
           handleReconnect();
         });
+
       } catch (error) {
         console.error('Error establishing WebSocket connection:', error);
         setConnectionStatus('disconnected');
@@ -132,7 +121,7 @@ export function useNotifications() {
       }
       setConnectionStatus('disconnected');
     };
-  }, [user?.id, toast]); // Only recreate connection when user ID changes
+  }, [user, toast]); // Only recreate connection when user changes
 
   return { connectionStatus };
 }
