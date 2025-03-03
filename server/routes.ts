@@ -3,26 +3,11 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { queryClient } from "../client/src/lib/queryClient";
-import { eq, and, desc, sql, or, gte, lte } from "drizzle-orm";
-import {
-  posts,
-  notifications,
-  videos,
-  users,
-  teams,
-  activities,
-  workoutVideos,
-  insertTeamSchema,
-  insertPostSchema,
-  insertMeasurementSchema,
-  insertNotificationSchema,
-  insertVideoSchema,
-  insertActivitySchema
-} from "@shared/schema";
-import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { WebSocketServer, WebSocket } from 'ws';
-import { z } from 'zod';
+import { users, activities, workoutVideos } from "@shared/schema";
+import type { IncomingMessage } from "http";
+import { setupAuth, sessionMiddleware } from "./auth";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -32,6 +17,79 @@ const upload = multer({
 
 // Keep track of connected clients
 const clients = new Map<number, WebSocket>();
+
+// WebSocket server setup
+function setupWebSocketServer(httpServer: Server, app: Express) {
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: '/ws'
+  });
+
+  // Parse session from request
+  const parseSession = async (req: IncomingMessage): Promise<number | null> => {
+    return new Promise((resolve) => {
+      if (!req.headers.cookie) {
+        console.log('No cookie found in WebSocket request');
+        resolve(null);
+        return;
+      }
+
+      // Use the same session middleware
+      sessionMiddleware(process.env.SESSION_SECRET!)(req as any, {} as any, () => {
+        const userId = (req as any).session?.passport?.user;
+        console.log('WebSocket session parsed:', { userId });
+        resolve(userId || null);
+      });
+    });
+  };
+
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
+    console.log('WebSocket connection attempt');
+
+    try {
+      // Get user ID from session
+      const userId = await parseSession(req);
+
+      if (!userId) {
+        console.log('WebSocket connection rejected - no session found');
+        ws.close();
+        return;
+      }
+
+      // Verify user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        console.log('WebSocket connection rejected - user not found:', userId);
+        ws.close();
+        return;
+      }
+
+      console.log('WebSocket connection established for user:', userId);
+      clients.set(userId, ws);
+
+      ws.on('close', () => {
+        console.log('WebSocket connection closed for user:', userId);
+        clients.delete(userId);
+        console.log('Remaining active connections:', clients.size);
+      });
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error for user:', userId, error);
+        clients.delete(userId);
+      });
+
+      // Send initial connection success message
+      ws.send(JSON.stringify({ type: 'connected', userId }));
+      console.log('Total active connections:', clients.size);
+
+    } catch (error) {
+      console.error('Error establishing WebSocket connection:', error);
+      ws.close();
+    }
+  });
+
+  return wss;
+}
 
 // Admin middleware
 const requireAdmin = (req: any, res: any, next: any) => {
@@ -44,6 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   const httpServer = createServer(app);
+  const wss = setupWebSocketServer(httpServer, app);
 
   // Activities endpoints
   app.get("/api/activities", async (req, res) => {
@@ -53,9 +112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           activity: activities,
           workoutVideos: sql<string>`
-            CASE 
-              WHEN COUNT(${workoutVideos.id}) = 0 THEN '[]'::jsonb
-              ELSE jsonb_agg(
+            COALESCE(
+              jsonb_agg(
                 CASE 
                   WHEN ${workoutVideos.id} IS NOT NULL 
                   THEN jsonb_build_object(
@@ -63,9 +121,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     'url', ${workoutVideos.url},
                     'description', ${workoutVideos.description}
                   )
+                  ELSE NULL
                 END
-              )
-            END`
+              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
+              '[]'::jsonb
+            )`
         })
         .from(activities)
         .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
@@ -81,16 +141,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await query;
 
       // Map the results to include workout videos
-      const mappedActivities = results.map(result => {
-        const workoutVideosArray = result.workoutVideos && result.workoutVideos !== '[null]' 
-          ? JSON.parse(result.workoutVideos)
-          : [];
-
-        return {
-          ...result.activity,
-          workoutVideos: workoutVideosArray.filter(Boolean) // Remove any null entries
-        };
-      });
+      const mappedActivities = results.map(result => ({
+        ...result.activity,
+        workoutVideos: result.workoutVideos ? JSON.parse(result.workoutVideos) : []
+      }));
 
       res.json(mappedActivities);
     } catch (error) {
@@ -98,6 +152,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch activities" });
     }
   });
+
+  // Add new route for current activity
+  app.get("/api/activities/current", getCurrentActivity);
 
   app.post("/api/activities", requireAdmin, async (req, res) => {
     try {
@@ -544,10 +601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   }
-
-  // Add new route for current activity
-  app.get("/api/activities/current", getCurrentActivity);
-
 
   app.get("/api/comments/:id", async (req, res) => {
     const postId = parseInt(req.params.id);
@@ -828,7 +881,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Comment content cannot be empty" });
       }
 
-      // First check if the comment exists
       const [comment] = await db
         .select()
         .from(posts)
@@ -841,12 +893,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Comment not found" });
       }
 
-      // Allow users to update their own comments only
+      // Fixed typo here from requser to req.user
       if (comment.userId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to update this comment" });
       }
 
-      // Update the comment
       const [updatedComment] = await db
         .update(posts)
         .set({ content })
@@ -883,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Comment not found" });
       }
 
-      // Allow users to delete their own comments or if they are admin
+            // Allow users to delete their own comments or if they are admin
       if (comment.userId !== req.user.id && !req.user.isAdmin) {
         return res.status(403).json({ message: "Not authorized to delete this comment" });
       }
@@ -1021,9 +1072,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           activity: activities,
           workoutVideos: sql<string>`
-            CASE 
-              WHEN COUNT(${workoutVideos.id}) = 0 THEN '[]'::jsonb
-              ELSE jsonb_agg(
+            COALESCE(
+              jsonb_agg(
                 CASE 
                   WHEN ${workoutVideos.id} IS NOT NULL 
                   THEN jsonb_build_object(
@@ -1031,9 +1081,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     'url', ${workoutVideos.url},
                     'description', ${workoutVideos.description}
                   )
+                  ELSE NULL
                 END
-              )
-            END`
+              ) FILTER (WHERE ${workoutVideos.id} IS NOT NULL),
+              '[]'::jsonb
+            )`
         })
         .from(activities)
         .leftJoin(workoutVideos, eq(activities.id, workoutVideos.activityId))
@@ -1049,16 +1101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await query;
 
       // Map the results to include workout videos
-      const mappedActivities = results.map(result => {
-        const workoutVideosArray = result.workoutVideos && result.workoutVideos !== '[null]' 
-          ? JSON.parse(result.workoutVideos)
-          : [];
-
-        return {
-          ...result.activity,
-          workoutVideos: workoutVideosArray.filter(Boolean) // Remove any null entries
-        };
-      });
+      const mappedActivities = results.map(result => ({
+        ...result.activity,
+        workoutVideos: result.workoutVideos ? JSON.parse(result.workoutVideos) : []
+      }));
 
       res.json(mappedActivities);
     } catch (error) {
@@ -1513,9 +1559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Add new route for current activity
   app.get("/api/activities/current", getCurrentActivity);
-
 
   // Return the HTTP server for Express to use
   return httpServer;

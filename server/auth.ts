@@ -36,29 +36,30 @@ export async function comparePasswords(supplied: string, stored: string) {
   }
 }
 
+// Export the session middleware configuration for use in WebSocket server
+export const sessionMiddleware = (secret: string) => session({
+  secret,
+  resave: false,
+  saveUninitialized: false,
+  store: storage.sessionStore,
+  cookie: {
+    secure: false, // Set to false for development
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  },
+  name: 'sid'
+});
+
 export function setupAuth(app: Express) {
   // Ensure we have a session secret
   if (!process.env.SESSION_SECRET) {
     process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   }
 
+  // Order matters: cookie parser -> session -> passport
   app.use(cookieParser(process.env.SESSION_SECRET));
-
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
-    cookie: {
-      secure: false, // Set to false for development
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    },
-    name: 'sid'
-  };
-
-  app.use(session(sessionSettings));
+  app.use(sessionMiddleware(process.env.SESSION_SECRET));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -87,6 +88,7 @@ export function setupAuth(app: Express) {
           return done(null, false);
         }
 
+        console.log('Login successful for user:', user.id);
         return done(null, user);
       } catch (error) {
         console.error('Login error:', error);
@@ -116,6 +118,7 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Auth routes
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
