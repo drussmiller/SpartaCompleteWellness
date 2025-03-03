@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -82,12 +82,7 @@ export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   week: integer("week").notNull(),
   day: integer("day").notNull(),
-  memoryVerse: text("memory_verse").notNull(),
-  memoryVerseReference: text("memory_verse_reference").notNull(),
-  scripture: text("scripture"),
-  workout: text("workout"),
-  tasks: text("tasks"),
-  description: text("description"),
+  contentFields: jsonb("content_fields").notNull().default([]),
   isComplete: boolean("is_complete").default(false),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -147,12 +142,14 @@ export const insertNotificationSchema = createInsertSchema(notifications);
 export const insertVideoSchema = createInsertSchema(videos);
 export const insertActivitySchema = createInsertSchema(activities)
   .extend({
-    workoutVideos: z.array(
+    contentFields: z.array(
       z.object({
-        url: z.string(),
-        description: z.string()
+        id: z.string(),
+        type: z.enum(['text', 'video']),
+        content: z.string(),
+        title: z.string()
       })
-    ).optional()
+    )
   });
 
 export const insertWorkoutVideoSchema = createInsertSchema(workoutVideos);
@@ -173,10 +170,11 @@ export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
 export type Activity = typeof activities.$inferSelect & {
-  workoutVideos?: Array<{
-    id: number;
-    url: string;
-    description: string;
+  contentFields: Array<{
+    id: string;
+    type: 'text' | 'video';
+    content: string;
+    title: string;
   }>;
 };
 

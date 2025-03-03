@@ -15,14 +15,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 
+type ContentField = {
+  id: string;
+  type: 'text' | 'video';
+  content: string;
+  title: string;
+};
+
 export default function ActivityManagementPage() {
   // All hooks at the top level
   const { user } = useAuth();
   const { toast } = useToast();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
-  const [workoutVideos, setWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
-  const [editingWorkoutVideos, setEditingWorkoutVideos] = useState<Array<{ url: string; description: string }>>([]);
+  const [contentFields, setContentFields] = useState<ContentField[]>([]);
+  const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
@@ -76,7 +83,7 @@ export default function ActivityManagementPage() {
   // Handler functions
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
-    setEditingWorkoutVideos(activity.workoutVideos || []);
+    setEditingContentFields(activity.contentFields || []);
     setEditActivityOpen(true);
   };
 
@@ -84,6 +91,47 @@ export default function ActivityManagementPage() {
     if (confirm("Are you sure you want to delete this activity?")) {
       deleteActivityMutation.mutate(activityId);
     }
+  };
+
+  const addContentField = (type: 'text' | 'video') => {
+    const newField: ContentField = {
+      id: Math.random().toString(36).substring(7),
+      type,
+      content: '',
+      title: ''
+    };
+    setContentFields([...contentFields, newField]);
+  };
+
+  const updateContentField = (id: string, field: keyof ContentField, value: string) => {
+    setContentFields(contentFields.map(f => 
+      f.id === id ? { ...f, [field]: value } : f
+    ));
+  };
+
+  const removeContentField = (id: string) => {
+    setContentFields(contentFields.filter(f => f.id !== id));
+  };
+
+  // Similar functions for editing mode
+  const addEditingContentField = (type: 'text' | 'video') => {
+    const newField: ContentField = {
+      id: Math.random().toString(36).substring(7),
+      type,
+      content: '',
+      title: ''
+    };
+    setEditingContentFields([...editingContentFields, newField]);
+  };
+
+  const updateEditingContentField = (id: string, field: keyof ContentField, value: string) => {
+    setEditingContentFields(editingContentFields.map(f => 
+      f.id === id ? { ...f, [field]: value } : f
+    ));
+  };
+
+  const removeEditingContentField = (id: string) => {
+    setEditingContentFields(editingContentFields.filter(f => f.id !== id));
   };
 
   // Render loading state
@@ -152,13 +200,7 @@ export default function ActivityManagementPage() {
             const data = {
               week: parseInt(formData.get('week') as string),
               day: parseInt(formData.get('day') as string),
-              memoryVerse: formData.get('memoryVerse'),
-              memoryVerseReference: formData.get('memoryVerseReference'),
-              scripture: formData.get('scripture'),
-              workout: formData.get('workout'),
-              tasks: formData.get('tasks'),
-              description: formData.get('description'),
-              workoutVideos
+              contentFields
             };
 
             try {
@@ -171,7 +213,7 @@ export default function ActivityManagementPage() {
               });
 
               queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-              setWorkoutVideos([]);
+              setContentFields([]);
               (e.target as HTMLFormElement).reset();
             } catch (error) {
               toast({
@@ -192,34 +234,54 @@ export default function ActivityManagementPage() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="memoryVerse">Memory Verse</Label>
-              <Textarea name="memoryVerse" required />
+            <div className="space-y-4">
+              {contentFields.map((field) => (
+                <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeContentField(field.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="Title"
+                    value={field.title}
+                    onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
+                  />
+                  {field.type === 'video' ? (
+                    <Input
+                      type="text"
+                      placeholder="YouTube Video URL"
+                      value={field.content}
+                      onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
+                    />
+                  ) : (
+                    <Textarea
+                      placeholder="Content"
+                      value={field.content}
+                      onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
 
-            <div>
-              <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
-              <Input name="memoryVerseReference" required />
-            </div>
-
-            <div>
-              <Label htmlFor="scripture">Scripture Reading</Label>
-              <Input name="scripture" />
-            </div>
-
-            <div>
-              <Label htmlFor="tasks">Tasks</Label>
-              <Textarea name="tasks" />
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea name="description" />
-            </div>
-
-            <div>
-              <Label htmlFor="workout">Workout</Label>
-              <Textarea name="workout" />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => addContentField('text')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Text
+              </Button>
+              <Button type="button" variant="outline" onClick={() => addContentField('video')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Video
+              </Button>
             </div>
 
             <Button type="submit">Add Activity</Button>
@@ -235,9 +297,6 @@ export default function ActivityManagementPage() {
                       <div>
                         <p className="font-medium">
                           Week {activity.week} - Day {activity.day}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {activity.memoryVerseReference}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -279,13 +338,7 @@ export default function ActivityManagementPage() {
                 const data = {
                   week: parseInt(formData.get('week') as string),
                   day: parseInt(formData.get('day') as string),
-                  memoryVerse: formData.get('memoryVerse'),
-                  memoryVerseReference: formData.get('memoryVerseReference'),
-                  scripture: formData.get('scripture'),
-                  workout: formData.get('workout'),
-                  tasks: formData.get('tasks'),
-                  description: formData.get('description'),
-                  workoutVideos: editingWorkoutVideos
+                  contentFields: editingContentFields
                 };
                 updateActivityMutation.mutate(data);
               }} className="space-y-4">
@@ -313,54 +366,54 @@ export default function ActivityManagementPage() {
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="memoryVerse">Memory Verse</Label>
-                  <Textarea 
-                    name="memoryVerse" 
-                    defaultValue={editingActivity?.memoryVerse} 
-                    required 
-                  />
+                <div className="space-y-4">
+                  {editingContentFields.map((field) => (
+                    <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEditingContentField(field.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Title"
+                        value={field.title}
+                        onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
+                      />
+                      {field.type === 'video' ? (
+                        <Input
+                          type="text"
+                          placeholder="YouTube Video URL"
+                          value={field.content}
+                          onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
+                        />
+                      ) : (
+                        <Textarea
+                          placeholder="Content"
+                          value={field.content}
+                          onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
 
-                <div>
-                  <Label htmlFor="memoryVerseReference">Memory Verse Reference</Label>
-                  <Input 
-                    name="memoryVerseReference" 
-                    defaultValue={editingActivity?.memoryVerseReference} 
-                    required 
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="scripture">Scripture Reading</Label>
-                  <Input 
-                    name="scripture" 
-                    defaultValue={editingActivity?.scripture} 
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="tasks">Tasks</Label>
-                  <Textarea 
-                    name="tasks" 
-                    defaultValue={editingActivity?.tasks} 
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    name="description" 
-                    defaultValue={editingActivity?.description} 
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="workout">Workout</Label>
-                  <Textarea 
-                    name="workout" 
-                    defaultValue={editingActivity?.workout} 
-                  />
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => addEditingContentField('text')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Text
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => addEditingContentField('video')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Video
+                  </Button>
                 </div>
 
                 <Button type="submit" disabled={updateActivityMutation.isPending}>

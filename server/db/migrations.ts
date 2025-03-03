@@ -6,6 +6,25 @@ export async function runMigrations() {
   try {
     console.log('Running migrations...');
 
+    // Add content_fields JSONB column to activities if it doesn't exist
+    await db.execute(sql`
+      ALTER TABLE activities
+      ADD COLUMN IF NOT EXISTS content_fields JSONB NOT NULL DEFAULT '[]'::jsonb;
+    `);
+
+    // Create activities table if it doesn't exist (with new structure)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS activities (
+        id SERIAL PRIMARY KEY,
+        week INTEGER NOT NULL,
+        day INTEGER NOT NULL,
+        content_fields JSONB NOT NULL DEFAULT '[]'::jsonb,
+        is_complete BOOLEAN DEFAULT false,
+        completed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Add createdAt to teams table if it doesn't exist
     await db.execute(sql`
       ALTER TABLE teams
@@ -25,7 +44,6 @@ export async function runMigrations() {
       ALTER TABLE users
       ADD COLUMN IF NOT EXISTS is_team_lead BOOLEAN DEFAULT false
     `);
-
 
     // Create users table
     await db.execute(sql`
@@ -95,24 +113,6 @@ export async function runMigrations() {
         title TEXT NOT NULL,
         message TEXT NOT NULL,
         read BOOLEAN DEFAULT false,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Create activities table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS activities (
-        id SERIAL PRIMARY KEY,
-        week INTEGER NOT NULL,
-        day INTEGER NOT NULL,
-        memory_verse TEXT NOT NULL,
-        memory_verse_reference TEXT NOT NULL,
-        scripture TEXT,
-        workout TEXT,
-        tasks TEXT,
-        description TEXT,
-        is_complete BOOLEAN DEFAULT false,
-        completed_at TIMESTAMP WITH TIME ZONE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
