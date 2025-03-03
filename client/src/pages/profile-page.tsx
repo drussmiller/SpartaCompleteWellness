@@ -116,14 +116,14 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="min-h-screen pb-20 relative">
+    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
           <h1 className="text-xl font-bold">Profile</h1>
         </div>
       </header>
 
-      <main className="p-4 space-y-6 pb-24">
+      <main className="p-4 space-y-6 pb-24 lg:pb-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
             <div className="relative">
@@ -402,7 +402,7 @@ export default function ProfilePage() {
         </Button>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50">
+      <div className="fixed bottom-0 left-0 lg:left-16 right-0 z-50">
         <BottomNav />
       </div>
     </div>

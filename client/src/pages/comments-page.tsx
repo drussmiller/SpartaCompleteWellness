@@ -356,22 +356,14 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <header className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="p-4 flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => window.history.back()}
-            className="mr-2 h-10 w-10 bg-gray-200 hover:bg-gray-300 rounded-md flex items-center justify-center"
-          >
-            <ChevronLeft className="h-9 w-9 text-black font-extrabold" /> {/* Changed to ChevronLeft */}
-          </Button>
-          <h1 className="text-xl font-bold truncate">Comments</h1>
+    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4">
+          <h1 className="text-xl font-bold">Comments</h1>
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 pb-28">
+      <main className="p-4 space-y-6 pb-24 lg:pb-4">
         {originalPost && (
           <div className="mb-6">
             {/* Assuming PostCard component exists */}
@@ -424,7 +416,7 @@ export default function CommentsPage() {
       </main>
 
       {/* Comment input section with fixed positioning */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border shadow-lg" style={{ zIndex: 40 }}>
+      <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-16 right-0 bg-background border-t border-border shadow-lg" style={{ zIndex: 40 }}>
         <div className="flex flex-col w-full">
           <Textarea
             ref={commentInputRef}
@@ -457,10 +449,8 @@ export default function CommentsPage() {
         </div>
       </div>
 
-      {/* Bottom navigation */}
-      <div className="pb-20">
-        <BottomNav />
-      </div>
+      {/* Bottom navigation is already responsive through the BottomNav component */}
+      <BottomNav />
     </div>
   );
 }

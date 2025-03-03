@@ -14,7 +14,7 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
-const KEY_LENGTH = 64; // Consistent key length for both hashing and comparison
+const KEY_LENGTH = 64;
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -62,10 +62,13 @@ export function setupAuth(app: Express) {
   // Add CORS settings if in development
   if (isDevelopment) {
     app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', req.headers.origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      const origin = req.headers.origin;
+      if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      }
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
       } else {
@@ -84,6 +87,7 @@ export function setupAuth(app: Express) {
     console.log('Session ID:', req.sessionID);
     console.log('Is Authenticated:', req.isAuthenticated());
     console.log('User:', req.user?.id);
+    console.log('Session:', req.session);
     next();
   });
 
@@ -144,6 +148,7 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     console.log('GET /api/user - Session:', req.sessionID);
     console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
+    console.log('GET /api/user - Full Session:', req.session);
     if (!req.isAuthenticated()) {
       console.log('Unauthenticated request to /api/user');
       return res.sendStatus(401);

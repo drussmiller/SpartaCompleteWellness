@@ -242,7 +242,7 @@ export default function AdminPage() {
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   return (
-    <div className="max-w-7xl mx-auto pb-20">
+    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
       <ScrollArea className="h-[calc(100vh-80px)]">
         <header className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4">
