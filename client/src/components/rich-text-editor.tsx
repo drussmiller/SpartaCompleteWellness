@@ -31,8 +31,8 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   }
 
   return (
-    <div className="border rounded-md">
-      <div className="flex items-center gap-1 p-2 border-b">
+    <div className="border rounded-md flex flex-col">
+      <div className="flex items-center gap-1 p-2 border-b bg-background sticky top-0">
         <Button
           variant="ghost"
           size="sm"
@@ -79,7 +79,9 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
           <LinkIcon className="h-4 w-4" />
         </Button>
       </div>
-      <EditorContent editor={editor} className="prose prose-sm max-w-none p-4" />
+      <div className="overflow-y-auto max-h-[300px]">
+        <EditorContent editor={editor} className="prose prose-sm max-w-none p-4" />
+      </div>
     </div>
   )
 }
