@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
+import { RichTextEditor } from "@/components/rich-text-editor";
 
 type ContentField = {
   id: string;
@@ -104,7 +105,7 @@ export default function ActivityManagementPage() {
   };
 
   const updateContentField = (id: string, field: keyof ContentField, value: string) => {
-    setContentFields(contentFields.map(f => 
+    setContentFields(contentFields.map(f =>
       f.id === id ? { ...f, [field]: value } : f
     ));
   };
@@ -125,7 +126,7 @@ export default function ActivityManagementPage() {
   };
 
   const updateEditingContentField = (id: string, field: keyof ContentField, value: string) => {
-    setEditingContentFields(editingContentFields.map(f => 
+    setEditingContentFields(editingContentFields.map(f =>
       f.id === id ? { ...f, [field]: value } : f
     ));
   };
@@ -152,7 +153,7 @@ export default function ActivityManagementPage() {
           <CardContent className="p-6">
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
             <p className="text-gray-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
-            <Button 
+            <Button
               className="mt-4"
               onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
             >
@@ -262,11 +263,9 @@ export default function ActivityManagementPage() {
                       onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
                     />
                   ) : (
-                    <Textarea
-                      placeholder="Content"
-                      value={field.content}
-                      onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
-                      className="min-h-[100px]"
+                    <RichTextEditor
+                      content={field.content}
+                      onChange={(newContent) => updateContentField(field.id, 'content', newContent)}
                     />
                   )}
                 </div>
@@ -345,23 +344,23 @@ export default function ActivityManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="week">Week</Label>
-                    <Input 
-                      type="number" 
-                      name="week" 
-                      defaultValue={editingActivity?.week} 
-                      required 
-                      min="1" 
+                    <Input
+                      type="number"
+                      name="week"
+                      defaultValue={editingActivity?.week}
+                      required
+                      min="1"
                     />
                   </div>
                   <div>
                     <Label htmlFor="day">Day</Label>
-                    <Input 
-                      type="number" 
-                      name="day" 
-                      defaultValue={editingActivity?.day} 
-                      required 
-                      min="1" 
-                      max="7" 
+                    <Input
+                      type="number"
+                      name="day"
+                      defaultValue={editingActivity?.day}
+                      required
+                      min="1"
+                      max="7"
                     />
                   </div>
                 </div>
@@ -394,11 +393,9 @@ export default function ActivityManagementPage() {
                           onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
                         />
                       ) : (
-                        <Textarea
-                          placeholder="Content"
-                          value={field.content}
-                          onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
-                          className="min-h-[100px]"
+                        <RichTextEditor
+                          content={field.content}
+                          onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
                         />
                       )}
                     </div>
