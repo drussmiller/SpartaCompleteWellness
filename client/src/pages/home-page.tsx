@@ -6,14 +6,25 @@ import { Loader2 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { TopNav } from "@/components/top-nav";
-import { getQueryFn } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function HomePage() {
   const { user } = useAuth();
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
-    queryFn: getQueryFn(),
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/posts");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.statusText}`);
+        }
+        return response.json();
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+        throw err;
+      }
+    },
     enabled: !!user,
   });
 
