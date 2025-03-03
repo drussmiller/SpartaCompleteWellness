@@ -6,18 +6,26 @@ export async function runMigrations() {
   try {
     console.log('Running migrations...');
 
+    // Add createdAt to teams table if it doesn't exist
+    await db.execute(sql`
+      ALTER TABLE teams
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    `);
+
+    // Update users table if needed
+    await db.execute(sql`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS team_joined_at TIMESTAMP WITH TIME ZONE,
+      ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 1,
+      ADD COLUMN IF NOT EXISTS current_day INTEGER DEFAULT 1
+    `);
+
     // Add isTeamLead column to users table
     await db.execute(sql`
       ALTER TABLE users
       ADD COLUMN IF NOT EXISTS is_team_lead BOOLEAN DEFAULT false
     `);
 
-    // Add progress tracking columns
-    await db.execute(sql`
-      ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 1,
-      ADD COLUMN IF NOT EXISTS current_day INTEGER DEFAULT 1
-    `);
 
     // Create users table
     await db.execute(sql`
