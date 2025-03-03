@@ -140,6 +140,18 @@ export async function runMigrations() {
       ADD COLUMN IF NOT EXISTS depth INTEGER DEFAULT 0
     `);
 
+    // Create reactions table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS reactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, post_id, type)
+      )
+    `);
+
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);

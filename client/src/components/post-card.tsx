@@ -8,6 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { MessageCircle, Trash2 } from "lucide-react";
+import { ReactionButton } from "@/components/reaction-button";
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
@@ -38,12 +39,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] }); //Invalidate cache
     },
     onSuccess: () => {
-      // Optionally update UI here, but invalidation above should handle it
       console.log("Post deleted successfully!");
     },
     onError: (error) => {
       console.error("Error deleting post:", error);
-      // Optionally display an error message to the user
     }
   });
 
@@ -101,12 +100,15 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <span className="text-xs text-muted-foreground">
             {new Date(post.createdAt!).toLocaleDateString()}
           </span>
-          <Link href={`/comments/${post.id}`}>
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <MessageCircle className="h-4 w-4" />
-              {commentCount}
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 ml-auto">
+            <ReactionButton postId={post.id} />
+            <Link href={`/comments/${post.id}`}>
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <MessageCircle className="h-4 w-4" />
+                {commentCount}
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardContent>
     </Card>
