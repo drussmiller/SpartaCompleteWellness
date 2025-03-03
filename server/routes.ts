@@ -53,6 +53,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     next();
   });
 
+  // Debug middleware to log all requests
+  router.use((req, res, next) => {
+    console.log('Request:', {
+      method: req.method,
+      path: req.path,
+      headers: req.headers,
+      session: req.session,
+      isAuthenticated: req.isAuthenticated?.() || false,
+      user: req.user?.id
+    });
+    next();
+  });
+
   // Simple ping endpoint to verify API functionality
   router.get("/api/ping", (req, res) => {
     res.json({ message: "pong" });
@@ -63,86 +76,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
 
-  // Posts endpoints
-  router.get("/api/posts", authenticate, async (req, res) => {
-    try {
-      console.log('Fetching posts for user:', req.user?.id);
-      const posts = await storage.getAllPosts();
-      console.log('Raw posts:', posts);
-
-      // For each post, get its author information
-      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
-        const author = await storage.getUser(post.userId);
-        return {
-          ...post,
-          author: author || null
-        };
-      }));
-
-      console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
-      res.json(postsWithAuthors);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-      res.status(500).json({ message: "Failed to fetch posts" });
-    }
-  });
-
-  // Create post endpoint
-  router.post("/api/posts", authenticate, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const { content, type, imageUrl } = req.body;
-      const userId = req.user.id;
-
-      // Validate the post data
-      if (!type || !['food', 'workout', 'scripture', 'memory_verse', 'comment'].includes(type)) {
-        return res.status(400).json({ message: "Invalid post type" });
-      }
-
-      // Calculate points based on post type
-      let points = 0;
-      switch (type) {
-        case 'food':
-        case 'workout':
-        case 'scripture':
-          points = 3;
-          break;
-        case 'memory_verse':
-          points = 10;
-          break;
-        default:
-          points = 0;
-      }
-
-      // Create the post
-      const post = await storage.createPost({
-        userId,
-        content,
-        type,
-        imageUrl,
-        points,
-        createdAt: new Date(),
-        parentId: null,
-        depth: 0
-      });
-
-      // Get the author information
-      const author = await storage.getUser(userId);
-
-      // Return the post with author information
-      res.status(201).json({
-        ...post,
-        author
-      });
-
-    } catch (error) {
-      console.error('Error creating post:', error);
-      res.status(500).json({ message: "Failed to create post" });
-    }
-  });
 
   // Add reactions endpoints
   router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
@@ -191,56 +124,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Get users who reacted with a specific emoji
-  router.get("/api/posts/:postId/reactions/users", authenticate, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
+  // Posts endpoints
+  router.get("/api/posts", authenticate, async (req, res) => {
     try {
-      const postId = parseInt(req.params.postId);
-      const reactionType = req.query.type;
-
-      if (!reactionType) {
-        return res.status(400).json({ error: "Reaction type is required" });
-      }
-
-      const usersWhoReacted = await storage.getUsersWhoReacted(postId, reactionType);
-      res.json(usersWhoReacted);
-    } catch (error) {
-      console.error("Error fetching users who reacted:", error);
-      res.status(500).json({ error: "Failed to fetch users who reacted" });
-    }
-  });
-
-
-  // Delete post endpoint
-  router.delete("/api/posts/:id", authenticate, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const postId = parseInt(req.params.id);
-      const userId = req.user.id;
-
-      // Get all posts and find the specific one
+      console.log('Fetching posts for user:', req.user?.id);
       const posts = await storage.getAllPosts();
-      const post = posts.find(p => p.id === postId);
+      console.log('Raw posts:', posts);
 
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
+      // For each post, get its author information
+      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+        const author = await storage.getUser(post.userId);
+        return {
+          ...post,
+          author: author || null
+        };
+      }));
 
-      // Check if user owns the post
-      if (post.userId !== userId && !req.user.isAdmin) {
-        return res.status(403).json({ message: "Not authorized to delete this post" });
-      }
-
-      // Delete the post
-      await storage.deletePost(postId);
-
-      res.status(200).json({ message: "Post deleted successfully" });
+      console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
+      res.json(postsWithAuthors);
     } catch (error) {
-      console.error('Error deleting post:', error);
-      res.status(500).json({ message: "Failed to delete post" });
+      console.error('Error fetching posts:', error);
+      res.status(500).json({ message: "Failed to fetch posts" });
     }
   });
 

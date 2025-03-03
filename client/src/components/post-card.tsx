@@ -13,9 +13,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 // This component shows multiple reaction emojis with counts
 function ReactionSummary({ postId }: { postId: number }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedReactionType, setSelectedReactionType] = useState<string | null>(null);
-
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
   });
@@ -28,30 +25,37 @@ function ReactionSummary({ postId }: { postId: number }) {
     }
   });
 
-  const getEmojiForType = (type: string) => {
-    const allEmojis = {
-      // Love
-      heart: { emoji: "❤️", color: "text-red-500" },
+  // Get the emoji mapping from imported module
+  // This is a little hack to access the same emoji data from reaction-button
+  // A better approach would be to move this to a shared constants file
+  const getEmojiForType = (type: string): string => {
+    const allEmojis: Record<string, { emoji: string, color: string }> = {
+      like: { emoji: "👍", color: "text-blue-500" },
+      love: { emoji: "❤️", color: "text-red-500" },
+      laugh: { emoji: "😂", color: "text-yellow-500" },
+      wow: { emoji: "😮", color: "text-yellow-500" },
+      sad: { emoji: "😢", color: "text-blue-500" },
+      angry: { emoji: "😡", color: "text-red-500" },
+      celebrate: { emoji: "🎉", color: "text-purple-500" },
+      clap: { emoji: "👏", color: "text-yellow-500" },
       fire: { emoji: "🔥", color: "text-orange-500" },
-      smiling_face: { emoji: "😊", color: "text-yellow-500" },
-
-      // Encouragement
-      clap: { emoji: "👏", color: "text-amber-500" },
+      pray: { emoji: "🙏", color: "text-amber-500" },
+      support: { emoji: "🤗", color: "text-green-500" },
       muscle: { emoji: "💪", color: "text-blue-500" },
-      thumbs_up: { emoji: "👍", color: "text-blue-500" },
-
-      // Sporty
-      basketball: { emoji: "🏀", color: "text-orange-500" },
-      running: { emoji: "🏃", color: "text-green-500" },
-      weight: { emoji: "🏋️", color: "text-stone-500" },
-
-      // Spiritual
+      star: { emoji: "⭐", color: "text-yellow-500" },
+      heart_eyes: { emoji: "😍", color: "text-red-500" },
+      raised_hands: { emoji: "🙌", color: "text-amber-500" },
+      trophy: { emoji: "🏆", color: "text-yellow-500" },
+      thumbs_down: { emoji: "👎", color: "text-slate-500" },
+      salad: { emoji: "🥗", color: "text-green-500" },
+      fruit: { emoji: "🍎", color: "text-red-500" },
+      water: { emoji: "💧", color: "text-blue-500" },
+      run: { emoji: "🏃", color: "text-purple-500" },
+      bike: { emoji: "🚴", color: "text-green-500" },
+      weight: { emoji: "🏋️", color: "text-indigo-500" },
       angel: { emoji: "😇", color: "text-sky-500" },
-      dove: { emoji: "🕊️", color: "text-sky-500" },
-      church: { emoji: "⛪", color: "text-slate-500" },
-      bible: { emoji: "📖", color: "text-amber-500" },
-      cross: { emoji: "✝️", color: "text-red-500" },
-      faith: { emoji: "🙌", color: "text-amber-500" },
+      dove: { emoji: "🕊️", color: "text-white-500" },
+      church: { emoji: "⛪", color: "text-stone-500" },
       idea: { emoji: "💡", color: "text-yellow-500" },
       rocket: { emoji: "🚀", color: "text-indigo-500" },
       sparkles: { emoji: "✨", color: "text-purple-500" },
@@ -65,58 +69,29 @@ function ReactionSummary({ postId }: { postId: number }) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5); // Show at most 5 reaction types
 
-  const handleReactionClick = (type: string) => {
-    setSelectedReactionType(type);
-    setDrawerOpen(true);
-  };
-
   if (sortedReactions.length === 0) return null;
 
   return (
-    <>
-      <div className="flex items-center gap-1 text-sm">
-        <TooltipProvider>
-          <div className="flex flex-wrap gap-1">
-            {sortedReactions.map(([type, count]) => (
-              <Tooltip key={type}>
-                <TooltipTrigger asChild>
-                  <button 
-                    onClick={() => handleReactionClick(type)}
-                    className="flex items-center bg-muted rounded-full px-2 py-0.5 hover:bg-muted/80"
-                  >
-                    <span>{getEmojiForType(type)}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{type.replace('_', ' ')}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </TooltipProvider>
-      </div>
-      <UserReactionsDrawer 
-        postId={postId}
-        reactionType={selectedReactionType}
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
-    </>
-  );
-}
-
-// Placeholder for UserReactionsDrawer component
-const UserReactionsDrawer = ({ postId, reactionType, isOpen, onClose }: { postId: number; reactionType: string | null; isOpen: boolean; onClose: () => void }) => {
-  if (!isOpen) return null;
-  return (
-    <div>
-      {/* Implementation for UserReactionsDrawer goes here */}
-      <h2>Reactions for {reactionType} on Post ID: {postId}</h2>
-      <button onClick={onClose}>Close</button>
+    <div className="flex items-center gap-1 text-sm">
+      <TooltipProvider>
+        <div className="flex flex-wrap gap-1">
+          {sortedReactions.map(([type, count]) => (
+            <Tooltip key={type}>
+              <TooltipTrigger asChild>
+                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
+                  <span>{getEmojiForType(type)}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{type.replace('_', ' ')}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </TooltipProvider>
     </div>
   );
-};
-
+}
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
