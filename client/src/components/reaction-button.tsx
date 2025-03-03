@@ -154,12 +154,24 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
   }, {} as Record<ReactionType, number>);
 
   const handleReaction = (type: ReactionType) => {
-    const hasReacted = reactions.some((r) => r.type === type && r.userId === Number(localStorage.getItem('userId')));
-    if (hasReacted) {
+    const userReactions = reactions.filter(r => r.userId === Number(localStorage.getItem('userId')));
+    const hasReactedWithSameType = userReactions.some(r => r.type === type);
+    
+    // If user already reacted with a different type, remove that reaction first
+    if (userReactions.length > 0 && !hasReactedWithSameType) {
+      // Remove all existing user reactions
+      userReactions.forEach(reaction => {
+        removeReactionMutation.mutate(reaction.type as ReactionType);
+      });
+    }
+    
+    // Toggle the current reaction
+    if (hasReactedWithSameType) {
       removeReactionMutation.mutate(type);
     } else {
       addReactionMutation.mutate(type);
     }
+    
     setIsOpen(false);
   };
 
