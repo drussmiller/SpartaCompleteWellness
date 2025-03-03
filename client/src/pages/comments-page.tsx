@@ -110,7 +110,7 @@ function CommentThread({
 
   return (
     <div className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}>
-      <div 
+      <div
         className={`
           flex items-start gap-3 p-3 rounded-lg border 
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
@@ -143,16 +143,16 @@ function CommentThread({
                 className="text-sm mt-1"
               />
               <div className="flex justify-end gap-2 mt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleEditCancel}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                <Button
+                  variant="default"
+                  size="sm"
                   onClick={handleEditSave}
                 >
                   Update
@@ -168,12 +168,12 @@ function CommentThread({
         {/* Action Drawer */}
         {showActions && (
           <div
-            className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+            className="fixed inset-0 z-[100] flex items-end justify-center pb-[96px]"
             onClick={() => setShowActions(false)}
           >
             <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
-            <div 
-              className="fixed bottom-0 z-50 w-full max-w-md rounded-t-lg bg-background p-0 shadow-lg sm:rounded-lg overflow-hidden"
+            <div
+              className="relative w-full max-w-md rounded-lg bg-background p-0 shadow-lg sm:rounded-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col">
@@ -423,7 +423,8 @@ export default function CommentsPage() {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg"> {/* Fixed position comment input that overlays the nav */}
+      {/* Comment input section with fixed positioning */}
+      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border shadow-lg" style={{ zIndex: 40 }}>
         <div className="flex flex-col w-full">
           <Textarea
             ref={commentInputRef}
@@ -443,9 +444,9 @@ export default function CommentsPage() {
               <span className="ml-2">
                 Replying to {comments.find(c => c.id === replyTo)?.author?.username || `comment #${replyTo}`}
               </span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-auto py-1 px-3 text-sm mr-2"
                 onClick={() => setReplyTo(null)}
               >
@@ -455,6 +456,8 @@ export default function CommentsPage() {
           )}
         </div>
       </div>
+
+      {/* Bottom navigation */}
       <div className="pb-20">
         <BottomNav />
       </div>
