@@ -20,7 +20,7 @@ export default function CommentsPage() {
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  console.log("=== CommentsPage Debug ===");
+  console.log("\n=== CommentsPage Debug ===");
   console.log("Current postId:", postId);
   console.log("Numeric postId:", numericPostId);
   console.log("Current user:", currentUser?.id);
@@ -28,6 +28,7 @@ export default function CommentsPage() {
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${numericPostId}`],
     queryFn: async () => {
+      if (!numericPostId) throw new Error("No post ID provided");
       console.log("Fetching post with ID:", numericPostId);
       const res = await apiRequest("GET", `/api/posts/${numericPostId}`);
       if (!res.ok) {
@@ -39,12 +40,13 @@ export default function CommentsPage() {
       console.log("Received post data:", data);
       return data;
     },
-    enabled: !!numericPostId,
+    enabled: !!numericPostId
   });
 
-  const { data: comments = [], isLoading: areCommentsLoading, error: commentsError, refetch } = useQuery({
+  const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: [`/api/posts/comments/${numericPostId}`],
     queryFn: async () => {
+      if (!numericPostId) throw new Error("No post ID provided");
       console.log("Fetching comments for post:", numericPostId);
       const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
       if (!res.ok) {
@@ -54,9 +56,13 @@ export default function CommentsPage() {
       }
       const data = await res.json();
       console.log("Received comments data:", data);
+      if (!Array.isArray(data)) {
+        console.error("Comments data is not an array:", data);
+        return [];
+      }
       return data;
     },
-    enabled: !!numericPostId,
+    enabled: !!numericPostId
   });
 
   console.log("=== Current State ===");
@@ -130,7 +136,7 @@ export default function CommentsPage() {
     onSuccess: () => {
       setComment("");
       setReplyTo(null);
-      refetch();
+      //refetch(); // Removed as it's handled by invalidateQueries
       queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${numericPostId}`] });
       toast({
         description: "Comment posted successfully",
@@ -154,8 +160,8 @@ export default function CommentsPage() {
             <div className="border rounded-lg p-4 bg-background">
               <div className="flex items-start gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} 
+                  <AvatarImage
+                    src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`}
                   />
                   <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
@@ -186,8 +192,8 @@ export default function CommentsPage() {
                 <div key={comment.id} className="border rounded-lg p-4 bg-background">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage 
-                        src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} 
+                      <AvatarImage
+                        src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
                       />
                       <AvatarFallback>{comment.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
