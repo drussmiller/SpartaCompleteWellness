@@ -318,36 +318,59 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   app.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
+        console.log('No file received');
+        return res.status(400).json({ error: "No file uploaded" });
       }
 
-      console.log('DEBUG: Upload attempt');
-      console.log('DEBUG: File info:', req.file.originalname);
+      // Log request details
+      console.log('Upload request received:', {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
 
       try {
-        const { value: text } = await mammoth.extractRawText({ 
+        // Extract text from document
+        const { value } = await mammoth.extractRawText({ 
           buffer: req.file.buffer 
         });
 
-        console.log('DEBUG: Extracted text length:', text?.length);
-        console.log('DEBUG: First 100 chars:', text?.substring(0, 100));
+        // Validate extracted content
+        if (!value) {
+          console.log('No content extracted from document');
+          return res.status(400).json({ error: "No content could be extracted from document" });
+        }
 
-        // Send minimal response
-        const response = { ok: true };
-        console.log('DEBUG: About to send response:', response);
+        console.log('Content extracted successfully:', {
+          length: value.length,
+          preview: value.substring(0, 50)
+        });
 
-        return res.json(response);
+        // Create a minimal response first
+        const response = {
+          success: true,
+          message: "Document processed successfully"
+        };
 
-      } catch (innerError) {
-        console.log('DEBUG: Inner error:', innerError);
-        throw innerError;
+        // Log response before sending
+        console.log('Sending response:', JSON.stringify(response));
+
+        // Send response with explicit headers
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(200).send(JSON.stringify(response));
+
+      } catch (processingError) {
+        console.log('Document processing error:', processingError);
+        return res.status(500).json({
+          error: "Error processing document",
+          details: processingError.message
+        });
       }
-
     } catch (error) {
-      console.log('DEBUG: Outer error:', error);
-      return res.status(500).json({ 
-        ok: false,
-        error: 'Document processing failed' 
+      console.log('Upload endpoint error:', error);
+      return res.status(500).json({
+        error: "Upload failed",
+        details: error.message
       });
     }
   });
