@@ -123,11 +123,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       console.log('Parsed activity data:', JSON.stringify(parsedData.data, null, 2));
 
-      const activity = await storage.createActivity(parsedData.data);
-      res.status(201).json(activity);
+      try {
+        const activity = await storage.createActivity(parsedData.data);
+        res.status(201).json(activity);
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        res.status(500).json({ 
+          message: "Failed to create activity in database",
+          error: dbError instanceof Error ? dbError.message : "Unknown error"
+        });
+      }
     } catch (error) {
       console.error('Error creating activity:', error);
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create activity" });
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to create activity",
+        error: error instanceof Error ? error.stack : undefined
+      });
     }
   });
 

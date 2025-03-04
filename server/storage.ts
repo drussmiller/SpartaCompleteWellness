@@ -449,22 +449,35 @@ export class DatabaseStorage implements IStorage {
       const activityData = {
         week: data.week,
         day: data.day,
-        contentFields: Array.isArray(data.contentFields) ? data.contentFields : [],
+        contentFields: JSON.stringify(Array.isArray(data.contentFields) ? data.contentFields : []),
         isComplete: false
       };
 
-      console.log('Inserting activity with data:', JSON.stringify(activityData, null, 2));
+      console.log('Inserting activity data:', JSON.stringify(activityData, null, 2));
 
-      const [newActivity] = await db
-        .insert(activities)
-        .values(activityData)
-        .returning();
+      try {
+        const [newActivity] = await db
+          .insert(activities)
+          .values(activityData)
+          .returning();
 
-      console.log('Created activity:', JSON.stringify(newActivity, null, 2));
-      return newActivity;
+        console.log('Created activity:', JSON.stringify(newActivity, null, 2));
+        return newActivity;
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        console.error('Error details:', {
+          message: dbError instanceof Error ? dbError.message : 'Unknown error',
+          stack: dbError instanceof Error ? dbError.stack : undefined
+        });
+        throw new Error("Failed to create activity in database");
+      }
     } catch (error) {
-      console.error('Error creating activity in database:', error);
-      throw new Error('Failed to create activity in database');
+      console.error('Error creating activity:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
     }
   }
 
