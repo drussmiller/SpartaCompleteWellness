@@ -6,13 +6,60 @@ export async function runMigrations() {
   try {
     console.log('Running migrations...');
 
-    // Add content_fields JSONB column to activities if it doesn't exist
+    // Create users table with all required columns
     await db.execute(sql`
-      ALTER TABLE activities
-      ADD COLUMN IF NOT EXISTS content_fields JSONB NOT NULL DEFAULT '[]'::jsonb;
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        preferred_name TEXT,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        is_admin BOOLEAN DEFAULT false,
+        is_team_lead BOOLEAN DEFAULT false,
+        team_id INTEGER,
+        points INTEGER DEFAULT 0,
+        weight INTEGER,
+        waist INTEGER,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        image_url TEXT,
+        team_joined_at TIMESTAMP WITH TIME ZONE,
+        current_week INTEGER DEFAULT 1,
+        current_day INTEGER DEFAULT 1
+      )
     `);
 
-    // Create activities table if it doesn't exist (with new structure)
+    // Insert default admin if not exists with properly hashed password
+    const hashedPassword = await hashPassword('admin123');
+    await db.execute(sql`
+      INSERT INTO users (username, email, password, is_admin)
+      VALUES ('admin', 'admin@example.com', ${hashedPassword}, true)
+      ON CONFLICT DO NOTHING
+    `);
+
+    // Create other tables as needed
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS teams (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        content TEXT,
+        image_url TEXT,
+        points INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        parent_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+        depth INTEGER DEFAULT 0
+      )
+    `);
+
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS activities (
         id SERIAL PRIMARY KEY,
@@ -25,87 +72,6 @@ export async function runMigrations() {
       )
     `);
 
-    // Add createdAt to teams table if it doesn't exist
-    await db.execute(sql`
-      ALTER TABLE teams
-      ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    `);
-
-    // Update users table if needed
-    await db.execute(sql`
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS team_joined_at TIMESTAMP WITH TIME ZONE,
-      ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 1,
-      ADD COLUMN IF NOT EXISTS current_day INTEGER DEFAULT 1
-    `);
-
-    // Add isTeamLead column to users table
-    await db.execute(sql`
-      ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS is_team_lead BOOLEAN DEFAULT false
-    `);
-
-    // Create users table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE,
-        preferred_name TEXT,
-        email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        is_admin BOOLEAN DEFAULT false,
-        team_id INTEGER,
-        points INTEGER DEFAULT 0,
-        weight INTEGER,
-        waist INTEGER,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        image_url TEXT
-      )
-    `);
-
-    // Insert default admin if not exists with properly hashed password
-    const hashedPassword = await hashPassword('admin123');
-    await db.execute(sql`
-      INSERT INTO users (username, email, password, is_admin)
-      VALUES ('admin', 'admin@example.com', ${hashedPassword}, true)
-      ON CONFLICT DO NOTHING
-    `);
-
-    // Create teams table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS teams (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT
-      )
-    `);
-
-    // Create posts table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS posts (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        type TEXT NOT NULL,
-        content TEXT,
-        image_url TEXT,
-        points INTEGER NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        parent_id INTEGER REFERENCES posts(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Create measurements table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS measurements (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        weight INTEGER,
-        waist INTEGER,
-        date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Create notifications table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
@@ -117,38 +83,16 @@ export async function runMigrations() {
       )
     `);
 
-    // Create workout_videos table
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS workout_videos (
+      CREATE TABLE IF NOT EXISTS measurements (
         id SERIAL PRIMARY KEY,
-        activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
-        url TEXT NOT NULL,
-        description TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        user_id INTEGER NOT NULL,
+        weight INTEGER,
+        waist INTEGER,
+        date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Create videos table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS videos (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        url TEXT NOT NULL,
-        thumbnail TEXT,
-        category TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        team_id INTEGER
-      )
-    `);
-
-    // Add depth column to posts table
-    await db.execute(sql`
-      ALTER TABLE posts
-      ADD COLUMN IF NOT EXISTS depth INTEGER DEFAULT 0
-    `);
-
-    // Create reactions table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS reactions (
         id SERIAL PRIMARY KEY,
