@@ -323,92 +323,72 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       console.log('Processing document:', req.file.originalname);
 
-      // Convert the uploaded document to HTML with enhanced options
-      const result = await mammoth.convertToHtml(
-        { buffer: req.file.buffer },
-        {
-          convertImage: mammoth.images.imgElement(function(image) {
-            return image.read().then(function(imageBuffer) {
-              return {
-                src: `data:${image.contentType};base64,${imageBuffer.toString('base64')}`
-              };
-            });
-          }),
-          styleMap: [
-            "p[style-name='Section Title'] => h1:fresh",
-            "p[style-name='Subsection Title'] => h2:fresh"
-          ]
-        }
-      );
-
-      if (result.messages.length > 0) {
-        console.log('Mammoth conversion messages:', result.messages);
-      }
-
-      // Clean up HTML content
-      let html = result.value
-        // Remove any doctype declarations
-        .replace(/<!DOCTYPE[^>]*>/i, '')
-        // Remove any XML declarations
-        .replace(/<\?xml[^>]*\?>/i, '')
-        // Ensure proper HTML structure
-        .trim();
-
-      console.log('Initial HTML content:', html.substring(0, 200) + '...');
-
-      // Extract and transform YouTube links into embeds
-      const youtubeRegex = /(?:href=")?(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:")?/g;
-      html = html.replace(youtubeRegex, (match, videoId) => {
-        console.log('Found YouTube video ID:', videoId);
-        const embedHtml = `<div class="video-wrapper"><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-        console.log('Generated embed HTML:', embedHtml);
-        return embedHtml;
+      // First convert the document to raw HTML
+      const { value: rawHtml, messages } = await mammoth.extractRawText({ 
+        buffer: req.file.buffer 
       });
 
-      // Clean up any potential script tags or other unsafe content
-      html = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        // Remove any potential unsafe attributes
-        .replace(/on\w+="[^"]*"/g, '')
-        .replace(/javascript:/gi, '');
+      if (messages.length > 0) {
+        console.log('Conversion messages:', messages);
+      }
 
-      // Add proper spacing between elements
-      html = html
-        .replace(/><\/p>/g, '>&nbsp;</p>')
-        .replace(/\n/g, '<br>');
+      // Basic HTML structure
+      let html = `
+        <div class="document-content">
+          ${rawHtml.split('\n').map(line => 
+            line.trim() ? `<p>${line}</p>` : ''
+          ).join('\n')}
+        </div>
+      `;
 
-      // Ensure proper video wrapper styling
-      const finalHtml = `<div class="content-wrapper">${html}</div>
-      <style>
-        .content-wrapper {
-          font-family: system-ui, -apple-system, sans-serif;
-        }
-        .video-wrapper {
-          position: relative;
-          padding-bottom: 56.25%;
-          height: 0;
-          margin: 1rem 0;
-          overflow: hidden;
-        }
-        .video-wrapper iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          border: 0;
-        }
-      </style>`;
+      // Extract and transform YouTube links
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      html = html.replace(youtubeRegex, (match, videoId) => {
+        console.log('Found YouTube video:', videoId);
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      });
 
-      console.log('Final processed content:', finalHtml.substring(0, 200) + '...');
+      // Wrap the content with proper styling
+      const finalHtml = `
+        <div class="content-wrapper">
+          ${html}
+          <style>
+            .content-wrapper {
+              font-family; system-ui, -apple-system, sans-serif;
+              line-height: 1.6;
+            }
+            .document-content p {
+              margin-bottom: 1em;
+            }
+            .video-wrapper {
+              position: relative;
+              padding-bottom: 56.25%;
+              height: 0;
+              margin: 1rem 0;
+              overflow: hidden;
+            }
+            .video-wrapper iframe {
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              border: 0;
+            }
+          </style>
+        </div>
+      `.trim();
 
+      // Set proper content type and send response
+      res.setHeader('Content-Type', 'application/json');
       res.json({ content: finalHtml });
+
     } catch (error) {
-      console.error('Error processing document:', error);
-      res.status(500).json({ 
+      console.error('Document processing error:', error);
+      res.status(500).json({
         message: "Failed to process document",
-        error: error instanceof Error ? error.message : undefined,
-        details: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined
       });
     }
   });
