@@ -321,52 +321,68 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log('Processing document:', req.file.originalname);
+      console.log('[Document Upload] Starting document processing');
+      console.log('[Document Upload] File details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
 
       // Extract raw text only
       const { value: rawText } = await mammoth.extractRawText({ 
         buffer: req.file.buffer 
       });
 
-      // Log the raw text for debugging
-      console.log('Raw text extracted:', rawText.substring(0, 200));
+      console.log('[Document Upload] Raw text extracted, length:', rawText.length);
 
       try {
-        // Process text into paragraphs
+        // Basic text processing - just paragraphs for now
         const paragraphs = rawText
           .split('\n\n')
           .filter(p => p.trim())
-          .map(p => p.replace(/[^\x20-\x7E\s]/g, '')); // Keep only printable ASCII and whitespace
+          .map(p => p.replace(/[^\x20-\x7E\s]/g, ''));
 
-        console.log('Processed paragraphs:', paragraphs.length);
+        console.log('[Document Upload] Processed paragraphs:', {
+          count: paragraphs.length,
+          firstParagraph: paragraphs[0]?.substring(0, 100)
+        });
 
-        // Convert paragraphs to HTML
-        const htmlContent = paragraphs.map(p => `<p>${p}</p>`).join('');
+        // Basic HTML conversion
+        const htmlContent = paragraphs
+          .map(p => `<p>${p
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;')}</p>`)
+          .join('');
 
-        // Create minimal response object
-        const responseData = {
-          content: htmlContent
-        };
-
-        // Test JSON serialization
+        // Test JSON serialization before sending
+        const testResponse = { content: htmlContent };
         try {
-          JSON.stringify(responseData);
-          console.log('JSON serialization successful');
+          console.log('[Document Upload] Testing JSON serialization');
+          const testJson = JSON.stringify(testResponse);
+          JSON.parse(testJson); // Validate it can be parsed back
+          console.log('[Document Upload] JSON serialization successful');
         } catch (jsonError) {
-          console.error('JSON serialization failed:', jsonError);
-          throw new Error('Failed to serialize response data');
+          console.error('[Document Upload] JSON serialization failed:', jsonError);
+          throw new Error(`JSON serialization failed: ${jsonError.message}`);
         }
 
         // Send response
-        res.json(responseData);
+        res.json(testResponse);
 
       } catch (processingError) {
-        console.error('Content processing error:', processingError);
+        console.error('[Document Upload] Content processing error:', {
+          name: processingError.name,
+          message: processingError.message,
+          stack: processingError.stack
+        });
         throw processingError;
       }
 
     } catch (error) {
-      console.error('Document processing error:', {
+      console.error('[Document Upload] Fatal error:', {
         name: error.name,
         message: error.message,
         stack: error.stack,
