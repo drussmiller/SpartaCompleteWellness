@@ -451,7 +451,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           and(
             eq(posts.userId, req.user.id),
             gte(posts.createdAt, utcStart),
-            lt(posts.createdAt, utcEnd),
+            lte(posts.createdAt, utcEnd),
             isNull(posts.parentId) // Don't count comments
           )
         )

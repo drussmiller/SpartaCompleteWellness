@@ -7,9 +7,11 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { TopNav } from "@/components/top-nav";
 import { apiRequest } from "@/lib/queryClient";
+import { usePostLimits } from "@/hooks/use-post-limits";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const { remaining } = usePostLimits();
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
@@ -55,7 +57,7 @@ export default function HomePage() {
     <div className="max-w-2xl mx-auto pb-20">
       <TopNav />
       <main className="p-4 space-y-4">
-        <CreatePostDialog />
+        <CreatePostDialog remaining={remaining} />
         {posts?.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
