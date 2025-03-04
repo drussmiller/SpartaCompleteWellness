@@ -5,7 +5,6 @@ import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
-import { TopNav } from "@/components/top-nav";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 
@@ -55,9 +54,13 @@ export default function HomePage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-20">
-      <TopNav />
+      <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold">Home</h1>
+          <CreatePostDialog remaining={remaining} />
+        </div>
+      </div>
       <main className="p-4 space-y-4">
-        <CreatePostDialog remaining={remaining} />
         {posts?.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
