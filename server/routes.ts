@@ -321,62 +321,56 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log('[Document Upload] Starting file processing');
-      console.log('[Document Upload] File details:', {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
+      console.log('[Upload] Starting with file:', {
+        name: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype
       });
 
-      // First just try to extract text
-      const { value: rawText } = await mammoth.extractRawText({ 
+      // Extract text only
+      const { value: text } = await mammoth.extractRawText({ 
         buffer: req.file.buffer 
       });
 
-      // Clean the text of any problematic characters
-      const cleanText = rawText.replace(/[^\x20-\x7E\s]/g, '')
-                              .trim();
+      console.log('[Upload] Extracted text length:', text.length);
 
-      console.log('[Document Upload] Text extracted and cleaned:', {
-        originalLength: rawText.length,
-        cleanedLength: cleanText.length,
-        sample: cleanText.substring(0, 100)
-      });
-
-      // First test if we can send just the plain text
-      const plainResponse = { 
-        content: cleanText,
-        type: 'text'
+      // Create the most basic response possible
+      const response = {
+        text: text.slice(0, 1000000) // Limit to 1MB of text
       };
 
-      try {
-        // Test serialization
-        const testJson = JSON.stringify(plainResponse);
-        console.log('[Document Upload] Test JSON serialization successful, length:', testJson.length);
+      console.log('[Upload] Response object:', {
+        type: typeof response,
+        hasText: Boolean(response.text),
+        textLength: response.text.length
+      });
 
-        // If we got here, send the response
+      // Test JSON serialization
+      try {
+        const json = JSON.stringify(response);
+        console.log('[Upload] JSON string length:', json.length);
+        // Test parse to validate
+        JSON.parse(json);
+        console.log('[Upload] JSON validation successful');
+
+        // Send response
         res.setHeader('Content-Type', 'application/json');
-        res.send(testJson);
-      } catch (jsonError) {
-        console.error('[Document Upload] JSON serialization error:', {
-          error: jsonError,
-          responseType: typeof plainResponse,
-          contentType: typeof plainResponse.content,
-          contentLength: plainResponse.content.length
-        });
-        throw new Error('Failed to serialize response');
+        res.send(json);
+      } catch (e) {
+        console.error('[Upload] JSON error:', e);
+        throw new Error('JSON serialization failed');
       }
 
     } catch (error) {
-      console.error('[Document Upload] Processing error:', {
+      console.error('[Upload] Error:', {
         name: error.name,
         message: error.message,
         stack: error.stack
       });
 
       res.status(500).json({
-        message: "Failed to process document",
-        error: error instanceof Error ? error.message : "Unknown error"
+        message: "Document processing failed",
+        error: error.message
       });
     }
   });
