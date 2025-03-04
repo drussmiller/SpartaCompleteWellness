@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
@@ -75,7 +75,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add custom error handler for better JSON errors
-  router.use('/api', (err, req, res, next) => {
+  router.use('/api', (err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error('API Error:', err);
     if (!res.headersSent) {
       res.status(err.status || 500).json({
@@ -601,20 +601,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
+  router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req: Request, res: Response) => {
     try {
       if (!req.file) {
         console.log('🚫 [UPLOAD] No file received');
         return res.status(400).json({ error: "No file uploaded" });
       }
-
-      // Step 1: Log file details
-      console.log('📁 [UPLOAD] File received:');
-      console.log('------------------------');
-      console.log(`Name: ${req.file.originalname}`);
-      console.log(`Size: ${req.file.size} bytes`);
-      console.log(`Type: ${req.file.mimetype}`);
-      console.log('------------------------');
 
       try {
         // Step 2: Extract text
@@ -639,28 +631,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         console.log('📤 [UPLOAD] Sending response:', response);
         return res.status(200).json(response);
 
-      } catch (processingError) {
+      } catch (processingError: unknown) {
+        const error = processingError as Error;
         console.log('❌ [UPLOAD] Processing error:');
         console.log('------------------------');
-        console.log('Error:', processingError.message);
-        console.log('Stack:', processingError.stack);
+        console.log('Error:', error.message);
+        console.log('Stack:', error.stack);
         console.log('------------------------');
 
         return res.status(500).json({
           error: "Processing failed",
-          details: processingError.message
+          details: error.message
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.log('💥 [UPLOAD] Fatal error:');
       console.log('------------------------');
-      console.log('Error:', error.message);
-      console.log('Stack:', error.stack);
+      console.log('Error:', err.message);
+      console.log('Stack:', err.stack);
       console.log('------------------------');
 
       return res.status(500).json({
         error: "Upload failed",
-        details: error.message
+        details: err.message
       });
     }
   });
