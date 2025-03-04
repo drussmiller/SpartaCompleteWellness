@@ -101,15 +101,17 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost; // Added for clarity;  Could be a more complex condition later
 
-  const { data: commentCount = 0 } = useQuery<number>({
-    queryKey: ["/api/posts", post.id, "comment-count"],
+  const { data: commentCount = 0 } = useQuery({
+    queryKey: [`/api/posts/comments/${post.id}`],
     queryFn: async () => {
       try {
-        if (!post.id) return 0;
-        const res = await apiRequest("GET", `/api/posts/comments/${post.id}?count=true`);
-        if (!res.ok) throw new Error("Failed to fetch comments");
-        const count = await res.json();
-        return count || 0;
+        const res = await apiRequest("GET", `/api/posts/comments/${post.id}`);
+        if (!res.ok) {
+          console.error(`Error fetching comments for post ${post.id}:`, await res.text());
+          return 0;
+        }
+        const comments = await res.json();
+        return Array.isArray(comments) ? comments.length : 0;
       } catch (error) {
         console.error("Error fetching comment count:", error);
         return 0;
@@ -209,7 +211,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             <Link href={`/comments/${post.id}`}>
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
-                {commentCount?.count || 0}
+                {commentCount}
               </Button>
             </Link>
           </div>
