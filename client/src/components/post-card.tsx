@@ -11,11 +11,14 @@ import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useCommentCount } from "@/hooks/use-comment-count";
 
-// This component shows multiple reaction emojis with counts
+// ReactionSummary component remains unchanged
 function ReactionSummary({ postId }: { postId: number }) {
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    cacheTime: 60000, // Keep in cache for 1 minute
   });
 
   // Count each type of reaction
@@ -99,27 +102,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const { toast } = useToast();
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
-  const canDelete = isOwnPost; // Added for clarity;  Could be a more complex condition later
+  const canDelete = isOwnPost;
 
-  const { data: commentCount = 0 } = useQuery({
-    queryKey: [`/api/posts/comments/${post.id}`],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", `/api/posts/comments/${post.id}`);
-        if (!res.ok) {
-          console.error(`Error fetching comments for post ${post.id}:`, await res.text());
-          return 0;
-        }
-        const comments = await res.json();
-        return Array.isArray(comments) ? comments.length : 0;
-      } catch (error) {
-        console.error("Error fetching comment count:", error);
-        return 0;
-      }
-    },
-    staleTime: 1000,
-    refetchInterval: 3000
-  });
+  // Use the optimized comment count hook
+  const { count: commentCount } = useCommentCount(post.id);
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
@@ -156,9 +142,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage 
-                  key={`avatar-${post.author?.id}-${avatarKey}`} 
-                  src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
-                />
+              key={`avatar-${post.author?.id}-${avatarKey}`} 
+              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
+            />
             <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
