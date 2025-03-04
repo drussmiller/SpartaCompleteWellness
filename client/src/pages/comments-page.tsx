@@ -5,11 +5,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MessageSquare, Trash2, MessageCircle, ChevronLeft } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type CommentWithAuthor } from "@shared/schema";
+import { AppLayout } from "@/components/app-layout";
 
 function CommentThread({
   comment,
@@ -27,12 +27,12 @@ function CommentThread({
   const { toast } = useToast();
   const [showActions, setShowActions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(comment.content);
+  const [editText, setEditText] = useState(comment.content || "");
 
-  // Deletion mutation remains unchanged
+  // Handle delete
   const deleteCommentMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("DELETE", `/api/comments/${comment.id}`);
+      const res = await apiRequest("DELETE", `/api/posts/${comment.id}`);
       if (!res.ok) {
         const error = await res.json().catch(() => ({ message: "Failed to delete comment" }));
         throw new Error(error.message || "Failed to delete comment");
@@ -50,64 +50,6 @@ function CommentThread({
     }
   });
 
-  const handleDeleteClick = async () => {
-    try {
-      await deleteCommentMutation.mutateAsync();
-      setShowActions(false);
-    } catch (error) {
-      // Error is handled in onError
-    }
-  };
-
-  const handleEditClick = () => {
-    setIsEditing(true);
-    setShowActions(false); // Close the drawer when edit is clicked
-    // Focus the edit text area in the next render cycle
-    setTimeout(() => {
-      const textareas = document.querySelectorAll('textarea');
-      const editTextarea = Array.from(textareas).find(
-        textarea => textarea.value === editText
-      );
-      if (editTextarea) {
-        editTextarea.focus();
-      }
-    }, 50);
-  };
-
-  const handleEditSave = async () => {
-    if (!editText.trim()) {
-      return;
-    }
-
-    try {
-      const res = await apiRequest("PATCH", `/api/comments/${comment.id}`, {
-        content: editText.trim()
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update comment");
-      }
-
-      setIsEditing(false);
-      setShowActions(false); // Hide the drawer after saving edits
-      toast({ description: "Comment updated successfully" });
-      onRefresh(); // Refresh the comment list
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        description: error instanceof Error ? error.message : "Failed to update comment"
-      });
-    }
-  };
-
-  const handleEditCancel = () => {
-    setIsEditing(false);
-    setShowActions(false); // Hide the drawer when canceling edits
-    setEditText(comment.content);
-  };
-
-
   return (
     <div className={`relative ${depth > 0 ? 'ml-4 md:ml-8 pl-4 border-l border-border' : ''}`}>
       <div
@@ -116,13 +58,7 @@ function CommentThread({
           ${depth > 0 ? 'bg-muted/30' : 'bg-background'}
           cursor-pointer relative
         `}
-        onClick={() => {
-          // Cancel any active reply when opening comment actions
-          if (onReply) {
-            onReply(null);
-          }
-          setShowActions(!showActions);
-        }}
+        onClick={() => setShowActions(!showActions)}
       >
         <Avatar className="h-8 w-8 shrink-0">
           <AvatarImage src={comment.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author.username}`} />
@@ -146,14 +82,33 @@ function CommentThread({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleEditCancel}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditText(comment.content || "");
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={handleEditSave}
+                  onClick={async () => {
+                    if (!editText.trim()) return;
+                    try {
+                      const res = await apiRequest("PATCH", `/api/posts/${comment.id}`, {
+                        content: editText.trim()
+                      });
+                      if (!res.ok) throw new Error("Failed to update comment");
+                      setIsEditing(false);
+                      onRefresh();
+                      toast({ description: "Comment updated successfully" });
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        description: "Failed to update comment"
+                      });
+                    }
+                  }}
                 >
                   Update
                 </Button>
@@ -162,73 +117,48 @@ function CommentThread({
           ) : (
             <p className="text-sm whitespace-pre-wrap break-words comment-body mt-1">{comment.content}</p>
           )}
-
         </div>
 
-        {/* Action Drawer */}
         {showActions && (
-          <div
-            className="fixed inset-0 z-[100] flex items-end justify-center pb-[96px]"
-            onClick={() => setShowActions(false)}
-          >
-            <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
-            <div
-              className="relative w-full max-w-md rounded-lg bg-background p-0 shadow-lg sm:rounded-lg overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex flex-col">
-                {depth < maxDepth && (
-                  <button
-                    className="w-full p-4 text-primary font-semibold flex justify-center border-b hover:bg-muted text-2xl"
-                    onClick={() => {
-                      onReply(comment.id);
-                      setShowActions(false);
-                    }}
-                  >
-                    Reply
-                  </button>
-                )}
-                {currentUser?.id === comment.author.id && (
-                  <>
-                    <button
-                      className="w-full p-4 text-blue-600 font-semibold flex justify-center border-b hover:bg-muted text-2xl"
-                      onClick={handleEditClick}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="w-full p-4 text-destructive font-semibold flex justify-center hover:bg-muted text-2xl"
-                      onClick={handleDeleteClick}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
-
-                <button
-                  className="w-full p-4 text-foreground font-semibold flex justify-center border-t hover:bg-muted text-2xl"
+          <div className="absolute right-0 top-full mt-2 z-10 bg-background rounded-lg shadow-lg border border-border overflow-hidden">
+            {depth < maxDepth && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start px-4 py-2 text-left"
+                onClick={() => {
+                  onReply(comment.id);
+                  setShowActions(false);
+                }}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Reply
+              </Button>
+            )}
+            {currentUser?.id === comment.author.id && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start px-4 py-2 text-left"
                   onClick={() => {
-                    navigator.clipboard.writeText(comment.content);
+                    setIsEditing(true);
                     setShowActions(false);
-                    toast({ description: "Comment copied to clipboard" });
                   }}
                 >
-                  Copy
-                </button>
-
-                <button
-                  className="w-full p-4 bg-gray-400 hover:bg-gray-500 text-black font-bold flex justify-center border-t text-2xl"
-                  onClick={() => setShowActions(false)}
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start px-4 py-2 text-left text-destructive"
+                  onClick={() => deleteCommentMutation.mutate()}
                 >
-                  Cancel
-                </button>
-              </div>
-            </div>
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Render nested replies */}
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
         <div className="mt-2 space-y-2">
           {comment.replies.map((reply) => (
@@ -279,7 +209,7 @@ export default function CommentsPage() {
         content: comment.trim(),
         parentId: replyTo || parseInt(postId!),
         depth: newDepth,
-        imageUrl: null, // Add the required imageUrl field
+        points: 1
       });
 
       if (!res.ok) {
@@ -304,70 +234,22 @@ export default function CommentsPage() {
     },
   });
 
-  const handleReply = (parentId: number) => {
-    setReplyTo(parentId);
-    // Focus on the textarea after a short delay to ensure state is updated
-    setTimeout(() => {
-      if (commentInputRef.current) {
-        commentInputRef.current.focus();
-      }
-    }, 50);
-  };
-
-  // Effect to focus the input when the page loads and when replyTo changes
-  useEffect(() => {
-    // Set focus to the comment input whenever replyTo changes or when the page opens
-    const timer = setTimeout(() => {
-      if (commentInputRef.current) {
-        commentInputRef.current.focus();
-      }
-    }, 300); // Increased timeout for better reliability
-
-    return () => clearTimeout(timer);
-  }, [replyTo]);
-
-  // Additional effect to focus when the component mounts
-  useEffect(() => {
-    const focusTimer = setTimeout(() => {
-      if (commentInputRef.current) {
-        commentInputRef.current.focus();
-      }
-    }, 500);
-
-    return () => clearTimeout(focusTimer);
-  }, []);
-
-  const handleSubmitComment = async () => {
-    if (!comment.trim()) return;
-
-    try {
-      await createCommentMutation.mutateAsync();
-    } catch (error) {
-      // Error handling is already done in the mutation
-    }
-  };
-
   if (isPostLoading || areCommentsLoading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <AppLayout title="Comments">
+        <div className="h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4">
-          <h1 className="text-xl font-bold">Comments</h1>
-        </div>
-      </header>
-
-      <main className="p-4 space-y-6 pb-24 lg:pb-4">
+    <AppLayout title="Comments">
+      <main className="p-4 pb-24 lg:pb-4 max-w-2xl mx-auto">
         {originalPost && (
           <div className="mb-6">
-            {/* Assuming PostCard component exists */}
-            <div className="mb-6 p-4 border rounded-lg">
+            <div className="p-4 border rounded-lg">
               <div className="flex items-start gap-3">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
@@ -396,61 +278,60 @@ export default function CommentsPage() {
           </div>
         )}
 
-        <div className="space-y-1">
+        <div className="space-y-4">
           {comments.map((comment) => (
             <CommentThread
               key={comment.id}
               comment={comment}
-              onReply={handleReply}
+              onReply={setReplyTo}
               onRefresh={refetch}
             />
           ))}
           {comments.length === 0 && (
-            <div className="bg-white rounded-lg p-6 shadow-sm">
+            <div className="bg-background rounded-lg p-6 shadow-sm">
               <p className="text-center text-muted-foreground py-6">
                 No comments yet. Be the first to comment!
               </p>
             </div>
           )}
         </div>
-      </main>
 
-      {/* Comment input section with fixed positioning */}
-      <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-16 right-0 bg-background border-t border-border shadow-lg" style={{ zIndex: 40 }}>
-        <div className="flex flex-col w-full">
-          <Textarea
-            ref={commentInputRef}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' && !e.shiftKey) && !e.ctrlKey) {
-                e.preventDefault();
-                handleSubmitComment();
-              }
-            }}
-            placeholder={replyTo ? "Enter reply..." : "Enter comment..."}
-            className="resize-none w-full border-0 rounded-none px-4 pt-3 text-base min-h-[50px] overflow-hidden whitespace-nowrap text-ellipsis focus:whitespace-normal"
-          />
-          {replyTo && (
-            <div className="mt-2 mb-1 flex justify-between items-center text-xs text-muted-foreground px-2">
-              <span className="ml-2">
-                Replying to {comments.find(c => c.id === replyTo)?.author?.username || `comment #${replyTo}`}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto py-1 px-3 text-sm mr-2"
-                onClick={() => setReplyTo(null)}
-              >
-                Cancel
-              </Button>
+        {/* Comment input section */}
+        <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-16 right-0 bg-background border-t border-border p-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex flex-col gap-2">
+              <Textarea
+                ref={commentInputRef}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    createCommentMutation.mutate();
+                  }
+                }}
+                placeholder={replyTo ? "Write a reply..." : "Write a comment..."}
+                className="resize-none"
+                rows={2}
+              />
+              {replyTo && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>
+                    Replying to comment #{replyTo}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReplyTo(null)}
+                  >
+                    Cancel Reply
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-
-      {/* Bottom navigation is already responsive through the BottomNav component */}
-      <BottomNav />
-    </div>
+      </main>
+    </AppLayout>
   );
 }

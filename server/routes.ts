@@ -325,7 +325,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Comment count endpoint
+  // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
       const postId = parseInt(req.params.postId);
@@ -333,24 +333,110 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      // Query comments for this post with better error handling
-      try {
-        const comments = await db
-          .select({ id: sql`count(*)` })
-          .from(posts)
-          .where(eq(posts.parentId, postId))
-          .limit(1);
+      // Get all comments for this post
+      const comments = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl
+          }
+        })
+        .from(posts)
+        .where(eq(posts.parentId, postId))
+        .innerJoin(users, eq(posts.userId, users.id))
+        .orderBy(posts.createdAt);
 
-        return res.json({ count: Number(comments[0]?.id || 0) });
-      } catch (dbError) {
-        console.error(`Database error for comment count on post ${postId}:`, dbError);
-        // Return 0 count instead of error to prevent UI breakage
-        return res.json({ count: 0 });
-      }
+      // Get replies for each comment
+      const commentsWithReplies = await Promise.all(
+        comments.map(async (comment) => {
+          const replies = await db
+            .select({
+              id: posts.id,
+              userId: posts.userId,
+              type: posts.type,
+              content: posts.content,
+              imageUrl: posts.imageUrl,
+              points: posts.points,
+              createdAt: posts.createdAt,
+              parentId: posts.parentId,
+              depth: posts.depth,
+              author: {
+                id: users.id,
+                username: users.username,
+                imageUrl: users.imageUrl
+              }
+            })
+            .from(posts)
+            .where(eq(posts.parentId, comment.id))
+            .innerJoin(users, eq(posts.userId, users.id))
+            .orderBy(posts.createdAt);
+
+          return {
+            ...comment,
+            replies
+          };
+        })
+      );
+
+      return res.json(commentsWithReplies);
     } catch (error) {
-      console.error(`Error fetching comment count for post ${req.params.postId}:`, error);
-      // Return 0 count instead of error to prevent UI breakage
-      return res.json({ count: 0 });
+      console.error(`Error fetching comments for post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to fetch comments",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get original post endpoint
+  router.get("/api/posts/:postId", authenticate, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      const [post] = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl
+          }
+        })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .innerJoin(users, eq(posts.userId, users.id))
+        .limit(1);
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      res.json(post);
+    } catch (error) {
+      console.error(`Error fetching post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to fetch post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
