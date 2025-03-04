@@ -14,14 +14,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { useAuth } from "@/hooks/use-auth";
-import { X } from "lucide-react"; // Added import for X icon
+import { X } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Loader2 } from 'lucide-react'; // Added import for Loader2
-
+import { Loader2 } from 'lucide-react';
 
 type CreatePostForm = z.infer<typeof insertPostSchema>;
 
-// Function to compress image
 async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -30,7 +28,6 @@ async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<str
       let width = img.width;
       let height = img.height;
 
-      // Calculate new dimensions while maintaining aspect ratio
       if (width > maxWidth) {
         height = (height * maxWidth) / width;
         width = maxWidth;
@@ -46,7 +43,7 @@ async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<str
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress with JPEG at 70% quality
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = reject;
     img.src = imageDataUrl;
@@ -80,9 +77,8 @@ export function CreatePostDialog() {
         const formData = new FormData();
 
         if (data.imageUrl && data.imageUrl.length > 0) {
-          // Assuming imageUrl now holds the dataURL from image compression
           const blob = await fetch(data.imageUrl).then(r => r.blob());
-          formData.append("image", blob, "image.jpeg"); // added filename for better handling
+          formData.append("image", blob, "image.jpeg");
         }
 
         const postData = {
@@ -99,7 +95,6 @@ export function CreatePostDialog() {
           hasImage: data.imageUrl && data.imageUrl.length > 0
         });
 
-        // Use apiRequest from queryClient for consistent error handling
         const res = await fetch("/api/posts", {
           method: "POST",
           body: formData,
@@ -140,7 +135,7 @@ export function CreatePostDialog() {
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/limits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       setOpen(false);
@@ -166,7 +161,6 @@ export function CreatePostDialog() {
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    // Post limits
     const limits = {
       food: 3,
       workout: 1,
@@ -179,7 +173,8 @@ export function CreatePostDialog() {
     if (!limit) return "";
 
     console.log(`Post type ${type}: ${used}/${limit} used`);
-    return used >= limit ? "(Daily limit reached)" : `(${limit - used} remaining today)`;
+    const remaining = limit - used;
+    return remaining <= 0 ? "(Daily limit reached)" : `(${remaining} remaining today)`;
   }
 
   const onSubmit = (data: CreatePostForm) => {
@@ -191,7 +186,6 @@ export function CreatePostDialog() {
     <Dialog open={open} onOpenChange={(isOpen) => {
             setOpen(isOpen);
             if (!isOpen) {
-              // Reset preview and form when dialog closes
               setImagePreview(null);
               form.reset();
             }
