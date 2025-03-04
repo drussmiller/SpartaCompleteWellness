@@ -443,9 +443,10 @@ export class DatabaseStorage implements IStorage {
           ));
         }
       }
+
       const results = await query;
 
-      // Parse the JSONB content back to objects
+      // Parse and validate the JSONB content fields
       const mappedResults = results.map(activity => {
         let parsedFields;
         try {
@@ -459,14 +460,17 @@ export class DatabaseStorage implements IStorage {
           parsedFields = [];
         }
 
+        // Ensure each field has required properties
+        const validatedFields = parsedFields.map((field: any) => ({
+          id: field.id || Math.random().toString(36).substring(7),
+          type: field.type || 'text',
+          content: typeof field.content === 'string' ? field.content : '',
+          title: typeof field.title === 'string' ? field.title : ''
+        }));
+
         return {
           ...activity,
-          contentFields: parsedFields.map((field: any) => ({
-            id: field.id || Math.random().toString(36).substring(7),
-            type: field.type || 'text',
-            content: field.content || '',
-            title: field.title || ''
-          }))
+          contentFields: validatedFields
         };
       });
 
@@ -580,7 +584,20 @@ export class DatabaseStorage implements IStorage {
   async deleteActivity(id: number): Promise<void> {
     try {
       console.log('Deleting activity:', id);
+
+      // First check if activity exists
+      const [activity] = await db
+        .select()
+        .from(activities)
+        .where(eq(activities.id, id));
+
+      if (!activity) {
+        throw new Error(`Activity with ID ${id} not found`);
+      }
+
+      // Perform the deletion
       await db.delete(activities).where(eq(activities.id, id));
+      console.log('Activity deleted successfully:', id);
     } catch (error) {
       console.error('Error deleting activity:', error);
       throw new Error(`Failed to delete activity: ${error instanceof Error ? error.message : 'Unknown error'}`);

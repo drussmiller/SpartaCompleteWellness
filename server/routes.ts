@@ -325,7 +325,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
       let html = result.value;
 
-      console.log('Converted HTML content:', html.substring(0, 200) + '...');
+      console.log('Initial HTML content:', html.substring(0, 200) + '...');
 
       // Extract and transform YouTube links into embeds
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
@@ -336,8 +336,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Clean up any potential script tags or other unsafe content
       html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
 
-      // Ensure proper formatting
+      // Add proper spacing between elements
+      html = html.replace(/><\/p>/g, '>&nbsp;</p>');
       html = html.replace(/\n/g, '<br>');
+
+      // Ensure proper video wrapper styling
+      html = `${html}
+      <style>
+        .video-wrapper {
+          position: relative;
+          padding-bottom: 56.25%;
+          height: 0;
+          margin: 1rem 0;
+        }
+        .video-wrapper iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+      </style>`;
 
       console.log('Final processed content:', html.substring(0, 200) + '...');
 
