@@ -315,7 +315,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
+  app.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -345,7 +345,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         console.log('Mammoth conversion messages:', result.messages);
       }
 
-      let html = result.value;
+      // Clean up HTML content
+      let html = result.value
+        // Remove any doctype declarations
+        .replace(/<!DOCTYPE[^>]*>/i, '')
+        // Remove any XML declarations
+        .replace(/<\?xml[^>]*\?>/i, '')
+        // Ensure proper HTML structure
+        .trim();
 
       console.log('Initial HTML content:', html.substring(0, 200) + '...');
 
@@ -359,15 +366,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
 
       // Clean up any potential script tags or other unsafe content
-      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        // Remove any potential unsafe attributes
+        .replace(/on\w+="[^"]*"/g, '')
+        .replace(/javascript:/gi, '');
 
       // Add proper spacing between elements
-      html = html.replace(/><\/p>/g, '>&nbsp;</p>');
-      html = html.replace(/\n/g, '<br>');
+      html = html
+        .replace(/><\/p>/g, '>&nbsp;</p>')
+        .replace(/\n/g, '<br>');
 
       // Ensure proper video wrapper styling
-      html = `${html}
+      const finalHtml = `<div class="content-wrapper">${html}</div>
       <style>
+        .content-wrapper {
+          font-family: system-ui, -apple-system, sans-serif;
+        }
         .video-wrapper {
           position: relative;
           padding-bottom: 56.25%;
@@ -385,9 +400,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       </style>`;
 
-      console.log('Final processed content:', html.substring(0, 200) + '...');
+      console.log('Final processed content:', finalHtml.substring(0, 200) + '...');
 
-      res.json({ content: html });
+      res.json({ content: finalHtml });
     } catch (error) {
       console.error('Error processing document:', error);
       res.status(500).json({ 
@@ -398,7 +413,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  app.post("/api/register", async (req, res) => {
+  router.post("/api/register", async (req, res) => {
     try {
       console.log('Registration request body:', {
         username: req.body.username,
