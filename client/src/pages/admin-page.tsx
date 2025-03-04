@@ -482,7 +482,7 @@ export default function AdminPage() {
                                       <Button
                                         variant="destructive"
                                         size="sm"
-                                        className="bg-red-600 hover:bg-red-700"
+                                        className="bg-white hover:bg-red-50 text-red-600 border border-red-200"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -496,7 +496,7 @@ export default function AdminPage() {
                                       <div className="flex justify-end gap-2 mt-4">
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                                         <AlertDialogAction
-                                          className="bg-red-600 hover:bg-red-700"
+                                          className="bg-red-600 hover:bg-red-700 text-white"
                                           onClick={() => deleteUserMutation.mutate(user.id)}
                                         >
                                           Delete User
