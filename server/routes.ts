@@ -26,7 +26,7 @@ import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
+const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, './uploads/');
   },
