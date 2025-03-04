@@ -130,12 +130,17 @@ export const insertPostSchema = createInsertSchema(posts)
     depth: z.number().default(0)
   });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  email: true,
-  password: true,
-});
-
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    username: true,
+    email: true,
+    password: true,
+  })
+  .extend({
+    username: z.string().min(1, "Username is required"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters")
+  });
 
 export const insertMeasurementSchema = createInsertSchema(measurements);
 export const insertNotificationSchema = createInsertSchema(notifications);
