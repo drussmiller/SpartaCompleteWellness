@@ -12,82 +12,78 @@ import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
-// ReactionSummary component refactored for proper array handling
+// ReactionSummary component completely refactored for array handling
 function ReactionSummary({ postId }: { postId: number }) {
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
   });
 
-  // Count each type of reaction
-  const reactionCounts = reactions.reduce((acc: Record<string, number>, reaction) => {
+  const emojiMap = {
+    like: "👍",
+    love: "❤️",
+    laugh: "😂",
+    wow: "😮",
+    sad: "😢",
+    angry: "😡",
+    celebrate: "🎉",
+    clap: "👏",
+    fire: "🔥",
+    pray: "🙏",
+    support: "🤗",
+    muscle: "💪",
+    star: "⭐",
+    heart_eyes: "😍",
+    raised_hands: "🙌",
+    trophy: "🏆",
+    thumbs_down: "👎",
+    salad: "🥗",
+    fruit: "🍎",
+    water: "💧",
+    run: "🏃",
+    bike: "🚴",
+    weight: "🏋️",
+    angel: "😇",
+    dove: "🕊️",
+    church: "⛪",
+    idea: "💡",
+    rocket: "🚀",
+    sparkles: "✨"
+  };
+
+  // Group reactions by type and count them
+  const reactionsByType = reactions.reduce((acc: { [key: string]: number }, reaction) => {
     if (reaction.type) {
       acc[reaction.type] = (acc[reaction.type] || 0) + 1;
     }
     return acc;
   }, {});
 
-  const getEmojiForType = (type: string): string => {
-    const allEmojis: Record<string, { emoji: string, color: string }> = {
-      like: { emoji: "👍", color: "text-blue-500" },
-      love: { emoji: "❤️", color: "text-red-500" },
-      laugh: { emoji: "😂", color: "text-yellow-500" },
-      wow: { emoji: "😮", color: "text-yellow-500" },
-      sad: { emoji: "😢", color: "text-blue-500" },
-      angry: { emoji: "😡", color: "text-red-500" },
-      celebrate: { emoji: "🎉", color: "text-purple-500" },
-      clap: { emoji: "👏", color: "text-yellow-500" },
-      fire: { emoji: "🔥", color: "text-orange-500" },
-      pray: { emoji: "🙏", color: "text-amber-500" },
-      support: { emoji: "🤗", color: "text-green-500" },
-      muscle: { emoji: "💪", color: "text-blue-500" },
-      star: { emoji: "⭐", color: "text-yellow-500" },
-      heart_eyes: { emoji: "😍", color: "text-red-500" },
-      raised_hands: { emoji: "🙌", color: "text-amber-500" },
-      trophy: { emoji: "🏆", color: "text-yellow-500" },
-      thumbs_down: { emoji: "👎", color: "text-slate-500" },
-      salad: { emoji: "🥗", color: "text-green-500" },
-      fruit: { emoji: "🍎", color: "text-red-500" },
-      water: { emoji: "💧", color: "text-blue-500" },
-      run: { emoji: "🏃", color: "text-purple-500" },
-      bike: { emoji: "🚴", color: "text-green-500" },
-      weight: { emoji: "🏋️", color: "text-indigo-500" },
-      angel: { emoji: "😇", color: "text-sky-500" },
-      dove: { emoji: "🕊️", color: "text-white-500" },
-      church: { emoji: "⛪", color: "text-stone-500" },
-      idea: { emoji: "💡", color: "text-yellow-500" },
-      rocket: { emoji: "🚀", color: "text-indigo-500" },
-      sparkles: { emoji: "✨", color: "text-purple-500" },
-    };
+  // Convert to array and sort by count
+  const sortedReactions = Object.entries(reactionsByType)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
 
-    return allEmojis[type]?.emoji || "👍";
-  };
-
-  // Convert the reaction counts object to an array and sort it
-  const sortedReactions = Object.entries(reactionCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5); // Show at most 5 reaction types
-
-  if (sortedReactions.length === 0) return null;
+  if (sortedReactions.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex items-center gap-1 text-sm">
-      <TooltipProvider>
-        <div className="flex flex-wrap gap-1">
-          {sortedReactions.map(([type, count]) => (
-            <Tooltip key={`${type}-${count}`}>
-              <TooltipTrigger asChild>
-                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span className="mr-1">{getEmojiForType(type)}</span>
-                  <span className="text-xs">{count}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{type.replace('_', ' ')}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      </TooltipProvider>
+      {sortedReactions.map(([type, count]) => (
+        <TooltipProvider key={type}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
+                <span className="mr-1">{emojiMap[type as keyof typeof emojiMap] || "👍"}</span>
+                <span className="text-xs">{count}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{type.replace('_', ' ')}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
     </div>
   );
 }
