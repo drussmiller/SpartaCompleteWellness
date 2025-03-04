@@ -47,7 +47,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    const remainingPosts = remaining[type];
+    const remainingPosts = remaining?.[type] ?? 0;
     console.log(`Post type ${type} remaining:`, remainingPosts);
 
     return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining today)`;
@@ -84,31 +84,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         });
 
         if (!res.ok) {
-          const contentType = res.headers.get("content-type");
-          try {
-            if (contentType && contentType.includes("application/json")) {
-              const errorData = await res.json();
-              console.error("Post creation error response (JSON):", errorData);
-              throw new Error(errorData.message || "Failed to create post");
-            } else {
-              const errorText = await res.text();
-              console.error("Post creation error (non-JSON):", errorText);
-              throw new Error(`Server error: ${res.status} ${res.statusText} - ${errorText}`);
-            }
-          } catch (parseError) {
-            console.error("Error parsing error response:", parseError);
-            throw new Error(`Server error: ${res.status} ${res.statusText} - Unable to parse response`);
-          }
+          throw new Error(`Failed to create post: ${res.status} ${res.statusText}`);
         }
 
-        try {
-          return await res.json();
-        } catch (jsonError) {
-          console.error("Error parsing JSON response:", jsonError);
-          throw new Error("Invalid JSON response from server");
-        }
+        return res.json();
       } catch (error) {
-        console.error("Post creation exception:", error);
+        console.error("Post creation error:", error);
         throw error;
       }
     },
@@ -128,11 +109,11 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         description: "Post created successfully!",
       });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
     },
@@ -145,12 +126,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-            setOpen(isOpen);
-            if (!isOpen) {
-              setImagePreview(null);
-              form.reset();
-            }
-          }}>
+      setOpen(isOpen);
+      if (!isOpen) {
+        setImagePreview(null);
+        form.reset();
+      }
+    }}>
       <DialogTrigger asChild>
         <Button size="icon" className="h-10 w-10 bg-gray-200 hover:bg-gray-300">
           <Plus className="h-9 w-9 text-black font-extrabold" />
