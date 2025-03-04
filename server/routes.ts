@@ -353,23 +353,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       console.log('Fetching posts for user:', req.user?.id);
-      const posts = await storage.getPosts();
-      console.log('Raw posts:', posts);
+      let posts;
+      try {
+        posts = await storage.getPosts();
+        console.log('Raw posts:', posts);
+      } catch (err) {
+        console.error('Error in storage.getPosts():', err);
+        throw new Error(`Failed to fetch posts from database: ${err.message}`);
+      }
 
       // For each post, get its author information
       const postsWithAuthors = await Promise.all(posts.map(async (post) => {
-        const author = await storage.getUser(post.userId);
-        return {
-          ...post,
-          author: author || null
-        };
+        try {
+          const author = await storage.getUser(post.userId);
+          return {
+            ...post,
+            author: author || null
+          };
+        } catch (userErr) {
+          console.error(`Error fetching author for post ${post.id}:`, userErr);
+          return {
+            ...post,
+            author: null
+          };
+        }
       }));
 
       console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
       res.json(postsWithAuthors);
     } catch (error) {
       console.error('Error fetching posts:', error);
-      res.status(500).json({ message: "Failed to fetch posts" });
+      res.status(500).json({ 
+        message: "Failed to fetch posts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
