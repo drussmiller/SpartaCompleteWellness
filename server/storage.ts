@@ -47,6 +47,7 @@ export interface IStorage {
   getReactionsByPost(postId: number): Promise<Reaction[]>;
   getReactionsByUser(userId: number): Promise<Reaction[]>;
   deleteActivity(id: number): Promise<void>;
+  getAdminUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -112,6 +113,13 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const [newUser] = await db.insert(users).values(user).returning();
+    // Send notifications to admins after user creation
+    const adminUsers = await this.getAdminUsers();
+    await Promise.all(adminUsers.map(admin => this.createNotification({
+      userId: admin.id,
+      message: `New user ${newUser.username} has joined.`,
+      read: false
+    })));
     return newUser;
   }
 
@@ -187,7 +195,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    const allUsers = await db.select().from(users).orderBy(users.username);
+    return allUsers;
   }
 
   async createPost(post: Post): Promise<Post> {
@@ -602,6 +611,14 @@ export class DatabaseStorage implements IStorage {
       console.error('Error deleting activity:', error);
       throw new Error(`Failed to delete activity: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    const adminUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.isAdmin, true));
+    return adminUsers;
   }
 }
 
