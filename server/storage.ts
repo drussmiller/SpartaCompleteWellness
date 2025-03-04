@@ -113,13 +113,17 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const [newUser] = await db.insert(users).values(user).returning();
-    // Send notifications to admins after user creation
+
+    // Send notifications to admins after user creation with proper fields
     const adminUsers = await this.getAdminUsers();
     await Promise.all(adminUsers.map(admin => this.createNotification({
       userId: admin.id,
+      title: "New User Registration",
       message: `New user ${newUser.username} has joined.`,
-      read: false
+      read: false,
+      createdAt: new Date()
     })));
+
     return newUser;
   }
 
