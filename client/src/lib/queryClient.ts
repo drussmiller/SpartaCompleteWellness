@@ -2,12 +2,31 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // Enhanced error handling for authentication errors
-    if (res.status === 401) {
-      throw new Error("Unauthorized - Please log in to continue");
+    try {
+      const contentType = res.headers.get("content-type");
+
+      // If response is JSON, parse it for error details
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || `${res.status}: ${res.statusText}`);
+      }
+
+      // If response is not JSON (e.g. HTML error page), return generic error
+      const text = await res.text();
+      if (text.includes("<!DOCTYPE html>")) {
+        // Handle HTML error pages (like 404 or 500)
+        if (res.status === 401) {
+          throw new Error("Your session has expired. Please log in again.");
+        }
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
+
+      throw new Error(`${res.status}: ${text || res.statusText}`);
+    } catch (parseError) {
+      // If we can't parse the error response at all
+      console.error("Error parsing error response:", parseError);
+      throw new Error(`Server error: ${res.status} ${res.statusText}`);
     }
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
   }
 }
 
@@ -16,7 +35,9 @@ export async function apiRequest(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const headers: HeadersInit = {};
+  const headers: HeadersInit = {
+    'Accept': 'application/json'
+  };
 
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
@@ -32,11 +53,22 @@ export async function apiRequest(
 
     // Log failed API requests for debugging
     if (!response.ok) {
-      const errorText = await response.text();
+      let errorDetails;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          errorDetails = await response.json();
+        } else {
+          errorDetails = await response.text();
+        }
+      } catch (parseError) {
+        errorDetails = "Could not parse error response";
+      }
+
       console.error(`API ${method} request to ${path} failed:`, {
         status: response.status,
         statusText: response.statusText,
-        body: errorText
+        errorDetails
       });
     }
 
@@ -55,7 +87,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     try {
       const res = await fetch(queryKey[0] as string, {
-        credentials: "include", // Ensure cookies are sent with queries
+        credentials: "include",
         headers: {
           "Accept": "application/json",
         },
@@ -66,7 +98,13 @@ export const getQueryFn: <T>(options: {
       }
 
       await throwIfResNotOk(res);
-      return await res.json();
+
+      try {
+        return await res.json();
+      } catch (jsonError) {
+        console.error("Failed to parse JSON response:", jsonError);
+        throw new Error("Invalid response format from server");
+      }
     } catch (error) {
       console.error('Query error:', error);
       throw error;
