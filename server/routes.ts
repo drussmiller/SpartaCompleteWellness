@@ -739,6 +739,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add the user delete route handler
+  router.delete("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Check if trying to delete the main admin account
+      const userToDelete = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!userToDelete.length) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (userToDelete[0].username === "admin") {
+        return res.status(403).json({ 
+          message: "Cannot delete the main administrator account" 
+        });
+      }
+
+      // Delete user from database
+      await db
+        .delete(users)
+        .where(eq(users.id, userId));
+
+      console.log('User deleted successfully:', userId);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ 
+        message: "Failed to delete user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Error handling middleware
   router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('API Error:', err);

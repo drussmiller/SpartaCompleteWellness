@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
@@ -196,6 +197,30 @@ export default function AdminPage() {
         description: "User updated successfully",
       });
       setEditingUser(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`);
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
@@ -444,13 +469,42 @@ export default function AdminPage() {
                             <>
                               <div className="flex items-center gap-2">
                                 <CardTitle>{user.preferredName || user.username}</CardTitle>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditingUser(user)}
-                                >
-                                  Edit
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingUser(user)}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the user
+                                        account and all associated data.
+                                      </AlertDialogDescription>
+                                      <div className="flex justify-end gap-2 mt-4">
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          className="bg-red-600 hover:bg-red-700"
+                                          onClick={() => deleteUserMutation.mutate(user.id)}
+                                        >
+                                          Delete User
+                                        </AlertDialogAction>
+                                      </div>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
                               </div>
                               <CardDescription>{user.email}</CardDescription>
                               <div className="mt-1 text-sm text-muted-foreground">
