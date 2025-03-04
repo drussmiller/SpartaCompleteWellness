@@ -498,7 +498,17 @@ export default function AdminPage() {
                           <Button
                             variant={user.isAdmin ? "default" : "outline"}
                             size="sm"
+                            className={user.isAdmin ? "bg-violet-700 text-white hover:bg-violet-800" : ""}
                             onClick={() => {
+                              // Prevent removing admin from the admin user with username "admin"
+                              if (user.username === "admin" && user.isAdmin) {
+                                toast({
+                                  title: "Cannot Remove Admin",
+                                  description: "This is the main administrator account and cannot have admin rights removed.",
+                                  variant: "destructive"
+                                });
+                                return;
+                              }
                               updateUserRoleMutation.mutate({
                                 userId: user.id,
                                 role: 'isAdmin',
@@ -511,6 +521,7 @@ export default function AdminPage() {
                           <Button
                             variant={user.isTeamLead ? "default" : "outline"}
                             size="sm"
+                            className={user.isTeamLead ? "bg-violet-700 text-white hover:bg-violet-800" : ""}
                             onClick={() => {
                               updateUserRoleMutation.mutate({
                                 userId: user.id,
