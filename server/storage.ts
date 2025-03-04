@@ -430,6 +430,8 @@ export class DatabaseStorage implements IStorage {
 
   async getActivities(week?: number, day?: number) {
     try {
+      console.log('Fetching activities:', { week, day });
+
       let query = db.select().from(activities);
       if (week !== undefined) {
         query = query.where(eq(activities.week, week));
@@ -445,9 +447,11 @@ export class DatabaseStorage implements IStorage {
       // Parse the JSONB content back to objects
       return results.map(activity => ({
         ...activity,
-        contentFields: typeof activity.contentFields === 'string'
-          ? JSON.parse(activity.contentFields)
-          : activity.contentFields
+        contentFields: Array.isArray(activity.contentFields)
+          ? activity.contentFields
+          : typeof activity.contentFields === 'string'
+            ? JSON.parse(activity.contentFields)
+            : []
       }));
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -462,31 +466,30 @@ export class DatabaseStorage implements IStorage {
       const activityData = {
         week: data.week,
         day: data.day,
-        contentFields: JSON.stringify(Array.isArray(data.contentFields) ? data.contentFields.map(field => ({
-          ...field,
-          content: field.content.toString() // Ensure content is a string
-        })) : []),
+        contentFields: Array.isArray(data.contentFields)
+          ? JSON.stringify(data.contentFields.map(field => ({
+              ...field,
+              content: field.content?.toString() || '',
+              title: field.title?.toString() || ''
+            })))
+          : '[]',
         isComplete: false
       };
 
       console.log('Inserting activity data:', JSON.stringify(activityData, null, 2));
 
-      try {
-        const [newActivity] = await db
-          .insert(activities)
-          .values(activityData)
-          .returning();
+      const [newActivity] = await db
+        .insert(activities)
+        .values(activityData)
+        .returning();
 
-        console.log('Created activity:', JSON.stringify(newActivity, null, 2));
-        return newActivity;
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        console.error('Error details:', {
-          message: dbError instanceof Error ? dbError.message : 'Unknown error',
-          stack: dbError instanceof Error ? dbError.stack : undefined
-        });
-        throw new Error("Failed to create activity in database");
-      }
+      console.log('Created activity:', JSON.stringify(newActivity, null, 2));
+      return {
+        ...newActivity,
+        contentFields: Array.isArray(newActivity.contentFields)
+          ? newActivity.contentFields
+          : JSON.parse(newActivity.contentFields)
+      };
     } catch (error) {
       console.error('Error creating activity:', error);
       console.error('Error details:', {
