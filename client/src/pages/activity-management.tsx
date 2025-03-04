@@ -7,13 +7,17 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
+// Added imports for mobile navigation
+import { useIsMobile } from "@/hooks/use-mobile"; // Correct import path
+import BottomNav from "@/components/bottom-nav"; // Placeholder import
+
 
 type ContentField = {
   id: string;
@@ -31,6 +35,7 @@ export default function ActivityManagementPage() {
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+  const isMobile = useIsMobile(); // Use the isMobile hook
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
@@ -246,12 +251,10 @@ export default function ActivityManagementPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">Activity Management</h1>
-        <Button variant="outline" onClick={() => window.history.back()}>
-          <X className="h-4 w-4 mr-2" />
-          Close
+    <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
+      <div className="mb-6">
+        <Button variant="outline" onClick={() => window.history.back()} className="px-2">
+          <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
 
@@ -377,7 +380,7 @@ export default function ActivityManagementPage() {
 
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Existing Activities</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 mb-20">
               {activities
                 ?.slice()
                 .sort((a, b) => a.week !== b.week ? a.week - b.week : a.day - b.day)
@@ -558,6 +561,13 @@ export default function ActivityManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bottom navigation for mobile */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <BottomNav />
+        </div>
+      )}
     </div>
   );
 }
