@@ -444,16 +444,24 @@ export class DatabaseStorage implements IStorage {
 
   async createActivity(data: any) {
     try {
-      const [newActivity] = await db.insert(activities).values({
+      console.log('Creating activity with data:', JSON.stringify(data, null, 2));
+
+      const activityData = {
         week: data.week,
         day: data.day,
-        contentFields: data.contentFields || [],
-        isComplete: false,
-        createdAt: new Date()
-      }).returning();
+        contentFields: Array.isArray(data.contentFields) ? data.contentFields : [],
+        isComplete: false
+      };
+
+      const [newActivity] = await db
+        .insert(activities)
+        .values(activityData)
+        .returning();
+
+      console.log('Created activity:', JSON.stringify(newActivity, null, 2));
       return newActivity;
     } catch (error) {
-      console.error('Error creating activity:', error);
+      console.error('Error creating activity in database:', error);
       throw new Error('Failed to create activity in database');
     }
   }
