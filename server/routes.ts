@@ -245,11 +245,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
       console.log("Received post creation request");
-      
+
       if (!req.body.data) {
         return res.status(400).json({ message: "Missing post data" });
       }
-      
+
       let postData;
       try {
         postData = JSON.parse(req.body.data);
@@ -258,7 +258,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         console.error("Error parsing post data:", parseError);
         return res.status(400).json({ message: "Invalid post data format" });
       }
-      
+
       const post = await storage.createPost({
         userId: req.user.id,
         type: postData.type,
@@ -267,7 +267,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         parentId: postData.parentId || null
       });
-      
+
       res.status(201).json(post);
     } catch (error) {
       console.error("Error creating post:", error);
@@ -325,7 +325,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Comment count endpoint
+  // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
       const postId = parseInt(req.params.postId);
@@ -333,24 +333,110 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      // Query comments for this post with better error handling
-      try {
-        const comments = await db
-          .select({ id: sql`count(*)` })
-          .from(posts)
-          .where(eq(posts.parentId, postId))
-          .limit(1);
-        
-        return res.json({ count: Number(comments[0]?.id || 0) });
-      } catch (dbError) {
-        console.error(`Database error for comment count on post ${postId}:`, dbError);
-        // Return 0 count instead of error to prevent UI breakage
-        return res.json({ count: 0 });
-      }
+      // Get all comments for this post
+      const comments = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl
+          }
+        })
+        .from(posts)
+        .where(eq(posts.parentId, postId))
+        .innerJoin(users, eq(posts.userId, users.id))
+        .orderBy(posts.createdAt);
+
+      // Get replies for each comment
+      const commentsWithReplies = await Promise.all(
+        comments.map(async (comment) => {
+          const replies = await db
+            .select({
+              id: posts.id,
+              userId: posts.userId,
+              type: posts.type,
+              content: posts.content,
+              imageUrl: posts.imageUrl,
+              points: posts.points,
+              createdAt: posts.createdAt,
+              parentId: posts.parentId,
+              depth: posts.depth,
+              author: {
+                id: users.id,
+                username: users.username,
+                imageUrl: users.imageUrl
+              }
+            })
+            .from(posts)
+            .where(eq(posts.parentId, comment.id))
+            .innerJoin(users, eq(posts.userId, users.id))
+            .orderBy(posts.createdAt);
+
+          return {
+            ...comment,
+            replies
+          };
+        })
+      );
+
+      return res.json(commentsWithReplies);
     } catch (error) {
-      console.error(`Error fetching comment count for post ${req.params.postId}:`, error);
-      // Return 0 count instead of error to prevent UI breakage
-      return res.json({ count: 0 });
+      console.error(`Error fetching comments for post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to fetch comments",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get original post endpoint
+  router.get("/api/posts/:postId", authenticate, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      const [post] = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl
+          }
+        })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .innerJoin(users, eq(posts.userId, users.id))
+        .limit(1);
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      res.json(post);
+    } catch (error) {
+      console.error(`Error fetching post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to fetch post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
@@ -358,7 +444,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       console.log('Fetching posts for user:', req.user?.id);
-      
+
       // Get posts from database with error handling
       let posts = [];
       try {
@@ -371,7 +457,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           error: err instanceof Error ? err.message : "Unknown database error"
         });
       }
-      
+
       if (!posts || !Array.isArray(posts)) {
         console.error('Posts is not an array:', posts);
         return res.status(500).json({ 
@@ -386,7 +472,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           console.error('Invalid post object:', post);
           return null;
         }
-        
+
         try {
           const author = await storage.getUser(post.userId);
           return {
@@ -404,7 +490,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Filter out any null entries
       const validPosts = postsWithAuthors.filter(post => post !== null);
-      
+
       console.log('Successfully fetched posts with authors:', validPosts.length);
       res.json(validPosts);
     } catch (error) {
@@ -529,7 +615,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
@@ -779,6 +865,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       console.error('Error deleting user:', error);
       res.status(500).json({ 
         message: "Failed to delete user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add a general update endpoint for users
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const updateData = req.body;
+      console.log(`Updating user ${userId} with data:`, updateData);
+
+      // Validate required fields
+      if (updateData.username !== undefined && (!updateData.username || typeof updateData.username !== 'string')) {
+        return res.status(400).json({ message: "Username is required" });
+      }
+
+      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {
+        return res.status(400).json({ message: "Valid email is required" });
+      }
+
+      // Update user in database
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ 
+        message: "Failed to update user",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
