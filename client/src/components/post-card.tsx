@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 // This component shows multiple reaction emojis with counts
 function ReactionSummary({ postId }: { postId: number }) {
@@ -95,6 +96,7 @@ function ReactionSummary({ postId }: { postId: number }) {
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost; // Added for clarity;  Could be a more complex condition later
@@ -120,13 +122,25 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/posts/${post.id}`);
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] }); //Invalidate cache
+      // Invalidate all relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onSuccess: () => {
       console.log("Post deleted successfully!");
+      toast({
+        title: "Success",
+        description: "Post deleted successfully",
+      });
     },
     onError: (error) => {
       console.error("Error deleting post:", error);
+      toast({
+        title: "Error Deleting Post",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   });
 

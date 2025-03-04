@@ -20,37 +20,7 @@ import { Loader2 } from 'lucide-react';
 
 type CreatePostForm = z.infer<typeof insertPostSchema>;
 
-async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width;
-        width = maxWidth;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-    };
-    img.onerror = reject;
-    img.src = imageDataUrl;
-  });
-}
-
-export function CreatePostDialog() {
+export function CreatePostDialog({ remaining }: { remaining: Record<string, number> }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -60,6 +30,7 @@ export function CreatePostDialog() {
 
   console.log('Current post counts:', counts);
   console.log('Can post status:', canPost);
+  console.log('Remaining posts:', remaining);
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -70,6 +41,17 @@ export function CreatePostDialog() {
       points: 3
     }
   });
+
+  function getRemainingMessage(type: string) {
+    if (type === 'memory_verse') {
+      return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
+    }
+
+    const remainingPosts = remaining[type];
+    console.log(`Post type ${type} remaining:`, remainingPosts);
+
+    return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining today)`;
+  }
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
@@ -155,18 +137,6 @@ export function CreatePostDialog() {
       });
     },
   });
-
-  function getRemainingMessage(type: string) {
-    if (type === 'memory_verse') {
-      return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
-    }
-
-    const remaining = counts[type as keyof typeof counts] || 0;
-
-    console.log(`Post type ${type} remaining:`, remaining);
-
-    return remaining <= 0 ? "(Daily limit reached)" : `(${remaining} remaining today)`;
-  }
 
   const onSubmit = (data: CreatePostForm) => {
     console.log('Submitting form with data:', data);
@@ -330,4 +300,34 @@ export function CreatePostDialog() {
       </DialogContent>
     </Dialog>
   );
+}
+
+async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = reject;
+    img.src = imageDataUrl;
+  });
 }
