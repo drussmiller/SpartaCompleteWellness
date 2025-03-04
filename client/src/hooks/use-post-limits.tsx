@@ -17,12 +17,13 @@ interface PostLimitsResponse {
     scripture: boolean;
     memory_verse: boolean;
   };
+  remaining: PostLimits;
 }
 
 export function usePostLimits() {
   const { user } = useAuth();
   const { data } = useQuery<PostLimitsResponse>({
-    queryKey: ["/api/posts/limits"],
+    queryKey: ["/api/posts/counts"],
     enabled: !!user,
     queryFn: async () => {
       console.log('Fetching post limits for user:', user?.id);
@@ -44,21 +45,17 @@ export function usePostLimits() {
 
   // Log the current state
   if (data) {
-    console.log('Current post counts for user', user?.id, ':', data.counts);
+    console.log('Current post counts:', data.counts);
     console.log('Can post status:', data.canPost);
-
-    // Log each type of post count
-    Object.entries(data.counts).forEach(([type, count]) => {
-      console.log(`${type} posts: ${count} used`);
-    });
+    console.log('Remaining posts:', data.remaining);
   }
 
   // Define default post limits based on the application rules
-  const defaultCanPost = {
-    food: true,
-    workout: true,
-    scripture: true,
-    memory_verse: new Date().getDay() === 6 // Only on Saturday
+  const defaultLimits = {
+    food: 3,
+    workout: 1,
+    scripture: 1,
+    memory_verse: 1
   };
 
   return {
@@ -68,7 +65,13 @@ export function usePostLimits() {
       scripture: 0,
       memory_verse: 0
     },
-    canPost: data?.canPost || defaultCanPost,
+    canPost: data?.canPost || {
+      food: true,
+      workout: true,
+      scripture: true,
+      memory_verse: new Date().getDay() === 6 // Only on Saturday
+    },
+    remaining: data?.remaining || defaultLimits,
     isSaturday: new Date().getDay() === 6
   };
 }

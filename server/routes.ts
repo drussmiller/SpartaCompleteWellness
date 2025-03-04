@@ -434,11 +434,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
 
+      console.log('Querying posts between:', {
+        utcStart: utcStart.toISOString(),
+        utcEnd: utcEnd.toISOString(),
+        userId: req.user.id
+      });
+
       // Query posts for today by type
       const result = await db
         .select({
           type: posts.type,
-          count: sql`count(*)::integer`
+          count: sql<number>`count(*)::integer`
         })
         .from(posts)
         .where(
@@ -450,6 +456,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         )
         .groupBy(posts.type);
+
+      console.log('Post counts query result:', result);
 
       // Convert result to expected format
       const counts = {
@@ -465,15 +473,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       });
 
-      // Calculate remaining posts
-      const canPost = {
-        food: counts.food < 3,
-        workout: counts.workout < 1,
-        scripture: counts.scripture < 1,
-        memory_verse: new Date().getDay() === 6 && counts.memory_verse < 1
+      console.log('Processed counts:', counts);
+
+      // Calculate remaining posts and determine if user can post
+      const maxPosts = {
+        food: 3,
+        workout: 1,
+        scripture: 1,
+        memory_verse: 1
       };
 
-      res.json({ counts, canPost });
+      const canPost = {
+        food: counts.food < maxPosts.food,
+        workout: counts.workout < maxPosts.workout,
+        scripture: counts.scripture < maxPosts.scripture,
+        memory_verse: new Date().getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
+      };
+
+      const remaining = {
+        food: Math.max(0, maxPosts.food - counts.food),
+        workout: Math.max(0, maxPosts.workout - counts.workout),
+        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
+        memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
+      };
+
+      console.log('Response data:', { counts, canPost, remaining });
+      res.json({ counts, canPost, remaining });
     } catch (error) {
       console.error('Error getting post counts:', error);
       res.status(500).json({ 
