@@ -176,11 +176,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
+
+      console.log('Deleting activity with ID:', req.params.id);
+
+      // First get the activity to verify it exists
+      const [activity] = await db
+        .select()
+        .from(activities)
+        .where(eq(activities.id, parseInt(req.params.id)));
+
+      if (!activity) {
+        return res.status(404).json({ message: "Activity not found" });
+      }
+
+      // Delete the activity
       await db.delete(activities).where(eq(activities.id, parseInt(req.params.id)));
       res.sendStatus(200);
     } catch (error) {
       console.error('Error deleting activity:', error);
-      res.status(500).json({ message: "Failed to delete activity" });
+      res.status(500).json({ 
+        message: "Failed to delete activity",
+        error: error instanceof Error ? error.message : undefined
+      });
     }
   });
 
