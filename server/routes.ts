@@ -28,7 +28,7 @@ import bcrypt from "bcryptjs";
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for documents
 });
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
@@ -323,23 +323,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       console.log('Processing document:', req.file.originalname);
 
-      // Convert the uploaded document to HTML, including the transform to extract hyperlinks
-      const result = await mammoth.convertToHtml({ 
-        buffer: req.file.buffer,
-        transformDocument: (element) => {
-          if (element.type === 'hyperlink' && element.href) {
-            // Log the extracted hyperlink for debugging
-            console.log('Found hyperlink:', element.href);
-            return element;
-          }
+      // Convert the uploaded document to HTML with enhanced options
+      const result = await mammoth.convertToHtml(
+        { buffer: req.file.buffer },
+        {
+          convertImage: mammoth.images.imgElement(function(image) {
+            return image.read().then(function(imageBuffer) {
+              return {
+                src: `data:${image.contentType};base64,${imageBuffer.toString('base64')}`
+              };
+            });
+          }),
+          styleMap: [
+            "p[style-name='Section Title'] => h1:fresh",
+            "p[style-name='Subsection Title'] => h2:fresh"
+          ]
         }
-      });
+      );
+
+      if (result.messages.length > 0) {
+        console.log('Mammoth conversion messages:', result.messages);
+      }
 
       let html = result.value;
 
       console.log('Initial HTML content:', html.substring(0, 200) + '...');
 
-      // Extract and transform YouTube links into embeds (handle both direct URLs and hyperlinked text)
+      // Extract and transform YouTube links into embeds
       const youtubeRegex = /(?:href=")?(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:")?/g;
       html = html.replace(youtubeRegex, (match, videoId) => {
         console.log('Found YouTube video ID:', videoId);
@@ -382,7 +392,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       console.error('Error processing document:', error);
       res.status(500).json({ 
         message: "Failed to process document",
-        error: error instanceof Error ? error.message : undefined
+        error: error instanceof Error ? error.message : undefined,
+        details: error instanceof Error ? error.stack : undefined
       });
     }
   });
