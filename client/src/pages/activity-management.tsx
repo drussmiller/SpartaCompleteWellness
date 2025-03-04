@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -247,11 +247,9 @@ export default function ActivityManagementPage() {
 
   return (
     <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">Activity Management</h1>
-        <Button variant="outline" onClick={() => window.history.back()}>
-          <X className="h-4 w-4 mr-2" />
-          Close
+      <div className="mb-6">
+        <Button variant="outline" onClick={() => window.history.back()} className="px-2">
+          <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
 
