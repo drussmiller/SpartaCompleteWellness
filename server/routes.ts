@@ -323,7 +323,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       console.log('Processing document:', req.file.originalname);
 
-      // First convert the document to raw HTML
+      // First convert the document to raw text
       const { value: rawHtml, messages } = await mammoth.extractRawText({ 
         buffer: req.file.buffer 
       });
@@ -337,7 +337,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         <div class="document-content">
           ${rawHtml.split('\n').map(line => 
             line.trim() ? `<p>${line}</p>` : ''
-          ).join('\n')}
+          ).join('')}
         </div>
       `;
 
@@ -352,36 +352,42 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const finalHtml = `
         <div class="content-wrapper">
           ${html}
-          <style>
-            .content-wrapper {
-              font-family; system-ui, -apple-system, sans-serif;
-              line-height: 1.6;
-            }
-            .document-content p {
-              margin-bottom: 1em;
-            }
-            .video-wrapper {
-              position: relative;
-              padding-bottom: 56.25%;
-              height: 0;
-              margin: 1rem 0;
-              overflow: hidden;
-            }
-            .video-wrapper iframe {
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              border: 0;
-            }
-          </style>
         </div>
+        <style>
+          .content-wrapper {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+          }
+          .document-content p {
+            margin-bottom: 1em;
+          }
+          .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            margin: 1rem 0;
+            overflow: hidden;
+          }
+          .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+          }
+        </style>
       `.trim();
 
-      // Set proper content type and send response
-      res.setHeader('Content-Type', 'application/json');
-      res.json({ content: finalHtml });
+      // Log the final HTML for debugging
+      console.log('Processed content length:', finalHtml.length);
+      console.log('Content preview:', finalHtml.substring(0, 200));
+
+      // Send response with proper JSON encoding
+      res.json({ 
+        content: finalHtml,
+        success: true
+      });
 
     } catch (error) {
       console.error('Document processing error:', error);
