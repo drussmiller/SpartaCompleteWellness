@@ -328,80 +328,49 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         buffer: req.file.buffer 
       });
 
-      // Split into paragraphs and clean up the text
-      const paragraphs = rawText
-        .split('\n\n')
-        .filter(p => p.trim())
-        .map(p => {
-          // Remove any non-printable characters
-          return p.replace(/[^\x20-\x7E\s]/g, '');
-        });
+      // Log the raw text for debugging
+      console.log('Raw text extracted:', rawText.substring(0, 200));
 
-      // Process content into clean HTML
-      const processedParagraphs = paragraphs.map(paragraph => {
-        // Extract YouTube links
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-        let match;
-        let videoEmbeds = [];
+      try {
+        // Process text into paragraphs
+        const paragraphs = rawText
+          .split('\n\n')
+          .filter(p => p.trim())
+          .map(p => p.replace(/[^\x20-\x7E\s]/g, '')); // Keep only printable ASCII and whitespace
 
-        while ((match = youtubeRegex.exec(paragraph)) !== null) {
-          videoEmbeds.push(`<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${match[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`);
+        console.log('Processed paragraphs:', paragraphs.length);
+
+        // Convert paragraphs to HTML
+        const htmlContent = paragraphs.map(p => `<p>${p}</p>`).join('');
+
+        // Create minimal response object
+        const responseData = {
+          content: htmlContent
+        };
+
+        // Test JSON serialization
+        try {
+          JSON.stringify(responseData);
+          console.log('JSON serialization successful');
+        } catch (jsonError) {
+          console.error('JSON serialization failed:', jsonError);
+          throw new Error('Failed to serialize response data');
         }
 
-        if (videoEmbeds.length > 0) {
-          return videoEmbeds.join('');
-        }
+        // Send response
+        res.json(responseData);
 
-        // Process regular text
-        return `<p>${paragraph
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;')}</p>`;
-      });
-
-      const styles = `
-        .video-wrapper {
-          position: relative;
-          padding-bottom: 56.25%;
-          height: 0;
-          margin: 1rem 0;
-        }
-        .video-wrapper iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-        }
-      `.replace(/\s+/g, ' ').trim();
-
-      // Create response object
-      const responseData = {
-        content: processedParagraphs.join('') + `<style>${styles}</style>`
-      };
-
-      // Log data for debugging
-      console.log('Response object:', {
-        type: typeof responseData,
-        hasContent: Boolean(responseData.content),
-        contentLength: responseData.content.length
-      });
-
-      // Try parsing the response to validate JSON
-      const jsonString = JSON.stringify(responseData);
-      JSON.parse(jsonString); // Validate JSON
-
-      // If we got here, JSON is valid
-      res.json(responseData);
+      } catch (processingError) {
+        console.error('Content processing error:', processingError);
+        throw processingError;
+      }
 
     } catch (error) {
-      console.error('Document processing error:', error);
-      console.error('Full error details:', {
+      console.error('Document processing error:', {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
+        type: typeof error
       });
 
       res.status(500).json({ 
