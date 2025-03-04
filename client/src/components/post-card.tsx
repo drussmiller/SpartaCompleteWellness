@@ -196,7 +196,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
                 {commentCount?.count || 0}
-              </Button>n>
+              </Button>
             </Link>
           </div>
         </div>
