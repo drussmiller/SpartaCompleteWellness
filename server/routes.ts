@@ -323,8 +323,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       console.log('Processing document:', req.file.originalname);
 
-      // First convert the document to raw text
-      const { value: rawText, messages } = await mammoth.extractRawText({ 
+      // Extract raw text only
+      const { value: rawText } = await mammoth.extractRawText({ 
         buffer: req.file.buffer 
       });
 
@@ -332,7 +332,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const paragraphs = rawText
         .split('\n\n')
         .filter(p => p.trim())
-        .map(p => p.replace(/[\u0000-\u001F\u007F-\u009F]/g, '')); // Remove control characters
+        .map(p => {
+          // Remove any non-printable characters
+          return p.replace(/[^\x20-\x7E\s]/g, '');
+        });
 
       // Process content into clean HTML
       const processedParagraphs = paragraphs.map(paragraph => {
@@ -349,50 +352,58 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           return videoEmbeds.join('');
         }
 
-        // Escape HTML special characters for regular paragraphs
-        const text = paragraph
+        // Process regular text
+        return `<p>${paragraph
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-
-        return `<p>${text}</p>`;
+          .replace(/'/g, '&#039;')}</p>`;
       });
 
-      // Create a sanitized response object
+      const styles = `
+        .video-wrapper {
+          position: relative;
+          padding-bottom: 56.25%;
+          height: 0;
+          margin: 1rem 0;
+        }
+        .video-wrapper iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+      `.replace(/\s+/g, ' ').trim();
+
+      // Create response object
       const responseData = {
-        content: processedParagraphs.join('\n') + `
-          <style>
-            .video-wrapper {
-              position: relative;
-              padding-bottom: 56.25%;
-              height: 0;
-              margin: 1rem 0;
-            }
-            .video-wrapper iframe {
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-            }
-          </style>
-        `.replace(/\s+/g, ' ').trim()
+        content: processedParagraphs.join('') + `<style>${styles}</style>`
       };
 
-      // Log sanitized output for debugging
-      console.log('Response data:', {
-        contentLength: responseData.content.length,
-        sampleContent: responseData.content.substring(0, 100)
+      // Log data for debugging
+      console.log('Response object:', {
+        type: typeof responseData,
+        hasContent: Boolean(responseData.content),
+        contentLength: responseData.content.length
       });
 
-      // Send the response with explicit content type and proper JSON serialization
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(responseData));
+      // Try parsing the response to validate JSON
+      const jsonString = JSON.stringify(responseData);
+      JSON.parse(jsonString); // Validate JSON
+
+      // If we got here, JSON is valid
+      res.json(responseData);
 
     } catch (error) {
       console.error('Document processing error:', error);
+      console.error('Full error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+
       res.status(500).json({ 
         message: "Failed to process document",
         error: error instanceof Error ? error.message : "Unknown error"
