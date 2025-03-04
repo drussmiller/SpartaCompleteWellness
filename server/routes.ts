@@ -318,56 +318,60 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   app.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
-        console.log('No file received');
+        console.log('🚫 [UPLOAD] No file received');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      // Log request details
-      console.log('Upload request received:', {
-        filename: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-      });
+      // Step 1: Log file details
+      console.log('📁 [UPLOAD] File received:');
+      console.log('------------------------');
+      console.log(`Name: ${req.file.originalname}`);
+      console.log(`Size: ${req.file.size} bytes`);
+      console.log(`Type: ${req.file.mimetype}`);
+      console.log('------------------------');
 
       try {
-        // Extract text from document
+        // Step 2: Extract text
+        console.log('📝 [UPLOAD] Starting text extraction...');
         const { value } = await mammoth.extractRawText({ 
           buffer: req.file.buffer 
         });
 
-        // Validate extracted content
+        // Step 3: Validate content
         if (!value) {
-          console.log('No content extracted from document');
-          return res.status(400).json({ error: "No content could be extracted from document" });
+          console.log('❌ [UPLOAD] No content extracted');
+          return res.status(400).json({ error: "No content could be extracted" });
         }
 
-        console.log('Content extracted successfully:', {
-          length: value.length,
-          preview: value.substring(0, 50)
-        });
+        console.log('✅ [UPLOAD] Text extracted successfully');
+        console.log(`Length: ${value.length} characters`);
 
-        // Create a minimal response first
-        const response = {
-          success: true,
-          message: "Document processed successfully"
-        };
+        // Step 4: Prepare response
+        const response = { success: true };
 
-        // Log response before sending
-        console.log('Sending response:', JSON.stringify(response));
-
-        // Send response with explicit headers
-        res.setHeader('Content-Type', 'application/json');
-        return res.status(200).send(JSON.stringify(response));
+        // Step 5: Send response
+        console.log('📤 [UPLOAD] Sending response:', response);
+        return res.status(200).json(response);
 
       } catch (processingError) {
-        console.log('Document processing error:', processingError);
+        console.log('❌ [UPLOAD] Processing error:');
+        console.log('------------------------');
+        console.log('Error:', processingError.message);
+        console.log('Stack:', processingError.stack);
+        console.log('------------------------');
+
         return res.status(500).json({
-          error: "Error processing document",
+          error: "Processing failed",
           details: processingError.message
         });
       }
     } catch (error) {
-      console.log('Upload endpoint error:', error);
+      console.log('💥 [UPLOAD] Fatal error:');
+      console.log('------------------------');
+      console.log('Error:', error.message);
+      console.log('Stack:', error.stack);
+      console.log('------------------------');
+
       return res.status(500).json({
         error: "Upload failed",
         details: error.message
