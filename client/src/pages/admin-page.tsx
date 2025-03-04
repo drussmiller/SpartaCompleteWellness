@@ -398,6 +398,7 @@ export default function AdminPage() {
                           <Button
                             variant="destructive"
                             size="sm"
+                            className="bg-white hover:bg-red-50 text-red-600 border border-red-200"
                             onClick={() => {
                               if (confirm("Are you sure you want to delete this team?")) {
                                 deleteTeamMutation.mutate(team.id);
