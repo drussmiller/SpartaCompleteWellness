@@ -494,7 +494,7 @@ export default function AdminPage() {
                                         This action cannot be undone. This will permanently delete the user
                                         account and all associated data.
                                       </AlertDialogDescription>
-                                      <div className="flex justify-end gap-2 mt-4">
+                                      <div className="flex items-center justify-end gap-2 mt-4">
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                                         <AlertDialogAction
                                           className="bg-red-600 hover:bg-red-700 text-white"
