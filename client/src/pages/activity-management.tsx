@@ -246,7 +246,7 @@ export default function ActivityManagementPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
+    <div className="h-screen w-full bg-background/95 p-6 pb-20 shadow-lg animate-in slide-in-from-right">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Activity Management</h1>
         <Button variant="outline" onClick={() => window.history.back()}>
