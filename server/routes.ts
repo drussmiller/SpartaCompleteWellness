@@ -310,15 +310,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      console.log('Processing document:', req.file.originalname);
+
       // Convert the uploaded document to HTML
       const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
       let html = result.value;
+
+      console.log('Converted HTML content:', html.substring(0, 200) + '...');
 
       // Extract and transform YouTube links into embeds
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       html = html.replace(youtubeRegex, (match, videoId) => {
         return `<div class="video-wrapper"><iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
+
+      // Clean up any potential script tags or other unsafe content
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+      console.log('Final processed content:', html.substring(0, 200) + '...');
 
       res.json({ content: html });
     } catch (error) {

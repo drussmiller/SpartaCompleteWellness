@@ -429,17 +429,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivities(week?: number, day?: number) {
-    let query = db.select().from(activities);
-    if (week !== undefined) {
-      query = query.where(eq(activities.week, week));
-      if (day !== undefined) {
-        query = query.where(and(
-          eq(activities.week, week),
-          eq(activities.day, day)
-        ));
+    try {
+      let query = db.select().from(activities);
+      if (week !== undefined) {
+        query = query.where(eq(activities.week, week));
+        if (day !== undefined) {
+          query = query.where(and(
+            eq(activities.week, week),
+            eq(activities.day, day)
+          ));
+        }
       }
+      const results = await query;
+
+      // Parse the JSONB content back to objects
+      return results.map(activity => ({
+        ...activity,
+        contentFields: typeof activity.contentFields === 'string'
+          ? JSON.parse(activity.contentFields)
+          : activity.contentFields
+      }));
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      throw error;
     }
-    return await query;
   }
 
   async createActivity(data: any) {
@@ -449,7 +462,10 @@ export class DatabaseStorage implements IStorage {
       const activityData = {
         week: data.week,
         day: data.day,
-        contentFields: JSON.stringify(Array.isArray(data.contentFields) ? data.contentFields : []),
+        contentFields: JSON.stringify(Array.isArray(data.contentFields) ? data.contentFields.map(field => ({
+          ...field,
+          content: field.content.toString() // Ensure content is a string
+        })) : []),
         isComplete: false
       };
 
