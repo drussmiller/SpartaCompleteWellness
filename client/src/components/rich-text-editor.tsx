@@ -91,24 +91,11 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
       <style>{`
         .video-wrapper {
           position: relative;
-          padding-bottom: 56.25%;
+          padding-bottom: 56.25%; /* 16:9 aspect ratio */
           height: 0;
           margin: 1rem 0;
         }
         .video-wrapper iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-        }
-        .iframe-wrapper {
-          position: relative;
-          padding-bottom: 56.25%;
-          height: 0;
-          margin: 1rem 0;
-        }
-        .iframe-wrapper iframe {
           position: absolute;
           top: 0;
           left: 0;
