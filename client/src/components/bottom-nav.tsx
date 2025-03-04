@@ -25,7 +25,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       // Mobile styles (bottom nav)
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border",
       // Desktop styles (side nav)
-      orientation === "vertical" && "h-full w-full border-r"
+      orientation === "vertical" && "w-full"
     )}>
       <div className={cn(
         // Container styles
@@ -33,7 +33,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         // Mobile layout
         orientation === "horizontal" && "h-16 justify-around",
         // Desktop layout
-        orientation === "vertical" && "flex-col h-full py-4 space-y-4"
+        orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
         {items.map(({ icon: Icon, label, href }) => (
           <div
@@ -42,7 +42,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "h-16 w-full",
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Text styles
               location === href
                 ? "text-primary"
@@ -59,7 +59,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "h-16 w-full",
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Text styles
               location === "/admin"
                 ? "text-primary"
@@ -75,7 +75,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
             // Size styles
-            orientation === "horizontal" ? "h-full w-full" : "h-16 w-full",
+            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
             // Text styles
             location === "/profile"
               ? "text-primary"
