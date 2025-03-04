@@ -21,6 +21,7 @@ export default function ActivityPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
   // Get the current day number based on Monday start
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -114,108 +115,22 @@ export default function ActivityPage() {
 
         {currentActivity ? (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>
                 Week {currentActivity.week} - Day {currentActivity.day}
               </CardTitle>
-              {user?.isAdmin && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
-                    onClick={() => {
-                      form.reset(currentActivity);
-                      setEditDialogOpen(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="bg-gray-400 hover:bg-gray-500 text-black font-bold"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this activity?")) {
-                        deleteActivityMutation.mutate();
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </CardHeader>
             <CardContent>
               <div className="prose max-w-none">
-                <h2>Memory Verse</h2>
-                <blockquote>
-                  {currentActivity.memoryVerseReference} - "{currentActivity.memoryVerse}"
-                </blockquote>
-
-                {currentActivity.scripture && (
-                  <>
-                    <h2>Scripture Reading</h2>
-                    <p>{currentActivity.scripture}</p>
-                  </>
-                )}
-
-                {currentActivity.tasks && (
-                  <>
-                    <h2>Tasks</h2>
-                    <div dangerouslySetInnerHTML={{ __html: currentActivity.tasks }} />
-                  </>
-                )}
-
-                {currentActivity.description && (
-                  <>
-                    <h2>Description</h2>
-                    <p className="whitespace-pre-line">
-                      {currentActivity.description}
-                    </p>
-                  </>
-                )}
-
-                {currentActivity.workout && (
-                  <>
-                    <h2>Workout</h2>
-                    {currentActivity.workoutVideos && currentActivity.workoutVideos.length > 0 && (
-                      <div className="space-y-4 mb-4">
-                        {currentActivity.workoutVideos.map((video, index) => (
-                          <div key={index} className="space-y-2">
-                            <p className="font-medium">{video.description}</p>
-                            <div className="aspect-video">
-                              <iframe
-                                className="w-full h-full"
-                                src={`https://www.youtube.com/embed/${video.url.split(/[/?]/)[3]}`}
-                                title="Workout Video"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <p className="whitespace-pre-line">
-                      {currentActivity.workout.split('http').map((part, i) =>
-                        i === 0 ? part : (
-                          <React.Fragment key={i}>
-                            <a
-                              href={`http${part.split(/\s/)[0]}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              http{part.split(/\s/)[0]}
-                            </a>
-                            {part.split(/\s/).slice(1).join(' ')}
-                          </React.Fragment>
-                        )
-                      )}
-                    </p>
-                  </>
-                )}
+                {currentActivity.contentFields?.map((field, index) => (
+                  <div key={index} className="mb-8">
+                    {field.title && <h2>{field.title}</h2>}
+                    <div 
+                      className="rich-text-content" 
+                      dangerouslySetInnerHTML={{ __html: field.content }}
+                    />
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -228,6 +143,33 @@ export default function ActivityPage() {
         )}
       </main>
 
+      <style>{`
+        .rich-text-content {
+          line-height: 1.6;
+        }
+        .rich-text-content p {
+          margin-bottom: 1em;
+        }
+        .rich-text-content h2 {
+          font-size: 1.5em;
+          font-weight: bold;
+          margin: 1em 0 0.5em;
+        }
+        .video-wrapper {
+          position: relative;
+          padding-bottom: 56.25%;
+          height: 0;
+          margin: 1rem 0;
+        }
+        .video-wrapper iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+      `}</style>
+      </ScrollArea>
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-h-[90vh]">
           <DialogHeader>
@@ -316,8 +258,6 @@ export default function ActivityPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-
-      </ScrollArea>
       <BottomNav />
     </div>
   );
