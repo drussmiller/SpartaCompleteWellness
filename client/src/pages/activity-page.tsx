@@ -1,11 +1,10 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BottomNav } from "@/components/bottom-nav";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -85,7 +84,7 @@ export default function ActivityPage() {
         </header>
 
         <main className="p-4 space-y-4">
-          <div className="flex items-center justify-center gap-4"> {/* Navigation and week/day display */}
+          <div className="flex items-center justify-center gap-4">
             <Button
               variant="outline"
               size="icon"
@@ -109,16 +108,13 @@ export default function ActivityPage() {
 
           {currentActivity ? (
             <Card>
-              <CardHeader>
-                <CardTitle>
-                  Week {currentActivity.week} - Day {currentActivity.day}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="prose max-w-none">
                   {currentActivity.contentFields?.map((field, index) => (
                     <div key={index} className="mb-8">
-                      {field.title && <h2 className="text-xl font-bold mb-4">{field.title}</h2>}
+                      {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
+                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                      )}
                       <div 
                         className="rich-text-content prose-sm" 
                         dangerouslySetInnerHTML={{ 
