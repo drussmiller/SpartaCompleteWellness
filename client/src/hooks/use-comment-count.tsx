@@ -1,12 +1,17 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 export function useCommentCount(postId: number) {
-  return useQuery({
-    queryKey: [`/api/posts/comments/${postId}`],
+  const { data, isLoading, error } = useQuery({
+    queryKey: [`/api/posts/comments/${postId}/count`],
     queryFn: async () => {
       try {
+        // Skip invalid postIds to prevent errors
+        if (!postId || isNaN(postId) || postId <= 0) {
+          console.warn(`Invalid post ID for comment count: ${postId}`);
+          return { count: 0 };
+        }
+
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
           console.warn(`Comment count request for post ${postId} failed with status ${res.status}`);
