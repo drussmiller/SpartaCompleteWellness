@@ -161,19 +161,10 @@ export function CreatePostDialog() {
       return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    const limits = {
-      food: 3,
-      workout: 1,
-      scripture: 1
-    };
+    const remaining = counts[type as keyof typeof counts] || 0;
 
-    const used = counts[type as keyof typeof counts] || 0;
-    const limit = limits[type as keyof typeof limits];
+    console.log(`Post type ${type} remaining:`, remaining);
 
-    if (!limit) return "";
-
-    console.log(`Post type ${type}: ${used}/${limit} used`);
-    const remaining = limit - used;
     return remaining <= 0 ? "(Daily limit reached)" : `(${remaining} remaining today)`;
   }
 
