@@ -66,15 +66,15 @@ export default function ActivityManagementPage() {
         const error = await res.json();
         throw new Error(error.message || "Failed to delete activity");
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      // Clean up states
       setDeleteDialogOpen(false);
       setActivityToDelete(null);
       toast({
         title: "Success",
-        description: "Activity deleted successfully",
+        description: "Activity deleted successfully"
       });
     },
     onError: (error: Error) => {
@@ -82,8 +82,11 @@ export default function ActivityManagementPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete activity",
-        variant: "destructive",
+        variant: "destructive"
       });
+      // Clean up states even on error
+      setDeleteDialogOpen(false);
+      setActivityToDelete(null);
     },
   });
 
@@ -100,7 +103,11 @@ export default function ActivityManagementPage() {
 
   const confirmDelete = () => {
     if (activityToDelete) {
-      deleteActivityMutation.mutate(activityToDelete);
+      try {
+        deleteActivityMutation.mutate(activityToDelete);
+      } catch (error) {
+        console.error('Error in delete handler:', error);
+      }
     }
   };
 
@@ -504,7 +511,15 @@ export default function ActivityManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog 
+        open={deleteDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogOpen(false);
+            setActivityToDelete(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Activity</DialogTitle>
@@ -515,7 +530,10 @@ export default function ActivityManagementPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setActivityToDelete(null);
+              }}
               disabled={deleteActivityMutation.isPending}
             >
               Cancel
