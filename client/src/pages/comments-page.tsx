@@ -184,36 +184,55 @@ export default function CommentsPage() {
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: originalPost, isLoading: isPostLoading } = useQuery({
+  console.log("CommentsPage rendered with postId:", postId);
+
+  const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${postId}`],
     queryFn: async () => {
+      console.log("Fetching post with ID:", postId);
       const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) throw new Error("Failed to fetch post");
-      return res.json();
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to fetch post:", errorText);
+        throw new Error(`Failed to fetch post: ${errorText}`);
+      }
+      const data = await res.json();
+      console.log("Received post data:", data);
+      return data;
     },
     enabled: !!postId,
   });
 
-  const { data: comments = [], isLoading: areCommentsLoading, refetch } = useQuery({
+  const { data: comments = [], isLoading: areCommentsLoading, error: commentsError, refetch } = useQuery({
     queryKey: [`/api/posts/comments/${postId}`],
     queryFn: async () => {
+      console.log("Fetching comments for post:", postId);
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) throw new Error("Failed to fetch comments");
-      return res.json();
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to fetch comments:", errorText);
+        throw new Error(`Failed to fetch comments: ${errorText}`);
+      }
+      const data = await res.json();
+      console.log("Received comments data:", data);
+      return data;
     },
     enabled: !!postId
   });
 
   const createCommentMutation = useMutation({
     mutationFn: async () => {
-      const parentComment = replyTo ? comments.find(c => c.id === replyTo) : null;
-      const newDepth = parentComment ? (parentComment.depth || 0) + 1 : 0;
+      console.log("Creating comment:", {
+        type: "comment",
+        content: comment.trim(),
+        parentId: replyTo || parseInt(postId!),
+        points: 1
+      });
 
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
         content: comment.trim(),
         parentId: replyTo || parseInt(postId!),
-        depth: newDepth,
         points: 1
       });
 
@@ -245,6 +264,19 @@ export default function CommentsPage() {
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (postError || commentsError) {
+    return (
+      <AppLayout title="Comments">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <div className="text-center text-destructive">
+            <p>Error loading comments:</p>
+            <p>{postError?.message || commentsError?.message}</p>
+          </div>
         </div>
       </AppLayout>
     );
