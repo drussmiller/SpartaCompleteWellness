@@ -539,7 +539,7 @@ export default function AdminPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full"
+                          className="w-full bg-violet-700 text-white hover:bg-violet-800"
                           onClick={() => {
                             setSelectedUserId(user.id);
                             setResetPasswordOpen(true);

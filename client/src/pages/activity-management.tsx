@@ -372,13 +372,16 @@ export default function ActivityManagementPage() {
               </Button>
             </div>
 
-            <Button type="submit">Add Activity</Button>
+            <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">Add Activity</Button>
           </form>
 
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Existing Activities</h3>
             <div className="space-y-4">
-              {activities?.map((activity) => (
+              {activities
+                ?.slice()
+                .sort((a, b) => a.week !== b.week ? a.week - b.week : a.day - b.day)
+                .map((activity) => (
                 <Card key={activity.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
