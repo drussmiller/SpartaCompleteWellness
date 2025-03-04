@@ -353,7 +353,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       console.log('Fetching posts for user:', req.user?.id);
-      const posts = await storage.getAllPosts();
+      const posts = await storage.getPosts();
       console.log('Raw posts:', posts);
 
       // For each post, get its author information
