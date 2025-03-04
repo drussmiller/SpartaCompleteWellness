@@ -12,23 +12,20 @@ import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
-// This component shows multiple reaction emojis with counts
+// ReactionSummary component refactored for proper array handling
 function ReactionSummary({ postId }: { postId: number }) {
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
   });
 
   // Count each type of reaction
-  const reactionCounts: Record<string, number> = {};
-  reactions.forEach(reaction => {
+  const reactionCounts = reactions.reduce((acc: Record<string, number>, reaction) => {
     if (reaction.type) {
-      reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
+      acc[reaction.type] = (acc[reaction.type] || 0) + 1;
     }
-  });
+    return acc;
+  }, {});
 
-  // Get the emoji mapping from imported module
-  // This is a little hack to access the same emoji data from reaction-button
-  // A better approach would be to move this to a shared constants file
   const getEmojiForType = (type: string): string => {
     const allEmojis: Record<string, { emoji: string, color: string }> = {
       like: { emoji: "👍", color: "text-blue-500" },
@@ -65,7 +62,7 @@ function ReactionSummary({ postId }: { postId: number }) {
     return allEmojis[type]?.emoji || "👍";
   };
 
-  // Sort reaction types by count (most frequent first)
+  // Convert the reaction counts object to an array and sort it
   const sortedReactions = Object.entries(reactionCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5); // Show at most 5 reaction types
@@ -77,10 +74,11 @@ function ReactionSummary({ postId }: { postId: number }) {
       <TooltipProvider>
         <div className="flex flex-wrap gap-1">
           {sortedReactions.map(([type, count]) => (
-            <Tooltip key={type}>
+            <Tooltip key={`${type}-${count}`}>
               <TooltipTrigger asChild>
                 <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span>{getEmojiForType(type)}</span>
+                  <span className="mr-1">{getEmojiForType(type)}</span>
+                  <span className="text-xs">{count}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
