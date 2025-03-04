@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, X, Plus, Loader2, Upload } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,6 +29,8 @@ export default function ActivityManagementPage() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [contentFields, setContentFields] = useState<ContentField[]>([]);
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
@@ -68,6 +70,8 @@ export default function ActivityManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setDeleteDialogOpen(false);
+      setActivityToDelete(null);
       toast({
         title: "Success",
         description: "Activity deleted successfully",
@@ -90,12 +94,13 @@ export default function ActivityManagementPage() {
   };
 
   const handleDeleteActivity = (activityId: number) => {
-    if (confirm("Are you sure you want to delete this activity?")) {
-      try {
-        deleteActivityMutation.mutate(activityId);
-      } catch (error) {
-        console.error('Error in delete handler:', error);
-      }
+    setActivityToDelete(activityId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (activityToDelete) {
+      deleteActivityMutation.mutate(activityToDelete);
     }
   };
 
@@ -496,6 +501,40 @@ export default function ActivityManagementPage() {
               </form>
             </Form>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Activity</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this activity? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteActivityMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteActivityMutation.isPending}
+            >
+              {deleteActivityMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Activity"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
