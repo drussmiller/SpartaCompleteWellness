@@ -56,6 +56,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     next();
   });
 
+  // Add custom error handler for better JSON errors
+  router.use('/api', (err, req, res, next) => {
+    console.error('API Error:', err);
+    if (!res.headersSent) {
+      res.status(err.status || 500).json({
+        message: err.message || "Internal server error",
+        error: process.env.NODE_ENV === 'production' ? undefined : err.stack
+      });
+    } else {
+      next(err);
+    }
+  });
+
   // Debug middleware to log all requests
   router.use((req, res, next) => {
     console.log('Request:', {
