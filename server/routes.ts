@@ -26,7 +26,7 @@ import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
+const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, './uploads/');
   },
@@ -45,7 +45,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
