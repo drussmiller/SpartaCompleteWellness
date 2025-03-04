@@ -13,55 +13,37 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest(
   method: string,
-  url: string,
-  body?: any,
+  path: string,
+  body?: unknown,
 ): Promise<Response> {
-  const options: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-  };
+  const headers: HeadersInit = {};
 
-  if (body && method !== "GET") {
-    options.body = JSON.stringify(body);
+  if (body && !(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
   }
 
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(`${path}`, {
+      method,
+      headers,
+      body: body instanceof FormData ? body : JSON.stringify(body),
+      credentials: 'include',
+    });
 
-    // Check if the response is not ok and has JSON content
+    // Log failed API requests for debugging
     if (!response.ok) {
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const errorData = await response.json();
-        // Clone the response with the parsed error data for better debugging
-        const errorResponse = new Response(JSON.stringify(errorData), {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-        });
-
-        // Add the error data to the response object for easier access
-        (errorResponse as any).errorData = errorData;
-        return errorResponse;
-      }
+      const errorText = await response.text();
+      console.error(`API ${method} request to ${path} failed:`, {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
     }
 
     return response;
   } catch (error) {
-    console.error("API Request Error:", error);
-    // Create a custom response for network errors
-    return new Response(JSON.stringify({ 
-      message: "Network error occurred", 
-      details: error instanceof Error ? error.message : "Unknown error" 
-    }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+    console.error(`API ${method} request to ${path} threw an exception:`, error);
+    throw error;
   }
 }
 

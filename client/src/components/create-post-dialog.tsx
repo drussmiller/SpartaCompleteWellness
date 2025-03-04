@@ -112,7 +112,7 @@ export function CreatePostDialog() {
           } else {
             const errorText = await res.text();
             console.error("Post creation error (non-JSON):", errorText);
-            throw new Error(`Server error: ${res.status} ${res.statusText}`);
+            throw new Error(`Server error: ${res.status} ${res.statusText} - ${errorText}`);
           }
         }
 
