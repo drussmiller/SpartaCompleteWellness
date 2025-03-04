@@ -97,6 +97,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         week ? parseInt(week as string) : undefined,
         day ? parseInt(day as string) : undefined
       );
+      console.log('Retrieved activities:', JSON.stringify(activities, null, 2));
       res.json(activities);
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -320,7 +321,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Document upload endpoint
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
