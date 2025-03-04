@@ -16,7 +16,8 @@ import {
   insertMeasurementSchema,
   insertNotificationSchema,
   insertVideoSchema,
-  insertActivitySchema
+  insertActivitySchema,
+  insertUserSchema
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import express, { Router } from "express";
@@ -388,10 +389,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   app.post("/api/register", async (req, res) => {
     try {
-      console.log('Attempting to register new user:', { 
+      console.log('Registration request body:', {
         username: req.body.username,
-        email: req.body.email 
+        email: req.body.email
       });
+
+      // Validate the input data
+      const parsed = insertUserSchema.safeParse(req.body);
+      if (!parsed.success) {
+        console.error('Validation errors:', parsed.error);
+        return res.status(400).json({
+          message: "Invalid registration data",
+          errors: parsed.error.errors
+        });
+      }
 
       // Check if username already exists
       const existingUser = await db
@@ -420,7 +431,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           password: hashedPassword,
           isAdmin: false,
           isTeamLead: false,
-          points: 0
+          points: 0,
+          preferredName: null,
+          currentWeek: 1,
+          currentDay: 1
         })
         .returning();
 
@@ -431,7 +445,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         if (err) {
           console.error('Login after registration failed:', err);
           return res.status(500).json({ 
-            message: "Registration successful but login failed" 
+            message: "Registration successful but login failed",
+            error: err.message
           });
         }
         res.status(201).json(newUser);
