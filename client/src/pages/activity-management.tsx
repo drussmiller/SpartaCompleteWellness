@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
 // Added imports for mobile navigation
 import { useIsMobile } from "@/hooks/use-mobile"; // Correct import path
-import BottomNav from "@/components/bottom-nav"; // Placeholder import
+import { BottomNav } from "@/components/bottom-nav"; // Use named import instead of default
 
 
 type ContentField = {
