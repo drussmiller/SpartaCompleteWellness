@@ -157,6 +157,8 @@ export default function ActivityManagementPage() {
       }
 
       const data = await res.json();
+      console.log('Processed document content:', data.content);
+
       setContentFields([{
         id: Math.random().toString(36).substring(7),
         type: 'text',
@@ -169,6 +171,7 @@ export default function ActivityManagementPage() {
         description: "Document processed successfully"
       });
     } catch (error) {
+      console.error('Error processing document:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to process document",

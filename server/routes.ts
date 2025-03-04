@@ -320,7 +320,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Document upload endpoint from edited snippet
+  // Document upload endpoint
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
@@ -344,12 +344,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Clean up any potential script tags or other unsafe content
       html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
 
+      // Ensure proper formatting
+      html = html.replace(/\n/g, '<br>');
+
       console.log('Final processed content:', html.substring(0, 200) + '...');
 
       res.json({ content: html });
     } catch (error) {
       console.error('Error processing document:', error);
-      res.status(500).json({ message: "Failed to process document" });
+      res.status(500).json({ 
+        message: "Failed to process document",
+        error: error instanceof Error ? error.message : undefined
+      });
     }
   });
 
