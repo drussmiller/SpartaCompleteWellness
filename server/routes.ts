@@ -321,15 +321,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       console.log('Processing document:', req.file.originalname);
 
-      // Convert the uploaded document to HTML
-      const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
+      // Convert the uploaded document to HTML, including the transform to extract hyperlinks
+      const result = await mammoth.convertToHtml({ 
+        buffer: req.file.buffer,
+        transformDocument: (element) => {
+          if (element.type === 'hyperlink' && element.href) {
+            // Log the extracted hyperlink for debugging
+            console.log('Found hyperlink:', element.href);
+            return element;
+          }
+        }
+      });
+
       let html = result.value;
 
       console.log('Initial HTML content:', html.substring(0, 200) + '...');
 
-      // Extract and transform YouTube links into embeds
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      // Extract and transform YouTube links into embeds (handle both direct URLs and hyperlinked text)
+      const youtubeRegex = /(?:href=")?(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:")?/g;
       html = html.replace(youtubeRegex, (match, videoId) => {
+        console.log('Found YouTube video ID:', videoId);
         return `<div class="video-wrapper"><iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 

@@ -12,7 +12,9 @@ interface RichTextEditorProps {
 export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        html: true // Enable HTML parsing
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
