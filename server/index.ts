@@ -32,6 +32,11 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
+    // Skip logging for comment count API requests to reduce noise
+    if (path.includes('/api/posts/comments/')) {
+      return;
+    }
+    
     const duration = Date.now() - start;
     let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
     if (capturedJsonResponse) {
