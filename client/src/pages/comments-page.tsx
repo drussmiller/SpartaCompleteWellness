@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,70 +19,59 @@ export default function CommentsPage() {
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  console.log("CommentsPage rendered with postId:", postId);
+  console.log("=== CommentsPage Debug ===");
+  console.log("Current postId:", postId);
+  console.log("Current user:", currentUser?.id);
+
+  useEffect(() => {
+    console.log("Component mounted with postId:", postId);
+  }, []);
 
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${postId}`],
     queryFn: async () => {
-      if (!postId) throw new Error("No post ID provided");
+      console.log("Fetching original post with ID:", postId);
       const res = await apiRequest("GET", `/api/posts/${postId}`);
+
       if (!res.ok) {
         const errorText = await res.text();
+        console.error("Failed to fetch post:", errorText);
         throw new Error(`Failed to fetch post: ${errorText}`);
       }
-      return res.json();
+
+      const data = await res.json();
+      console.log("Received post data:", data);
+      return data;
     },
-    enabled: !!postId
+    enabled: Boolean(postId),
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError, refetch } = useQuery({
     queryKey: [`/api/posts/comments/${postId}`],
     queryFn: async () => {
-      if (!postId) throw new Error("No post ID provided");
+      console.log("Fetching comments for post:", postId);
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+
       if (!res.ok) {
         const errorText = await res.text();
+        console.error("Failed to fetch comments:", errorText);
         throw new Error(`Failed to fetch comments: ${errorText}`);
       }
-      return res.json();
+
+      const data = await res.json();
+      console.log("Received comments data:", data);
+      return data;
     },
-    enabled: !!postId
+    enabled: Boolean(postId),
   });
 
-  const createCommentMutation = useMutation({
-    mutationFn: async () => {
-      if (!postId) throw new Error("No post ID provided");
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: comment.trim(),
-        parentId: replyTo || parseInt(postId),
-        points: 1
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create comment");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      setComment("");
-      setReplyTo(null);
-      refetch();
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
-      toast({
-        description: "Comment posted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to post comment",
-      });
-    },
-  });
+  console.log("=== Current State ===");
+  console.log("Loading states:", { isPostLoading, areCommentsLoading });
+  console.log("Errors:", { postError, commentsError });
+  console.log("Data:", { originalPost, commentsCount: comments?.length });
 
   if (!currentUser) {
+    console.log("No user logged in");
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -93,6 +82,7 @@ export default function CommentsPage() {
   }
 
   if (isPostLoading || areCommentsLoading) {
+    console.log("Loading state active");
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -103,6 +93,7 @@ export default function CommentsPage() {
   }
 
   if (postError || commentsError) {
+    console.error("Rendering error state:", postError || commentsError);
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center text-destructive">
@@ -113,6 +104,7 @@ export default function CommentsPage() {
   }
 
   if (!originalPost) {
+    console.log("No post found");
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -122,6 +114,7 @@ export default function CommentsPage() {
     );
   }
 
+  console.log("Rendering main comments view");
   return (
     <AppLayout title="Comments">
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
