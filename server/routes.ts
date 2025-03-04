@@ -328,10 +328,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
+      console.log("=== Comment Endpoint Debug ===");
+      console.log("Request params:", req.params);
+      console.log("User:", req.user?.id);
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
+        console.log("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
+
+      console.log("Fetching comments for post", postId);
 
       // Get all comments for this post
       const comments = await db
@@ -356,9 +363,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(posts.createdAt);
 
+      console.log(`Found ${comments.length} direct comments`);
+
       // Get replies for each comment
       const commentsWithReplies = await Promise.all(
         comments.map(async (comment) => {
+          console.log(`Fetching replies for comment ${comment.id}`);
           const replies = await db
             .select({
               id: posts.id,
@@ -381,6 +391,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             .innerJoin(users, eq(posts.userId, users.id))
             .orderBy(posts.createdAt);
 
+          console.log(`Found ${replies.length} replies for comment ${comment.id}`);
+
           return {
             ...comment,
             replies
@@ -388,9 +400,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
       );
 
-      return res.json(commentsWithReplies);
+      console.log("=== Final Response ===");
+      console.log("Total comments with replies:", commentsWithReplies.length);
+      console.log("Response structure:", JSON.stringify(commentsWithReplies[0], null, 2));
+
+      res.json(commentsWithReplies);
     } catch (error) {
-      console.error(`Error fetching comments for post ${req.params.postId}:`, error);
+      console.error("=== Comment Endpoint Error ===");
+      console.error("Error details:", error);
       res.status(500).json({ 
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -902,7 +919,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .returning();
 
       if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: "User not found"});
       }
 
       res.json(updatedUser);
