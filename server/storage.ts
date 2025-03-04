@@ -101,15 +101,48 @@ export const storage = {
   },
 
   // Notifications
-  async createNotification(data: Omit<Notification, "id" | "createdAt">): Promise<Notification> {
+  async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
+      logger.debug("Creating notification:", data);
       const [notification] = await db
         .insert(notifications)
-        .values({ ...data, createdAt: new Date() })
+        .values({
+          userId: data.userId,
+          title: data.title,
+          message: data.message,
+          read: data.read ?? false,
+          createdAt: new Date()
+        })
         .returning();
+      logger.debug("Notification created successfully:", notification.id);
       return notification;
     } catch (error) {
-      logger.error(`Failed to create notification: ${error}`);
+      logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);
+      throw error;
+    }
+  },
+
+  async getNotifications(userId: number): Promise<Notification[]> {
+    try {
+      return await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt));
+    } catch (error) {
+      logger.error(`Failed to get notifications for user ${userId}: ${error}`);
+      throw error;
+    }
+  },
+
+  async markNotificationAsRead(id: number): Promise<void> {
+    try {
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.id, id));
+    } catch (error) {
+      logger.error(`Failed to mark notification ${id} as read: ${error}`);
       throw error;
     }
   },
