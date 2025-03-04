@@ -21,6 +21,7 @@ import {
 import { setupAuth, authenticate } from "./auth";
 import express, { Router } from "express";
 import { Server as HttpServer } from "http";
+import mammoth from "mammoth";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -286,6 +287,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     } catch (error) {
       console.error('Error updating user role:', error);
       res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  // Add document upload endpoint
+  router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Convert the uploaded document to HTML
+      const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
+      let html = result.value;
+
+      // Extract and transform YouTube links into embeds
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      html = html.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      });
+
+      res.json({ content: html });
+    } catch (error) {
+      console.error('Error processing document:', error);
+      res.status(500).json({ message: "Failed to process document" });
     }
   });
 
