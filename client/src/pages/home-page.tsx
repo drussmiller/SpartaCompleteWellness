@@ -17,7 +17,7 @@ export default function HomePage() {
       try {
         const response = await apiRequest("GET", "/api/posts");
         if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.statusText}`);
+          throw new Error(`Failed to fetch posts: ${response.status} ${response.statusText}`);
         }
         return response.json();
       } catch (err) {
@@ -26,6 +26,10 @@ export default function HomePage() {
       }
     },
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 30000,
+    refetchOnWindowFocus: false
   });
 
   if (isLoading) {

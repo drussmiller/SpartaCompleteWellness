@@ -9,8 +9,7 @@ export function useCommentCount(postId: number) {
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
-          const errorText = await res.text();
-          console.error(`Error fetching comment count for post ${postId}:`, errorText);
+          console.error(`Error fetching comment count for post ${postId}:`, res.status, res.statusText);
           return { count: 0 };
         }
         return res.json();
@@ -25,6 +24,10 @@ export function useCommentCount(postId: number) {
     // Cache results longer to reduce request frequency
     staleTime: 60000,
     // Use previous data if available
-    keepPreviousData: true
+    keepPreviousData: true,
+    // Disable refetch on window focus to reduce server load
+    refetchOnWindowFocus: false,
+    // Disable request during SSR
+    enabled: typeof window !== 'undefined' && !!postId
   });
 }

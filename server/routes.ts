@@ -26,9 +26,27 @@ import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+// Make sure upload directory exists
+import fs from 'fs';
+import path from 'path';
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for documents
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
@@ -54,6 +72,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.use('/api', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
     next();
+  });
+
+  // Add custom error handler for better JSON errors
+  router.use('/api', (err, req, res, next) => {
+    console.error('API Error:', err);
+    if (!res.headersSent) {
+      res.status(err.status || 500).json({
+        message: err.message || "Internal server error",
+        error: process.env.NODE_ENV === 'production' ? undefined : err.stack
+      });
+    } else {
+      next(err);
+    }
   });
 
   // Debug middleware to log all requests
@@ -209,6 +240,44 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Post creation endpoint
+  router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      console.log("Received post creation request");
+      
+      if (!req.body.data) {
+        return res.status(400).json({ message: "Missing post data" });
+      }
+      
+      let postData;
+      try {
+        postData = JSON.parse(req.body.data);
+        console.log("Parsed post data:", postData);
+      } catch (parseError) {
+        console.error("Error parsing post data:", parseError);
+        return res.status(400).json({ message: "Invalid post data format" });
+      }
+      
+      const post = await storage.createPost({
+        userId: req.user.id,
+        type: postData.type,
+        content: postData.content,
+        points: postData.points,
+        imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+        parentId: postData.parentId || null
+      });
+      
+      res.status(201).json(post);
+    } catch (error) {
+      console.error("Error creating post:", error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to create post",
+        error: error instanceof Error ? error.stack : "Unknown error"
+      });
+    }
+  });
+
   // Add reactions endpoints
   router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -284,23 +353,102 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       console.log('Fetching posts for user:', req.user?.id);
-      const posts = await storage.getAllPosts();
-      console.log('Raw posts:', posts);
+      
+      // Get posts from database with error handling
+      let posts = [];
+      try {
+        posts = await storage.getAllPosts();
+        console.log('Raw posts count:', posts ? posts.length : 0);
+      } catch (err) {
+        console.error('Error in storage.getAllPosts():', err);
+        return res.status(500).json({ 
+          message: "Failed to fetch posts from database",
+          error: err instanceof Error ? err.message : "Unknown database error"
+        });
+      }
+      
+      if (!posts || !Array.isArray(posts)) {
+        console.error('Posts is not an array:', posts);
+        return res.status(500).json({ 
+          message: "Invalid posts data from database",
+          error: "Expected array of posts but got " + typeof posts
+        });
+      }
 
-      // For each post, get its author information
+      // For each post, get its author information with separate error handling
       const postsWithAuthors = await Promise.all(posts.map(async (post) => {
-        const author = await storage.getUser(post.userId);
-        return {
-          ...post,
-          author: author || null
-        };
+        if (!post || typeof post !== 'object') {
+          console.error('Invalid post object:', post);
+          return null;
+        }
+        
+        try {
+          const author = await storage.getUser(post.userId);
+          return {
+            ...post,
+            author: author || null
+          };
+        } catch (userErr) {
+          console.error(`Error fetching author for post ${post.id}:`, userErr);
+          return {
+            ...post,
+            author: null
+          };
+        }
       }));
 
-      console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
-      res.json(postsWithAuthors);
+      // Filter out any null entries
+      const validPosts = postsWithAuthors.filter(post => post !== null);
+      
+      console.log('Successfully fetched posts with authors:', validPosts.length);
+      res.json(validPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
-      res.status(500).json({ message: "Failed to fetch posts" });
+      res.status(500).json({ 
+        message: "Failed to fetch posts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Delete post endpoint
+  router.delete("/api/posts/:postId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      console.log(`Attempting to delete post ${postId} by user ${req.user.id}`);
+
+      // Get the post to check ownership
+      const post = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post || post.length === 0) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user is admin or the post owner
+      if (!req.user.isAdmin && post[0].userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Delete post
+      await storage.deletePost(postId);
+      console.log(`Post ${postId} deleted successfully`);
+      res.status(200).json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error(`Error deleting post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

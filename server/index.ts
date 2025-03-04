@@ -36,7 +36,7 @@ app.use((req, res, next) => {
     if (path.includes('/api/posts/comments/')) {
       return;
     }
-    
+
     const duration = Date.now() - start;
     let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
     if (capturedJsonResponse) {
@@ -262,3 +262,6 @@ async function runMigrations() {
     throw error;
   }
 }
+// Serve static files
+app.use(express.static("client/dist"));
+app.use('/uploads', express.static('uploads'));

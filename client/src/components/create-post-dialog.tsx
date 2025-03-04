@@ -85,11 +85,13 @@ export function CreatePostDialog() {
           formData.append("image", blob, "image.jpeg"); // added filename for better handling
         }
 
-        formData.append("data", JSON.stringify({
+        const postData = {
           type: data.type,
           content: data.content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
-        }));
+        };
+
+        formData.append("data", JSON.stringify(postData));
 
         console.log("Submitting post data:", {
           type: data.type,
@@ -97,6 +99,7 @@ export function CreatePostDialog() {
           hasImage: data.imageUrl && data.imageUrl.length > 0
         });
 
+        // Use apiRequest from queryClient for consistent error handling
         const res = await fetch("/api/posts", {
           method: "POST",
           body: formData,
@@ -105,18 +108,28 @@ export function CreatePostDialog() {
 
         if (!res.ok) {
           const contentType = res.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            const errorData = await res.json();
-            console.error("Post creation error response:", errorData);
-            throw new Error(errorData.message || "Failed to create post");
-          } else {
-            const errorText = await res.text();
-            console.error("Post creation error (non-JSON):", errorText);
-            throw new Error(`Server error: ${res.status} ${res.statusText} - ${errorText}`);
+          try {
+            if (contentType && contentType.includes("application/json")) {
+              const errorData = await res.json();
+              console.error("Post creation error response (JSON):", errorData);
+              throw new Error(errorData.message || "Failed to create post");
+            } else {
+              const errorText = await res.text();
+              console.error("Post creation error (non-JSON):", errorText);
+              throw new Error(`Server error: ${res.status} ${res.statusText} - ${errorText}`);
+            }
+          } catch (parseError) {
+            console.error("Error parsing error response:", parseError);
+            throw new Error(`Server error: ${res.status} ${res.statusText} - Unable to parse response`);
           }
         }
 
-        return res.json();
+        try {
+          return await res.json();
+        } catch (jsonError) {
+          console.error("Error parsing JSON response:", jsonError);
+          throw new Error("Invalid JSON response from server");
+        }
       } catch (error) {
         console.error("Post creation exception:", error);
         throw error;
