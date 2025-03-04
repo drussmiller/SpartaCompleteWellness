@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,7 +6,7 @@ import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MessageSquare, Trash2, MessageCircle, ChevronLeft } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type CommentWithAuthor } from "@shared/schema";
 import { AppLayout } from "@/components/app-layout";
@@ -17,19 +17,18 @@ function CommentThread({
   onReply,
   onRefresh
 }: {
-  comment: CommentWithAuthor & { replies?: Array<CommentWithAuthor> };
+  comment: CommentWithAuthor;
   depth?: number;
   onReply: (parentId: number) => void;
   onRefresh: () => void;
 }) {
-  const maxDepth = 3; // Maximum nesting level
+  const maxDepth = 3;
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [showActions, setShowActions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content || "");
 
-  // Handle delete
   const deleteCommentMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("DELETE", `/api/posts/${comment.id}`);
@@ -40,7 +39,7 @@ function CommentThread({
     },
     onSuccess: () => {
       toast({ description: "Comment deleted successfully" });
-      onRefresh(); // Refresh the comment list
+      onRefresh();
     },
     onError: (error: Error) => {
       toast({
@@ -71,6 +70,7 @@ function CommentThread({
               {new Date(comment.createdAt!).toLocaleString()}
             </div>
           </div>
+
           {isEditing ? (
             <div>
               <Textarea
@@ -186,11 +186,16 @@ export default function CommentsPage() {
 
   const { data: originalPost, isLoading: isPostLoading } = useQuery({
     queryKey: [`/api/posts/${postId}`],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/posts/${postId}`);
+      if (!res.ok) throw new Error("Failed to fetch post");
+      return res.json();
+    },
     enabled: !!postId,
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, refetch } = useQuery({
-    queryKey: ["/api/posts/comments", postId],
+    queryKey: [`/api/posts/comments/${postId}`],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
@@ -222,6 +227,7 @@ export default function CommentsPage() {
       setComment("");
       setReplyTo(null);
       refetch();
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
       toast({
         description: "Comment posted successfully",
       });
@@ -237,7 +243,7 @@ export default function CommentsPage() {
   if (isPostLoading || areCommentsLoading) {
     return (
       <AppLayout title="Comments">
-        <div className="h-screen flex items-center justify-center">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </AppLayout>
@@ -246,58 +252,59 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <main className="p-4 pb-24 lg:pb-4 max-w-2xl mx-auto">
-        {originalPost && (
-          <div className="mb-6">
-            <div className="p-4 border rounded-lg">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
-                  <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{originalPost.author?.username}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(originalPost.createdAt!).toLocaleString()}
+      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 p-4 pb-32">
+          <div className="max-w-2xl mx-auto space-y-6">
+            {originalPost && (
+              <div className="border rounded-lg p-4 bg-background">
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`} />
+                    <AvatarFallback>{originalPost.author?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">{originalPost.author?.username}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(originalPost.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                      {originalPost.content}
                     </p>
+                    {originalPost.imageUrl && (
+                      <img
+                        src={originalPost.imageUrl}
+                        alt="Post"
+                        className="mt-2 rounded-md max-h-[300px] w-auto"
+                      />
+                    )}
                   </div>
-                  <p className="mt-1 text-sm whitespace-pre-wrap break-words">
-                    {originalPost.content}
-                  </p>
-                  {originalPost.imageUrl && (
-                    <img
-                      src={originalPost.imageUrl}
-                      alt="Post"
-                      className="mt-2 rounded-md max-h-[300px] w-auto"
-                    />
-                  )}
                 </div>
               </div>
+            )}
+
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <CommentThread
+                  key={comment.id}
+                  comment={comment}
+                  onReply={setReplyTo}
+                  onRefresh={refetch}
+                />
+              ))}
+              {comments.length === 0 && (
+                <div className="bg-background rounded-lg p-6">
+                  <p className="text-center text-muted-foreground py-6">
+                    No comments yet. Be the first to comment!
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </main>
 
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            <CommentThread
-              key={comment.id}
-              comment={comment}
-              onReply={setReplyTo}
-              onRefresh={refetch}
-            />
-          ))}
-          {comments.length === 0 && (
-            <div className="bg-background rounded-lg p-6 shadow-sm">
-              <p className="text-center text-muted-foreground py-6">
-                No comments yet. Be the first to comment!
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Comment input section */}
-        <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-16 right-0 bg-background border-t border-border p-4">
+        <div className="fixed bottom-16 md:bottom-0 left-0 md:left-16 right-0 bg-background border-t border-border p-4">
           <div className="max-w-2xl mx-auto">
             <div className="flex flex-col gap-2">
               <Textarea
@@ -307,7 +314,9 @@ export default function CommentsPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
                     e.preventDefault();
-                    createCommentMutation.mutate();
+                    if (comment.trim()) {
+                      createCommentMutation.mutate();
+                    }
                   }
                 }}
                 placeholder={replyTo ? "Write a reply..." : "Write a comment..."}
@@ -331,7 +340,7 @@ export default function CommentsPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </AppLayout>
   );
 }
