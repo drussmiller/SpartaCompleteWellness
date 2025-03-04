@@ -20,8 +20,10 @@ import {
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
+import connectPgSimple from "connect-pg-simple";
 import { pool } from "./db";
+
+const PostgresSessionStore = connectPgSimple(session);
 
 // Storage adapter for database operations
 export const storage = {
@@ -35,30 +37,29 @@ export const storage = {
     }
   },
 
-  async createTeam(data: Partial<Team>): Promise<Team> {
-    try {
-      const [team] = await db.insert(teams).values(data).returning();
-      return team;
-    } catch (error) {
-      logger.error(`Failed to create team: ${error}`);
-      throw error;
-    }
-  },
-
-  async deleteTeam(id: number): Promise<void> {
-    try {
-      await db.delete(teams).where(eq(teams.id, id));
-    } catch (error) {
-      logger.error(`Failed to delete team ${id}: ${error}`);
-      throw error;
-    }
-  },
-
   // Users
+  async getUserByUsername(username: string): Promise<User | null> {
+    try {
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      logger.error(`Failed to get user by username ${username}: ${error}`);
+      throw error;
+    }
+  },
+
   async getUser(id: number): Promise<User | null> {
     try {
-      const user = await db.select().from(users).where(eq(users.id, id)).limit(1);
-      return user[0] || null;
+      const result = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+      return result[0] || null;
     } catch (error) {
       logger.error(`Failed to get user ${id}: ${error}`);
       throw error;
@@ -74,66 +75,41 @@ export const storage = {
     }
   },
 
-  // Posts
-  async getAllPosts(): Promise<Post[]> {
+  async getAdminUsers(): Promise<User[]> {
     try {
-      logger.debug("Getting all posts");
-      // Get all top-level posts (not comments) sorted by newest first
-      const result = await db
+      return await db
         .select()
-        .from(posts)
-        .where(isNull(posts.parentId))
-        .orderBy(desc(posts.createdAt));
-
-      logger.debug(`Retrieved ${result.length} posts`);
-      return result;
+        .from(users)
+        .where(eq(users.isAdmin, true));
     } catch (error) {
-      logger.error(`Failed to get all posts: ${error}`);
+      logger.error(`Failed to get admin users: ${error}`);
       throw error;
     }
   },
 
-  async getPosts(userId?: number): Promise<Post[]> {
+  async createUser(data: Omit<User, "id" | "createdAt">): Promise<User> {
     try {
-      if (userId) {
-        return await db
-          .select()
-          .from(posts)
-          .where(eq(posts.userId, userId))
-          .orderBy(desc(posts.createdAt));
-      } else {
-        return await db
-          .select()
-          .from(posts)
-          .orderBy(desc(posts.createdAt));
-      }
+      const [user] = await db
+        .insert(users)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return user;
     } catch (error) {
-      logger.error(`Failed to get posts: ${error}`);
+      logger.error(`Failed to create user: ${error}`);
       throw error;
     }
   },
 
-  async createPost(data: Partial<Post>): Promise<Post> {
+  // Notifications
+  async createNotification(data: Omit<Notification, "id" | "createdAt">): Promise<Notification> {
     try {
-      logger.debug("Creating post with data:", data);
-      const [post] = await db.insert(posts).values(data).returning();
-      logger.debug("Post created successfully:", post.id);
-      return post;
+      const [notification] = await db
+        .insert(notifications)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return notification;
     } catch (error) {
-      logger.error(`Failed to create post: ${error instanceof Error ? error.message : error}`);
-      throw error;
-    }
-  },
-
-  async deletePost(id: number): Promise<void> {
-    try {
-      // First delete all child posts/comments
-      await db.delete(posts).where(eq(posts.parentId, id));
-
-      // Then delete the post itself
-      await db.delete(posts).where(eq(posts.id, id));
-    } catch (error) {
-      logger.error(`Failed to delete post ${id}: ${error}`);
+      logger.error(`Failed to create notification: ${error}`);
       throw error;
     }
   },
@@ -177,21 +153,76 @@ export const storage = {
     }
   },
 
+    // Posts
+  async getAllPosts(): Promise<Post[]> {
+    try {
+      logger.debug("Getting all posts");
+      // Get all top-level posts (not comments) sorted by newest first
+      const result = await db
+        .select()
+        .from(posts)
+        .where(isNull(posts.parentId))
+        .orderBy(desc(posts.createdAt));
+
+      logger.debug(`Retrieved ${result.length} posts`);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to get all posts: ${error}`);
+      throw error;
+    }
+  },
+
+  async getPosts(userId?: number): Promise<Post[]> {
+    try {
+      if (userId) {
+        return await db
+          .select()
+          .from(posts)
+          .where(eq(posts.userId, userId))
+          .orderBy(desc(posts.createdAt));
+      } else {
+        return await db
+          .select()
+          .from(posts)
+          .orderBy(desc(posts.createdAt));
+      }
+    } catch (error) {
+      logger.error(`Failed to get posts: ${error}`);
+      throw error;
+    }
+  },
+
+  async createPost(data: Partial<Post>): Promise<Post> {
+    try {
+      logger.debug("Creating post with data:", data);
+      const [post] = await db
+        .insert(posts)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      logger.debug("Post created successfully:", post.id);
+      return post;
+    } catch (error) {
+      logger.error(`Failed to create post: ${error instanceof Error ? error.message : error}`);
+      throw error;
+    }
+  },
+
+  async deletePost(id: number): Promise<void> {
+    try {
+      await db.delete(posts).where(eq(posts.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete post ${id}: ${error}`);
+      throw error;
+    }
+  },
+
   // Reactions
   async createReaction(data: { userId: number; postId: number; type: string }): Promise<Reaction> {
     try {
-      // Delete any existing reaction from this user on this post
-      await db
-        .delete(reactions)
-        .where(
-          and(
-            eq(reactions.userId, data.userId),
-            eq(reactions.postId, data.postId)
-          )
-        );
-
-      // Create the new reaction
-      const [reaction] = await db.insert(reactions).values(data).returning();
+      const [reaction] = await db
+        .insert(reactions)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
       return reaction;
     } catch (error) {
       logger.error(`Failed to create reaction: ${error}`);
