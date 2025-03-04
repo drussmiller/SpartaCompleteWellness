@@ -37,4 +37,10 @@ export function useCommentCount(postId: number) {
     // Disable request during SSR
     enabled: typeof window !== 'undefined' && !!postId
   });
+
+  return {
+    count: data?.count ?? 0,
+    isLoading,
+    error
+  };
 }
