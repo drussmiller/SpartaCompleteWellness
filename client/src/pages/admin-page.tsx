@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,24 +25,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
 
 export default function AdminPage() {
-  const { user, auth } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -57,12 +45,7 @@ export default function AdminPage() {
 
   const { data: users, isLoading: usersLoading, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    refetchOnWindowFocus: false,
   });
-
-  const refetchUsers = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-  };
 
   const form = useForm<TeamFormData>({
     resolver: zodResolver(insertTeamSchema),
@@ -223,32 +206,6 @@ export default function AdminPage() {
       });
     },
   });
-
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete user");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
-      refetchUsers();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
 
   if (teamsLoading || usersLoading) {
     return (
@@ -508,36 +465,6 @@ export default function AdminPage() {
                         <div className="flex flex-wrap gap-1">
                           {user.isAdmin && <Badge variant="default">Admin</Badge>}
                           {user.isTeamLead && <Badge variant="secondary">Team Lead</Badge>}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="ml-2"
-                                disabled={user.username === 'admin' || user.id === auth.user?.id}
-                              >
-                                Delete User
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete the user account for <strong>{user.username}</strong>. 
-                                  This action cannot be undone and all user data will be lost.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => deleteUserMutation.mutate(user.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
                         </div>
                       </div>
                     </CardHeader>
