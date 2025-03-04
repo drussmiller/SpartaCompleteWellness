@@ -321,47 +321,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log('DEBUG: Starting document upload processing');
-      console.log('DEBUG: File details:', JSON.stringify({
-        name: req.file.originalname,
-        size: req.file.size,
-        type: req.file.mimetype,
-        buffer: req.file.buffer ? 'Buffer present' : 'No buffer'
-      }, null, 2));
+      console.log('DEBUG: Upload attempt');
+      console.log('DEBUG: File info:', req.file.originalname);
 
-      // Extract text only first
-      const result = await mammoth.extractRawText({ 
-        buffer: req.file.buffer 
-      });
+      try {
+        const { value: text } = await mammoth.extractRawText({ 
+          buffer: req.file.buffer 
+        });
 
-      console.log('DEBUG: Text extraction result:', {
-        textLength: result.value.length,
-        hasMessages: result.messages.length > 0,
-        messages: result.messages
-      });
+        console.log('DEBUG: Extracted text length:', text?.length);
+        console.log('DEBUG: First 100 chars:', text?.substring(0, 100));
 
-      // Create a minimal test response
-      const testResponse = {
-        status: 'success',
-        textLength: result.value.length
-      };
+        // Send minimal response
+        const response = { ok: true };
+        console.log('DEBUG: About to send response:', response);
 
-      console.log('DEBUG: Test response:', JSON.stringify(testResponse, null, 2));
+        return res.json(response);
 
-      // Try sending just this minimal response first
-      res.json(testResponse);
+      } catch (innerError) {
+        console.log('DEBUG: Inner error:', innerError);
+        throw innerError;
+      }
 
     } catch (error) {
-      console.error('DEBUG: Upload error details:', {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack,
-        type: typeof error
-      });
-
-      res.status(500).json({ 
-        message: "Document processing failed",
-        error: error instanceof Error ? error.message : "Unknown error"
+      console.log('DEBUG: Outer error:', error);
+      return res.status(500).json({ 
+        ok: false,
+        error: 'Document processing failed' 
       });
     }
   });
