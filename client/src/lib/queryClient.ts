@@ -14,21 +14,55 @@ async function throwIfResNotOk(res: Response) {
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  body?: any,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const options: RequestInit = {
     method,
     headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
-      // Ensure we accept JSON responses
-      "Accept": "application/json",
+      "Content-Type": "application/json",
     },
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include", // Ensure cookies are sent with every request
-  });
+    credentials: "include",
+  };
 
-  await throwIfResNotOk(res);
-  return res;
+  if (body && method !== "GET") {
+    options.body = JSON.stringify(body);
+  }
+
+  try {
+    const response = await fetch(url, options);
+
+    // Check if the response is not ok and has JSON content
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await response.json();
+        // Clone the response with the parsed error data for better debugging
+        const errorResponse = new Response(JSON.stringify(errorData), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
+        });
+
+        // Add the error data to the response object for easier access
+        (errorResponse as any).errorData = errorData;
+        return errorResponse;
+      }
+    }
+
+    return response;
+  } catch (error) {
+    console.error("API Request Error:", error);
+    // Create a custom response for network errors
+    return new Response(JSON.stringify({ 
+      message: "Network error occurred", 
+      details: error instanceof Error ? error.message : "Unknown error" 
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

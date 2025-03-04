@@ -16,6 +16,7 @@ import { usePostLimits } from "@/hooks/use-post-limits";
 import { useAuth } from "@/hooks/use-auth";
 import { X } from "lucide-react"; // Added import for X icon
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Loader2 } from 'lucide-react'; // Added import for Loader2
 
 
 type CreatePostForm = z.infer<typeof insertPostSchema>;
@@ -75,23 +76,51 @@ export function CreatePostDialog() {
 
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
-      const points = data.type === "memory_verse" ? 10 :
-                    data.type === "comment" ? 1 : 3;
+      try {
+        const formData = new FormData();
 
-      const postData = {
-        ...data,
-        points,
-        content: data.content || null,
-        imageUrl: imagePreview || null,
-      };
+        if (data.imageUrl && data.imageUrl.length > 0) {
+          // Assuming imageUrl now holds the dataURL from image compression
+          const blob = await fetch(data.imageUrl).then(r => r.blob());
+          formData.append("image", blob, "image.jpeg"); // added filename for better handling
+        }
 
-      console.log('Creating post with data:', postData);
-      const res = await apiRequest("POST", "/api/posts", postData);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || error.error || 'Failed to create post');
+        formData.append("data", JSON.stringify({
+          type: data.type,
+          content: data.content,
+          points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
+        }));
+
+        console.log("Submitting post data:", {
+          type: data.type,
+          content: data.content,
+          hasImage: data.imageUrl && data.imageUrl.length > 0
+        });
+
+        const res = await fetch("/api/posts", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await res.json();
+            console.error("Post creation error response:", errorData);
+            throw new Error(errorData.message || "Failed to create post");
+          } else {
+            const errorText = await res.text();
+            console.error("Post creation error (non-JSON):", errorText);
+            throw new Error(`Server error: ${res.status} ${res.statusText}`);
+          }
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error("Post creation exception:", error);
+        throw error;
       }
-      return res.json();
     },
     onSuccess: () => {
       if (user?.teamId) {
@@ -110,10 +139,10 @@ export function CreatePostDialog() {
       });
     },
     onError: (error: Error) => {
-      console.error('Post creation error:', error);
+      console.error("Create post mutation error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Error Creating Post",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     },
@@ -165,7 +194,6 @@ export function CreatePostDialog() {
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
         <div className="flex justify-between items-center mb-4">
-          {/* Removed the original close button here */}
           <DialogTitle className="flex-1 text-center">Create Post</DialogTitle>
           <Button
             type="submit"
@@ -173,12 +201,15 @@ export function CreatePostDialog() {
             variant="default"
             size="sm"
             className="h-8 bg-violet-700 hover:bg-violet-800"
-            disabled={
-              createPostMutation.isPending ||
-              !canPost[form.watch("type") as keyof typeof canPost]
-            }
+            disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
           >
-            Post
+            {createPostMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+              </>
+            ) : (
+              "Post"
+            )}
           </Button>
         </div>
         <DialogDescription className="text-center">
