@@ -143,7 +143,13 @@ export const insertUserSchema = createInsertSchema(users)
   });
 
 export const insertMeasurementSchema = createInsertSchema(measurements);
-export const insertNotificationSchema = createInsertSchema(notifications);
+export const insertNotificationSchema = createInsertSchema(notifications)
+  .extend({
+    title: z.string().min(1, "Notification title is required"),
+    message: z.string().min(1, "Notification message is required"),
+    read: z.boolean().default(false),
+    createdAt: z.date().optional().default(() => new Date())
+  });
 export const insertVideoSchema = createInsertSchema(videos);
 export const insertActivitySchema = createInsertSchema(activities)
   .extend({
