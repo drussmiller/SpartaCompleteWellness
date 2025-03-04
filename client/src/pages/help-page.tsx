@@ -1,17 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BottomNav } from "@/components/bottom-nav";
 import { HelpCircle, Book, Dumbbell, Cross } from "lucide-react";
+import { AppLayout } from "@/components/app-layout";
 
 export default function HelpPage() {
   return (
-    <div className="max-w-2xl mx-auto pb-20">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4">
-          <h1 className="text-xl font-bold">Help Center</h1>
-        </div>
-      </header>
-
-      <main className="p-4 space-y-6">
+    <AppLayout title="Help Center">
+      <main className="p-4 space-y-6 max-w-2xl mx-auto pb-20">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -85,8 +79,6 @@ export default function HelpPage() {
           </CardContent>
         </Card>
       </main>
-
-      <BottomNav />
-    </div>
+    </AppLayout>
   );
 }
