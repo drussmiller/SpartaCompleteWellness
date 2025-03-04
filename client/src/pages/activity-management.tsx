@@ -421,7 +421,7 @@ export default function ActivityManagementPage() {
           <DialogHeader>
             <DialogTitle>Edit Activity</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[70vh] pr-4">
+          <ScrollArea className="max-h-[70vh] pr-4 mb-20">
             <Form>
               <form onSubmit={(e) => {
                 e.preventDefault();
