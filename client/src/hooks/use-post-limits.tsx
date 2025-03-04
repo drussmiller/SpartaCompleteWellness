@@ -29,7 +29,7 @@ export function usePostLimits() {
 
       // Get local timezone offset in minutes
       const tzOffset = new Date().getTimezoneOffset();
-      const res = await apiRequest("GET", `/api/posts/limits?tzOffset=${tzOffset}`);
+      const res = await apiRequest("GET", `/api/posts/counts?tzOffset=${tzOffset}`);
       if (!res.ok) {
         throw new Error('Failed to fetch post limits');
       }

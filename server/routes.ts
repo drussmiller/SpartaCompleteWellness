@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, or } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
 import {
   posts,
   notifications,
@@ -416,6 +416,73 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add this endpoint after the other post-related endpoints
+  router.get("/api/posts/counts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      // Calculate start and end of day in user's timezone
+      const now = new Date();
+      const userDate = new Date(now.getTime() - (tzOffset * 60000));
+      const startOfDay = new Date(userDate.getFullYear(), userDate.getMonth(), userDate.getDate());
+      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+      // Convert back to UTC for database query
+      const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
+      const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
+
+      // Query posts for today by type
+      const result = await db
+        .select({
+          type: posts.type,
+          count: sql`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, utcStart),
+            lt(posts.createdAt, utcEnd),
+            isNull(posts.parentId) // Don't count comments
+          )
+        )
+        .groupBy(posts.type);
+
+      // Convert result to expected format
+      const counts = {
+        food: 0,
+        workout: 0,
+        scripture: 0,
+        memory_verse: 0
+      };
+
+      result.forEach(row => {
+        if (row.type in counts) {
+          counts[row.type as keyof typeof counts] = Number(row.count);
+        }
+      });
+
+      // Calculate remaining posts
+      const canPost = {
+        food: counts.food < 3,
+        workout: counts.workout < 1,
+        scripture: counts.scripture < 1,
+        memory_verse: new Date().getDay() === 6 && counts.memory_verse < 1
+      };
+
+      res.json({ counts, canPost });
+    } catch (error) {
+      console.error('Error getting post counts:', error);
+      res.status(500).json({ 
+        message: "Failed to get post counts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Delete post endpoint
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
@@ -492,7 +559,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  app.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
+  router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
         console.log('🚫 [UPLOAD] No file received');
