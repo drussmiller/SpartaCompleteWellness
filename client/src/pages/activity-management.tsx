@@ -7,11 +7,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2 } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
@@ -24,7 +23,6 @@ type ContentField = {
 };
 
 export default function ActivityManagementPage() {
-  // All hooks at the top level
   const { user } = useAuth();
   const { toast } = useToast();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
@@ -81,7 +79,6 @@ export default function ActivityManagementPage() {
     },
   });
 
-  // Handler functions
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     setEditingContentFields(activity.contentFields || []);
@@ -114,7 +111,6 @@ export default function ActivityManagementPage() {
     setContentFields(contentFields.filter(f => f.id !== id));
   };
 
-  // Similar functions for editing mode
   const addEditingContentField = (type: 'text' | 'video') => {
     const newField: ContentField = {
       id: Math.random().toString(36).substring(7),
@@ -135,7 +131,53 @@ export default function ActivityManagementPage() {
     setEditingContentFields(editingContentFields.filter(f => f.id !== id));
   };
 
-  // Render loading state
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.name.endsWith('.docx')) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a Word document (.docx)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('document', file);
+
+    try {
+      const res = await fetch('/api/activities/upload-doc', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to process document');
+      }
+
+      const data = await res.json();
+      setContentFields([{
+        id: Math.random().toString(36).substring(7),
+        type: 'text',
+        content: data.content,
+        title: file.name.replace('.docx', '')
+      }]);
+
+      toast({
+        title: "Success",
+        description: "Document processed successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process document",
+        variant: "destructive"
+      });
+    }
+  };
+
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -145,7 +187,6 @@ export default function ActivityManagementPage() {
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -165,7 +206,6 @@ export default function ActivityManagementPage() {
     );
   }
 
-  // Render unauthorized state
   if (!user?.isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -179,7 +219,6 @@ export default function ActivityManagementPage() {
     );
   }
 
-  // Main render
   return (
     <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
       <div className="flex items-center justify-between mb-6">
@@ -237,6 +276,26 @@ export default function ActivityManagementPage() {
                 <Label htmlFor="day">Day</Label>
                 <Input type="number" name="day" required min="1" max="7" />
               </div>
+            </div>
+
+            <div className="mb-4">
+              <Label htmlFor="docUpload">Upload Word Document</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="docUpload"
+                  type="file"
+                  accept=".docx"
+                  onChange={handleFileUpload}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={() => document.getElementById('docUpload')?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Upload a Word document to automatically create content with embedded videos
+              </p>
             </div>
 
             <div className="space-y-4">
