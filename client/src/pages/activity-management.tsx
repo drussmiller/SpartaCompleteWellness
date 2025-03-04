@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
 // Added imports for mobile navigation
-import { useIsMobile } from "@/hooks/use-isMobile"; // Placeholder import
+import { useIsMobile } from "@/hooks/use-mobile"; // Correct import path
 import BottomNav from "@/components/bottom-nav"; // Placeholder import
 
 
