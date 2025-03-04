@@ -222,6 +222,44 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Post creation endpoint
+  router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      console.log("Received post creation request");
+      
+      if (!req.body.data) {
+        return res.status(400).json({ message: "Missing post data" });
+      }
+      
+      let postData;
+      try {
+        postData = JSON.parse(req.body.data);
+        console.log("Parsed post data:", postData);
+      } catch (parseError) {
+        console.error("Error parsing post data:", parseError);
+        return res.status(400).json({ message: "Invalid post data format" });
+      }
+      
+      const post = await storage.createPost({
+        userId: req.user.id,
+        type: postData.type,
+        content: postData.content,
+        points: postData.points,
+        imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+        parentId: postData.parentId || null
+      });
+      
+      res.status(201).json(post);
+    } catch (error) {
+      console.error("Error creating post:", error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to create post",
+        error: error instanceof Error ? error.stack : "Unknown error"
+      });
+    }
+  });
+
   // Add reactions endpoints
   router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);

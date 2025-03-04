@@ -203,20 +203,19 @@ export class DatabaseStorage implements IStorage {
     return allUsers;
   }
 
-  async createPost(post: Post): Promise<Post> {
-    // Ensure parentId is set to null if not provided
-    const postData = {
-      ...post,
-      parentId: post.parentId || null,
-      createdAt: new Date(),
-    };
-
-    const [newPost] = await db
-      .insert(posts)
-      .values(postData)
-      .returning();
-
-    return newPost;
+  async createPost(data: Partial<Post>): Promise<Post> {
+    try {
+      console.log("Creating post with data:", data);
+      const [post] = await db
+        .insert(posts)
+        .values(data)
+        .returning();
+      console.log("Post created:", post);
+      return post;
+    } catch (error) {
+      console.error("Database error creating post:", error);
+      throw error;
+    }
   }
 
   async getPosts(): Promise<Post[]> {
