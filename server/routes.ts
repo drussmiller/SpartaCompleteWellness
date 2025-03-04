@@ -353,17 +353,35 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       console.log('Fetching posts for user:', req.user?.id);
-      let posts;
+      
+      // Get posts from database with error handling
+      let posts = [];
       try {
         posts = await storage.getAllPosts();
-        console.log('Raw posts:', posts);
+        console.log('Raw posts count:', posts ? posts.length : 0);
       } catch (err) {
         console.error('Error in storage.getAllPosts():', err);
-        throw new Error(`Failed to fetch posts from database: ${err.message}`);
+        return res.status(500).json({ 
+          message: "Failed to fetch posts from database",
+          error: err instanceof Error ? err.message : "Unknown database error"
+        });
+      }
+      
+      if (!posts || !Array.isArray(posts)) {
+        console.error('Posts is not an array:', posts);
+        return res.status(500).json({ 
+          message: "Invalid posts data from database",
+          error: "Expected array of posts but got " + typeof posts
+        });
       }
 
-      // For each post, get its author information
+      // For each post, get its author information with separate error handling
       const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+        if (!post || typeof post !== 'object') {
+          console.error('Invalid post object:', post);
+          return null;
+        }
+        
         try {
           const author = await storage.getUser(post.userId);
           return {
@@ -379,8 +397,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       }));
 
-      console.log('Successfully fetched posts with authors:', postsWithAuthors.length);
-      res.json(postsWithAuthors);
+      // Filter out any null entries
+      const validPosts = postsWithAuthors.filter(post => post !== null);
+      
+      console.log('Successfully fetched posts with authors:', validPosts.length);
+      res.json(validPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
       res.status(500).json({ 
