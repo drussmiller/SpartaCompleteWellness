@@ -40,7 +40,7 @@ export default function CommentsPage() {
       console.log("Received post data:", data);
       return data;
     },
-    enabled: !!numericPostId
+    enabled: !!numericPostId && numericPostId > 0
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
@@ -62,13 +62,22 @@ export default function CommentsPage() {
       }
       return data;
     },
-    enabled: !!numericPostId
+    enabled: !!numericPostId && numericPostId > 0,
+    retry: false, // Don't retry on failure so we can see errors
+    refetchOnWindowFocus: false // Prevent unnecessary refetches
   });
 
-  console.log("=== Current State ===");
-  console.log("Loading states:", { isPostLoading, areCommentsLoading });
-  console.log("Errors:", { postError, commentsError });
-  console.log("Data:", { originalPost, commentsCount: comments?.length });
+  useEffect(() => {
+    // Log query state changes
+    console.log("Query states updated:", {
+      postId: numericPostId,
+      isPostLoading,
+      postError,
+      areCommentsLoading,
+      commentsError,
+      commentsCount: comments?.length
+    });
+  }, [numericPostId, isPostLoading, postError, areCommentsLoading, commentsError, comments]);
 
   if (!currentUser) {
     return (
@@ -136,7 +145,6 @@ export default function CommentsPage() {
     onSuccess: () => {
       setComment("");
       setReplyTo(null);
-      //refetch(); // Removed as it's handled by invalidateQueries
       queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${numericPostId}`] });
       toast({
         description: "Comment posted successfully",
@@ -150,7 +158,10 @@ export default function CommentsPage() {
     },
   });
 
-  console.log("Rendering main comments view");
+  console.log("Rendering main comments view with:", {
+    post: originalPost,
+    comments: comments
+  });
   return (
     <AppLayout title="Comments">
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
@@ -188,7 +199,7 @@ export default function CommentsPage() {
 
             {/* Comments List */}
             <div className="space-y-4">
-              {comments.map((comment) => (
+              {Array.isArray(comments) && comments.map((comment) => (
                 <div key={comment.id} className="border rounded-lg p-4 bg-background">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
@@ -211,7 +222,7 @@ export default function CommentsPage() {
                   </div>
                 </div>
               ))}
-              {comments.length === 0 && (
+              {(!comments || comments.length === 0) && (
                 <div className="bg-background rounded-lg p-6">
                   <p className="text-center text-muted-foreground py-6">
                     No comments yet. Be the first to comment!
