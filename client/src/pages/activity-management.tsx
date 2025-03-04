@@ -246,7 +246,7 @@ export default function ActivityManagementPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-background/95 p-6 shadow-lg animate-in slide-in-from-right">
+    <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">Activity Management</h1>
         <Button variant="outline" onClick={() => window.history.back()}>
@@ -377,7 +377,7 @@ export default function ActivityManagementPage() {
 
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Existing Activities</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 mb-20">
               {activities
                 ?.slice()
                 .sort((a, b) => a.week !== b.week ? a.week - b.week : a.day - b.day)
