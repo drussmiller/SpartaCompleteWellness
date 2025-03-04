@@ -60,7 +60,10 @@ export default function ActivityManagementPage() {
   const deleteActivityMutation = useMutation({
     mutationFn: async (activityId: number) => {
       const res = await apiRequest("DELETE", `/api/activities/${activityId}`);
-      if (!res.ok) throw new Error("Failed to delete activity");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete activity");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -71,9 +74,10 @@ export default function ActivityManagementPage() {
       });
     },
     onError: (error: Error) => {
+      console.error('Error deleting activity:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete activity",
         variant: "destructive",
       });
     },
@@ -87,7 +91,11 @@ export default function ActivityManagementPage() {
 
   const handleDeleteActivity = (activityId: number) => {
     if (confirm("Are you sure you want to delete this activity?")) {
-      deleteActivityMutation.mutate(activityId);
+      try {
+        deleteActivityMutation.mutate(activityId);
+      } catch (error) {
+        console.error('Error in delete handler:', error);
+      }
     }
   };
 
