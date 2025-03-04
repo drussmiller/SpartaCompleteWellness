@@ -256,6 +256,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Comment count endpoint
+  router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      // Query comments for this post
+      const comments = await db
+        .select({ id: sql`count(*)` })
+        .from(posts)
+        .where(eq(posts.parentId, postId));
+
+      res.json({ count: comments[0]?.id || 0 });
+    } catch (error) {
+      console.error(`Error fetching comment count for post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to fetch comment count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Posts endpoints
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
