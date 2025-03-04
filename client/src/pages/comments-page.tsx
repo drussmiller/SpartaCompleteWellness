@@ -43,7 +43,7 @@ export default function CommentsPage() {
       console.log("Received post data:", data);
       return data;
     },
-    enabled: Boolean(postId),
+    enabled: !!postId,
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError, refetch } = useQuery({
@@ -62,7 +62,7 @@ export default function CommentsPage() {
       console.log("Received comments data:", data);
       return data;
     },
-    enabled: Boolean(postId),
+    enabled: !!postId,
   });
 
   console.log("=== Current State ===");
@@ -113,6 +113,43 @@ export default function CommentsPage() {
       </AppLayout>
     );
   }
+
+  const createCommentMutation = useMutation({
+    mutationFn: async () => {
+      const trimmedComment = comment.trim();
+      if (!trimmedComment) {
+        throw new Error("Comment cannot be empty");
+      }
+
+      const res = await apiRequest("POST", "/api/posts", {
+        type: "comment",
+        content: trimmedComment,
+        parentId: replyTo || parseInt(postId),
+        points: 1
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create comment");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setComment("");
+      setReplyTo(null);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+      toast({
+        description: "Comment posted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to post comment",
+      });
+    },
+  });
 
   console.log("Rendering main comments view");
   return (
