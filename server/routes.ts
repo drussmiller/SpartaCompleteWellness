@@ -332,36 +332,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         console.log('Conversion messages:', messages);
       }
 
-      // Split into paragraphs and convert to clean HTML
-      const paragraphs = rawText.split('\n\n').filter(p => p.trim());
+      // Split into paragraphs and clean up the text
+      const paragraphs = rawText
+        .split('\n\n')
+        .filter(p => p.trim())
+        .map(p => p.replace(/[\u0000-\u001F\u007F-\u009F]/g, '')); // Remove control characters
 
-      const contentHtml = paragraphs.map(p => {
+      // Process content into clean HTML
+      const processedContent = paragraphs.map(p => {
         // Extract YouTube links
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-        let paragraph = p.trim();
-        let youtubeMatches = [];
         let match;
+        let matches = [];
+        let text = p;
 
-        // Collect all YouTube matches first
-        while ((match = youtubeRegex.exec(paragraph)) !== null) {
-          youtubeMatches.push(match[1]);
+        while ((match = youtubeRegex.exec(p)) !== null) {
+          matches.push(match[1]);
         }
 
-        // If we found YouTube links, replace with iframe HTML
-        if (youtubeMatches.length > 0) {
-          return youtubeMatches.map(videoId => 
+        if (matches.length > 0) {
+          return matches.map(videoId => 
             `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-          ).join('\n');
+          ).join('');
         }
 
-        // Regular paragraph
-        return `<p>${paragraph}</p>`;
-      }).join('\n');
+        // Escape HTML special characters
+        text = text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+
+        return `<p>${text}</p>`;
+      }).join('');
 
       const styles = `
         .video-wrapper {
           position: relative;
-          padding-bottom: 56.25%; /* 16:9 aspect ratio */
+          padding-bottom: 56.25%;
           height: 0;
           margin: 1rem 0;
         }
@@ -374,21 +383,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       `;
 
-      // Combine content and styles
-      const result = {
-        content: `<div class="content-wrapper">${contentHtml}</div><style>${styles}</style>`
+      // Create a clean response object
+      const response = {
+        content: `<div class="content-wrapper">${processedContent}</div><style>${styles}</style>`,
+        success: true
       };
 
-      console.log('Content preview:', result.content.substring(0, 200));
-
-      res.json(result);
+      // Ensure the response is properly serialized
+      const safeResponse = JSON.stringify(response);
+      res.setHeader('Content-Type', 'application/json');
+      res.send(safeResponse);
 
     } catch (error) {
       console.error('Document processing error:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
       res.status(500).json({ 
         message: "Failed to process document",
         error: error instanceof Error ? error.message : "Unknown error"
