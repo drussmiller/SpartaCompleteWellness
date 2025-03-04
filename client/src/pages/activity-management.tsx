@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
+// Added imports for mobile navigation
+import { useIsMobile } from "@/hooks/use-isMobile"; // Placeholder import
+import BottomNav from "@/components/bottom-nav"; // Placeholder import
+
 
 type ContentField = {
   id: string;
@@ -31,6 +35,7 @@ export default function ActivityManagementPage() {
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+  const isMobile = useIsMobile(); // Use the isMobile hook
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
@@ -556,6 +561,13 @@ export default function ActivityManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bottom navigation for mobile */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <BottomNav />
+        </div>
+      )}
     </div>
   );
 }
