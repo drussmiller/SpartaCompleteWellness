@@ -361,50 +361,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .from(posts)
         .where(eq(posts.parentId, postId))
         .innerJoin(users, eq(posts.userId, users.id))
-        .orderBy(posts.createdAt);
+        .orderBy(desc(posts.createdAt));
 
       console.log(`Found ${comments.length} direct comments`);
 
-      // Get replies for each comment
-      const commentsWithReplies = await Promise.all(
-        comments.map(async (comment) => {
-          console.log(`Fetching replies for comment ${comment.id}`);
-          const replies = await db
-            .select({
-              id: posts.id,
-              userId: posts.userId,
-              type: posts.type,
-              content: posts.content,
-              imageUrl: posts.imageUrl,
-              points: posts.points,
-              createdAt: posts.createdAt,
-              parentId: posts.parentId,
-              depth: posts.depth,
-              author: {
-                id: users.id,
-                username: users.username,
-                imageUrl: users.imageUrl
-              }
-            })
-            .from(posts)
-            .where(eq(posts.parentId, comment.id))
-            .innerJoin(users, eq(posts.userId, users.id))
-            .orderBy(posts.createdAt);
-
-          console.log(`Found ${replies.length} replies for comment ${comment.id}`);
-
-          return {
-            ...comment,
-            replies
-          };
-        })
-      );
-
-      console.log("=== Final Response ===");
-      console.log("Total comments with replies:", commentsWithReplies.length);
-      console.log("Response structure:", JSON.stringify(commentsWithReplies[0], null, 2));
-
-      res.json(commentsWithReplies);
+      res.json(comments);
     } catch (error) {
       console.error("=== Comment Endpoint Error ===");
       console.error("Error details:", error);
@@ -959,8 +920,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Error handling middleware
-  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error('API Error:', err);
+  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {    console.error('API Error:', err);
     res.status(err.status || 500).json({
       message: err.message || "Internal server error"
     });
