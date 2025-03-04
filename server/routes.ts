@@ -240,6 +240,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add the user update route handler right after the existing user-related routes
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Update user in database
+      const [updatedUser] = await db
+        .update(users)
+        .set(req.body)
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log('User updated successfully:', updatedUser.id);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ 
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Post creation endpoint
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
