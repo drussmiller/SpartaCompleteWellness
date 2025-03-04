@@ -321,75 +321,60 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log('[Document Upload] Starting document processing');
+      console.log('[Document Upload] Starting file processing');
       console.log('[Document Upload] File details:', {
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size
       });
 
-      // Extract raw text only
+      // First just try to extract text
       const { value: rawText } = await mammoth.extractRawText({ 
         buffer: req.file.buffer 
       });
 
-      console.log('[Document Upload] Raw text extracted, length:', rawText.length);
+      // Clean the text of any problematic characters
+      const cleanText = rawText.replace(/[^\x20-\x7E\s]/g, '')
+                              .trim();
+
+      console.log('[Document Upload] Text extracted and cleaned:', {
+        originalLength: rawText.length,
+        cleanedLength: cleanText.length,
+        sample: cleanText.substring(0, 100)
+      });
+
+      // First test if we can send just the plain text
+      const plainResponse = { 
+        content: cleanText,
+        type: 'text'
+      };
 
       try {
-        // Basic text processing - just paragraphs for now
-        const paragraphs = rawText
-          .split('\n\n')
-          .filter(p => p.trim())
-          .map(p => p.replace(/[^\x20-\x7E\s]/g, ''));
+        // Test serialization
+        const testJson = JSON.stringify(plainResponse);
+        console.log('[Document Upload] Test JSON serialization successful, length:', testJson.length);
 
-        console.log('[Document Upload] Processed paragraphs:', {
-          count: paragraphs.length,
-          firstParagraph: paragraphs[0]?.substring(0, 100)
+        // If we got here, send the response
+        res.setHeader('Content-Type', 'application/json');
+        res.send(testJson);
+      } catch (jsonError) {
+        console.error('[Document Upload] JSON serialization error:', {
+          error: jsonError,
+          responseType: typeof plainResponse,
+          contentType: typeof plainResponse.content,
+          contentLength: plainResponse.content.length
         });
-
-        // Basic HTML conversion
-        const htmlContent = paragraphs
-          .map(p => `<p>${p
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;')}</p>`)
-          .join('');
-
-        // Test JSON serialization before sending
-        const testResponse = { content: htmlContent };
-        try {
-          console.log('[Document Upload] Testing JSON serialization');
-          const testJson = JSON.stringify(testResponse);
-          JSON.parse(testJson); // Validate it can be parsed back
-          console.log('[Document Upload] JSON serialization successful');
-        } catch (jsonError) {
-          console.error('[Document Upload] JSON serialization failed:', jsonError);
-          throw new Error(`JSON serialization failed: ${jsonError.message}`);
-        }
-
-        // Send response
-        res.json(testResponse);
-
-      } catch (processingError) {
-        console.error('[Document Upload] Content processing error:', {
-          name: processingError.name,
-          message: processingError.message,
-          stack: processingError.stack
-        });
-        throw processingError;
+        throw new Error('Failed to serialize response');
       }
 
     } catch (error) {
-      console.error('[Document Upload] Fatal error:', {
+      console.error('[Document Upload] Processing error:', {
         name: error.name,
         message: error.message,
-        stack: error.stack,
-        type: typeof error
+        stack: error.stack
       });
 
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to process document",
         error: error instanceof Error ? error.message : "Unknown error"
       });
