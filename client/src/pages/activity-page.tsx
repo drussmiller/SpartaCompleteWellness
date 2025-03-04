@@ -61,13 +61,13 @@ export default function ActivityPage() {
       .sort();
 
     // Check if we can move to next day/week while respecting the current day limit
-    const canMoveNext = 
+    const canMoveNext =
       (selectedWeek * 7 + selectedDay + 1) <= (currentWeek * 7 + currentDay);
 
     if (!canMoveNext) return;
 
     if (!isLastDayOfWeek) {
-      const nextDay = days.find(d => d > selectedDay);
+      const nextDay = days.find((d) => d > selectedDay);
       if (nextDay) setSelectedDay(nextDay);
     } else if (nextWeekDays?.length) {
       setSelectedWeek(selectedWeek + 1);
@@ -79,34 +79,34 @@ export default function ActivityPage() {
     <div className="max-w-2xl mx-auto pb-20">
       <ScrollArea className="h-[calc(100vh-80px)]">
         <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4">
+          <div className="p-4 flex justify-between items-center"> {/* Added flexbox for better layout */}
             <h1 className="text-xl font-bold">Daily Activity</h1>
+            <div className="flex gap-4"> {/* Container for navigation buttons */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={navigatePrevDay}
+                disabled={selectedWeek === 1 && selectedDay === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={navigateNextDay}
+                disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </header>
 
         <main className="p-4 space-y-4">
-          <div className="flex justify-between items-center mb-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={navigatePrevDay}
-              disabled={selectedWeek === 1 && selectedDay === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-center">
-              <span className="font-medium">
-                Week {selectedWeek} - Day {selectedDay}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={navigateNextDay}
-              disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div className="text-center mb-4"> {/* Week and Day display */}
+            <span className="font-medium">
+              Week {selectedWeek} - Day {selectedDay}
+            </span>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2">
@@ -146,11 +146,13 @@ export default function ActivityPage() {
                 <div className="prose max-w-none">
                   {currentActivity.contentFields?.map((field, index) => (
                     <div key={index} className="mb-8">
-                      {field.title && <h2 className="text-xl font-bold mb-4">{field.title}</h2>}
-                      <div 
-                        className="rich-text-content prose-sm" 
-                        dangerouslySetInnerHTML={{ 
-                          __html: field.content 
+                      {field.title && (
+                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                      )}
+                      <div
+                        className="rich-text-content prose-sm"
+                        dangerouslySetInnerHTML={{
+                          __html: field.content,
                         }}
                       />
                     </div>
@@ -166,7 +168,6 @@ export default function ActivityPage() {
             </Card>
           )}
         </main>
-
         <style>{`
           .rich-text-content {
             line-height: 1.6;
