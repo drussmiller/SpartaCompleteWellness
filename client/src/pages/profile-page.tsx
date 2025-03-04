@@ -295,7 +295,11 @@ export default function ProfilePage() {
                     )}
                   />
                 </div>
-                <Button type="submit" disabled={addMeasurementMutation.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={addMeasurementMutation.isPending}
+                  className="bg-violet-700 text-white hover:bg-violet-800"
+                >
                   {addMeasurementMutation.isPending ? "Adding..." : "Add Measurement"}
                 </Button>
               </form>

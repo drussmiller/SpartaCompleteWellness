@@ -22,6 +22,7 @@ import { setupAuth, authenticate } from "./auth";
 import express, { Router } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
+import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -381,6 +382,66 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ 
         message: "Failed to process document",
         error: error instanceof Error ? error.message : undefined
+      });
+    }
+  });
+
+  app.post("/api/register", async (req, res) => {
+    try {
+      console.log('Attempting to register new user:', { 
+        username: req.body.username,
+        email: req.body.email 
+      });
+
+      // Check if username already exists
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, req.body.username))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        console.log('Registration failed: Username already exists');
+        return res.status(400).json({ 
+          message: "Username already exists" 
+        });
+      }
+
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+      // Create new user
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username: req.body.username,
+          email: req.body.email,
+          password: hashedPassword,
+          isAdmin: false,
+          isTeamLead: false,
+          points: 0
+        })
+        .returning();
+
+      console.log('User registered successfully:', newUser.id);
+
+      // Log the user in
+      req.login(newUser, (err) => {
+        if (err) {
+          console.error('Login after registration failed:', err);
+          return res.status(500).json({ 
+            message: "Registration successful but login failed" 
+          });
+        }
+        res.status(201).json(newUser);
+      });
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ 
+        message: "Failed to create account",
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });

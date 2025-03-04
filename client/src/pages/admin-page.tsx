@@ -257,7 +257,7 @@ export default function AdminPage() {
           <div className="flex gap-2 mt-4 justify-center">
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="default" className="px-4">
+                <Button size="default" className="px-4 bg-violet-700 text-white hover:bg-violet-800">
                   <Plus className="h-4 w-4 mr-2" />
                   New Team
                 </Button>
@@ -301,7 +301,7 @@ export default function AdminPage() {
             </Dialog>
             <Button
               size="default"
-              className="px-4"
+              className="px-4 bg-violet-700 text-white hover:bg-violet-800"
               onClick={() => setLocation("/activity-management")}
             >
               Activity Management

@@ -135,6 +135,27 @@ export function setupAuth(app: Express) {
       });
 
       console.log('User created successfully:', user.id);
+      
+      // Notify all admins about the new user
+      try {
+        // Get all admin users
+        const admins = await storage.getAdminUsers();
+        
+        // Create a notification for each admin
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.id,
+            title: "New User Registration",
+            message: `${user.preferredName || user.username} has joined the platform.`,
+            read: false
+          });
+        }
+        console.log(`Sent new user notifications to ${admins.length} admins`);
+      } catch (notifyError) {
+        console.error('Failed to notify admins about new user:', notifyError);
+        // Continue with registration even if notifications fail
+      }
+      
       req.login(user, (err) => {
         if (err) {
           console.error('Login error after registration:', err);
