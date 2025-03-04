@@ -372,7 +372,7 @@ export default function ActivityManagementPage() {
               </Button>
             </div>
 
-            <Button type="submit">Add Activity</Button>
+            <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">Add Activity</Button>
           </form>
 
           <div className="mt-8">
