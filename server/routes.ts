@@ -328,10 +328,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         buffer: req.file.buffer 
       });
 
-      if (messages.length > 0) {
-        console.log('Conversion messages:', messages);
-      }
-
       // Split into paragraphs and clean up the text
       const paragraphs = rawText
         .split('\n\n')
@@ -339,25 +335,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .map(p => p.replace(/[\u0000-\u001F\u007F-\u009F]/g, '')); // Remove control characters
 
       // Process content into clean HTML
-      const processedContent = paragraphs.map(p => {
+      const processedParagraphs = paragraphs.map(paragraph => {
         // Extract YouTube links
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
         let match;
-        let matches = [];
-        let text = p;
+        let videoEmbeds = [];
 
-        while ((match = youtubeRegex.exec(p)) !== null) {
-          matches.push(match[1]);
+        while ((match = youtubeRegex.exec(paragraph)) !== null) {
+          videoEmbeds.push(`<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${match[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`);
         }
 
-        if (matches.length > 0) {
-          return matches.map(videoId => 
-            `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-          ).join('');
+        if (videoEmbeds.length > 0) {
+          return videoEmbeds.join('');
         }
 
-        // Escape HTML special characters
-        text = text
+        // Escape HTML special characters for regular paragraphs
+        const text = paragraph
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
@@ -365,34 +358,38 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .replace(/'/g, '&#039;');
 
         return `<p>${text}</p>`;
-      }).join('');
+      });
 
-      const styles = `
-        .video-wrapper {
-          position: relative;
-          padding-bottom: 56.25%;
-          height: 0;
-          margin: 1rem 0;
-        }
-        .video-wrapper iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-        }
-      `;
-
-      // Create a clean response object
-      const response = {
-        content: `<div class="content-wrapper">${processedContent}</div><style>${styles}</style>`,
-        success: true
+      // Create a sanitized response object
+      const responseData = {
+        content: processedParagraphs.join('\n') + `
+          <style>
+            .video-wrapper {
+              position: relative;
+              padding-bottom: 56.25%;
+              height: 0;
+              margin: 1rem 0;
+            }
+            .video-wrapper iframe {
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+            }
+          </style>
+        `.replace(/\s+/g, ' ').trim()
       };
 
-      // Ensure the response is properly serialized
-      const safeResponse = JSON.stringify(response);
+      // Log sanitized output for debugging
+      console.log('Response data:', {
+        contentLength: responseData.content.length,
+        sampleContent: responseData.content.substring(0, 100)
+      });
+
+      // Send the response with explicit content type and proper JSON serialization
       res.setHeader('Content-Type', 'application/json');
-      res.send(safeResponse);
+      res.end(JSON.stringify(responseData));
 
     } catch (error) {
       console.error('Document processing error:', error);
