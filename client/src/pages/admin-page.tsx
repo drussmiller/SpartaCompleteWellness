@@ -257,7 +257,7 @@ export default function AdminPage() {
           <div className="flex gap-2 mt-4 justify-center">
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="default" className="px-4 bg-violet-700 text-white hover:bg-violet-800">
+                <Button size="default" className="px-4">
                   <Plus className="h-4 w-4 mr-2" />
                   New Team
                 </Button>
@@ -301,7 +301,7 @@ export default function AdminPage() {
             </Dialog>
             <Button
               size="default"
-              className="px-4 bg-violet-700 text-white hover:bg-violet-800"
+              className="px-4"
               onClick={() => setLocation("/activity-management")}
             >
               Activity Management
@@ -500,6 +500,15 @@ export default function AdminPage() {
                             size="sm"
                             className={user.isAdmin ? "bg-violet-700 text-white hover:bg-violet-800" : ""}
                             onClick={() => {
+                              // Prevent removing admin from the admin user with username "admin"
+                              if (user.username === "admin" && user.isAdmin) {
+                                toast({
+                                  title: "Cannot Remove Admin",
+                                  description: "This is the main administrator account and cannot have admin rights removed.",
+                                  variant: "destructive"
+                                });
+                                return;
+                              }
                               updateUserRoleMutation.mutate({
                                 userId: user.id,
                                 role: 'isAdmin',
