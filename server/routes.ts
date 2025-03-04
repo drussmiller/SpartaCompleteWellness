@@ -321,56 +321,47 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log('[Upload] Starting with file:', {
+      console.log('DEBUG: Starting document upload processing');
+      console.log('DEBUG: File details:', JSON.stringify({
         name: req.file.originalname,
         size: req.file.size,
-        type: req.file.mimetype
-      });
+        type: req.file.mimetype,
+        buffer: req.file.buffer ? 'Buffer present' : 'No buffer'
+      }, null, 2));
 
-      // Extract text only
-      const { value: text } = await mammoth.extractRawText({ 
+      // Extract text only first
+      const result = await mammoth.extractRawText({ 
         buffer: req.file.buffer 
       });
 
-      console.log('[Upload] Extracted text length:', text.length);
+      console.log('DEBUG: Text extraction result:', {
+        textLength: result.value.length,
+        hasMessages: result.messages.length > 0,
+        messages: result.messages
+      });
 
-      // Create the most basic response possible
-      const response = {
-        text: text.slice(0, 1000000) // Limit to 1MB of text
+      // Create a minimal test response
+      const testResponse = {
+        status: 'success',
+        textLength: result.value.length
       };
 
-      console.log('[Upload] Response object:', {
-        type: typeof response,
-        hasText: Boolean(response.text),
-        textLength: response.text.length
-      });
+      console.log('DEBUG: Test response:', JSON.stringify(testResponse, null, 2));
 
-      // Test JSON serialization
-      try {
-        const json = JSON.stringify(response);
-        console.log('[Upload] JSON string length:', json.length);
-        // Test parse to validate
-        JSON.parse(json);
-        console.log('[Upload] JSON validation successful');
-
-        // Send response
-        res.setHeader('Content-Type', 'application/json');
-        res.send(json);
-      } catch (e) {
-        console.error('[Upload] JSON error:', e);
-        throw new Error('JSON serialization failed');
-      }
+      // Try sending just this minimal response first
+      res.json(testResponse);
 
     } catch (error) {
-      console.error('[Upload] Error:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+      console.error('DEBUG: Upload error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        type: typeof error
       });
 
-      res.status(500).json({
+      res.status(500).json({ 
         message: "Document processing failed",
-        error: error.message
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
