@@ -355,10 +355,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       console.log('Fetching posts for user:', req.user?.id);
       let posts;
       try {
-        posts = await storage.getPosts();
+        posts = await storage.getAllPosts();
         console.log('Raw posts:', posts);
       } catch (err) {
-        console.error('Error in storage.getPosts():', err);
+        console.error('Error in storage.getAllPosts():', err);
         throw new Error(`Failed to fetch posts from database: ${err.message}`);
       }
 
