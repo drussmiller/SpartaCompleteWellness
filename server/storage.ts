@@ -46,6 +46,7 @@ export interface IStorage {
   deleteReaction(userId: number, postId: number, type: string): Promise<void>;
   getReactionsByPost(postId: number): Promise<Reaction[]>;
   getReactionsByUser(userId: number): Promise<Reaction[]>;
+  deleteActivity(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -445,14 +446,32 @@ export class DatabaseStorage implements IStorage {
       const results = await query;
 
       // Parse the JSONB content back to objects
-      return results.map(activity => ({
-        ...activity,
-        contentFields: Array.isArray(activity.contentFields)
-          ? activity.contentFields
-          : typeof activity.contentFields === 'string'
-            ? JSON.parse(activity.contentFields)
-            : []
-      }));
+      const mappedResults = results.map(activity => {
+        let parsedFields;
+        try {
+          parsedFields = Array.isArray(activity.contentFields)
+            ? activity.contentFields
+            : typeof activity.contentFields === 'string'
+              ? JSON.parse(activity.contentFields)
+              : [];
+        } catch (error) {
+          console.error('Error parsing content fields:', error);
+          parsedFields = [];
+        }
+
+        return {
+          ...activity,
+          contentFields: parsedFields.map((field: any) => ({
+            id: field.id || Math.random().toString(36).substring(7),
+            type: field.type || 'text',
+            content: field.content || '',
+            title: field.title || ''
+          }))
+        };
+      });
+
+      console.log('Retrieved activities:', JSON.stringify(mappedResults, null, 2));
+      return mappedResults;
     } catch (error) {
       console.error('Error fetching activities:', error);
       throw error;
@@ -488,7 +507,7 @@ export class DatabaseStorage implements IStorage {
         ...newActivity,
         contentFields: Array.isArray(newActivity.contentFields)
           ? newActivity.contentFields
-          : JSON.parse(newActivity.contentFields)
+          : JSON.parse(newActivity.contentFields || '[]')
       };
     } catch (error) {
       console.error('Error creating activity:', error);
@@ -557,6 +576,15 @@ export class DatabaseStorage implements IStorage {
 
   async getReactionsByUser(userId: number): Promise<Reaction[]> {
     return await db.select().from(reactions).where(eq(reactions.userId, userId));
+  }
+  async deleteActivity(id: number): Promise<void> {
+    try {
+      console.log('Deleting activity:', id);
+      await db.delete(activities).where(eq(activities.id, id));
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      throw new Error(`Failed to delete activity: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 

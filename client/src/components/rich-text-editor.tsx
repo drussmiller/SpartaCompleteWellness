@@ -9,15 +9,6 @@ interface RichTextEditorProps {
   onChange: (content: string) => void
 }
 
-const transformYouTubeLinks = (content: string) => {
-  // Match YouTube URLs (both youtu.be and youtube.com formats)
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-
-  return content.replace(youtubeRegex, (match, videoId) => {
-    return `<div class="video-wrapper"><iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-  });
-};
-
 export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -30,10 +21,14 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
       })
     ],
     content,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none p-4',
+      }
+    },
     onUpdate: ({ editor }) => {
       const rawContent = editor.getHTML();
-      const contentWithEmbeds = transformYouTubeLinks(rawContent);
-      onChange(contentWithEmbeds);
+      onChange(rawContent);
     }
   })
 
@@ -91,16 +86,29 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
         </Button>
       </div>
       <div className="overflow-y-auto max-h-[300px]">
-        <EditorContent editor={editor} className="prose prose-sm max-w-none p-4" />
+        <EditorContent editor={editor} />
       </div>
       <style>{`
         .video-wrapper {
           position: relative;
-          padding-bottom: 56.25%; /* 16:9 aspect ratio */
+          padding-bottom: 56.25%;
           height: 0;
           margin: 1rem 0;
         }
         .video-wrapper iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+        .iframe-wrapper {
+          position: relative;
+          padding-bottom: 56.25%;
+          height: 0;
+          margin: 1rem 0;
+        }
+        .iframe-wrapper iframe {
           position: absolute;
           top: 0;
           left: 0;

@@ -146,6 +146,7 @@ export default function ActivityManagementPage() {
     formData.append('document', file);
 
     try {
+      console.log('Uploading document:', file.name);
       const res = await fetch('/api/activities/upload-doc', {
         method: 'POST',
         body: formData,
@@ -159,12 +160,14 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       console.log('Processed document content:', data.content);
 
-      setContentFields([{
+      const newField = {
         id: Math.random().toString(36).substring(7),
         type: 'text',
         content: data.content,
         title: file.name.replace('.docx', '')
-      }]);
+      };
+
+      setContentFields([newField]);
 
       toast({
         title: "Success",
