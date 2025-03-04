@@ -94,12 +94,17 @@ function ReactionSummary({ postId }: { postId: number }) {
   );
 }
 
-export function PostCard({ post }: { post: Post & { author: User } }) {
+export function PostCard({ post }: { post: Post & { author?: User | null } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
-  const canDelete = isOwnPost; // Added for clarity;  Could be a more complex condition later
+  const canDelete = isOwnPost;
+
+  // Get safe values with fallbacks
+  const authorUsername = post.author?.username || 'Unknown User';
+  const authorPoints = post.author?.points || 0;
+  const authorFirstLetter = authorUsername[0]?.toUpperCase() || '?';
 
   const { data: commentCount = 0 } = useQuery<number>({
     queryKey: ["/api/posts", post.id, "comment-count"],
@@ -154,14 +159,14 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage 
-                  key={`avatar-${post.author?.id}-${avatarKey}`} 
-                  src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
-                />
-            <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
+              key={`avatar-${post.author?.id}-${avatarKey}`} 
+              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${authorUsername}`} 
+            />
+            <AvatarFallback>{authorFirstLetter}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold">{post.author.username}</p>
-            <p className="text-sm text-muted-foreground">{post.author.points} points</p>
+            <p className="font-semibold">{authorUsername}</p>
+            <p className="text-sm text-muted-foreground">{authorPoints} points</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -209,7 +214,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             <Link href={`/comments/${post.id}`}>
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
-                {commentCount?.count || 0}
+                {commentCount}
               </Button>
             </Link>
           </div>
