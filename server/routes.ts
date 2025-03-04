@@ -355,6 +355,47 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Delete post endpoint
+  router.delete("/api/posts/:postId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      console.log(`Attempting to delete post ${postId} by user ${req.user.id}`);
+
+      // Get the post to check ownership
+      const post = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post || post.length === 0) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user is admin or the post owner
+      if (!req.user.isAdmin && post[0].userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Delete post
+      await storage.deletePost(postId);
+      console.log(`Post ${postId} deleted successfully`);
+      res.status(200).json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error(`Error deleting post ${req.params.postId}:`, error);
+      res.status(500).json({ 
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add user role management endpoints
   router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
     try {
