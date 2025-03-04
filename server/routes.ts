@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, lt } from "drizzle-orm";
 import {
   posts,
   notifications,
@@ -426,18 +426,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Calculate start and end of day in user's timezone
       const now = new Date();
+      // Convert server UTC time to user's local time
       const userDate = new Date(now.getTime() - (tzOffset * 60000));
-      const startOfDay = new Date(userDate.getFullYear(), userDate.getMonth(), userDate.getDate());
-      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+      const startOfDay = new Date(
+        userDate.getFullYear(),
+        userDate.getMonth(),
+        userDate.getDate()
+      );
+      const endOfDay = new Date(
+        userDate.getFullYear(),
+        userDate.getMonth(),
+        userDate.getDate() + 1
+      );
 
-      // Convert back to UTC for database query
+      // Convert local time boundaries back to UTC for database query
       const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
 
-      console.log('Querying posts between:', {
+      console.log('Post count query parameters:', {
+        userId: req.user.id,
+        userLocalTime: userDate.toISOString(),
         utcStart: utcStart.toISOString(),
         utcEnd: utcEnd.toISOString(),
-        userId: req.user.id
+        tzOffset
       });
 
       // Query posts for today by type
@@ -451,7 +462,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           and(
             eq(posts.userId, req.user.id),
             gte(posts.createdAt, utcStart),
-            lte(posts.createdAt, utcEnd),
+            lt(posts.createdAt, utcEnd),
             isNull(posts.parentId) // Don't count comments
           )
         )
@@ -473,9 +484,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       });
 
-      console.log('Processed counts:', counts);
-
-      // Calculate remaining posts and determine if user can post
+      // Define maximum posts allowed per type
       const maxPosts = {
         food: 3,
         workout: 1,
@@ -483,13 +492,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: 1
       };
 
+      // Calculate if user can post for each type
       const canPost = {
         food: counts.food < maxPosts.food,
         workout: counts.workout < maxPosts.workout,
         scripture: counts.scripture < maxPosts.scripture,
-        memory_verse: new Date().getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
+        memory_verse: userDate.getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
       };
 
+      // Calculate remaining posts for each type
       const remaining = {
         food: Math.max(0, maxPosts.food - counts.food),
         workout: Math.max(0, maxPosts.workout - counts.workout),
@@ -497,7 +508,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
       };
 
-      console.log('Response data:', { counts, canPost, remaining });
+      console.log('Response data:', {
+        counts,
+        canPost,
+        remaining,
+        userLocalDay: userDate.getDay()
+      });
+
       res.json({ counts, canPost, remaining });
     } catch (error) {
       console.error('Error getting post counts:', error);
