@@ -842,7 +842,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add the user delete route handler
+  // Update the user delete route handler to clean up associated data
   router.delete("/api/users/:userId", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -871,13 +871,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
       }
 
-      // Delete user from database
-      await db
-        .delete(users)
-        .where(eq(users.id, userId));
+      // Start a transaction to ensure all related data is cleaned up
+      await db.transaction(async (tx) => {
+        // First delete all reactions by this user
+        await tx
+          .delete(reactions)
+          .where(eq(reactions.userId, userId));
 
-      console.log('User deleted successfully:', userId);
-      res.json({ message: "User deleted successfully" });
+        // Delete all comments (posts with parentId) by this user
+        await tx
+          .delete(posts)
+          .where(and(
+            eq(posts.userId, userId),
+            sql`${posts.parentId} IS NOT NULL`
+          ));
+
+        // Delete all posts by this user
+        await tx
+          .delete(posts)
+          .where(eq(posts.userId, userId));
+
+        // Delete all notifications for this user
+        await tx
+          .delete(notifications)
+          .where(eq(notifications.userId, userId));
+
+        // Finally delete the user
+        await tx
+          .delete(users)
+          .where(eq(users.id, userId));
+      });
+
+      console.log('User and related data deleted successfully:', userId);
+      res.json({ message: "User and all related data deleted successfully" });
     } catch (error) {
       console.error('Error deleting user:', error);
       res.status(500).json({ 
