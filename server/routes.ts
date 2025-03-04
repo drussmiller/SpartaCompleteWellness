@@ -45,7 +45,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
