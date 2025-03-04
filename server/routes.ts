@@ -121,6 +121,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
       }
 
+      console.log('Parsed activity data:', JSON.stringify(parsedData.data, null, 2));
+
       const activity = await storage.createActivity(parsedData.data);
       res.status(201).json(activity);
     } catch (error) {
@@ -290,7 +292,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add document upload endpoint
+  // Document upload endpoint from edited snippet
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {

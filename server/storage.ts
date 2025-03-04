@@ -453,6 +453,8 @@ export class DatabaseStorage implements IStorage {
         isComplete: false
       };
 
+      console.log('Inserting activity with data:', JSON.stringify(activityData, null, 2));
+
       const [newActivity] = await db
         .insert(activities)
         .values(activityData)
