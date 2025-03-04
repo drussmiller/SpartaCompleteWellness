@@ -26,9 +26,27 @@ import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+// Make sure upload directory exists
+import fs from 'fs';
+import path from 'path';
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for documents
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
