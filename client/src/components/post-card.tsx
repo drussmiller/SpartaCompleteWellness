@@ -195,7 +195,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             <Link href={`/comments/${post.id}`}>
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
-                {commentCount?.count || 0}
+                {commentCount}
               </Button>
             </Link>
           </div>
