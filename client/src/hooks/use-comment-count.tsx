@@ -9,10 +9,11 @@ export function useCommentCount(postId: number) {
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
-          console.error(`Error fetching comment count for post ${postId}:`, res.status, res.statusText);
+          console.warn(`Comment count request for post ${postId} failed with status ${res.status}`);
           return { count: 0 };
         }
-        return res.json();
+        const data = await res.json();
+        return { count: Number(data?.count || 0) };
       } catch (error) {
         console.error(`Error fetching comment count for post ${postId}:`, error);
         // Return a default value instead of throwing
