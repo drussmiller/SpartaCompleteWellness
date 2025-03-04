@@ -115,6 +115,7 @@ export const reactions = pgTable("reactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Update the post schema with proper validation
 export const insertPostSchema = createInsertSchema(posts)
   .omit({
     id: true,
