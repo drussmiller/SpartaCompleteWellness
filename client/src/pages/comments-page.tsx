@@ -12,6 +12,7 @@ import { AppLayout } from "@/components/app-layout";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
+  const numericPostId = postId ? parseInt(postId) : null;
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -21,48 +22,41 @@ export default function CommentsPage() {
 
   console.log("=== CommentsPage Debug ===");
   console.log("Current postId:", postId);
+  console.log("Numeric postId:", numericPostId);
   console.log("Current user:", currentUser?.id);
 
-  useEffect(() => {
-    console.log("Component mounted with postId:", postId);
-  }, []);
-
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
-    queryKey: [`/api/posts/${postId}`],
+    queryKey: [`/api/posts/${numericPostId}`],
     queryFn: async () => {
-      console.log("Fetching original post with ID:", postId);
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-
+      console.log("Fetching post with ID:", numericPostId);
+      const res = await apiRequest("GET", `/api/posts/${numericPostId}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Failed to fetch post:", errorText);
         throw new Error(`Failed to fetch post: ${errorText}`);
       }
-
       const data = await res.json();
       console.log("Received post data:", data);
       return data;
     },
-    enabled: !!postId,
+    enabled: !!numericPostId,
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError, refetch } = useQuery({
-    queryKey: [`/api/posts/comments/${postId}`],
+    queryKey: [`/api/posts/comments/${numericPostId}`],
     queryFn: async () => {
-      console.log("Fetching comments for post:", postId);
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-
+      console.log("Fetching comments for post:", numericPostId);
+      const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Failed to fetch comments:", errorText);
         throw new Error(`Failed to fetch comments: ${errorText}`);
       }
-
       const data = await res.json();
       console.log("Received comments data:", data);
       return data;
     },
-    enabled: !!postId,
+    enabled: !!numericPostId,
   });
 
   console.log("=== Current State ===");
@@ -71,7 +65,6 @@ export default function CommentsPage() {
   console.log("Data:", { originalPost, commentsCount: comments?.length });
 
   if (!currentUser) {
-    console.log("No user logged in");
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -82,7 +75,6 @@ export default function CommentsPage() {
   }
 
   if (isPostLoading || areCommentsLoading) {
-    console.log("Loading state active");
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -97,7 +89,7 @@ export default function CommentsPage() {
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center text-destructive">
-          <p>{postError?.message || commentsError?.message}</p>
+          <p>{(postError || commentsError)?.message}</p>
         </div>
       </AppLayout>
     );
@@ -116,6 +108,7 @@ export default function CommentsPage() {
 
   const createCommentMutation = useMutation({
     mutationFn: async () => {
+      if (!numericPostId) throw new Error("No post ID provided");
       const trimmedComment = comment.trim();
       if (!trimmedComment) {
         throw new Error("Comment cannot be empty");
@@ -124,7 +117,7 @@ export default function CommentsPage() {
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
         content: trimmedComment,
-        parentId: replyTo || parseInt(postId),
+        parentId: replyTo || numericPostId,
         points: 1
       });
 
@@ -138,7 +131,7 @@ export default function CommentsPage() {
       setComment("");
       setReplyTo(null);
       refetch();
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${numericPostId}`] });
       toast({
         description: "Comment posted successfully",
       });
@@ -157,6 +150,7 @@ export default function CommentsPage() {
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
         <main className="flex-1 p-4 pb-32">
           <div className="max-w-2xl mx-auto space-y-6">
+            {/* Original Post */}
             <div className="border rounded-lg p-4 bg-background">
               <div className="flex items-start gap-3">
                 <Avatar className="h-10 w-10">
@@ -186,6 +180,7 @@ export default function CommentsPage() {
               </div>
             </div>
 
+            {/* Comments List */}
             <div className="space-y-4">
               {comments.map((comment) => (
                 <div key={comment.id} className="border rounded-lg p-4 bg-background">
@@ -221,6 +216,7 @@ export default function CommentsPage() {
           </div>
         </main>
 
+        {/* Comment Input */}
         <div className="fixed bottom-16 md:bottom-0 left-0 md:left-16 right-0 bg-background border-t border-border p-4">
           <div className="max-w-2xl mx-auto">
             <div className="flex flex-col gap-2">
