@@ -341,7 +341,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const youtubeRegex = /(?:href=")?(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:")?/g;
       html = html.replace(youtubeRegex, (match, videoId) => {
         console.log('Found YouTube video ID:', videoId);
-        return `<div class="video-wrapper"><iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        const embedHtml = `<div class="video-wrapper"><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        console.log('Generated embed HTML:', embedHtml);
+        return embedHtml;
       });
 
       // Clean up any potential script tags or other unsafe content
@@ -359,6 +361,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           padding-bottom: 56.25%;
           height: 0;
           margin: 1rem 0;
+          overflow: hidden;
         }
         .video-wrapper iframe {
           position: absolute;
@@ -366,6 +369,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           left: 0;
           width: 100%;
           height: 100%;
+          border: 0;
         }
       </style>`;
 

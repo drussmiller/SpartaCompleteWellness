@@ -124,10 +124,12 @@ export default function ActivityPage() {
               <div className="prose max-w-none">
                 {currentActivity.contentFields?.map((field, index) => (
                   <div key={index} className="mb-8">
-                    {field.title && <h2>{field.title}</h2>}
+                    {field.title && <h2 className="text-xl font-bold mb-4">{field.title}</h2>}
                     <div 
-                      className="rich-text-content" 
-                      dangerouslySetInnerHTML={{ __html: field.content }}
+                      className="rich-text-content prose-sm" 
+                      dangerouslySetInnerHTML={{ 
+                        __html: field.content 
+                      }}
                     />
                   </div>
                 ))}
@@ -160,6 +162,7 @@ export default function ActivityPage() {
           padding-bottom: 56.25%;
           height: 0;
           margin: 1rem 0;
+          overflow: hidden;
         }
         .video-wrapper iframe {
           position: absolute;
@@ -167,6 +170,7 @@ export default function ActivityPage() {
           left: 0;
           width: 100%;
           height: 100%;
+          border: 0;
         }
       `}</style>
       </ScrollArea>
