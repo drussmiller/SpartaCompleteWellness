@@ -1,4 +1,4 @@
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
@@ -112,6 +112,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         className="w-full sm:w-[500px] p-0 fixed inset-0 z-[9999]"
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden">
+          <SheetClose className="absolute top-4 left-4 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 bg-background shadow-sm z-[10000]">
+            <span className="text-2xl">&lt;</span>
+            <span className="sr-only">Close</span>
+          </SheetClose>
           {/* Show loading state */}
           {(isPostLoading || areCommentsLoading) && (
             <div className="flex-1 flex items-center justify-center">
@@ -134,8 +138,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 <CommentList comments={comments} postId={postId} />
               </div>
 
-              {/* Fixed comment form at bottom */}
-              <div className="border-t bg-background p-4">
+              {/* Fixed comment form at the bottom */}
+              <div className="p-4 border-t bg-background">
                 <CommentForm
                   onSubmit={async (content) => {
                     await createCommentMutation.mutateAsync(content);
