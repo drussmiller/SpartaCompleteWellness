@@ -451,71 +451,79 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         tzOffset
       });
 
-      // Query posts for today by type
-      const result = await db
-        .select({
-          type: posts.type,
-          count: sql<number>`count(*)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            gte(posts.createdAt, utcStart),
-            lt(posts.createdAt, utcEnd),
-            isNull(posts.parentId) // Don't count comments
+      try {
+        // Query posts for today by type
+        const result = await db
+          .select({
+            type: posts.type,
+            count: sql<number>`count(*)::integer`
+          })
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, req.user.id),
+              gte(posts.createdAt, utcStart),
+              lt(posts.createdAt, utcEnd),
+              isNull(posts.parentId) // Don't count comments
+            )
           )
-        )
-        .groupBy(posts.type);
+          .groupBy(posts.type);
 
-      console.log('Post counts query result:', result);
+        console.log('Post counts query result:', result);
 
-      // Convert result to expected format
-      const counts = {
-        food: 0,
-        workout: 0,
-        scripture: 0,
-        memory_verse: 0
-      };
+        // Convert result to expected format
+        const counts = {
+          food: 0,
+          workout: 0,
+          scripture: 0,
+          memory_verse: 0
+        };
 
-      result.forEach(row => {
-        if (row.type in counts) {
-          counts[row.type as keyof typeof counts] = Number(row.count);
-        }
-      });
+        result.forEach(row => {
+          if (row.type in counts) {
+            counts[row.type as keyof typeof counts] = Number(row.count);
+          }
+        });
 
-      // Define maximum posts allowed per type
-      const maxPosts = {
-        food: 3,
-        workout: 1,
-        scripture: 1,
-        memory_verse: 1
-      };
+        // Define maximum posts allowed per type
+        const maxPosts = {
+          food: 3,
+          workout: 1,
+          scripture: 1,
+          memory_verse: 1
+        };
 
-      // Calculate if user can post for each type
-      const canPost = {
-        food: counts.food < maxPosts.food,
-        workout: counts.workout < maxPosts.workout,
-        scripture: counts.scripture < maxPosts.scripture,
-        memory_verse: userDate.getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
-      };
+        // Calculate if user can post for each type
+        const canPost = {
+          food: counts.food < maxPosts.food,
+          workout: counts.workout < maxPosts.workout,
+          scripture: counts.scripture < maxPosts.scripture,
+          memory_verse: userDate.getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
+        };
 
-      // Calculate remaining posts for each type
-      const remaining = {
-        food: Math.max(0, maxPosts.food - counts.food),
-        workout: Math.max(0, maxPosts.workout - counts.workout),
-        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
-        memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
-      };
+        // Calculate remaining posts for each type
+        const remaining = {
+          food: Math.max(0, maxPosts.food - counts.food),
+          workout: Math.max(0, maxPosts.workout - counts.workout),
+          scripture: Math.max(0, maxPosts.scripture - counts.scripture),
+          memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
+        };
 
-      console.log('Response data:', {
-        counts,
-        canPost,
-        remaining,
-        userLocalDay: userDate.getDay()
-      });
+        console.log('Response data:', {
+          counts,
+          canPost,
+          remaining,
+          userLocalDay: userDate.getDay()
+        });
 
-      res.json({ counts, canPost, remaining });
+        return res.json({ counts, canPost, remaining });
+      } catch (dbError) {
+        console.error('Database error in post counts:', dbError);
+        return res.status(500).json({ 
+          message: "Database error in post counts",
+          error: dbError instanceof Error ? dbError.message : "Unknown database error"
+        });
+      }
     } catch (error) {
       console.error('Error getting post counts:', error);
       res.status(500).json({ 
