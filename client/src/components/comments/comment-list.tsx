@@ -116,6 +116,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         description: error.message || "Failed to delete comment",
       });
       setIsDeleteDialogOpen(false);
+      setSelectedComment(null);
     },
   });
 
@@ -290,6 +291,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         />
       )}
 
+      {/* Separate AlertDialog outside main render loop */}
       <AlertDialog 
         open={isDeleteDialogOpen} 
         onOpenChange={(open) => {
