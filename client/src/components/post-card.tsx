@@ -2,18 +2,17 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Post, User, Reaction } from "@shared/schema";
+import { Post, User } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
+import { CommentDrawer } from "@/components/comments/comment-drawer";
 
-// ReactionSummary component remains unchanged
 function ReactionSummary({ postId }: { postId: number }) {
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
@@ -21,7 +20,6 @@ function ReactionSummary({ postId }: { postId: number }) {
     cacheTime: 60000, // Keep in cache for 1 minute
   });
 
-  // Count each type of reaction
   const reactionCounts: Record<string, number> = {};
   reactions.forEach(reaction => {
     if (reaction.type) {
@@ -29,9 +27,6 @@ function ReactionSummary({ postId }: { postId: number }) {
     }
   });
 
-  // Get the emoji mapping from imported module
-  // This is a little hack to access the same emoji data from reaction-button
-  // A better approach would be to move this to a shared constants file
   const getEmojiForType = (type: string): string => {
     const allEmojis: Record<string, { emoji: string, color: string }> = {
       like: { emoji: "👍", color: "text-blue-500" },
@@ -68,10 +63,9 @@ function ReactionSummary({ postId }: { postId: number }) {
     return allEmojis[type]?.emoji || "👍";
   };
 
-  // Sort reaction types by count (most frequent first)
   const sortedReactions = Object.entries(reactionCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5); // Show at most 5 reaction types
+    .slice(0, 5); 
 
   if (sortedReactions.length === 0) return null;
 
@@ -100,17 +94,16 @@ function ReactionSummary({ postId }: { postId: number }) {
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost;
 
-  // Use the optimized comment count hook
   const { count: commentCount } = useCommentCount(post.id);
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/posts/${post.id}`);
-      // Invalidate all relevant queries to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -189,22 +182,28 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             </span>
           </div>
 
-          {/* Reaction summary display */}
           <ReactionSummary postId={post.id} />
 
           <div className="mt-4 flex items-center gap-2">
             <ReactionButton postId={post.id} />
-            <Link href={`/comments/${post.id}`} onClick={() => {
-              console.log("Navigating to comments for post:", post.id);
-            }}>
-              <Button variant="ghost" size="sm" className="gap-1.5">
-                <MessageCircle className="h-4 w-4" />
-                {commentCount}
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-1.5"
+              onClick={() => setIsCommentsOpen(true)}
+            >
+              <MessageCircle className="h-4 w-4" />
+              {commentCount}
+            </Button>
           </div>
         </div>
       </CardContent>
+
+      <CommentDrawer
+        postId={post.id}
+        isOpen={isCommentsOpen}
+        onClose={() => setIsCommentsOpen(false)}
+      />
     </Card>
   );
 }
