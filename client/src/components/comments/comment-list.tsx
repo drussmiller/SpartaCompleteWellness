@@ -11,15 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Loader2 } from 'lucide-react';
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
@@ -35,8 +26,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
-  const [editingComment, setEditingComment] = useState<number | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -72,51 +61,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
     },
   });
 
-  const editCommentMutation = useMutation({
-    mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        data: JSON.stringify({ content: content.trim() })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      toast({
-        description: "Comment updated successfully",
-      });
-      setEditingComment(null);
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to update comment",
-      });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (commentId: number) => {
-      const res = await apiRequest("DELETE", `/api/posts/${commentId}`);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      toast({
-        description: "Comment deleted successfully",
-      });
-      setDeleteDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to delete comment",
-      });
-      setDeleteDialogOpen(false);
-    },
-  });
-
   const handleCopyComment = (content: string) => {
     navigator.clipboard.writeText(content);
     toast({
@@ -128,7 +72,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
   // Organize comments into threads
-  const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
+  // Sort comments to ensure consistent order
+  const sortedComments = [...comments].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  
+  const threadedComments = sortedComments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
       // This is a top-level comment
       threads.push({ ...comment, replies: [] });
@@ -156,21 +105,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
-
-    if (editingComment === comment.id) {
-      return (
-        <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-          <CommentForm
-            onSubmit={async (content) => {
-              await editCommentMutation.mutateAsync({ id: comment.id, content });
-            }}
-            isSubmitting={editCommentMutation.isPending}
-            defaultValue={comment.content || ""}
-            onCancel={() => setEditingComment(null)}
-          />
-        </div>
-      );
-    }
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -274,62 +208,30 @@ export function CommentList({ comments, postId }: CommentListProps) {
       )}
 
       {selectedCommentData && (
-        <>
-          <CommentActionsDrawer
-            isOpen={isActionsOpen}
-            onClose={() => {
-              setIsActionsOpen(false);
-              setSelectedComment(null);
-            }}
-            onReply={() => {
-              setReplyingTo(selectedComment);
-              setIsActionsOpen(false);
-            }}
-            onEdit={() => {
-              setEditingComment(selectedComment);
-              setIsActionsOpen(false);
-            }}
-            onDelete={() => {
-              setDeleteDialogOpen(true);
-            }}
-            onCopy={() => handleCopyComment(selectedCommentData.content || "")}
-            canEdit={user?.id === selectedCommentData.author?.id}
-            canDelete={user?.id === selectedCommentData.author?.id}
-          />
-          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Comment</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this comment? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="mt-6 flex space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setDeleteDialogOpen(false)}
-                  disabled={deleteCommentMutation.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => deleteCommentMutation.mutate(selectedComment)}
-                  disabled={deleteCommentMutation.isPending}
-                >
-                  {deleteCommentMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    "Delete"
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
+        <CommentActionsDrawer
+          isOpen={isActionsOpen}
+          onClose={() => {
+            setIsActionsOpen(false);
+            setSelectedComment(null);
+          }}
+          onReply={() => {
+            setReplyingTo(selectedComment);
+            setIsActionsOpen(false);
+          }}
+          onEdit={() => {
+            toast({
+              description: "Edit functionality coming soon",
+            });
+          }}
+          onDelete={() => {
+            toast({
+              description: "Delete functionality coming soon",
+            });
+          }}
+          onCopy={() => handleCopyComment(selectedCommentData.content || "")}
+          canEdit={user?.id === selectedCommentData.author?.id}
+          canDelete={user?.id === selectedCommentData.author?.id}
+        />
       )}
     </>
   );
