@@ -1,9 +1,9 @@
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { MessageCircle } from "lucide-react";
-import { useState } from "react";
 import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -12,13 +12,15 @@ import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
 
-
 interface CommentListProps {
   comments: (Post & { author: User })[];
-  postId: number;  // Add postId prop to handle replies
+  postId: number;
 }
 
-type CommentWithReplies = Post & { author: User; replies?: CommentWithReplies[] };
+type CommentWithReplies = Post & { 
+  author: User; 
+  replies?: CommentWithReplies[];
+};
 
 export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -35,9 +37,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         parentId: replyingTo,
         points: 1
       };
-      console.log("Creating reply with data:", data);
 
-      // The server expects 'data' property as a JSON string
       const res = await apiRequest("POST", "/api/posts", {
         data: JSON.stringify(data)
       });
@@ -45,19 +45,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onSuccess: (newComment) => {
-      console.log("Reply created successfully:", newComment);
-
-      // Manually update the query data to include the new reply
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-
       toast({
         description: "Reply posted successfully",
       });
       setReplyingTo(null);
     },
     onError: (error: Error) => {
-      console.error("Reply error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post reply",
@@ -65,28 +60,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
     },
   });
 
-  const fetchAllComments = async () => {
-    console.log("Fetching all comments for post:", postId);
-    try {
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      const data = await res.json();
-      return data;
-    } catch (error) {
-      console.error("Error fetching all comments:", error);
-      return [];
-    }
+  const handleCopyComment = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast({
+      description: "Comment copied to clipboard",
+    });
   };
 
-  useEffect(() => {
-    if (replyingTo === null && createReplyMutation.isSuccess) {
-      // Invalidate queries to refetch comments
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-    }
-  }, [createReplyMutation.isSuccess, replyingTo, postId]);
-
+  // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
       threads.push({ ...comment, replies: [] });
@@ -98,43 +79,29 @@ export function CommentList({ comments, postId }: CommentListProps) {
             thread.replies.push({ ...comment, replies: [] });
             return true;
           }
-
           if (thread.replies && thread.replies.length > 0) {
-            const found = findParentAndAddReply(thread.replies);
-            if (found) return true;
+            if (findParentAndAddReply(thread.replies)) return true;
           }
         }
         return false;
       };
 
-      const found = findParentAndAddReply(threads);
-
-      if (!found) {
-        const originalComment = comments.find(c => c.id === comment.parentId);
-        if (originalComment) {
-          const parent = threads.find(t => t.id === originalComment.id);
-          if (parent) {
-            parent.replies = parent.replies || [];
-            parent.replies.push({ ...comment, replies: [] });
-          } else {
-            threads.push({
-              ...originalComment,
-              replies: [{ ...comment, replies: [] }]
-            });
-          }
-        } else {
-          threads.push({ ...comment, replies: [] });
-        }
+      if (!findParentAndAddReply(threads)) {
+        threads.push({ ...comment, replies: [] });
       }
     }
     return threads;
   }, []);
 
-  const handleCopyComment = (content: string) => {
-    navigator.clipboard.writeText(content);
-    toast({
-      description: "Comment copied to clipboard",
-    });
+  const formatTimeAgo = (dateString: string | Date) => {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+
+    if (diffInHours < 24) {
+      return `${diffInHours}h`;
+    }
+    return `${Math.floor(diffInHours / 24)}d`;
   };
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
@@ -143,14 +110,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
-          <div className="shrink-0">
-            <Avatar>
-              <AvatarImage
-                src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
-              />
-              <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-          </div>
+          <Avatar>
+            <AvatarImage 
+              src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
+            />
+            <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card
               className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
@@ -162,7 +127,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
-              <CardContent className="pt-3 px-4 pb-3 relative">
+              <CardContent className="pt-3 px-4 pb-3">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
@@ -170,8 +135,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
               </CardContent>
             </Card>
             <div className="flex items-center">
-              <p className="text-sm text-muted-foreground mr-2 flex items-center">
-                {formatTimeAbbreviated(comment.createdAt!)}
+              <p className="text-sm text-muted-foreground mr-2">
+                {formatTimeAgo(comment.createdAt || new Date())}
               </p>
             </div>
           </div>
@@ -180,7 +145,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
         {replyingTo === comment.id && (
           <div className="ml-12 mt-2 pl-4 border-l-2 border-gray-300">
             <div className="flex items-center mb-2">
-              <p className="text-sm text-muted-foreground">Replying to {comment.author?.username}</p>
+              <p className="text-sm text-muted-foreground">
+                Replying to {comment.author?.username}
+              </p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -207,21 +174,19 @@ export function CommentList({ comments, postId }: CommentListProps) {
     );
   };
 
-  const formatTimeAbbreviated = (date: string): string => {
-    const now = new Date();
-    const then = new Date(date);
-    const diff = Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60)); // difference in hours
-
-    if (diff < 24) {
-      return `${diff}h`;
-    } else {
-      const days = Math.floor(diff / 24);
-      return `${days}d`;
+  // Find the selected comment data including nested replies
+  const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
+    for (const comment of comments) {
+      if (comment.id === selectedComment) return comment;
+      if (comment.replies) {
+        const found = findSelectedComment(comment.replies);
+        if (found) return found;
+      }
     }
+    return undefined;
   };
 
-  const selectedCommentData = comments.find(c => c.id === selectedComment) ||
-    comments.flatMap(c => c.replies || []).find(r => r?.id === selectedComment);
+  const selectedCommentData = findSelectedComment(threadedComments);
 
   return (
     <>
