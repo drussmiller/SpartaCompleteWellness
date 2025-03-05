@@ -56,18 +56,39 @@ export function CommentList({ comments, postId }: CommentListProps) {
     },
   });
 
-  // Transform flat comments into a threaded structure
+  // Transform flat comments into a threaded structure with nested replies
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     // For the comments page, all comments with parentId equal to postId are top-level
     if (comment.parentId === postId) {
       // This is a root level comment for this post
       threads.push({ ...comment, replies: [] });
     } else {
-      // This is a reply, find its parent and add it to replies
-      const parentThread = threads.find(t => t.id === comment.parentId);
-      if (parentThread) {
-        parentThread.replies = parentThread.replies || [];
-        parentThread.replies.push(comment);
+      // This is a reply to another comment, need to find where to place it
+      const findParentAndAddReply = (commentsList: CommentWithReplies[]) => {
+        for (const thread of commentsList) {
+          if (thread.id === comment.parentId) {
+            // Found direct parent
+            thread.replies = thread.replies || [];
+            thread.replies.push({ ...comment, replies: [] });
+            return true;
+          }
+          
+          // Check if it's a reply to a reply (nested)
+          if (thread.replies && thread.replies.length > 0) {
+            const found = findParentAndAddReply(thread.replies);
+            if (found) return true;
+          }
+        }
+        return false;
+      };
+      
+      // Try to find the parent in the thread structure
+      const found = findParentAndAddReply(threads);
+      
+      // If not found (could be a reply to a comment that's not yet in our structure)
+      if (!found) {
+        // Add to top level for now (will be fixed on next data refresh)
+        threads.push({ ...comment, replies: [] });
       }
     }
     return threads;
