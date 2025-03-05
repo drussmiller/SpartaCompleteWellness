@@ -138,14 +138,20 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 <CommentList comments={comments} postId={postId} />
               </div>
 
-              {/* Fixed comment form at bottom */}
-              <div className="border-t bg-background p-4">
-                <CommentForm
-                  onSubmit={async (content) => {
-                    await createCommentMutation.mutateAsync(content);
-                  }}
-                  isSubmitting={createCommentMutation.isPending}
-                />
+              {/* Fixed comment form at the bottom */}
+              <div className="p-4 border-t bg-background flex items-center">
+                <SheetClose className="mr-3 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 bg-background shadow-sm">
+                  <span className="text-2xl">&lt;</span>
+                  <span className="sr-only">Close</span>
+                </SheetClose>
+                <div className="flex-1">
+                  <CommentForm
+                    onSubmit={async (content) => {
+                      await createCommentMutation.mutateAsync(content);
+                    }}
+                    isSubmitting={createCommentMutation.isPending}
+                  />
+                </div>
               </div>
             </>
           )}
