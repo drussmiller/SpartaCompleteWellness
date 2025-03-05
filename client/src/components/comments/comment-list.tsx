@@ -266,9 +266,13 @@ export function CommentList({ comments, postId }: CommentListProps) {
           </div>
         )}
 
-        {comment.replies?.map((reply) => (
-          <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
-        ))}
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="mt-2">
+            {comment.replies.map((reply) => (
+              <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
