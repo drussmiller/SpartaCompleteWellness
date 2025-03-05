@@ -13,42 +13,113 @@ import { CommentForm } from "@/components/comments/comment-form";
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
   const numericPostId = parseInt(postId || '0', 10);
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  console.log('Comments Page - Post ID:', postId, 'Numeric ID:', numericPostId);
+  console.log("=== CommentsPage Debug ===");
+  console.log("Current postId:", postId);
+  console.log("Numeric postId:", numericPostId);
+  console.log("Current user:", currentUser?.id);
 
-  // Fetch original post
-  const { data: post, isLoading: isLoadingPost, error: postError } = useQuery({
+  const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${numericPostId}`],
     queryFn: async () => {
-      console.log('Fetching post:', numericPostId);
+      console.log("Fetching post with ID:", numericPostId);
       const res = await apiRequest("GET", `/api/posts/${numericPostId}`);
-      if (!res.ok) throw new Error("Failed to fetch post");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to fetch post:", errorText);
+        throw new Error(`Failed to fetch post: ${errorText}`);
+      }
       const data = await res.json();
-      console.log('Post data:', data);
+      console.log("Received post data:", data);
       return data;
     },
-    enabled: !!numericPostId && numericPostId > 0
+    enabled: !!numericPostId,
   });
 
-  // Fetch comments
-  const { data: comments = [], isLoading: isLoadingComments, error: commentsError } = useQuery({
+  const { data: comments = [], isLoading: areCommentsLoading, error: commentsError, refetch } = useQuery({
     queryKey: [`/api/posts/comments/${numericPostId}`],
     queryFn: async () => {
-      console.log('Fetching comments for post:', numericPostId);
+      console.log("Fetching comments for post:", numericPostId);
       const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
-      if (!res.ok) throw new Error("Failed to fetch comments");
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to fetch comments:", errorText);
+        throw new Error(`Failed to fetch comments: ${errorText}`);
+      }
       const data = await res.json();
-      console.log('Comments data:', data);
+      console.log("Received comments data:", data);
       return data;
     },
-    enabled: !!numericPostId && numericPostId > 0
+    enabled: !!numericPostId,
   });
 
-  // Create comment mutation
-  const createCommentMutation = useMutation({
+  console.log("=== Current State ===");
+  console.log("Loading states:", { isPostLoading, areCommentsLoading });
+  console.log("Errors:", { postError, commentsError });
+  console.log("Data:", { originalPost, commentsCount: comments?.length });
+
+  if (!currentUser) {
+    return (
+      <AppLayout title="Comments">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <p>Please log in to view comments</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isPostLoading || areCommentsLoading) {
+    return (
+      <AppLayout title="Comments">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (postError || commentsError) {
+    console.error("=== Comments Page Error ===");
+    console.error(postError || commentsError);
+    return (
+      <AppLayout title="Comments">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center text-destructive">
+          <p>{(postError || commentsError)?.message}</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!originalPost) {
+    console.log("No post found");
+    return (
+      <AppLayout title="Comments">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <p>Post not found</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  console.log("Rendering main comments view");
+  return (
+    <AppLayout title="Comments">
+      <div className="max-w-2xl mx-auto p-4 space-y-6 pb-32">
+        <PostView post={originalPost} />
+        <CommentList comments={comments} />
+        <CommentForm 
+          onSubmit={content => createCommentMutation.mutate(content)}
+          isSubmitting={createCommentMutation.isPending}
+        />
+      </div>
+    </AppLayout>
+  );
+}
+
+const createCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
@@ -76,72 +147,3 @@ export default function CommentsPage() {
       });
     },
   });
-
-  // Invalid post ID
-  if (!numericPostId || numericPostId <= 0) {
-    return (
-      <AppLayout title="Comments">
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p>Invalid post ID</p>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  // Not logged in
-  if (!user) {
-    return (
-      <AppLayout title="Comments">
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p>Please login to view comments</p>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  // Loading state
-  if (isLoadingPost || isLoadingComments) {
-    return (
-      <AppLayout title="Comments">
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  // Error state
-  if (postError || commentsError) {
-    return (
-      <AppLayout title="Comments">
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-destructive">
-          <p>{(postError || commentsError)?.message}</p>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  // No post found
-  if (!post) {
-    return (
-      <AppLayout title="Comments">
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <p>Post not found</p>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  return (
-    <AppLayout title="Comments">
-      <div className="max-w-2xl mx-auto p-4 space-y-6 pb-32">
-        <PostView post={post} />
-        <CommentList comments={comments} />
-        <CommentForm 
-          onSubmit={content => createCommentMutation.mutate(content)}
-          isSubmitting={createCommentMutation.isPending}
-        />
-      </div>
-    </AppLayout>
-  );
-}
