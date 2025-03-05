@@ -202,7 +202,7 @@ export default function CommentsPage() {
                   </div>
                 </div>
               ))}
-              {(!comments || comments.length === 0) && (
+              {Array.isArray(comments) && comments.length === 0 && (
                 <div className="bg-background rounded-lg p-6">
                   <p className="text-center text-muted-foreground py-6">
                     No comments yet. Be the first to comment!
