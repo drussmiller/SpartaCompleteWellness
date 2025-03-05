@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -12,12 +12,14 @@ import { CommentForm } from "@/components/comments/comment-form";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
+  const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  console.log("=== CommentsPage Render ===");
-  console.log("PostID:", postId);
-  console.log("User:", user?.id);
+  console.log("=== CommentsPage Mount ===");
+  console.log("Current location:", location);
+  console.log("PostID from params:", postId);
+  console.log("Current user:", user?.id);
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -27,11 +29,10 @@ export default function CommentsPage() {
       try {
         const res = await apiRequest("GET", `/api/posts/${postId}`);
         if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(errorText);
+          throw new Error(await res.text());
         }
         const data = await res.json();
-        console.log("Received post data:", data);
+        console.log("Post data received:", data);
         return data;
       } catch (error) {
         console.error("Error fetching post:", error);
@@ -49,11 +50,10 @@ export default function CommentsPage() {
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(errorText);
+          throw new Error(await res.text());
         }
         const data = await res.json();
-        console.log("Received comments data:", data);
+        console.log("Comments data received:", data);
         return data;
       } catch (error) {
         console.error("Error fetching comments:", error);
@@ -74,8 +74,7 @@ export default function CommentsPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create comment");
+        throw new Error(await res.text());
       }
       return res.json();
     },
@@ -98,8 +97,18 @@ export default function CommentsPage() {
   console.log("=== Current State ===");
   console.log("Post:", originalPost);
   console.log("Comments:", comments);
-  console.log("Loading:", { isPostLoading, areCommentsLoading });
+  console.log("Loading states:", { isPostLoading, areCommentsLoading });
   console.log("Errors:", { postError, commentsError });
+
+  if (!postId) {
+    return (
+      <AppLayout title="Comments">
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <p>Invalid post ID</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!user) {
     return (
