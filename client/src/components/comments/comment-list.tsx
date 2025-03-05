@@ -26,7 +26,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
-  const [editingComment, setEditingComment] = useState<number | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -62,49 +61,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
     },
   });
 
-  const editCommentMutation = useMutation({
-    mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        data: JSON.stringify({ content: content.trim() })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      toast({
-        description: "Comment updated successfully",
-      });
-      setEditingComment(null);
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to update comment",
-      });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (commentId: number) => {
-      const res = await apiRequest("DELETE", `/api/posts/${commentId}`);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      toast({
-        description: "Comment deleted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to delete comment",
-      });
-    },
-  });
-
   const handleCopyComment = (content: string) => {
     navigator.clipboard.writeText(content);
     toast({
@@ -116,7 +72,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
   // Organize comments into threads
-  const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
+  // Sort comments to ensure consistent order
+  const sortedComments = [...comments].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  
+  const threadedComments = sortedComments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
       // This is a top-level comment
       threads.push({ ...comment, replies: [] });
@@ -144,21 +105,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
-
-    if (editingComment === comment.id) {
-      return (
-        <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-          <CommentForm
-            onSubmit={async (content) => {
-              await editCommentMutation.mutateAsync({ id: comment.id, content });
-            }}
-            isSubmitting={editCommentMutation.isPending}
-            defaultValue={comment.content || ""}
-            onCancel={() => setEditingComment(null)}
-          />
-        </div>
-      );
-    }
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -273,14 +219,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
           }}
           onEdit={() => {
-            setEditingComment(selectedComment);
-            setIsActionsOpen(false);
+            toast({
+              description: "Edit functionality coming soon",
+            });
           }}
           onDelete={() => {
-            if (window.confirm('Are you sure you want to delete this comment?')) {
-              deleteCommentMutation.mutate(selectedComment);
-              setIsActionsOpen(false);
-            }
+            toast({
+              description: "Delete functionality coming soon",
+            });
           }}
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
