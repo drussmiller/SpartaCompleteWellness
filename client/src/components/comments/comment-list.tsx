@@ -20,6 +20,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Loader2 } from 'lucide-react';
 
@@ -299,6 +300,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
             canDelete={user?.id === selectedCommentData.author?.id}
           />
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <span className="hidden">Delete</span>
+            </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Comment</AlertDialogTitle>
