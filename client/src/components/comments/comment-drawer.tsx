@@ -42,6 +42,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     enabled: isOpen && Boolean(postId),
+    staleTime: 1000, // Consider data fresh for 1 second
     queryFn: async () => {
       console.log("Fetching comments for post:", postId);
       try {
