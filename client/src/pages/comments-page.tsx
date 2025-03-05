@@ -28,8 +28,11 @@ export default function CommentsPage() {
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${numericPostId}`],
     queryFn: async () => {
-      if (!numericPostId) throw new Error("No post ID provided");
-      console.log("Fetching post with ID:", numericPostId);
+      if (!numericPostId || isNaN(numericPostId) || numericPostId <= 0) {
+        console.warn(`Invalid post ID for original post: ${numericPostId}`);
+        throw new Error("Invalid post ID");
+      }
+
       const res = await apiRequest("GET", `/api/posts/${numericPostId}`);
       if (!res.ok) {
         const errorText = await res.text();
@@ -46,30 +49,35 @@ export default function CommentsPage() {
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: [`/api/posts/comments/${numericPostId}`],
     queryFn: async () => {
-      if (!numericPostId) throw new Error("No post ID provided");
+      if (!numericPostId || isNaN(numericPostId) || numericPostId <= 0) {
+        console.warn(`Invalid post ID for comments: ${numericPostId}`);
+        throw new Error("Invalid post ID");
+      }
+
       console.log("Fetching comments for post:", numericPostId);
       const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Failed to fetch comments:", errorText);
         throw new Error(`Failed to fetch comments: ${errorText}`);
       }
+
       const data = await res.json();
       console.log("Received comments data:", data);
+
       if (!Array.isArray(data)) {
         console.error("Comments data is not an array:", data);
         return [];
       }
+
       return data;
     },
-    enabled: !!numericPostId && numericPostId > 0,
-    retry: false, // Don't retry on failure so we can see errors
-    refetchOnWindowFocus: false // Prevent unnecessary refetches
+    enabled: !!numericPostId && numericPostId > 0
   });
 
   useEffect(() => {
-    // Log query state changes
-    console.log("Query states updated:", {
+    console.log("Query states:", {
       postId: numericPostId,
       isPostLoading,
       postError,
@@ -130,10 +138,12 @@ export default function CommentsPage() {
       }
 
       const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: trimmedComment,
-        parentId: replyTo || numericPostId,
-        points: 1
+        data: JSON.stringify({
+          type: "comment",
+          content: trimmedComment,
+          parentId: replyTo || numericPostId,
+          points: 1
+        })
       });
 
       if (!res.ok) {
@@ -162,6 +172,7 @@ export default function CommentsPage() {
     post: originalPost,
     comments: comments
   });
+
   return (
     <AppLayout title="Comments">
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
