@@ -11,6 +11,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
@@ -27,6 +36,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [editingComment, setEditingComment] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -96,12 +106,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
       toast({
         description: "Comment deleted successfully",
       });
+      setDeleteDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
         description: error.message || "Failed to delete comment",
       });
+      setDeleteDialogOpen(false);
     },
   });
 
@@ -262,30 +274,47 @@ export function CommentList({ comments, postId }: CommentListProps) {
       )}
 
       {selectedCommentData && (
-        <CommentActionsDrawer
-          isOpen={isActionsOpen}
-          onClose={() => {
-            setIsActionsOpen(false);
-            setSelectedComment(null);
-          }}
-          onReply={() => {
-            setReplyingTo(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onEdit={() => {
-            setEditingComment(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onDelete={() => {
-            if (window.confirm('Are you sure you want to delete this comment?')) {
-              deleteCommentMutation.mutate(selectedComment);
+        <>
+          <CommentActionsDrawer
+            isOpen={isActionsOpen}
+            onClose={() => {
               setIsActionsOpen(false);
-            }
-          }}
-          onCopy={() => handleCopyComment(selectedCommentData.content || "")}
-          canEdit={user?.id === selectedCommentData.author?.id}
-          canDelete={user?.id === selectedCommentData.author?.id}
-        />
+              setSelectedComment(null);
+            }}
+            onReply={() => {
+              setReplyingTo(selectedComment);
+              setIsActionsOpen(false);
+            }}
+            onEdit={() => {
+              setEditingComment(selectedComment);
+              setIsActionsOpen(false);
+            }}
+            onDelete={() => {
+              setDeleteDialogOpen(true);
+            }}
+            onCopy={() => handleCopyComment(selectedCommentData.content || "")}
+            canEdit={user?.id === selectedCommentData.author?.id}
+            canDelete={user?.id === selectedCommentData.author?.id}
+          />
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogHeader>
+              <DialogTitle>Delete Comment</DialogTitle>
+            </DialogHeader>
+            <DialogContent>
+              <DialogDescription>
+                Are you sure you want to delete this comment? This action cannot be undone.
+              </DialogDescription>
+            </DialogContent>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => deleteCommentMutation.mutate(selectedComment)} type="submit">
+                Delete
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        </>
       )}
     </>
   );
