@@ -158,19 +158,21 @@ export function CommentList({ comments, postId }: CommentListProps) {
     );
   }
 
-  const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
-    const timeSince = (date: string) => {
-      const now = new Date();
-      const then = new Date(date);
-      const diff = Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60)); // difference in hours
+  const formatTimeAbbreviated = (date: string): string => {
+    const now = new Date();
+    const then = new Date(date);
+    const diff = Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60)); // difference in hours
 
-      if (diff < 24) {
-        return `${diff} hour${diff === 1 ? '' : 's'} ago`;
-      } else {
-        const days = Math.floor(diff / 24);
-        return `${days} day${days === 1 ? '' : 's'} ago`;
-      }
-    };
+    if (diff < 24) {
+      return `${diff}h`;
+    } else {
+      const days = Math.floor(diff / 24);
+      return `${days}d`;
+    }
+  };
+
+
+  const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -192,14 +194,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                   <p className="text-sm text-muted-foreground">
-                    {timeSince(comment.createdAt!)}
+                    {formatTimeAbbreviated(comment.createdAt!)}
                   </p>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap">{comment.content}</p>
               </CardContent>
             </Card>
             <div className="flex"> {/* Added div to group time and button */}
-              <p className="text-sm text-muted-foreground mr-2"> {timeSince(comment.createdAt!)}</p>
+              <p className="text-sm text-muted-foreground mr-2">{formatTimeAbbreviated(comment.createdAt!)}</p>
               <Button
                 variant="ghost"
                 size="sm"
