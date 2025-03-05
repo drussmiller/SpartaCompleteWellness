@@ -78,9 +78,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side="right" 
-        className="w-full sm:w-[500px] p-0 fixed inset-0 z-50"
+        className="w-full sm:w-[500px] p-0 fixed inset-0 z-[9999]"
       >
-        <div className="h-full flex flex-col overflow-hidden">
+        <div className="h-[100dvh] flex flex-col overflow-hidden">
           {/* Show loading state */}
           {(isPostLoading || areCommentsLoading) && (
             <div className="flex-1 flex items-center justify-center">
