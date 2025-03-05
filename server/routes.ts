@@ -24,6 +24,9 @@ import express, { Router } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
+import { requestLogger } from './middleware/request-logger';
+import { errorHandler } from './middleware/error-handler';
+import { logger } from './logger';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -52,6 +55,9 @@ const upload = multer({
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
   const router = express.Router();
 
+  // Add request logging middleware
+  router.use(requestLogger);
+
   // Add CORS headers for all requests
   router.use((req, res, next) => {
     const origin = req.headers.origin;
@@ -76,7 +82,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Add custom error handler for better JSON errors
   router.use('/api', (err, req, res, next) => {
-    console.error('API Error:', err);
+    logger.error('API Error:', err);
     if (!res.headersSent) {
       res.status(err.status || 500).json({
         message: err.message || "Internal server error",
@@ -87,21 +93,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Debug middleware to log all requests
-  router.use((req, res, next) => {
-    console.log('Request:', {
-      method: req.method,
-      path: req.path,
-      headers: req.headers,
-      session: req.session,
-      isAuthenticated: req.isAuthenticated?.() || false,
-      user: req.user?.id
-    });
-    next();
-  });
-
   // Simple ping endpoint to verify API functionality
   router.get("/api/ping", (req, res) => {
+    logger.info('Ping request received', { requestId: req.requestId });
     res.json({ message: "pong" });
   });
 
@@ -117,7 +111,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const teams = await storage.getTeams();
       res.json(teams);
     } catch (error) {
-      console.error('Error fetching teams:', error);
+      logger.error('Error fetching teams:', error);
       res.status(500).json({ message: "Failed to fetch teams" });
     }
   });
@@ -130,10 +124,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         week ? parseInt(week as string) : undefined,
         day ? parseInt(day as string) : undefined
       );
-      console.log('Retrieved activities:', JSON.stringify(activities, null, 2));
+      logger.info('Retrieved activities:', JSON.stringify(activities, null, 2));
       res.json(activities);
     } catch (error) {
-      console.error('Error fetching activities:', error);
+      logger.error('Error fetching activities:', error);
       res.status(500).json({ message: "Failed to fetch activities" });
     }
   });
@@ -144,32 +138,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      console.log('Creating activity with data:', JSON.stringify(req.body, null, 2));
+      logger.info('Creating activity with data:', JSON.stringify(req.body, null, 2));
 
       const parsedData = insertActivitySchema.safeParse(req.body);
       if (!parsedData.success) {
-        console.error('Validation errors:', parsedData.error.errors);
+        logger.error('Validation errors:', parsedData.error.errors);
         return res.status(400).json({
           message: "Invalid activity data",
           errors: parsedData.error.errors
         });
       }
 
-      console.log('Parsed activity data:', JSON.stringify(parsedData.data, null, 2));
+      logger.info('Parsed activity data:', JSON.stringify(parsedData.data, null, 2));
 
       try {
         const activity = await storage.createActivity(parsedData.data);
         res.status(201).json(activity);
       } catch (dbError) {
-        console.error('Database error:', dbError);
-        res.status(500).json({ 
+        logger.error('Database error:', dbError);
+        res.status(500).json({
           message: "Failed to create activity in database",
           error: dbError instanceof Error ? dbError.message : "Unknown error"
         });
       }
     } catch (error) {
-      console.error('Error creating activity:', error);
-      res.status(500).json({ 
+      logger.error('Error creating activity:', error);
+      res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create activity",
         error: error instanceof Error ? error.stack : undefined
       });
@@ -182,11 +176,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      console.log('Updating activity with data:', JSON.stringify(req.body, null, 2));
+      logger.info('Updating activity with data:', JSON.stringify(req.body, null, 2));
 
       const parsedData = insertActivitySchema.safeParse(req.body);
       if (!parsedData.success) {
-        console.error('Validation errors:', parsedData.error.errors);
+        logger.error('Validation errors:', parsedData.error.errors);
         return res.status(400).json({
           message: "Invalid activity data",
           errors: parsedData.error.errors
@@ -200,7 +194,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .returning();
       res.json(activity);
     } catch (error) {
-      console.error('Error updating activity:', error);
+      logger.error('Error updating activity:', error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update activity" });
     }
   });
@@ -219,8 +213,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       await storage.deleteActivity(activityId);
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error deleting activity:', error);
-      res.status(500).json({ 
+      logger.error('Error deleting activity:', error);
+      res.status(500).json({
         message: "Failed to delete activity",
         error: error instanceof Error ? error.message : undefined
       });
@@ -235,7 +229,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      logger.error('Error fetching users:', error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
@@ -244,7 +238,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-      console.log("Received post creation request");
+      logger.info("Received post creation request");
 
       if (!req.body.data) {
         return res.status(400).json({ message: "Missing post data" });
@@ -253,9 +247,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let postData;
       try {
         postData = JSON.parse(req.body.data);
-        console.log("Parsed post data:", postData);
+        logger.info("Parsed post data:", postData);
       } catch (parseError) {
-        console.error("Error parsing post data:", parseError);
+        logger.error("Error parsing post data:", parseError);
         return res.status(400).json({ message: "Invalid post data format" });
       }
 
@@ -270,8 +264,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       res.status(201).json(post);
     } catch (error) {
-      console.error("Error creating post:", error);
-      res.status(500).json({ 
+      logger.error("Error creating post:", error);
+      res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create post",
         error: error instanceof Error ? error.stack : "Unknown error"
       });
@@ -294,7 +288,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const reaction = await storage.createReaction(reactionData);
       res.status(201).json(reaction);
     } catch (error) {
-      console.error('Error creating reaction:', error);
+      logger.error('Error creating reaction:', error);
       res.status(500).json({ error: "Failed to create reaction" });
     }
   });
@@ -308,7 +302,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       await storage.deleteReaction(req.user.id, postId, type);
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error deleting reaction:', error);
+      logger.error('Error deleting reaction:', error);
       res.status(500).json({ error: "Failed to delete reaction" });
     }
   });
@@ -320,7 +314,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const reactions = await storage.getReactionsByPost(postId);
       res.json(reactions);
     } catch (error) {
-      console.error('Error fetching reactions:', error);
+      logger.error('Error fetching reactions:', error);
       res.status(500).json({ error: "Failed to fetch reactions" });
     }
   });
@@ -328,17 +322,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
-      console.log("\n=== Comment Endpoint Debug ===");
-      console.log("Request params:", req.params);
-      console.log("User:", req.user?.id);
+      logger.info("\n=== Comment Endpoint Debug ===");
+      logger.info("Request params:", req.params);
+      logger.info("User:", req.user?.id);
 
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
-        console.log("Invalid post ID:", req.params.postId);
+        logger.info("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      console.log("Fetching comments for post", postId);
+      logger.info("Fetching comments for post", postId);
 
       // Get all comments for this post with full SQL query logging
       const query = db
@@ -363,17 +357,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(desc(posts.createdAt));
 
-      console.log("Executing query:", query.toSQL());
+      logger.info("Executing query:", query.toSQL());
       const comments = await query;
 
-      console.log(`Found ${comments.length} direct comments`);
-      console.log("Comments data:", JSON.stringify(comments, null, 2));
+      logger.info(`Found ${comments.length} direct comments`);
+      logger.info("Comments data:", JSON.stringify(comments, null, 2));
 
       res.json(comments);
     } catch (error) {
-      console.error("=== Comment Endpoint Error ===");
-      console.error("Error details:", error);
-      res.status(500).json({ 
+      logger.error("=== Comment Endpoint Error ===");
+      logger.error("Error details:", error);
+      res.status(500).json({
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -383,22 +377,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Get original post endpoint
   router.get("/api/posts/:postId", authenticate, async (req, res) => {
     try {
-      console.log("\n=== Post Fetch Debug ===");
-      console.log("Request params:", req.params);
-      console.log("User:", req.user?.id);
+      logger.info("\n=== Post Fetch Debug ===");
+      logger.info("Request params:", req.params);
+      logger.info("User:", req.user?.id);
 
       if (!req.params.postId || req.params.postId === 'undefined') {
-        console.log("Missing post ID");
+        logger.info("Missing post ID");
         return res.status(400).json({ message: "No post ID provided" });
       }
 
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
-        console.log("Invalid post ID:", req.params.postId);
+        logger.info("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      console.log("Fetching post", postId);
+      logger.info("Fetching post", postId);
 
       // Get post with full SQL query logging
       const query = db
@@ -421,20 +415,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .limit(1);
 
-      console.log("Executing query:", query.toSQL());
+      logger.info("Executing query:", query.toSQL());
       const [post] = await query;
 
       if (!post) {
-        console.log("No post found");
+        logger.info("No post found");
         return res.status(404).json({ message: "Post not found" });
       }
 
-      console.log("Found post:", post);
+      logger.info("Found post:", post);
       res.json(post);
     } catch (error) {
-      console.error("=== Post Fetch Error ===");
-      console.error("Error details:", error);
-      res.status(500).json({ 
+      logger.error("=== Post Fetch Error ===");
+      logger.error("Error details:", error);
+      res.status(500).json({
         message: "Failed to fetch post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -444,24 +438,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Posts endpoints
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
-      console.log('Fetching posts for user:', req.user?.id);
+      logger.info('Fetching posts for user:', req.user?.id);
 
       // Get posts from database with error handling
       let posts = [];
       try {
         posts = await storage.getAllPosts();
-        console.log('Raw posts count:', posts ? posts.length : 0);
+        logger.info('Raw posts count:', posts ? posts.length : 0);
       } catch (err) {
-        console.error('Error in storage.getAllPosts():', err);
-        return res.status(500).json({ 
+        logger.error('Error in storage.getAllPosts():', err);
+        return res.status(500).json({
           message: "Failed to fetch posts from database",
           error: err instanceof Error ? err.message : "Unknown database error"
         });
       }
 
       if (!posts || !Array.isArray(posts)) {
-        console.error('Posts is not an array:', posts);
-        return res.status(500).json({ 
+        logger.error('Posts is not an array:', posts);
+        return res.status(500).json({
           message: "Invalid posts data from database",
           error: "Expected array of posts but got " + typeof posts
         });
@@ -470,7 +464,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // For each post, get its author information with separate error handling
       const postsWithAuthors = await Promise.all(posts.map(async (post) => {
         if (!post || typeof post !== 'object') {
-          console.error('Invalid post object:', post);
+          logger.error('Invalid post object:', post);
           return null;
         }
 
@@ -481,7 +475,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             author: author || null
           };
         } catch (userErr) {
-          console.error(`Error fetching author for post ${post.id}:`, userErr);
+          logger.error(`Error fetching author for post ${post.id}:`, userErr);
           return {
             ...post,
             author: null
@@ -492,11 +486,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Filter out any null entries
       const validPosts = postsWithAuthors.filter(post => post !== null);
 
-      console.log('Successfully fetched posts with authors:', validPosts.length);
+      logger.info('Successfully fetched posts with authors:', validPosts.length);
       res.json(validPosts);
     } catch (error) {
-      console.error('Error fetching posts:', error);
-      res.status(500).json({ 
+      logger.error('Error fetching posts:', error);
+      res.status(500).json({
         message: "Failed to fetch posts",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -530,7 +524,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
 
-      console.log('Post count query parameters:', {
+      logger.info('Post count query parameters:', {
         userId: req.user.id,
         userLocalTime: userDate.toISOString(),
         utcStart: utcStart.toISOString(),
@@ -555,7 +549,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type);
 
-      console.log('Post counts query result:', result);
+      logger.info('Post counts query result:', result);
 
       // Convert result to expected format
       const counts = {
@@ -595,7 +589,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
       };
 
-      console.log('Response data:', {
+      logger.info('Response data:', {
         counts,
         canPost,
         remaining,
@@ -604,8 +598,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       res.json({ counts, canPost, remaining });
     } catch (error) {
-      console.error('Error getting post counts:', error);
-      res.status(500).json({ 
+      logger.error('Error getting post counts:', error);
+      res.status(500).json({
         message: "Failed to get post counts",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -622,7 +616,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      console.log(`Attempting to delete post ${postId} by user ${req.user.id}`);
+      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
 
       // Get the post to check ownership
       const post = await db
@@ -642,11 +636,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Delete post
       await storage.deletePost(postId);
-      console.log(`Post ${postId} deleted successfully`);
+      logger.info(`Post ${postId} deleted successfully`);
       res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      console.error(`Error deleting post ${req.params.postId}:`, error);
-      res.status(500).json({ 
+      logger.error(`Error deleting post ${req.params.postId}:`, error);
+      res.status(500).json({
         message: "Failed to delete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -683,7 +677,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       res.json(updatedUser);
     } catch (error) {
-      console.error('Error updating user role:', error);
+      logger.error('Error updating user role:', error);
       res.status(500).json({ message: "Failed to update user role" });
     }
   });
@@ -691,47 +685,47 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
-        console.log('🚫 [UPLOAD] No file received');
+        logger.info('🚫 [UPLOAD] No file received');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
       // Step 1: Log file details
-      console.log('📁 [UPLOAD] File received:');
-      console.log('------------------------');
-      console.log(`Name: ${req.file.originalname}`);
-      console.log(`Size: ${req.file.size} bytes`);
-      console.log(`Type: ${req.file.mimetype}`);
-      console.log('------------------------');
+      logger.info('📁 [UPLOAD] File received:');
+      logger.info('------------------------');
+      logger.info(`Name: ${req.file.originalname}`);
+      logger.info(`Size: ${req.file.size} bytes`);
+      logger.info(`Type: ${req.file.mimetype}`);
+      logger.info('------------------------');
 
       try {
         // Step 2: Extract text
-        console.log('📝 [UPLOAD] Starting text extraction...');
-        const { value } = await mammoth.extractRawText({ 
-          buffer: req.file.buffer 
+        logger.info('📝 [UPLOAD] Starting text extraction...');
+        const { value } = await mammoth.extractRawText({
+          buffer: req.file.buffer
         });
 
         // Step 3: Validate content
         if (!value) {
-          console.log('❌ [UPLOAD] No content extracted');
+          logger.info('❌ [UPLOAD] No content extracted');
           return res.status(400).json({ error: "No content could be extracted" });
         }
 
-        console.log('✅ [UPLOAD] Text extracted successfully');
-        console.log(`Length: ${value.length} characters`);
+        logger.info('✅ [UPLOAD] Text extracted successfully');
+        logger.info(`Length: ${value.length} characters`);
 
         // Step 4: Prepare response
         const response = { success: true };
 
         // Step 5: Send response
-        console.log('📤 [UPLOAD] Sending response:', response);
+        logger.info('📤 [UPLOAD] Sending response:', response);
         return res.status(200).json(response);
 
       } catch (processingError) {
-        console.log('❌ [UPLOAD] Processing error:');
-        console.log('------------------------');
-        console.log('Error:', processingError.message);
-        console.log('Stack:', processingError.stack);
-        console.log('------------------------');
+        logger.error('❌ [UPLOAD] Processing error:');
+        logger.error('------------------------');
+        logger.error('Error:', processingError.message);
+        logger.error('Stack:', processingError.stack);
+        logger.error('------------------------');
 
         return res.status(500).json({
           error: "Processing failed",
@@ -739,11 +733,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
       }
     } catch (error) {
-      console.log('💥 [UPLOAD] Fatal error:');
-      console.log('------------------------');
-      console.log('Error:', error.message);
-      console.log('Stack:', error.stack);
-      console.log('------------------------');
+      logger.error('💥 [UPLOAD] Fatal error:');
+      logger.error('------------------------');
+      logger.error('Error:', error.message);
+      logger.error('Stack:', error.stack);
+      logger.error('------------------------');
 
       return res.status(500).json({
         error: "Upload failed",
@@ -754,7 +748,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   router.post("/api/register", async (req, res) => {
     try {
-      console.log('Registration request body:', {
+      logger.info('Registration request body:', {
         username: req.body.username,
         email: req.body.email
       });
@@ -762,7 +756,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Validate the input data
       const parsed = insertUserSchema.safeParse(req.body);
       if (!parsed.success) {
-        console.error('Validation errors:', parsed.error);
+        logger.error('Validation errors:', parsed.error);
         return res.status(400).json({
           message: "Invalid registration data",
           errors: parsed.error.errors
@@ -777,9 +771,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .limit(1);
 
       if (existingUser.length > 0) {
-        console.log('Registration failed: Username already exists');
-        return res.status(400).json({ 
-          message: "Username already exists" 
+        logger.info('Registration failed: Username already exists');
+        return res.status(400).json({
+          message: "Username already exists"
         });
       }
 
@@ -803,13 +797,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
         .returning();
 
-      console.log('User registered successfully:', newUser.id);
+      logger.info('User registered successfully:', newUser.id);
 
       // Log the user in
       req.login(newUser, (err) => {
         if (err) {
-          console.error('Login after registration failed:', err);
-          return res.status(500).json({ 
+          logger.error('Login after registration failed:', err);
+          return res.status(500).json({
             message: "Registration successful but login failed",
             error: err.message
           });
@@ -818,8 +812,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
 
     } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ 
+      logger.error('Registration error:', error);
+      res.status(500).json({
         message: "Failed to create account",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -850,8 +844,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       if (userToDelete[0].username === "admin") {
-        return res.status(403).json({ 
-          message: "Cannot delete the main administrator account" 
+        return res.status(403).json({
+          message: "Cannot delete the main administrator account"
         });
       }
 
@@ -886,11 +880,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .where(eq(users.id, userId));
       });
 
-      console.log('User and related data deleted successfully:', userId);
+      logger.info('User and related data deleted successfully:', userId);
       res.json({ message: "User and all related data deleted successfully" });
     } catch (error) {
-      console.error('Error deleting user:', error);
-      res.status(500).json({ 
+      logger.error('Error deleting user:', error);
+      res.status(500).json({
         message: "Failed to delete user",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -910,14 +904,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       const updateData = req.body;
-      console.log(`Updating user ${userId} with data:`, updateData);
+      logger.info(`Updating user ${userId} with data:`, updateData);
 
       // Validate required fields
       if (updateData.username !== undefined && (!updateData.username || typeof updateData.username !== 'string')) {
         return res.status(400).json({ message: "Username is required" });
       }
 
-      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {        return res.status(400).json({ message: "Valid email is required" });
+      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {
+        return res.status(400).json({ message: "Valid email is required" });
       }
 
       // Update user in database
@@ -933,8 +928,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       res.json(updatedUser);
     } catch (error) {
-      console.error('Error updating user:', error);
-      res.status(500).json({ 
+      logger.error('Error updating user:', error);
+      res.status(500).json({
         message: "Failed to update user",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -943,7 +938,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Error handling middleware
   router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error('API Error:', err);
+    logger.error('API Error:', err);
     res.status(err.status || 500).json({
       message: err.message || "Internal server error"
     });
@@ -953,6 +948,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Create HTTP server
   const httpServer = createServer(app);
+
+  // Log server startup
+  logger.info('Server routes registered successfully');
 
   return httpServer;
 };
