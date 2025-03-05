@@ -26,6 +26,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [editingComment, setEditingComment] = useState<number | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -57,6 +58,49 @@ export function CommentList({ comments, postId }: CommentListProps) {
       toast({
         variant: "destructive",
         description: error.message || "Failed to post reply",
+      });
+    },
+  });
+
+  const editCommentMutation = useMutation({
+    mutationFn: async ({ id, content }: { id: number; content: string }) => {
+      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
+        data: JSON.stringify({ content: content.trim() })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      toast({
+        description: "Comment updated successfully",
+      });
+      setEditingComment(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to update comment",
+      });
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: number) => {
+      const res = await apiRequest("DELETE", `/api/posts/${commentId}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      toast({
+        description: "Comment deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to delete comment",
       });
     },
   });
@@ -100,6 +144,21 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
+
+    if (editingComment === comment.id) {
+      return (
+        <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
+          <CommentForm
+            onSubmit={async (content) => {
+              await editCommentMutation.mutateAsync({ id: comment.id, content });
+            }}
+            isSubmitting={editCommentMutation.isPending}
+            defaultValue={comment.content || ""}
+            onCancel={() => setEditingComment(null)}
+          />
+        </div>
+      );
+    }
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -214,14 +273,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
           }}
           onEdit={() => {
-            toast({
-              description: "Edit functionality coming soon",
-            });
+            setEditingComment(selectedComment);
+            setIsActionsOpen(false);
           }}
           onDelete={() => {
-            toast({
-              description: "Delete functionality coming soon",
-            });
+            if (window.confirm('Are you sure you want to delete this comment?')) {
+              deleteCommentMutation.mutate(selectedComment);
+              setIsActionsOpen(false);
+            }
           }}
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
