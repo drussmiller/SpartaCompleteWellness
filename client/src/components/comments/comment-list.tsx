@@ -12,16 +12,13 @@ import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Loader2 } from 'lucide-react';
 
 interface CommentListProps {
@@ -299,27 +296,26 @@ export function CommentList({ comments, postId }: CommentListProps) {
             canEdit={user?.id === selectedCommentData.author?.id}
             canDelete={user?.id === selectedCommentData.author?.id}
           />
-          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <span className="hidden">Delete</span>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Comment</AlertDialogTitle>
-                <AlertDialogDescription>
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Comment</DialogTitle>
+                <DialogDescription>
                   Are you sure you want to delete this comment? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="mt-4">
-                <AlertDialogCancel 
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6 flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDeleteDialogOpen(false)}
                   disabled={deleteCommentMutation.isPending}
                 >
                   Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
+                </Button>
+                <Button 
+                  variant="destructive" 
                   onClick={() => deleteCommentMutation.mutate(selectedComment)}
                   disabled={deleteCommentMutation.isPending}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   {deleteCommentMutation.isPending ? (
                     <>
@@ -329,10 +325,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
                   ) : (
                     "Delete"
                   )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </>
