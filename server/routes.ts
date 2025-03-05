@@ -355,7 +355,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .from(posts)
         .where(eq(posts.parentId, postId))
         .innerJoin(users, eq(posts.userId, users.id))
-        .orderBy(desc(posts.createdAt));
+        .orderBy(posts.createdAt);
       
       logger.info("Executing direct comments query:", directCommentsQuery.toSQL());
       const directComments = await directCommentsQuery;
@@ -392,7 +392,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             )
           )
           .innerJoin(users, eq(posts.userId, users.id))
-          .orderBy(desc(posts.createdAt));
+          .orderBy(posts.createdAt);
         
         logger.info("Executing replies query:", repliesQuery.toSQL());
         const replies = await repliesQuery;

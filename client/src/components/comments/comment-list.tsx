@@ -72,7 +72,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
   // Organize comments into threads
-  const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
+  // Sort comments to ensure consistent order
+  const sortedComments = [...comments].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  
+  const threadedComments = sortedComments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
       // This is a top-level comment
       threads.push({ ...comment, replies: [] });
