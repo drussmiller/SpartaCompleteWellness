@@ -5,9 +5,10 @@ import { Loader2 } from "lucide-react";
 interface CommentFormProps {
   onSubmit: (content: string) => Promise<void>;
   isSubmitting: boolean;
+  placeholder?: string;
 }
 
-export function CommentForm({ onSubmit, isSubmitting }: CommentFormProps) {
+export function CommentForm({ onSubmit, isSubmitting, placeholder = "Write a comment... (Press Enter to submit)" }: CommentFormProps) {
   const [content, setContent] = useState("");
 
   const handleSubmit = async () => {
@@ -31,7 +32,7 @@ export function CommentForm({ onSubmit, isSubmitting }: CommentFormProps) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Write a comment... (Press Enter to submit)"
+        placeholder={placeholder}
         className="resize-none bg-gray-100"
         rows={1}
         disabled={isSubmitting}

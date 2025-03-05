@@ -34,9 +34,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         points: 1
       };
       console.log("Creating reply with data:", data);
-      const res = await apiRequest("POST", "/api/posts", {
-        data: JSON.stringify(data)
-      });
+      const res = await apiRequest("POST", "/api/posts", data);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -118,7 +116,29 @@ export function CommentList({ comments, postId }: CommentListProps) {
         </div>
       </div>
 
-      {/* Reply form has been moved to bottom of page */}
+      {/* Show reply form when replying to this comment */}
+      {replyingTo === comment.id && (
+        <div className="ml-12 mt-2">
+          <div className="flex items-center mb-2">
+            <p className="text-sm text-muted-foreground">Replying to {comment.author?.username}</p>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="ml-2" 
+              onClick={() => setReplyingTo(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+          <CommentForm
+            onSubmit={async (content) => {
+              await createReplyMutation.mutateAsync(content);
+            }}
+            isSubmitting={createReplyMutation.isPending}
+            placeholder={`Reply to ${comment.author?.username}...`}
+          />
+        </div>
+      )}
 
       {comment.replies?.map((reply) => (
         <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
