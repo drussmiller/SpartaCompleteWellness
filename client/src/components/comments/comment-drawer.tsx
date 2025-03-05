@@ -20,7 +20,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],
-    enabled: isOpen,
+    enabled: isOpen && Boolean(postId),
     queryFn: async () => {
       console.log("Fetching post data for ID:", postId);
       try {
@@ -41,7 +41,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   // Fetch comments
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
-    enabled: isOpen,
+    enabled: isOpen && Boolean(postId),
     queryFn: async () => {
       console.log("Fetching comments for post:", postId);
       try {
