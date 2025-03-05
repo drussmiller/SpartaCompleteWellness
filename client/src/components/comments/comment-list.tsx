@@ -108,12 +108,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
         description: "Comment deleted successfully",
       });
       setIsDeleteDialogOpen(false);
+      setSelectedComment(null);
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
         description: error.message || "Failed to delete comment",
       });
+      setIsDeleteDialogOpen(false);
     },
   });
 
@@ -226,19 +228,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
     );
   };
 
-  // Find the selected comment data including nested replies
-  const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
-    for (const comment of comments) {
-      if (comment.id === selectedComment) return comment;
-      if (comment.replies) {
-        const found = findSelectedComment(comment.replies);
-        if (found) return found;
-      }
-    }
-    return undefined;
-  };
-
-  const selectedCommentData = findSelectedComment(threadedComments);
+  // Find the selected comment data
+  const selectedCommentData = threadedComments.find(c => c.id === selectedComment) || 
+    threadedComments.flatMap(c => c.replies || []).find(r => r?.id === selectedComment);
 
   return (
     <>
@@ -298,7 +290,15 @@ export function CommentList({ comments, postId }: CommentListProps) {
         />
       )}
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) {
+            setSelectedComment(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Comment</AlertDialogTitle>
@@ -311,7 +311,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             <AlertDialogAction 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (selectedComment) {
+                if (selectedComment !== null) {
                   deleteCommentMutation.mutate(selectedComment);
                 }
               }}
