@@ -333,7 +333,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.params.postId || req.params.postId === 'undefined') {
         return res.status(400).json({ message: "No post ID provided" });
       }
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId) || postId <= 0) {
         return res.status(400).json({ message: "Invalid post ID" });
@@ -381,7 +381,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.params.postId || req.params.postId === 'undefined') {
         return res.status(400).json({ message: "No post ID provided" });
       }
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId) || postId <= 0) {
         return res.status(400).json({ message: "Invalid post ID" });
@@ -918,8 +918,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ 
         message: "Failed to update user",
         error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
+      });    }
   });
 
   // Error handling middleware

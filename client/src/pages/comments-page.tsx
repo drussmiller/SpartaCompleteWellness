@@ -135,7 +135,9 @@ export default function CommentsPage() {
         <PostView post={originalPost} />
         <CommentList comments={comments} />
         <CommentForm 
-          onSubmit={content => createCommentMutation.mutate(content)}
+          onSubmit={async (content) => {
+            await createCommentMutation.mutateAsync(content);
+          }}
           isSubmitting={createCommentMutation.isPending}
         />
       </div>
