@@ -175,10 +175,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     return (
-      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`} onClick={(e) => {
-        e.stopPropagation();
-        setContextMenuComment(comment.id);
-      }}>
+      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
           <div className="shrink-0">
             <Avatar>
@@ -189,7 +186,13 @@ export function CommentList({ comments, postId }: CommentListProps) {
             </Avatar>
           </div>
           <div className="flex-1 flex flex-col gap-2">
-            <Card className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}>
+            <Card 
+              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setContextMenuComment(comment.id);
+              }}
+            >
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
@@ -206,7 +209,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
                 variant="ghost"
                 size="xs"
                 className="gap-1.5 h-6 py-0"
-                onClick={() => setReplyingTo(comment.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReplyingTo(comment.id);
+                }}
               >
                 Reply
               </Button>
