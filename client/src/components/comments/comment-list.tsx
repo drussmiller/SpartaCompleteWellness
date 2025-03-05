@@ -190,11 +190,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
-              <CardContent className="pt-6 relative">
+              <CardContent className="pt-3 px-4 pb-3 relative">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap">{comment.content}</p>
+                <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
               </CardContent>
             </Card>
             <div className="flex items-center"> {/* Added items-center to vertically align elements */}
