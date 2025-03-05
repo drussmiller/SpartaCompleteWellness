@@ -28,8 +28,8 @@ export function PostView({ post }: PostViewProps) {
             {post.imageUrl && (
               <img 
                 src={post.imageUrl} 
-                alt="" 
-                className="mt-4 rounded-lg max-h-96 object-cover w-full" // Changed className here
+                alt={post.type}
+                className="w-full h-auto object-contain rounded-md mb-4"
               />
             )}
           </div>
