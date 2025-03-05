@@ -15,38 +15,50 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  console.log("Rendering CommentsPage with postId:", postId);
+  console.log("=== CommentsPage Render ===");
+  console.log("PostID:", postId);
+  console.log("User:", user?.id);
 
+  // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],
     queryFn: async () => {
-      console.log("Fetching post with ID:", postId);
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Failed to fetch post:", errorText);
-        throw new Error(`Failed to fetch post: ${errorText}`);
+      console.log("Fetching post data for ID:", postId);
+      try {
+        const res = await apiRequest("GET", `/api/posts/${postId}`);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText);
+        }
+        const data = await res.json();
+        console.log("Received post data:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching post:", error);
+        throw error;
       }
-      const data = await res.json();
-      console.log("Post data received:", data);
-      return data;
     },
     enabled: Boolean(postId)
   });
 
+  // Fetch comments
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     queryFn: async () => {
       console.log("Fetching comments for post:", postId);
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Failed to fetch comments:", errorText);
-        throw new Error(`Failed to fetch comments: ${errorText}`);
+      try {
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText);
+        }
+        const data = await res.json();
+        console.log("Received comments data:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        throw error;
       }
-      const data = await res.json();
-      console.log("Comments data received:", data);
-      return data;
     },
     enabled: Boolean(postId)
   });
@@ -74,6 +86,7 @@ export default function CommentsPage() {
       });
     },
     onError: (error: Error) => {
+      console.error("Error creating comment:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post comment",
@@ -81,13 +94,12 @@ export default function CommentsPage() {
     },
   });
 
-  console.log("Current state:", {
-    postId,
-    hasPost: !!originalPost,
-    commentsCount: comments?.length,
-    isLoading: isPostLoading || areCommentsLoading,
-    errors: { postError, commentsError }
-  });
+  // Print current state for debugging
+  console.log("=== Current State ===");
+  console.log("Post:", originalPost);
+  console.log("Comments:", comments);
+  console.log("Loading:", { isPostLoading, areCommentsLoading });
+  console.log("Errors:", { postError, commentsError });
 
   if (!user) {
     return (
@@ -110,16 +122,19 @@ export default function CommentsPage() {
   }
 
   if (postError || commentsError) {
+    const error = postError || commentsError;
+    console.error("Render Error:", error);
     return (
       <AppLayout title="Comments">
         <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-destructive">
-          <p>{(postError || commentsError)?.message}</p>
+          <p>{error?.message || "An error occurred"}</p>
         </div>
       </AppLayout>
     );
   }
 
   if (!originalPost) {
+    console.log("No post data available");
     return (
       <AppLayout title="Comments">
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
@@ -128,6 +143,10 @@ export default function CommentsPage() {
       </AppLayout>
     );
   }
+
+  console.log("=== Rendering Comments View ===");
+  console.log("Post data:", originalPost);
+  console.log("Comments data:", comments);
 
   return (
     <AppLayout title="Comments">
