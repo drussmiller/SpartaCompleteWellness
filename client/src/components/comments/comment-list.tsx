@@ -30,6 +30,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
+      if (!replyingTo) {
+        console.error("No comment selected to reply to");
+        throw new Error("No comment selected to reply to");
+      }
+
       const data = {
         type: "comment",
         content: content.trim(),
@@ -43,7 +48,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
         data: JSON.stringify(data)
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Error creating reply:", errorText);
+        throw new Error(errorText);
+      }
       return res.json();
     },
     onSuccess: (newComment) => {
@@ -51,6 +60,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
       // Manually update the query data to include the new reply
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      // Reset replying state
+      setReplyingTo(null);
 
       toast({
         description: "Reply posted successfully",
@@ -237,11 +248,21 @@ export function CommentList({ comments, postId }: CommentListProps) {
             </div>
             <CommentForm
               onSubmit={async (content) => {
-                await createReplyMutation.mutateAsync(content);
+                try {
+                  await createReplyMutation.mutateAsync(content);
+                } catch (error) {
+                  console.error("Failed to submit reply:", error);
+                  // Keep the form open on error
+                }
               }}
               isSubmitting={createReplyMutation.isPending}
               placeholder={`Reply to ${comment.author?.username}...`}
             />
+            {createReplyMutation.isError && (
+              <p className="text-red-500 text-sm mt-1">
+                Failed to post reply. Please try again.
+              </p>
+            )}
           </div>
         )}
 
