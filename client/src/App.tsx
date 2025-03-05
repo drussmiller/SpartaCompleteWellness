@@ -60,6 +60,7 @@ function MainContent() {
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/profile" component={ProfilePage} />
         {user.isAdmin && <Route path="/admin" component={AdminPage} />}
+        <Route component={() => <div className="p-4">Page not found</div>} />
       </Switch>
       <BottomNav />
     </div>
