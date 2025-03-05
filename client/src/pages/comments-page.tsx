@@ -12,22 +12,39 @@ import { CommentForm } from "@/components/comments/comment-form";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
+  const numericPostId = parseInt(postId || '0', 10);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  console.log('Comments Page - Post ID:', postId, 'Numeric ID:', numericPostId);
+
   // Fetch original post
   const { data: post, isLoading: isLoadingPost, error: postError } = useQuery({
-    queryKey: [`/api/posts/${postId}`],
-    queryFn: () => apiRequest("GET", `/api/posts/${postId}`).then(res => res.json()),
-    enabled: !!postId
+    queryKey: [`/api/posts/${numericPostId}`],
+    queryFn: async () => {
+      console.log('Fetching post:', numericPostId);
+      const res = await apiRequest("GET", `/api/posts/${numericPostId}`);
+      if (!res.ok) throw new Error("Failed to fetch post");
+      const data = await res.json();
+      console.log('Post data:', data);
+      return data;
+    },
+    enabled: !!numericPostId && numericPostId > 0
   });
 
   // Fetch comments
   const { data: comments = [], isLoading: isLoadingComments, error: commentsError } = useQuery({
-    queryKey: [`/api/posts/comments/${postId}`],
-    queryFn: () => apiRequest("GET", `/api/posts/comments/${postId}`).then(res => res.json()),
-    enabled: !!postId
+    queryKey: [`/api/posts/comments/${numericPostId}`],
+    queryFn: async () => {
+      console.log('Fetching comments for post:', numericPostId);
+      const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      const data = await res.json();
+      console.log('Comments data:', data);
+      return data;
+    },
+    enabled: !!numericPostId && numericPostId > 0
   });
 
   // Create comment mutation
@@ -36,7 +53,7 @@ export default function CommentsPage() {
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
         content: content.trim(),
-        parentId: parseInt(postId!),
+        parentId: numericPostId,
         points: 1
       });
 
@@ -47,7 +64,7 @@ export default function CommentsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${numericPostId}`] });
       toast({
         description: "Comment posted successfully",
       });
@@ -60,6 +77,18 @@ export default function CommentsPage() {
     },
   });
 
+  // Invalid post ID
+  if (!numericPostId || numericPostId <= 0) {
+    return (
+      <AppLayout title="Comments">
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <p>Invalid post ID</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Not logged in
   if (!user) {
     return (
       <AppLayout title="Comments">
@@ -70,6 +99,7 @@ export default function CommentsPage() {
     );
   }
 
+  // Loading state
   if (isLoadingPost || isLoadingComments) {
     return (
       <AppLayout title="Comments">
@@ -80,6 +110,7 @@ export default function CommentsPage() {
     );
   }
 
+  // Error state
   if (postError || commentsError) {
     return (
       <AppLayout title="Comments">
@@ -90,6 +121,7 @@ export default function CommentsPage() {
     );
   }
 
+  // No post found
   if (!post) {
     return (
       <AppLayout title="Comments">
