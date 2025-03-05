@@ -6,6 +6,7 @@ import { Post, User } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 interface CommentDrawerProps {
   postId: number;
@@ -21,9 +22,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     queryKey: ["/api/posts", postId],
     enabled: isOpen,
     queryFn: async () => {
+      console.log("Fetching post data for ID:", postId);
       const res = await apiRequest("GET", `/api/posts/${postId}`);
       if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const data = await res.json();
+      console.log("Post data received:", data);
+      return data;
     }
   });
 
@@ -32,9 +36,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     queryKey: ["/api/posts/comments", postId],
     enabled: isOpen,
     queryFn: async () => {
+      console.log("Fetching comments for post:", postId);
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
       if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const data = await res.json();
+      console.log("Comments data received:", data);
+      return data;
     }
   });
 
@@ -67,21 +74,32 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full sm:w-[500px] p-0">
         <div className="h-full flex flex-col overflow-hidden">
+          {/* Show loading state */}
+          {(isPostLoading || areCommentsLoading) && (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          )}
+
           {/* Post and comments section with scrolling */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {originalPost && <PostView post={originalPost} />}
-            <CommentList comments={comments} />
-          </div>
-          
-          {/* Fixed comment form at bottom */}
-          <div className="border-t bg-background p-4">
-            <CommentForm
-              onSubmit={async (content) => {
-                await createCommentMutation.mutateAsync(content);
-              }}
-              isSubmitting={createCommentMutation.isPending}
-            />
-          </div>
+          {!isPostLoading && !areCommentsLoading && (
+            <>
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {originalPost && <PostView post={originalPost} />}
+                <CommentList comments={comments} />
+              </div>
+
+              {/* Fixed comment form at bottom */}
+              <div className="border-t bg-background p-4">
+                <CommentForm
+                  onSubmit={async (content) => {
+                    await createCommentMutation.mutateAsync(content);
+                  }}
+                  isSubmitting={createCommentMutation.isPending}
+                />
+              </div>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
