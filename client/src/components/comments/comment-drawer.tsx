@@ -23,11 +23,18 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     enabled: isOpen,
     queryFn: async () => {
       console.log("Fetching post data for ID:", postId);
-      const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      console.log("Post data received:", data);
-      return data;
+      try {
+        const res = await apiRequest("GET", `/api/posts/${postId}`);
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        const data = await res.json();
+        console.log("Post data received:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching post:", error);
+        throw error;
+      }
     }
   });
 
@@ -37,11 +44,18 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     enabled: isOpen,
     queryFn: async () => {
       console.log("Fetching comments for post:", postId);
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      console.log("Comments data received:", data);
-      return data;
+      try {
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        const data = await res.json();
+        console.log("Comments data received:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        throw error;
+      }
     }
   });
 
