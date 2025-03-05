@@ -20,6 +20,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const { toast } = useToast();
 
+  console.log("CommentList rendering with:", { comments, postId });
+
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
       const data = {
@@ -65,6 +67,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
     }
     return threads;
   }, []);
+
+  console.log("Threaded comments:", threadedComments);
 
   if (!comments.length) {
     return (
