@@ -328,19 +328,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
-      console.log("Comments request received for post:", req.params.postId);
-
-      if (!req.params.postId || req.params.postId === 'undefined') {
-        return res.status(400).json({ message: "No post ID provided" });
-      }
+      console.log("\n=== Comment Endpoint Debug ===");
+      console.log("Request params:", req.params);
+      console.log("User:", req.user?.id);
 
       const postId = parseInt(req.params.postId);
-      if (isNaN(postId) || postId <= 0) {
+      if (isNaN(postId)) {
+        console.log("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      // Get all comments for this post
-      const comments = await db
+      console.log("Fetching comments for post", postId);
+
+      // Get all comments for this post with full SQL query logging
+      const query = db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -362,12 +363,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(desc(posts.createdAt));
 
-      console.log("Found comments:", comments.length);
-      console.log("First comment (if any):", comments[0]);
+      console.log("Executing query:", query.toSQL());
+      const comments = await query;
+
+      console.log(`Found ${comments.length} direct comments`);
+      console.log("Comments data:", JSON.stringify(comments, null, 2));
 
       res.json(comments);
     } catch (error) {
-      console.error("Error fetching comments:", error);
+      console.error("=== Comment Endpoint Error ===");
+      console.error("Error details:", error);
       res.status(500).json({ 
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -378,16 +383,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Get original post endpoint
   router.get("/api/posts/:postId", authenticate, async (req, res) => {
     try {
+      console.log("\n=== Post Fetch Debug ===");
+      console.log("Request params:", req.params);
+      console.log("User:", req.user?.id);
+
       if (!req.params.postId || req.params.postId === 'undefined') {
+        console.log("Missing post ID");
         return res.status(400).json({ message: "No post ID provided" });
       }
 
       const postId = parseInt(req.params.postId);
-      if (isNaN(postId) || postId <= 0) {
+      if (isNaN(postId)) {
+        console.log("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      const [post] = await db
+      console.log("Fetching post", postId);
+
+      // Get post with full SQL query logging
+      const query = db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -407,13 +421,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .limit(1);
 
+      console.log("Executing query:", query.toSQL());
+      const [post] = await query;
+
       if (!post) {
+        console.log("No post found");
         return res.status(404).json({ message: "Post not found" });
       }
 
+      console.log("Found post:", post);
       res.json(post);
     } catch (error) {
-      console.error(`Error fetching post ${req.params.postId}:`, error);
+      console.error("=== Post Fetch Error ===");
+      console.error("Error details:", error);
       res.status(500).json({ 
         message: "Failed to fetch post",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -897,8 +917,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Username is required" });
       }
 
-      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {
-        return res.status(400).json({ message: "Valid email is required" });
+      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {        return res.status(400).json({ message: "Valid email is required" });
       }
 
       // Update user in database
@@ -909,7 +928,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .returning();
 
       if (!updatedUser) {
-        return res.status(404).json({ message: "User not found"});
+        return res.status(404).json({ message: "User not found" });
       }
 
       res.json(updatedUser);
@@ -918,11 +937,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ 
         message: "Failed to update user",
         error: error instanceof Error ? error.message : "Unknown error"
-      });    }
+      });
+    }
   });
 
   // Error handling middleware
-  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {    console.error('API Error:', err);
+  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('API Error:', err);
     res.status(err.status || 500).json({
       message: err.message || "Internal server error"
     });
