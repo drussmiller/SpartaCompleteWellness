@@ -18,7 +18,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
 
   // Fetch original post
-  const { data: originalPost, isLoading: isPostLoading } = useQuery({
+  const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],
     enabled: isOpen,
     queryFn: async () => {
@@ -39,7 +39,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   });
 
   // Fetch comments
-  const { data: comments = [], isLoading: areCommentsLoading } = useQuery({
+  const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     enabled: isOpen,
     queryFn: async () => {
@@ -88,6 +88,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     },
   });
 
+  // Print current state for debugging
+  console.log("=== Comment Drawer State ===");
+  console.log("Post:", originalPost);
+  console.log("Comments:", comments);
+  console.log("Loading states:", { isPostLoading, areCommentsLoading });
+  console.log("Errors:", { postError, commentsError });
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
@@ -102,8 +109,15 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             </div>
           )}
 
+          {/* Show errors if any */}
+          {(postError || commentsError) && (
+            <div className="flex-1 flex items-center justify-center text-destructive">
+              <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
+            </div>
+          )}
+
           {/* Post and comments section with scrolling */}
-          {!isPostLoading && !areCommentsLoading && (
+          {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
             <>
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {originalPost && <PostView post={originalPost} />}
