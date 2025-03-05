@@ -328,6 +328,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
+      console.log("Comments request received for post:", req.params.postId);
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
@@ -355,6 +357,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(posts.parentId, postId))
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(desc(posts.createdAt));
+
+      console.log("Found comments:", comments.length);
+      console.log("First comment (if any):", comments[0]);
 
       res.json(comments);
     } catch (error) {
