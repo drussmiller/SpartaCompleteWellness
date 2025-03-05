@@ -141,9 +141,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
-            <AvatarImage 
-              key={`avatar-${post.author?.id}-${avatarKey}`} 
-              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
+            <AvatarImage
+              key={`avatar-${post.author?.id}-${avatarKey}`}
+              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`}
             />
             <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -154,9 +154,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         </div>
         <div className="flex items-center gap-2">
           {canDelete && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleDeletePost}
               disabled={deletePostMutation.isPending}
               className="h-6 w-6 p-0"
@@ -194,15 +194,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
           <div className="mt-4 flex items-center gap-2">
             <ReactionButton postId={post.id} />
-            <Link href={`/comments/${post.id}`} onClick={(e) => {
-              // Ensure we have a valid numeric ID
-              if (!post.id || isNaN(post.id)) {
-                e.preventDefault();
-                console.error('Invalid post ID:', post.id);
-                return;
-              }
-              console.log('Navigating to comments for post:', post.id);
-            }}>
+            <Link href={`/comments/${post.id}`}>
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
                 {commentCount}
