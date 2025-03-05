@@ -37,8 +37,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
       };
       console.log("Creating reply with data:", data);
       
-      // Direct API request without wrapping in data property
-      const res = await apiRequest("POST", "/api/posts", data);
+      // The server expects 'data' property as a JSON string
+      const res = await apiRequest("POST", "/api/posts", {
+        data: JSON.stringify(data)
+      });
       
       if (!res.ok) throw new Error(await res.text());
       return res.json();
