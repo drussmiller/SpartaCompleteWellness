@@ -395,5 +395,22 @@ export const storage = {
       logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
+  },
+  // Add the updatePost method to the storage object
+  async updatePost(id: number, data: Partial<Post>): Promise<Post> {
+    try {
+      logger.debug("Updating post with data:", data);
+      const [post] = await db
+        .update(posts)
+        .set(data)
+        .where(eq(posts.id, id))
+        .returning();
+      logger.debug("Post updated successfully:", post.id);
+      return post;
+    } catch (error) {
+      logger.error(`Failed to update post: ${error instanceof Error ? error.message : error}`);
+      throw error;
+    }
   }
+
 };
