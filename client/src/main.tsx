@@ -1,3 +1,4 @@
+
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
@@ -15,17 +16,16 @@ try {
   console.log('Creating React root...');
   const root = createRoot(rootElement);
   console.log('Rendering app...');
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  
+  // Remove StrictMode temporarily to troubleshoot rendering issues
+  root.render(<App />);
+  
   console.log('App mounted successfully');
 } catch (error) {
   console.error('Error initializing React app:', error);
   document.body.innerHTML = `<div style="padding: 20px; color: red;">
     <h1>React Initialization Error</h1>
     <p>${error instanceof Error ? error.message : String(error)}</p>
+    <p>Check console for details.</p>
   </div>`;
-  throw error;
 }
