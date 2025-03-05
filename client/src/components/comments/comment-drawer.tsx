@@ -17,6 +17,10 @@ interface CommentDrawerProps {
 export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
 
+  console.log("\n=== Comment Drawer Mount ===");
+  console.log("PostID:", postId);
+  console.log("Is Open:", isOpen);
+
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],

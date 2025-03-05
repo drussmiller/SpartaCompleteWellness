@@ -20,7 +20,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const { toast } = useToast();
 
-  console.log("CommentList rendering with:", { comments, postId });
+  console.log("\n=== CommentList Mount ===");
+  console.log("Current location:", window.location.href);
+  console.log("PostID:", postId);
+  console.log("Comments received:", comments);
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -68,7 +71,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
     return threads;
   }, []);
 
-  console.log("Threaded comments:", threadedComments);
+  console.log("Threaded comments structure:", threadedComments);
 
   if (!comments.length) {
     return (
