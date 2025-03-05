@@ -47,11 +47,15 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
 
   const createCommentMutation = useMutation({
     mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", "/api/posts", {
+      const data = {
         type: "comment",
         content: content.trim(),
         parentId: postId,
         points: 1
+      };
+      console.log("Creating comment with data:", data);
+      const res = await apiRequest("POST", "/api/posts", {
+        data: JSON.stringify(data)
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -72,7 +76,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:w-[500px] p-0">
+      <SheetContent 
+        side="right" 
+        className="w-full sm:w-[500px] p-0 fixed inset-0 z-50"
+      >
         <div className="h-full flex flex-col overflow-hidden">
           {/* Show loading state */}
           {(isPostLoading || areCommentsLoading) && (
