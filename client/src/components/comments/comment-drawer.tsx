@@ -71,7 +71,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       const res = await apiRequest("POST", "/api/posts", {
         data: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Error creating comment:", errorText);
+        throw new Error(errorText);
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -81,6 +85,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       });
     },
     onError: (error: Error) => {
+      console.error("Comment posting error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post comment",
