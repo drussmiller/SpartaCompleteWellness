@@ -193,9 +193,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <CardContent className="pt-6 relative">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatTimeAbbreviated(comment.createdAt!)}
-                  </p>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap">{comment.content}</p>
               </CardContent>
