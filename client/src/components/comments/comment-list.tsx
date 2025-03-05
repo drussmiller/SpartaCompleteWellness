@@ -34,27 +34,56 @@ export function CommentList({ comments, postId }: CommentListProps) {
         points: 1
       };
       console.log("Creating reply with data:", data);
-      // The server expects 'data' property as a JSON string
-      const res = await apiRequest("POST", "/api/posts", {
-        data: JSON.stringify(data)
-      });
+      
+      // Direct API request without wrapping in data property
+      const res = await apiRequest("POST", "/api/posts", data);
+      
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newComment) => {
+      console.log("Reply created successfully:", newComment);
+      
+      // Manually update the query data to include the new reply
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      
       toast({
         description: "Reply posted successfully",
       });
       setReplyingTo(null);
     },
     onError: (error: Error) => {
+      console.error("Reply error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post reply",
       });
     },
   });
+
+  // First fetch all direct comments and replies regardless of parent
+  const fetchAllComments = async () => {
+    console.log("Fetching all comments for post:", postId);
+    try {
+      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching all comments:", error);
+      return [];
+    }
+  };
+
+  // Effect to refetch comments after mutation
+  useEffect(() => {
+    if (replyingTo === null && createReplyMutation.isSuccess) {
+      // Invalidate queries to refetch comments
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+    }
+  }, [createReplyMutation.isSuccess, replyingTo, postId]);
 
   // Transform flat comments into a threaded structure with nested replies
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
@@ -87,14 +116,33 @@ export function CommentList({ comments, postId }: CommentListProps) {
       
       // If not found (could be a reply to a comment that's not yet in our structure)
       if (!found) {
-        // Add to top level for now (will be fixed on next data refresh)
-        threads.push({ ...comment, replies: [] });
+        // Try to find the original comment this might be a reply to
+        const originalComment = comments.find(c => c.id === comment.parentId);
+        if (originalComment) {
+          // If we found the original comment, add this as a reply to it
+          const parent = threads.find(t => t.id === originalComment.id);
+          if (parent) {
+            parent.replies = parent.replies || [];
+            parent.replies.push({ ...comment, replies: [] });
+          } else {
+            // If parent isn't in threads yet, add it with this reply
+            threads.push({
+              ...originalComment,
+              replies: [{ ...comment, replies: [] }]
+            });
+          }
+        } else {
+          // Last resort, add to top level
+          threads.push({ ...comment, replies: [] });
+        }
       }
     }
     return threads;
   }, []);
 
-  console.log("Threaded comments structure:", threadedComments);
+  console.log("Threaded comments structure:", JSON.stringify(threadedComments, null, 2));
+  // Log all comments to see what we're working with
+  console.log("Raw comments from API:", JSON.stringify(comments, null, 2));
 
   if (!comments.length) {
     return (
