@@ -11,6 +11,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
@@ -27,6 +38,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [editingComment, setEditingComment] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -96,12 +108,15 @@ export function CommentList({ comments, postId }: CommentListProps) {
       toast({
         description: "Comment deleted successfully",
       });
+      setIsDeleteDialogOpen(false);
+      setIsActionsOpen(false);
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
         description: error.message || "Failed to delete comment",
       });
+      setIsDeleteDialogOpen(false);
     },
   });
 
@@ -277,16 +292,40 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
           }}
           onDelete={() => {
-            if (window.confirm('Are you sure you want to delete this comment?')) {
-              deleteCommentMutation.mutate(selectedComment);
-              setIsActionsOpen(false);
-            }
+            setIsDeleteDialogOpen(true);
           }}
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
           canDelete={user?.id === selectedCommentData.author?.id}
         />
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this comment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This comment and all its replies will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteCommentMutation.mutate(selectedComment)}
+            >
+              {deleteCommentMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </div>
+              ) : (
+                "Delete Comment"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
