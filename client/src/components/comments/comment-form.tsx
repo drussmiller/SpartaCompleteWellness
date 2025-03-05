@@ -8,7 +8,7 @@ interface CommentFormProps {
   placeholder?: string;
 }
 
-export function CommentForm({ onSubmit, isSubmitting, placeholder = "Write a comment... (Press Enter to submit)" }: CommentFormProps) {
+export function CommentForm({ onSubmit, isSubmitting, placeholder = "Enter a comment..." }: CommentFormProps) {
   const [content, setContent] = useState("");
 
   const handleSubmit = async () => {
@@ -32,7 +32,7 @@ export function CommentForm({ onSubmit, isSubmitting, placeholder = "Write a com
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder || "Enter a comment..."}
+        placeholder="Enter a comment..."
         className="resize-none bg-gray-100"
         rows={1}
         style={{ height: '38px', minHeight: '38px', maxHeight: '38px', resize: 'none' }}
