@@ -328,20 +328,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
-      console.log("\n=== Comment Endpoint Debug ===");
-      console.log("Request params:", req.params);
-      console.log("User:", req.user?.id);
-
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
-        console.log("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      console.log("Fetching comments for post", postId);
-
-      // Get all comments for this post with full SQL query logging
-      const query = db
+      // Get all comments for this post
+      const comments = await db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -363,16 +356,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(desc(posts.createdAt));
 
-      console.log("Executing query:", query.toSQL());
-      const comments = await query;
-
-      console.log(`Found ${comments.length} direct comments`);
-      console.log("Comments data:", JSON.stringify(comments, null, 2));
-
       res.json(comments);
     } catch (error) {
-      console.error("=== Comment Endpoint Error ===");
-      console.error("Error details:", error);
+      console.error("Error fetching comments:", error);
       res.status(500).json({ 
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"

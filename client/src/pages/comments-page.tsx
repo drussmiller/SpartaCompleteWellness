@@ -6,7 +6,7 @@ import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AppLayout } from "@/components/app-layout";
 
@@ -24,10 +24,7 @@ export default function CommentsPage() {
     queryFn: async () => {
       if (!postId) throw new Error("No post ID provided");
       const res = await apiRequest("GET", `/api/posts/${postId}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to fetch post: ${errorText}`);
-      }
+      if (!res.ok) throw new Error("Failed to fetch post");
       return res.json();
     },
     enabled: !!postId
@@ -38,10 +35,7 @@ export default function CommentsPage() {
     queryFn: async () => {
       if (!postId) throw new Error("No post ID provided");
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to fetch comments: ${errorText}`);
-      }
+      if (!res.ok) throw new Error("Failed to fetch comments");
       return res.json();
     },
     enabled: !!postId
