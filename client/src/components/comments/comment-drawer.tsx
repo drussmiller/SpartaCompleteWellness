@@ -17,24 +17,17 @@ interface CommentDrawerProps {
 export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
 
-  console.log("\n=== Comment Drawer Mount ===");
-  console.log("PostID:", postId);
-  console.log("Is Open:", isOpen);
-
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],
     enabled: isOpen && Boolean(postId),
     queryFn: async () => {
-      console.log("Fetching post data for ID:", postId);
       try {
         const res = await apiRequest("GET", `/api/posts/${postId}`);
         if (!res.ok) {
           throw new Error(await res.text());
         }
-        const data = await res.json();
-        console.log("Post data received:", data);
-        return data;
+        return res.json();
       } catch (error) {
         console.error("Error fetching post:", error);
         throw error;
@@ -46,17 +39,14 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     enabled: isOpen && Boolean(postId),
-    staleTime: 1000, // Consider data fresh for 1 second
+    staleTime: 1000,
     queryFn: async () => {
-      console.log("Fetching comments for post:", postId);
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
           throw new Error(await res.text());
         }
-        const data = await res.json();
-        console.log("Comments data received:", data);
-        return data;
+        return res.json();
       } catch (error) {
         console.error("Error fetching comments:", error);
         throw error;
@@ -72,14 +62,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         parentId: postId,
         points: 1
       };
-      console.log("Creating comment with data:", data);
       const res = await apiRequest("POST", "/api/posts", {
         data: JSON.stringify(data)
       });
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error creating comment:", errorText);
-        throw new Error(errorText);
+        throw new Error(await res.text());
       }
       return res.json();
     },
@@ -90,7 +77,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       });
     },
     onError: (error: Error) => {
-      console.error("Comment posting error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post comment",
@@ -98,24 +84,18 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     },
   });
 
-  // Print current state for debugging
-  console.log("=== Comment Drawer State ===");
-  console.log("Post:", originalPost);
-  console.log("Comments:", comments);
-  console.log("Loading states:", { isPostLoading, areCommentsLoading });
-  console.log("Errors:", { postError, commentsError });
-
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side="right" 
-        className="w-full sm:w-[500px] p-0 fixed inset-0 z-[9999]"
+        className="w-[100vw] p-0 fixed inset-0 z-[9999]"
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden">
           <SheetClose className="absolute top-4 left-4 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 bg-background shadow-sm z-[10000]">
             <span className="text-2xl">&lt;</span>
             <span className="sr-only">Close</span>
           </SheetClose>
+
           {/* Show loading state */}
           {(isPostLoading || areCommentsLoading) && (
             <div className="flex-1 flex items-center justify-center">
