@@ -57,8 +57,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   // Transform flat comments into a threaded structure
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
-    if (!comment.parentId) {
-      // This is a root level comment
+    // For the comments page, all comments with parentId equal to postId are top-level
+    if (comment.parentId === postId) {
+      // This is a root level comment for this post
       threads.push({ ...comment, replies: [] });
     } else {
       // This is a reply, find its parent and add it to replies
