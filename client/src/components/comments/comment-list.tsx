@@ -198,11 +198,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
               </CardContent>
             </Card>
             <div className="flex items-center"> {/* Added items-center to vertically align elements */}
-              <p className="text-sm text-muted-foreground mr-2">{formatTimeAbbreviated(comment.createdAt!)}</p>
+              <p className="text-sm text-muted-foreground mr-2 flex items-center">{formatTimeAbbreviated(comment.createdAt!)}</p>
               <Button
                 variant="ghost"
-                size="sm"
-                className="gap-1.5 self-start"
+                size="xs"
+                className="gap-1.5 h-6 py-0"
                 onClick={() => setReplyingTo(comment.id)}
               >
                 Reply
