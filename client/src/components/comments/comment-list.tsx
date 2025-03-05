@@ -11,6 +11,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
@@ -27,6 +35,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [editingComment, setEditingComment] = useState<number | null>(null);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -96,12 +105,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
       toast({
         description: "Comment deleted successfully",
       });
+      setShowDeleteAlert(false);
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
         description: error.message || "Failed to delete comment",
       });
+      setShowDeleteAlert(false);
     },
   });
 
@@ -277,16 +288,44 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
           }}
           onDelete={() => {
-            if (window.confirm('Are you sure you want to delete this comment?')) {
-              deleteCommentMutation.mutate(selectedComment);
-              setIsActionsOpen(false);
-            }
+            setShowDeleteAlert(true);
+            setIsActionsOpen(false);
           }}
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
           canDelete={user?.id === selectedCommentData.author?.id}
         />
       )}
+
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent className="z-[99999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your comment and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAlert(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedComment) {
+                  deleteCommentMutation.mutate(selectedComment);
+                }
+              }}
+              disabled={deleteCommentMutation.isPending}
+            >
+              {deleteCommentMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
