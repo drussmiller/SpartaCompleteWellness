@@ -297,22 +297,37 @@ export function CommentList({ comments, postId }: CommentListProps) {
             canDelete={user?.id === selectedCommentData.author?.id}
           />
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <DialogHeader>
-              <DialogTitle>Delete Comment</DialogTitle>
-            </DialogHeader>
-            <DialogContent>
-              <DialogDescription>
-                Are you sure you want to delete this comment? This action cannot be undone.
-              </DialogDescription>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete Comment</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this comment? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6 flex space-x-2 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDeleteDialogOpen(false)}
+                  disabled={deleteCommentMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => deleteCommentMutation.mutate(selectedComment)}
+                  disabled={deleteCommentMutation.isPending}
+                >
+                  {deleteCommentMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              </DialogFooter>
             </DialogContent>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => deleteCommentMutation.mutate(selectedComment)} type="submit">
-                Delete
-              </Button>
-            </DialogFooter>
           </Dialog>
         </>
       )}
