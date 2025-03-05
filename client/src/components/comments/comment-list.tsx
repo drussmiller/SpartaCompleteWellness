@@ -110,7 +110,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
                   className="gap-1.5"
                   onClick={() => setReplyingTo(comment.id)}
                 >
-                  <MessageCircle className="h-4 w-4" />
                   Reply
                 </Button>
               </div>
@@ -119,16 +118,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         </CardContent>
       </Card>
 
-      {replyingTo === comment.id && (
-        <div className="ml-8">
-          <CommentForm
-            onSubmit={async (content) => {
-              await createReplyMutation.mutateAsync(content);
-            }}
-            isSubmitting={createReplyMutation.isPending}
-          />
-        </div>
-      )}
+      {/* Reply form has been moved to bottom of page */}
 
       {comment.replies?.map((reply) => (
         <CommentCard key={reply.id} comment={reply} depth={depth + 1} />

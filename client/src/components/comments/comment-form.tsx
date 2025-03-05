@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 interface CommentFormProps {
@@ -17,30 +16,31 @@ export function CommentForm({ onSubmit, isSubmitting }: CommentFormProps) {
     setContent("");
   };
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (content.trim() && !isSubmitting) {
+        handleSubmit();
+      }
+    }
+  };
+
   return (
-    <div className="flex gap-2">
+    <div className="flex">
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Write a comment..."
+        onKeyDown={handleKeyDown}
+        placeholder="Write a comment... (Press Enter to submit)"
         className="resize-none"
-        rows={2}
+        rows={1}
         disabled={isSubmitting}
       />
-      <Button 
-        onClick={handleSubmit}
-        disabled={!content.trim() || isSubmitting}
-        className="shrink-0"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Posting...
-          </>
-        ) : (
-          "Post"
-        )}
-      </Button>
+      {isSubmitting && (
+        <div className="flex items-center justify-center ml-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      )}
     </div>
   );
 }
