@@ -187,9 +187,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
           </div>
           <div className="flex-1 flex flex-col gap-2">
             <Card 
-              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'} cursor-pointer`}
               onClick={(e) => {
                 e.stopPropagation();
+                console.log("Comment clicked, setting context menu for comment ID:", comment.id);
                 setContextMenuComment(comment.id);
               }}
             >
@@ -254,6 +255,13 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const threaded = threadedComments;
   const selectedComment = comments.find(c => c.id === contextMenuComment);
   const canEditComment = selectedComment && user && selectedComment.userId === user.id;
+  
+  // Debug logging for context menu state
+  console.log("Context menu state:", { 
+    contextMenuComment, 
+    selectedCommentExists: !!selectedComment,
+    canEdit: canEditComment 
+  });
 
   return (
     <div className="space-y-6">
