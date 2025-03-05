@@ -11,16 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
@@ -37,7 +27,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [editingComment, setEditingComment] = useState<number | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -107,16 +96,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
       toast({
         description: "Comment deleted successfully",
       });
-      setIsDeleteDialogOpen(false);
-      setSelectedComment(null);
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
         description: error.message || "Failed to delete comment",
       });
-      setIsDeleteDialogOpen(false);
-      setSelectedComment(null);
     },
   });
 
@@ -127,12 +112,16 @@ export function CommentList({ comments, postId }: CommentListProps) {
     });
   };
 
+  // Find the comment we're replying to
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
+  // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
+      // This is a top-level comment
       threads.push({ ...comment, replies: [] });
     } else {
+      // This is a reply to another comment
       const parentComment = threads.find(thread => thread.id === comment.parentId);
       if (parentComment) {
         parentComment.replies = parentComment.replies || [];
@@ -217,6 +206,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
           </div>
         </div>
 
+        {/* Show replies */}
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
@@ -224,8 +214,19 @@ export function CommentList({ comments, postId }: CommentListProps) {
     );
   };
 
-  const selectedCommentData = threadedComments.find(c => c.id === selectedComment) || 
-    threadedComments.flatMap(c => c.replies || []).find(r => r?.id === selectedComment);
+  // Find the selected comment data including nested replies
+  const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
+    for (const comment of comments) {
+      if (comment.id === selectedComment) return comment;
+      if (comment.replies) {
+        const found = findSelectedComment(comment.replies);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  const selectedCommentData = findSelectedComment(threadedComments);
 
   return (
     <>
@@ -276,46 +277,16 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
           }}
           onDelete={() => {
-            setIsDeleteDialogOpen(true);
-            setIsActionsOpen(false);
+            if (window.confirm('Are you sure you want to delete this comment?')) {
+              deleteCommentMutation.mutate(selectedComment);
+              setIsActionsOpen(false);
+            }
           }}
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
           canDelete={user?.id === selectedCommentData.author?.id}
         />
       )}
-
-      <AlertDialog 
-        open={isDeleteDialogOpen} 
-        onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open);
-          if (!open) {
-            setSelectedComment(null);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Comment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this comment? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (selectedComment !== null) {
-                  deleteCommentMutation.mutate(selectedComment);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
