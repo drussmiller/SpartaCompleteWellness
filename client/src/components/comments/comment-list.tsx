@@ -33,6 +33,7 @@ type CommentWithReplies = Post & {
 export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [editingComment, setEditingComment] = useState<number | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
@@ -106,6 +107,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         description: "Comment deleted successfully",
       });
       setShowDeleteAlert(false);
+      setCommentToDelete(null);
     },
     onError: (error: Error) => {
       toast({
@@ -113,6 +115,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         description: error.message || "Failed to delete comment",
       });
       setShowDeleteAlert(false);
+      setCommentToDelete(null);
     },
   });
 
@@ -288,6 +291,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
           }}
           onDelete={() => {
+            setCommentToDelete(selectedComment);
             setShowDeleteAlert(true);
             setIsActionsOpen(false);
           }}
@@ -308,15 +312,18 @@ export function CommentList({ comments, postId }: CommentListProps) {
           <AlertDialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowDeleteAlert(false)}
+              onClick={() => {
+                setShowDeleteAlert(false);
+                setCommentToDelete(null);
+              }}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => {
-                if (selectedComment) {
-                  deleteCommentMutation.mutate(selectedComment);
+                if (commentToDelete) {
+                  deleteCommentMutation.mutate(commentToDelete);
                 }
               }}
               disabled={deleteCommentMutation.isPending}
