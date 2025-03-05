@@ -35,7 +35,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
         type: "comment",
         content: content.trim(),
         parentId: replyingTo,
-        points: 1
+        points: 1,
+        userId: user?.id
       };
 
       const res = await apiRequest("POST", "/api/posts", {

@@ -332,12 +332,28 @@ export const storage = {
     pool,
     createTableIfMissing: true,
   }),
-  async getPostComments(postId: number): Promise<Post[]> {
+  async getPostComments(postId: number): Promise<(Post & { author: User })[]> {
     try {
-      // Get all comments for this post, including nested replies
+      // Get all comments for this post with author information
       const result = await db
-        .select()
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+          }
+        })
         .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
         .where(
           or(
             eq(posts.parentId, postId),
@@ -369,7 +385,8 @@ export const storage = {
         .values({
           ...data,
           type: "comment",
-          createdAt: new Date()
+          createdAt: new Date(),
+          points: data.points || 1
         })
         .returning();
       logger.debug("Comment created successfully:", comment.id);
