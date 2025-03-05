@@ -127,16 +127,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
     });
   };
 
-  // Find the comment we're replying to
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
-  // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
-      // This is a top-level comment
       threads.push({ ...comment, replies: [] });
     } else {
-      // This is a reply to another comment
       const parentComment = threads.find(thread => thread.id === comment.parentId);
       if (parentComment) {
         parentComment.replies = parentComment.replies || [];
@@ -221,7 +217,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
           </div>
         </div>
 
-        {/* Show replies */}
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
@@ -229,7 +224,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
     );
   };
 
-  // Find the selected comment data
   const selectedCommentData = threadedComments.find(c => c.id === selectedComment) || 
     threadedComments.flatMap(c => c.replies || []).find(r => r?.id === selectedComment);
 
@@ -291,7 +285,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
         />
       )}
 
-      {/* Separate AlertDialog outside main render loop */}
       <AlertDialog 
         open={isDeleteDialogOpen} 
         onOpenChange={(open) => {
