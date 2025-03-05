@@ -334,8 +334,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info("Fetching comments for post", postId);
 
-      // Get all comments for this post with full SQL query logging
-      const query = db
+      // First, get direct comments for this post
+      const directCommentsQuery = db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -356,14 +356,56 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(posts.parentId, postId))
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(desc(posts.createdAt));
+      
+      logger.info("Executing direct comments query:", directCommentsQuery.toSQL());
+      const directComments = await directCommentsQuery;
+      logger.info(`Found ${directComments.length} direct comments`);
+      
+      // Then, get all replies to any comment in this thread
+      // This includes replies to direct comments and replies to replies
+      const commentIds = directComments.map(comment => comment.id);
+      let allComments = [...directComments];
+      
+      if (commentIds.length > 0) {
+        const repliesQuery = db
+          .select({
+            id: posts.id,
+            userId: posts.userId,
+            type: posts.type,
+            content: posts.content,
+            imageUrl: posts.imageUrl,
+            points: posts.points,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            depth: posts.depth,
+            author: {
+              id: users.id,
+              username: users.username,
+              imageUrl: users.imageUrl
+            }
+          })
+          .from(posts)
+          .where(
+            and(
+              or(...commentIds.map(id => eq(posts.parentId, id))),
+              sql`${posts.id} <> ${postId}` // Ensure we don't get the original post
+            )
+          )
+          .innerJoin(users, eq(posts.userId, users.id))
+          .orderBy(desc(posts.createdAt));
+        
+        logger.info("Executing replies query:", repliesQuery.toSQL());
+        const replies = await repliesQuery;
+        logger.info(`Found ${replies.length} replies to comments`);
+        
+        // Add replies to the result
+        allComments = [...directComments, ...replies];
+      }
+      
+      logger.info(`Returning ${allComments.length} total comments and replies`);
+      logger.info("Comments data:", JSON.stringify(allComments, null, 2));
 
-      logger.info("Executing query:", query.toSQL());
-      const comments = await query;
-
-      logger.info(`Found ${comments.length} direct comments`);
-      logger.info("Comments data:", JSON.stringify(comments, null, 2));
-
-      res.json(comments);
+      res.json(allComments);
     } catch (error) {
       logger.error("=== Comment Endpoint Error ===");
       logger.error("Error details:", error);
