@@ -35,6 +35,7 @@ export function CommentForm({ onSubmit, isSubmitting, placeholder = "Write a com
         placeholder={placeholder}
         className="resize-none bg-gray-100"
         rows={1}
+        style={{ height: '38px', minHeight: '38px', maxHeight: '38px', resize: 'none' }}
         disabled={isSubmitting}
       />
       {isSubmitting && (
