@@ -8,23 +8,24 @@ import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
+import { CommentContextMenu } from './comment-context-menu';
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
   postId: number;  // Add postId prop to handle replies
 }
 
-import { useEffect } from "react";
-
 type CommentWithReplies = Post & { author: User; replies?: CommentWithReplies[] };
 
 export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
-  const { toast } = useToast();
+  const [contextMenuComment, setContextMenuComment] = useState<number | null>(null);
+  const { user } = useAuth();
 
   console.log("\n=== CommentList Mount ===");
   console.log("Current location:", window.location.href);
-  console.log("PostID:", postId);
   console.log("Comments received:", comments);
 
   const createReplyMutation = useMutation({
@@ -173,9 +174,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
-
     return (
-      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
+      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`} onClick={(e) => {
+        e.stopPropagation();
+        setContextMenuComment(comment.id);
+      }}>
         <div className="flex items-start gap-4">
           <div className="shrink-0">
             <Avatar>
@@ -242,11 +245,62 @@ export function CommentList({ comments, postId }: CommentListProps) {
     );
   };
 
+  const threaded = threadedComments;
+  const selectedComment = comments.find(c => c.id === contextMenuComment);
+  const canEditComment = selectedComment && user && selectedComment.userId === user.id;
+
   return (
-    <div className="space-y-4">
-      {threadedComments.map((comment) => (
-        <CommentCard key={comment.id} comment={comment} />
-      ))}
+    <div className="space-y-6">
+      {threaded.length === 0 ? (
+        <p className="text-center text-muted-foreground py-6">No comments yet. Be the first to comment!</p>
+      ) : (
+        threaded.map((comment) => (
+          <CommentCard key={comment.id} comment={comment} />
+        ))
+      )}
+
+      {replyingTo && (
+        <div className="bg-gray-50 p-4 rounded-lg border">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-medium">Reply to comment</h3>
+            <Button variant="ghost" size="sm" onClick={() => setReplyingTo(null)}>Cancel</Button>
+          </div>
+          <CommentForm
+            onSubmit={async (content) => {
+              await createReplyMutation.mutateAsync(content);
+              setReplyingTo(null);
+            }}
+            isSubmitting={createReplyMutation.isPending}
+          />
+        </div>
+      )}
+
+      <CommentContextMenu
+        isOpen={contextMenuComment !== null}
+        onClose={() => setContextMenuComment(null)}
+        onReply={() => {
+          if (contextMenuComment) {
+            setReplyingTo(contextMenuComment);
+            setContextMenuComment(null);
+          }
+        }}
+        onEdit={() => {
+          // Implement edit functionality later
+          setContextMenuComment(null);
+        }}
+        onDelete={() => {
+          // Implement delete functionality later
+          setContextMenuComment(null);
+        }}
+        onCopy={() => {
+          const commentContent = selectedComment?.content;
+          if (commentContent) {
+            navigator.clipboard.writeText(commentContent);
+          }
+          setContextMenuComment(null);
+        }}
+        canEdit={!!canEditComment}
+      />
     </div>
   );
 }
