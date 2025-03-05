@@ -11,14 +11,11 @@ import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { useCommentCount } from "@/hooks/use-comment-count";
 
-// ReactionSummary component remains unchanged
+// This component shows multiple reaction emojis with counts
 function ReactionSummary({ postId }: { postId: number }) {
   const { data: reactions = [] } = useQuery<Reaction[]>({
     queryKey: [`/api/posts/${postId}/reactions`],
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    cacheTime: 60000, // Keep in cache for 1 minute
   });
 
   // Count each type of reaction
@@ -102,10 +99,25 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const { toast } = useToast();
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
-  const canDelete = isOwnPost;
+  const canDelete = isOwnPost; // Added for clarity;  Could be a more complex condition later
 
-  // Use the optimized comment count hook
-  const { count: commentCount } = useCommentCount(post.id);
+  const { data: commentCount = 0 } = useQuery<number>({
+    queryKey: ["/api/posts", post.id, "comment-count"],
+    queryFn: async () => {
+      try {
+        if (!post.id) return 0;
+        const res = await apiRequest("GET", `/api/posts/comments/${post.id}?count=true`);
+        if (!res.ok) throw new Error("Failed to fetch comments");
+        const count = await res.json();
+        return count || 0;
+      } catch (error) {
+        console.error("Error fetching comment count:", error);
+        return 0;
+      }
+    },
+    staleTime: 1000,
+    refetchInterval: 3000
+  });
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
@@ -142,9 +154,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage 
-              key={`avatar-${post.author?.id}-${avatarKey}`} 
-              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
-            />
+                  key={`avatar-${post.author?.id}-${avatarKey}`} 
+                  src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
+                />
             <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
@@ -197,7 +209,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             <Link href={`/comments/${post.id}`}>
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
-                {commentCount}
+                {commentCount?.count || 0}
               </Button>
             </Link>
           </div>

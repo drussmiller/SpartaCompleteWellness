@@ -3,10 +3,10 @@ import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
+import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
-import { AppLayout } from "@/components/app-layout";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -53,24 +53,24 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout title="Home">
+    <div className="max-w-2xl mx-auto pb-20">
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4 flex justify-end">
+        <div className="p-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold">Home</h1>
           <CreatePostDialog remaining={remaining} />
         </div>
       </div>
-      <main className="p-4 max-w-2xl mx-auto">
-        <div className="space-y-4">
-          {posts?.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-          {!posts?.length && (
-            <p className="text-center text-muted-foreground py-8">
-              No posts yet. Be the first to share!
-            </p>
-          )}
-        </div>
+      <main className="p-4 space-y-4">
+        {posts?.map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
+        {!posts?.length && (
+          <p className="text-center text-muted-foreground py-8">
+            No posts yet. Be the first to share!
+          </p>
+        )}
       </main>
-    </AppLayout>
+      <BottomNav />
+    </div>
   );
 }

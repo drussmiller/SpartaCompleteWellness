@@ -3,11 +3,7 @@ import { Home, Calendar, HelpCircle, Bell, User, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 
-interface BottomNavProps {
-  orientation?: "horizontal" | "vertical";
-}
-
-export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
+export function BottomNav() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
@@ -23,27 +19,26 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       // Base styles
       "bg-background z-[100] shadow-lg",
       // Mobile styles (bottom nav)
-      orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border",
+      "lg:hidden fixed bottom-0 left-0 right-0 border-t border-border",
       // Desktop styles (side nav)
-      orientation === "vertical" && "w-full"
+      "lg:fixed lg:left-0 lg:top-0 lg:h-full lg:w-16 lg:border-r lg:flex lg:flex-col"
     )}>
       <div className={cn(
-        // Container styles
-        "flex items-center",
         // Mobile layout
-        orientation === "horizontal" && "h-16 justify-around",
+        "flex justify-around items-center h-16",
         // Desktop layout
-        orientation === "vertical" && "flex-col py-4 space-y-4"
+        "lg:flex-col lg:h-full lg:py-4 lg:space-y-4"
       )}>
         {items.map(({ icon: Icon, label, href }) => (
           <div
             key={href}
             onClick={() => setLocation(href)}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer",
-              // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-              // Text styles
+              "flex flex-col items-center justify-center w-full text-sm gap-1 cursor-pointer",
+              // Mobile styles
+              "h-full",
+              // Desktop styles
+              "lg:h-16 lg:w-16",
               location === href
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
@@ -57,10 +52,11 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           <div
             onClick={() => setLocation("/admin")}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer",
-              // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-              // Text styles
+              "flex flex-col items-center justify-center w-full text-sm gap-1 cursor-pointer",
+              // Mobile styles
+              "h-full",
+              // Desktop styles
+              "lg:h-16 lg:w-16",
               location === "/admin"
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
@@ -73,10 +69,11 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         <div
           onClick={() => setLocation("/profile")}
           className={cn(
-            "flex flex-col items-center justify-center gap-1 cursor-pointer",
-            // Size styles
-            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-            // Text styles
+            "flex flex-col items-center justify-center w-full text-sm gap-1 cursor-pointer",
+            // Mobile styles
+            "h-full",
+            // Desktop styles
+            "lg:h-16 lg:w-16",
             location === "/profile"
               ? "text-primary"
               : "text-muted-foreground hover:text-primary transition-colors"
