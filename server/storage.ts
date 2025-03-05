@@ -186,7 +186,7 @@ export const storage = {
     }
   },
 
-    // Posts
+  // Posts
   async getAllPosts(): Promise<Post[]> {
     try {
       logger.debug("Getting all posts");
@@ -288,6 +288,43 @@ export const storage = {
         .where(eq(reactions.postId, postId));
     } catch (error) {
       logger.error(`Failed to get reactions for post ${postId}: ${error}`);
+      throw error;
+    }
+  },
+  // Add deleteUser method to storage adapter
+  async deleteUser(userId: number): Promise<void> {
+    try {
+      await db.transaction(async (tx) => {
+        // Delete all reactions by this user
+        await tx
+          .delete(reactions)
+          .where(eq(reactions.userId, userId));
+
+        // Delete all comments by this user
+        await tx
+          .delete(posts)
+          .where(and(
+            eq(posts.userId, userId),
+            sql`${posts.parentId} IS NOT NULL`
+          ));
+
+        // Delete all posts by this user
+        await tx
+          .delete(posts)
+          .where(eq(posts.userId, userId));
+
+        // Delete all notifications for this user
+        await tx
+          .delete(notifications)
+          .where(eq(notifications.userId, userId));
+
+        // Finally delete the user
+        await tx
+          .delete(users)
+          .where(eq(users.id, userId));
+      });
+    } catch (error) {
+      logger.error(`Failed to delete user ${userId}: ${error}`);
       throw error;
     }
   },
