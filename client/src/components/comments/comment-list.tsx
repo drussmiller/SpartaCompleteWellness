@@ -68,30 +68,19 @@ export function CommentList({ comments, postId }: CommentListProps) {
   };
 
   // Find the comment we're replying to
-  const replyingToComment = comments.find(c => c.id === replyingTo) ||
-    comments.flatMap(c => c.replies || []).find(r => r?.id === replyingTo);
+  const replyingToComment = comments.find(c => c.id === replyingTo);
 
   // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
+      // This is a top-level comment
       threads.push({ ...comment, replies: [] });
     } else {
-      const findParentAndAddReply = (commentsList: CommentWithReplies[]) => {
-        for (const thread of commentsList) {
-          if (thread.id === comment.parentId) {
-            thread.replies = thread.replies || [];
-            thread.replies.push({ ...comment, replies: [] });
-            return true;
-          }
-          if (thread.replies && thread.replies.length > 0) {
-            if (findParentAndAddReply(thread.replies)) return true;
-          }
-        }
-        return false;
-      };
-
-      if (!findParentAndAddReply(threads)) {
-        threads.push({ ...comment, replies: [] });
+      // This is a reply to another comment
+      const parentComment = threads.find(thread => thread.id === comment.parentId);
+      if (parentComment) {
+        parentComment.replies = parentComment.replies || [];
+        parentComment.replies.push({ ...comment, replies: [] });
       }
     }
     return threads;
@@ -157,6 +146,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
           </div>
         </div>
 
+        {/* Show replies */}
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}

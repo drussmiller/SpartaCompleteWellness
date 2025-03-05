@@ -331,5 +331,52 @@ export const storage = {
   sessionStore: new PostgresSessionStore({
     pool,
     createTableIfMissing: true,
-  })
+  }),
+  async getPostComments(postId: number): Promise<Post[]> {
+    try {
+      // Get all comments for this post, including nested replies
+      const result = await db
+        .select()
+        .from(posts)
+        .where(
+          or(
+            eq(posts.parentId, postId),
+            sql`${posts.id} IN (
+              WITH RECURSIVE comment_tree AS (
+                SELECT id FROM ${posts} WHERE parent_id = ${postId}
+                UNION ALL
+                SELECT p.id FROM ${posts} p
+                INNER JOIN comment_tree ct ON p.parent_id = ct.id
+              )
+              SELECT id FROM comment_tree
+            )`
+          )
+        )
+        .orderBy(desc(posts.createdAt));
+
+      return result;
+    } catch (error) {
+      logger.error(`Failed to get comments for post ${postId}: ${error}`);
+      throw error;
+    }
+  },
+
+  async createComment(data: Partial<Post>): Promise<Post> {
+    try {
+      logger.debug("Creating comment with data:", data);
+      const [comment] = await db
+        .insert(posts)
+        .values({
+          ...data,
+          type: "comment",
+          createdAt: new Date()
+        })
+        .returning();
+      logger.debug("Comment created successfully:", comment.id);
+      return comment;
+    } catch (error) {
+      logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
+      throw error;
+    }
+  }
 };
