@@ -93,7 +93,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             <>
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {originalPost && <PostView post={originalPost} />}
-                <CommentList comments={comments} />
+                <CommentList comments={comments} postId={postId} />
               </div>
 
               {/* Fixed comment form at bottom */}
