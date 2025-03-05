@@ -7,7 +7,7 @@ export function useCommentCount(postId: number) {
     queryFn: async () => {
       try {
         // Skip invalid postIds to prevent errors
-        if (!postId || isNaN(postId) || postId <= 0) {
+        if (!postId || isNaN(Number(postId)) || Number(postId) <= 0) {
           console.warn(`Invalid post ID for comment count: ${postId}`);
           return { count: 0 };
         }

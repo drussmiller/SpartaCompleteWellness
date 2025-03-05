@@ -330,8 +330,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       console.log("Comments request received for post:", req.params.postId);
 
+      if (!req.params.postId || req.params.postId === 'undefined') {
+        return res.status(400).json({ message: "No post ID provided" });
+      }
+      
       const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
+      if (isNaN(postId) || postId <= 0) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
@@ -374,8 +378,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Get original post endpoint
   router.get("/api/posts/:postId", authenticate, async (req, res) => {
     try {
+      if (!req.params.postId || req.params.postId === 'undefined') {
+        return res.status(400).json({ message: "No post ID provided" });
+      }
+      
       const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
+      if (isNaN(postId) || postId <= 0) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
 

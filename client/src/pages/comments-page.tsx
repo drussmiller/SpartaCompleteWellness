@@ -24,7 +24,7 @@ export default function CommentsPage() {
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${postId}`],
     queryFn: async () => {
-      if (!postId) throw new Error("No post ID provided");
+      if (!postId || isNaN(Number(postId))) throw new Error("Invalid post ID");
       console.log("Fetching original post:", postId);
       const res = await apiRequest("GET", `/api/posts/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch post");
@@ -32,13 +32,13 @@ export default function CommentsPage() {
       console.log("Original post data:", data);
       return data;
     },
-    enabled: !!postId
+    enabled: !!postId && !isNaN(Number(postId))
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: [`/api/posts/comments/${postId}`],
     queryFn: async () => {
-      if (!postId) throw new Error("No post ID provided");
+      if (!postId || isNaN(Number(postId))) throw new Error("Invalid post ID");
       console.log("Fetching comments for post:", postId);
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
@@ -46,7 +46,7 @@ export default function CommentsPage() {
       console.log("Comments data:", data);
       return data;
     },
-    enabled: !!postId,
+    enabled: !!postId && !isNaN(Number(postId)),
     retry: 1
   });
 
@@ -89,6 +89,18 @@ export default function CommentsPage() {
       });
     },
   });
+
+  // Check for valid post ID first
+  if (!postId || isNaN(Number(postId))) {
+    return (
+      <AppLayout title="Comments Error">
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center flex-col gap-4">
+          <p className="text-destructive font-medium">Invalid post ID provided</p>
+          <Button onClick={() => window.history.back()}>Go Back</Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!currentUser) {
     return (
