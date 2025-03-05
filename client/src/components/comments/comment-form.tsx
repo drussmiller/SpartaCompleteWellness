@@ -32,7 +32,7 @@ export function CommentForm({ onSubmit, isSubmitting }: CommentFormProps) {
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Write a comment... (Press Enter to submit)"
-        className="resize-none"
+        className="resize-none bg-gray-100"
         rows={1}
         disabled={isSubmitting}
       />

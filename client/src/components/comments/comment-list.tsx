@@ -86,16 +86,18 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => (
     <div className={`space-y-4 ${depth > 0 ? 'ml-8 border-l pl-4' : ''}`}>
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            <Avatar>
-              <AvatarImage 
-                src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} 
-              />
-              <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
+      <div className="flex items-start gap-4">
+        <div className="shrink-0">
+          <Avatar>
+            <AvatarImage 
+              src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`} 
+            />
+            <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </div>
+        <div className="flex-1 flex flex-col gap-2">
+          <Card className="bg-gray-100 w-full">
+            <CardContent className="pt-6">
               <div className="flex justify-between">
                 <p className="font-medium">{comment.author?.username}</p>
                 <p className="text-sm text-muted-foreground">
@@ -103,20 +105,18 @@ export function CommentList({ comments, postId }: CommentListProps) {
                 </p>
               </div>
               <p className="mt-2 whitespace-pre-wrap">{comment.content}</p>
-              <div className="mt-4 flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => setReplyingTo(comment.id)}
-                >
-                  Reply
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 self-start"
+            onClick={() => setReplyingTo(comment.id)}
+          >
+            Reply
+          </Button>
+        </div>
+      </div>
 
       {/* Reply form has been moved to bottom of page */}
 
