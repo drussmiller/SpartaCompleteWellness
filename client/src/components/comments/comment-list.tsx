@@ -14,6 +14,8 @@ interface CommentListProps {
   postId: number;  // Add postId prop to handle replies
 }
 
+import { useEffect } from "react";
+
 type CommentWithReplies = Post & { author: User; replies?: CommentWithReplies[] };
 
 export function CommentList({ comments, postId }: CommentListProps) {
