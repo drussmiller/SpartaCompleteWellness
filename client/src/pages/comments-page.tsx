@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,7 +12,6 @@ import { AppLayout } from "@/components/app-layout";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const numericPostId = postId ? parseInt(postId) : null;
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -20,70 +19,65 @@ export default function CommentsPage() {
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  console.log("\n=== CommentsPage Debug ===");
-  console.log("Current postId:", postId);
-  console.log("Numeric postId:", numericPostId);
-  console.log("Current user:", currentUser?.id);
-
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
-    queryKey: [`/api/posts/${numericPostId}`],
+    queryKey: [`/api/posts/${postId}`],
     queryFn: async () => {
-      if (!numericPostId || isNaN(numericPostId) || numericPostId <= 0) {
-        console.warn(`Invalid post ID for original post: ${numericPostId}`);
-        throw new Error("Invalid post ID");
-      }
-
-      const res = await apiRequest("GET", `/api/posts/${numericPostId}`);
+      if (!postId) throw new Error("No post ID provided");
+      const res = await apiRequest("GET", `/api/posts/${postId}`);
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Failed to fetch post:", errorText);
         throw new Error(`Failed to fetch post: ${errorText}`);
       }
-      const data = await res.json();
-      console.log("Received post data:", data);
-      return data;
+      return res.json();
     },
-    enabled: !!numericPostId && numericPostId > 0
+    enabled: !!postId
   });
 
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
-    queryKey: [`/api/posts/comments/${numericPostId}`],
+    queryKey: [`/api/posts/comments/${postId}`],
     queryFn: async () => {
-      if (!numericPostId || isNaN(numericPostId) || numericPostId <= 0) {
-        console.warn(`Invalid post ID for comments: ${numericPostId}`);
-        throw new Error("Invalid post ID");
-      }
-
-      console.log("Fetching comments for post:", numericPostId);
-      const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
+      if (!postId) throw new Error("No post ID provided");
+      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Failed to fetch comments:", errorText);
         throw new Error(`Failed to fetch comments: ${errorText}`);
       }
-      const data = await res.json();
-      console.log("Received comments data:", data);
-
-      if (!Array.isArray(data)) {
-        console.error("Comments data is not an array:", data);
-        return [];
-      }
-
-      return data;
+      return res.json();
     },
-    enabled: !!numericPostId && numericPostId > 0
+    enabled: !!postId
   });
 
-  useEffect(() => {
-    console.log("Query states:", {
-      postId: numericPostId,
-      isPostLoading,
-      postError,
-      areCommentsLoading,
-      commentsError,
-      commentsCount: comments?.length
-    });
-  }, [numericPostId, isPostLoading, postError, areCommentsLoading, commentsError, comments]);
+  const createCommentMutation = useMutation({
+    mutationFn: async () => {
+      if (!postId) throw new Error("No post ID provided");
+      const res = await apiRequest("POST", "/api/posts", {
+        type: "comment",
+        content: comment.trim(),
+        parentId: replyTo || parseInt(postId),
+        points: 1
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create comment");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setComment("");
+      setReplyTo(null);
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+      toast({
+        description: "Comment posted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to post comment",
+      });
+    },
+  });
 
   if (!currentUser) {
     return (
@@ -106,18 +100,16 @@ export default function CommentsPage() {
   }
 
   if (postError || commentsError) {
-    console.error("Rendering error state:", postError || commentsError);
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center text-destructive">
-          <p>{(postError || commentsError)?.message}</p>
+          <p>{postError?.message || commentsError?.message}</p>
         </div>
       </AppLayout>
     );
   }
 
   if (!originalPost) {
-    console.log("No post found");
     return (
       <AppLayout title="Comments">
         <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
@@ -126,51 +118,6 @@ export default function CommentsPage() {
       </AppLayout>
     );
   }
-
-  const createCommentMutation = useMutation({
-    mutationFn: async () => {
-      if (!numericPostId) throw new Error("No post ID provided");
-      const trimmedComment = comment.trim();
-      if (!trimmedComment) {
-        throw new Error("Comment cannot be empty");
-      }
-
-      const formData = new FormData();
-      formData.append('data', JSON.stringify({
-        type: "comment",
-        content: trimmedComment,
-        parentId: replyTo || numericPostId,
-        points: 1
-      }));
-
-      const res = await apiRequest("POST", "/api/posts", formData);
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create comment");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      setComment("");
-      setReplyTo(null);
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${numericPostId}`] });
-      toast({
-        description: "Comment posted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        description: error.message || "Failed to post comment",
-      });
-    },
-  });
-
-  console.log("Rendering main comments view with:", {
-    post: originalPost,
-    comments: comments
-  });
 
   return (
     <AppLayout title="Comments">
