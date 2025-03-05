@@ -67,6 +67,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
     });
   };
 
+  // Find the comment we're replying to
+  const replyingToComment = comments.find(c => c.id === replyingTo) ||
+    comments.flatMap(c => c.replies || []).find(r => r?.id === replyingTo);
+
   // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
@@ -134,38 +138,24 @@ export function CommentList({ comments, postId }: CommentListProps) {
                 <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
               </CardContent>
             </Card>
-            <div className="flex items-center">
-              <p className="text-sm text-muted-foreground mr-2">
-                {formatTimeAgo(comment.createdAt || new Date())}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {replyingTo === comment.id && (
-          <div className="ml-12 mt-2 pl-4 border-l-2 border-gray-300">
-            <div className="flex items-center mb-2">
+            <div className="flex items-center gap-4">
               <p className="text-sm text-muted-foreground">
-                Replying to {comment.author?.username}
+                {formatTimeAgo(comment.createdAt || new Date())}
               </p>
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-2"
-                onClick={() => setReplyingTo(null)}
+                className="text-sm text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReplyingTo(comment.id);
+                }}
               >
-                Cancel
+                Reply
               </Button>
             </div>
-            <CommentForm
-              onSubmit={async (content) => {
-                await createReplyMutation.mutateAsync(content);
-              }}
-              isSubmitting={createReplyMutation.isPending}
-              placeholder={`Reply to ${comment.author?.username}...`}
-            />
           </div>
-        )}
+        </div>
 
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
@@ -196,6 +186,31 @@ export function CommentList({ comments, postId }: CommentListProps) {
         ))}
       </div>
 
+      {replyingToComment && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+          <div className="flex items-center mb-2">
+            <p className="text-sm text-muted-foreground">
+              Replying to {replyingToComment.author?.username}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2"
+              onClick={() => setReplyingTo(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+          <CommentForm
+            onSubmit={async (content) => {
+              await createReplyMutation.mutateAsync(content);
+            }}
+            isSubmitting={createReplyMutation.isPending}
+            placeholder={`Reply to ${replyingToComment.author?.username}...`}
+          />
+        </div>
+      )}
+
       {selectedCommentData && (
         <CommentActionsDrawer
           isOpen={isActionsOpen}
@@ -203,7 +218,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
             setIsActionsOpen(false);
             setSelectedComment(null);
           }}
-          onReply={() => setReplyingTo(selectedComment)}
+          onReply={() => {
+            setReplyingTo(selectedComment);
+            setIsActionsOpen(false);
+          }}
           onEdit={() => {
             toast({
               description: "Edit functionality coming soon",
