@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -49,6 +50,19 @@ export const posts = pgTable("posts", {
   parentId: integer("parent_id"),
   depth: integer("depth").default(0),
 });
+
+// Relationship for post replies/comments
+export const postRelations = relations(posts, ({ one, many }) => ({
+  parent: one(posts, {
+    fields: [posts.parentId],
+    references: [posts.id],
+  }),
+  replies: many(posts),
+  author: one(users, {
+    fields: [posts.userId],
+    references: [users.id],
+  }),
+}));
 
 export const measurements = pgTable("measurements", {
   id: serial("id").primaryKey(),
