@@ -192,9 +192,17 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           {/* Reaction summary display */}
           <ReactionSummary postId={post.id} />
 
-          <div className="flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             <ReactionButton postId={post.id} />
-            <Link href={`/comments/${post.id}`}>
+            <Link href={`/comments/${post.id}`} onClick={(e) => {
+              // Ensure we have a valid numeric ID
+              if (!post.id || isNaN(post.id)) {
+                e.preventDefault();
+                console.error('Invalid post ID:', post.id);
+                return;
+              }
+              console.log('Navigating to comments for post:', post.id);
+            }}>
               <Button variant="ghost" size="sm" className="gap-1.5">
                 <MessageCircle className="h-4 w-4" />
                 {commentCount}
