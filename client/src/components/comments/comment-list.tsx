@@ -197,7 +197,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
                 <p className="mt-2 whitespace-pre-wrap">{comment.content}</p>
               </CardContent>
             </Card>
-            <div className="flex"> {/* Added div to group time and button */}
+            <div className="flex items-center"> {/* Added items-center to vertically align elements */}
               <p className="text-sm text-muted-foreground mr-2">{formatTimeAbbreviated(comment.createdAt!)}</p>
               <Button
                 variant="ghost"
