@@ -23,7 +23,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   console.log("\n=== CommentList Mount ===");
   console.log("Current location:", window.location.href);
   console.log("PostID:", postId);
-  console.log("Comments received:", comments);
+  console.log("Raw comments:", comments);
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -34,7 +34,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
         points: 1
       };
       console.log("Creating reply with data:", data);
-      const res = await apiRequest("POST", "/api/posts", data);
+      const res = await apiRequest("POST", "/api/posts", {
+        data: JSON.stringify(data)
+      });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -111,6 +113,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             className="gap-1.5 self-start"
             onClick={() => setReplyingTo(comment.id)}
           >
+            <MessageCircle className="h-4 w-4" />
             Reply
           </Button>
         </div>
