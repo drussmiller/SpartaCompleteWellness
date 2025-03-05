@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
+import { ReactionButton } from "@/components/reaction-button";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -205,6 +206,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <p className="text-sm text-muted-foreground">
                 {formatTimeAgo(comment.createdAt || new Date())}
               </p>
+              <ReactionButton postId={comment.id} />
               <Button
                 variant="ghost"
                 size="sm"
