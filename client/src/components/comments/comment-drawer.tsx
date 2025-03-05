@@ -88,7 +88,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side="right" 
-        className="w-[100vw] p-0 fixed inset-0 z-[9999]"
+        className="w-full p-0 fixed inset-0 z-[9999]"
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden">
           <SheetClose className="absolute top-4 left-4 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 bg-background shadow-sm z-[10000]">
