@@ -19,13 +19,18 @@ export default function CommentsPage() {
   const [comment, setComment] = useState("");
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
+  console.log("CommentsPage render - postId:", postId);
+
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: [`/api/posts/${postId}`],
     queryFn: async () => {
       if (!postId) throw new Error("No post ID provided");
+      console.log("Fetching original post:", postId);
       const res = await apiRequest("GET", `/api/posts/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch post");
-      return res.json();
+      const data = await res.json();
+      console.log("Original post data:", data);
+      return data;
     },
     enabled: !!postId
   });
@@ -34,11 +39,23 @@ export default function CommentsPage() {
     queryKey: [`/api/posts/comments/${postId}`],
     queryFn: async () => {
       if (!postId) throw new Error("No post ID provided");
+      console.log("Fetching comments for post:", postId);
       const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
-      return res.json();
+      const data = await res.json();
+      console.log("Comments data:", data);
+      return data;
     },
-    enabled: !!postId
+    enabled: !!postId,
+    retry: 1
+  });
+
+  console.log("Current state:", {
+    postId,
+    originalPost,
+    commentsCount: comments?.length,
+    isLoading: isPostLoading || areCommentsLoading,
+    errors: { postError, commentsError }
   });
 
   const createCommentMutation = useMutation({
