@@ -86,7 +86,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   }
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => (
-    <div className={`space-y-4 ${depth > 0 ? 'ml-8 border-l pl-4' : ''}`}>
+    <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
       <div className="flex items-start gap-4">
         <div className="shrink-0">
           <Avatar>
@@ -97,8 +97,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
           </Avatar>
         </div>
         <div className="flex-1 flex flex-col gap-2">
-          <Card className="bg-gray-100 w-full">
-            <CardContent className="pt-6">
+          <Card className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}>
+            {depth > 0 && (
+              <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
+            )}
+            <CardContent className="pt-6 relative">
               <div className="flex justify-between">
                 <p className="font-medium">{comment.author?.username}</p>
                 <p className="text-sm text-muted-foreground">
@@ -121,7 +124,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
       {/* Show reply form when replying to this comment */}
       {replyingTo === comment.id && (
-        <div className="ml-12 mt-2">
+        <div className="ml-12 mt-2 pl-4 border-l-2 border-gray-300">
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">Replying to {comment.author?.username}</p>
             <Button 
