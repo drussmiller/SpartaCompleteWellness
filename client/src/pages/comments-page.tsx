@@ -16,25 +16,17 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  console.log("=== CommentsPage Mount ===");
-  console.log("Current location:", location);
-  console.log("PostID from params:", postId);
-  console.log("Current user:", user?.id);
-
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],
     enabled: Boolean(postId),
     queryFn: async () => {
-      console.log("Fetching post data for ID:", postId);
       try {
         const res = await apiRequest("GET", `/api/posts/${postId}`);
         if (!res.ok) {
           throw new Error(await res.text());
         }
-        const data = await res.json();
-        console.log("Post data received:", data);
-        return data;
+        return res.json();
       } catch (error) {
         console.error("Error fetching post:", error);
         throw error;
@@ -47,15 +39,12 @@ export default function CommentsPage() {
     queryKey: ["/api/posts/comments", postId],
     enabled: Boolean(postId),
     queryFn: async () => {
-      console.log("Fetching comments for post:", postId);
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
           throw new Error(await res.text());
         }
-        const data = await res.json();
-        console.log("Comments data received:", data);
-        return data;
+        return res.json();
       } catch (error) {
         console.error("Error fetching comments:", error);
         throw error;
@@ -65,7 +54,6 @@ export default function CommentsPage() {
 
   const createCommentMutation = useMutation({
     mutationFn: async (content: string) => {
-      console.log("Creating comment for post:", postId);
       const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
         content: content.trim(),
@@ -85,20 +73,12 @@ export default function CommentsPage() {
       });
     },
     onError: (error: Error) => {
-      console.error("Error creating comment:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post comment",
       });
     },
   });
-
-  // Print current state for debugging
-  console.log("=== Current State ===");
-  console.log("Post:", originalPost);
-  console.log("Comments:", comments);
-  console.log("Loading states:", { isPostLoading, areCommentsLoading });
-  console.log("Errors:", { postError, commentsError });
 
   if (!postId) {
     return (
@@ -132,7 +112,6 @@ export default function CommentsPage() {
 
   if (postError || commentsError) {
     const error = postError || commentsError;
-    console.error("Render Error:", error);
     return (
       <AppLayout title="Comments">
         <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-destructive">
@@ -143,7 +122,6 @@ export default function CommentsPage() {
   }
 
   if (!originalPost) {
-    console.log("No post data available");
     return (
       <AppLayout title="Comments">
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
@@ -153,13 +131,9 @@ export default function CommentsPage() {
     );
   }
 
-  console.log("=== Rendering Comments View ===");
-  console.log("Post data:", originalPost);
-  console.log("Comments data:", comments);
-
   return (
     <AppLayout title="Comments">
-      <div className="max-w-2xl mx-auto p-4 space-y-6 pb-32">
+      <div className="w-full p-4 space-y-6 pb-32">
         <PostView post={originalPost} />
         <CommentList comments={comments} postId={parseInt(postId)} />
         <CommentForm
