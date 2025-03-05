@@ -56,13 +56,11 @@ export default function CommentsPage() {
 
       console.log("Fetching comments for post:", numericPostId);
       const res = await apiRequest("GET", `/api/posts/comments/${numericPostId}`);
-
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Failed to fetch comments:", errorText);
         throw new Error(`Failed to fetch comments: ${errorText}`);
       }
-
       const data = await res.json();
       console.log("Received comments data:", data);
 
@@ -137,14 +135,15 @@ export default function CommentsPage() {
         throw new Error("Comment cannot be empty");
       }
 
-      const res = await apiRequest("POST", "/api/posts", {
-        data: JSON.stringify({
-          type: "comment",
-          content: trimmedComment,
-          parentId: replyTo || numericPostId,
-          points: 1
-        })
-      });
+      const formData = new FormData();
+      formData.append('data', JSON.stringify({
+        type: "comment",
+        content: trimmedComment,
+        parentId: replyTo || numericPostId,
+        points: 1
+      }));
+
+      const res = await apiRequest("POST", "/api/posts", formData);
 
       if (!res.ok) {
         const error = await res.json();
