@@ -8,33 +8,27 @@ import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
-import { CommentContextMenu } from './comment-context-menu';
 
 interface CommentListProps {
   comments: (Post & { author: User })[];
   postId: number;  // Add postId prop to handle replies
 }
 
+import { useEffect } from "react";
+
 type CommentWithReplies = Post & { author: User; replies?: CommentWithReplies[] };
 
 export function CommentList({ comments, postId }: CommentListProps) {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
-  const [contextMenuComment, setContextMenuComment] = useState<number | null>(null);
-  const { user } = useAuth();
+  const { toast } = useToast();
 
   console.log("\n=== CommentList Mount ===");
   console.log("Current location:", window.location.href);
+  console.log("PostID:", postId);
   console.log("Comments received:", comments);
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
-      if (!replyingTo) {
-        console.error("No comment selected to reply to");
-        throw new Error("No comment selected to reply to");
-      }
-
       const data = {
         type: "comment",
         content: content.trim(),
@@ -48,11 +42,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
         data: JSON.stringify(data)
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error creating reply:", errorText);
-        throw new Error(errorText);
-      }
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     onSuccess: (newComment) => {
@@ -60,8 +50,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
       // Manually update the query data to include the new reply
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      // Reset replying state
-      setReplyingTo(null);
 
       toast({
         description: "Reply posted successfully",
@@ -185,6 +173,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
+
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
@@ -197,14 +186,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             </Avatar>
           </div>
           <div className="flex-1 flex flex-col gap-2">
-            <Card 
-              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'} cursor-pointer`}
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log("Comment clicked, setting context menu for comment ID:", comment.id);
-                setContextMenuComment(comment.id);
-              }}
-            >
+            <Card className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}>
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
@@ -221,10 +203,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
                 variant="ghost"
                 size="xs"
                 className="gap-1.5 h-6 py-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setReplyingTo(comment.id);
-                }}
+                onClick={() => setReplyingTo(comment.id)}
               >
                 Reply
               </Button>
@@ -248,98 +227,26 @@ export function CommentList({ comments, postId }: CommentListProps) {
             </div>
             <CommentForm
               onSubmit={async (content) => {
-                try {
-                  await createReplyMutation.mutateAsync(content);
-                } catch (error) {
-                  console.error("Failed to submit reply:", error);
-                  // Keep the form open on error
-                }
+                await createReplyMutation.mutateAsync(content);
               }}
               isSubmitting={createReplyMutation.isPending}
               placeholder={`Reply to ${comment.author?.username}...`}
             />
-            {createReplyMutation.isError && (
-              <p className="text-red-500 text-sm mt-1">
-                Failed to post reply. Please try again.
-              </p>
-            )}
           </div>
         )}
 
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-2">
-            {comment.replies.map((reply) => (
-              <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
-            ))}
-          </div>
-        )}
+        {comment.replies?.map((reply) => (
+          <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
+        ))}
       </div>
     );
   };
 
-  const threaded = threadedComments;
-  const selectedComment = comments.find(c => c.id === contextMenuComment);
-  const canEditComment = selectedComment && user && selectedComment.userId === user.id;
-  
-  // Debug logging for context menu state
-  console.log("Context menu state:", { 
-    contextMenuComment, 
-    selectedCommentExists: !!selectedComment,
-    canEdit: canEditComment 
-  });
-
   return (
-    <div className="space-y-6">
-      {threaded.length === 0 ? (
-        <p className="text-center text-muted-foreground py-6">No comments yet. Be the first to comment!</p>
-      ) : (
-        threaded.map((comment) => (
-          <CommentCard key={comment.id} comment={comment} />
-        ))
-      )}
-
-      {replyingTo && (
-        <div className="bg-gray-50 p-4 rounded-lg border">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-medium">Reply to comment</h3>
-            <Button variant="ghost" size="sm" onClick={() => setReplyingTo(null)}>Cancel</Button>
-          </div>
-          <CommentForm
-            onSubmit={async (content) => {
-              await createReplyMutation.mutateAsync(content);
-              setReplyingTo(null);
-            }}
-            isSubmitting={createReplyMutation.isPending}
-          />
-        </div>
-      )}
-
-      <CommentContextMenu
-        isOpen={contextMenuComment !== null}
-        onClose={() => setContextMenuComment(null)}
-        onReply={() => {
-          if (contextMenuComment) {
-            setReplyingTo(contextMenuComment);
-            setContextMenuComment(null);
-          }
-        }}
-        onEdit={() => {
-          // Implement edit functionality later
-          setContextMenuComment(null);
-        }}
-        onDelete={() => {
-          // Implement delete functionality later
-          setContextMenuComment(null);
-        }}
-        onCopy={() => {
-          const commentContent = selectedComment?.content;
-          if (commentContent) {
-            navigator.clipboard.writeText(commentContent);
-          }
-          setContextMenuComment(null);
-        }}
-        canEdit={!!canEditComment}
-      />
+    <div className="space-y-4">
+      {threadedComments.map((comment) => (
+        <CommentCard key={comment.id} comment={comment} />
+      ))}
     </div>
   );
 }
