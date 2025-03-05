@@ -206,7 +206,13 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <p className="text-sm text-muted-foreground">
                 {formatTimeAgo(comment.createdAt || new Date())}
               </p>
-              <ReactionButton postId={comment.id} />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Like
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
