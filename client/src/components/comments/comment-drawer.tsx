@@ -111,6 +111,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         side="right" 
         className="w-full sm:w-[500px] p-0 fixed inset-0 z-[9999]"
       >
+        <SheetClose className="absolute top-4 left-4 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+          <span className="text-lg">&lt;</span>
+          <span className="sr-only">Close</span>
+        </SheetClose>
         <div className="h-[100dvh] flex flex-col overflow-hidden">
           {/* Show loading state */}
           {(isPostLoading || areCommentsLoading) && (
