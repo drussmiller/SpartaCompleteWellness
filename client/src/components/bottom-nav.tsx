@@ -25,7 +25,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       // Mobile styles (bottom nav)
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
       // Desktop styles (side nav)
-      orientation === "vertical" && "w-full hidden md:block"
+      orientation === "vertical" && "w-full h-full py-4"
     )}>
       <div className={cn(
         // Container styles
@@ -33,7 +33,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         // Mobile layout
         orientation === "horizontal" && "h-16 justify-around",
         // Desktop layout
-        orientation === "vertical" && "flex-col py-4 space-y-4"
+        orientation === "vertical" && "flex-col h-full space-y-4"
       )}>
         {items.map(({ icon: Icon, label, href }) => (
           <div
