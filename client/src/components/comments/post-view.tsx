@@ -35,7 +35,7 @@ export function PostView({ post }: PostViewProps) {
             </div>
           )}
           <div className="border-t border-gray-200"></div>
-          <div className="flex items-center gap-2 py-1">
+          <div className="flex items-center gap-2 py-0.5">
             <ReactionButton postId={post.id} />
             <Button
               variant="ghost"
@@ -48,7 +48,7 @@ export function PostView({ post }: PostViewProps) {
           </div>
 
           {/* Grey line separator */}
-          <div className="border-t border-gray-200 mt-1"></div>
+          <div className="border-t border-gray-200 mt-0.5"></div>
 
           {/* Reactions display */}
           <div className="flex justify-between items-center">
