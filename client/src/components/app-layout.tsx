@@ -17,7 +17,7 @@ export function AppLayout({ children, title, sidebarWidth = "16" }: AppLayoutPro
       {/* Left sidebar - only visible on non-mobile devices */}
       {!isMobile && (
         <div 
-          className="fixed left-0 top-0 h-full bg-background z-40 border-r border-border"
+          className="fixed left-0 top-0 h-full bg-background z-50 border-r border-border"
           style={{ width: sidebarWidthPx }}
         >
           <BottomNav orientation="vertical" />
