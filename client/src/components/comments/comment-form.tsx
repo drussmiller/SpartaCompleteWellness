@@ -70,7 +70,7 @@ export function CommentForm({
             onClick={handleSubmit}
             disabled={!content.trim() || isSubmitting}
           >
-            Save
+            Update
           </Button>
         </div>
       )}
