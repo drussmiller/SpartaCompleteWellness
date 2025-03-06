@@ -141,12 +141,10 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   // Get the current user's reaction if any
   const userReaction = reactions.find(r => r.userId === user?.id);
   
-  // Use all available reaction types from the reactionEmojis object
+  // Only include the specified reaction types
   const allReactions: ReactionType[] = [
     'like', 'love', 'laugh', 'wow', 'sad', 
-    'angry', 'fire', 'pray', 'muscle', 'thumbs_down',
-    'weight', 'angel', 'dove', 'church', 'bible',
-    'cross', 'faith', 'idea', 'rocket', 'sparkles'
+    'angry', 'fire', 'pray', 'muscle', 'thumbs_down'
   ];
 
   return (
