@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,6 +17,27 @@ import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel,
+  AlertDialogContent, 
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
+
+// Type definition for form data
+type TeamFormData = z.infer<typeof insertTeamSchema>;
 
 export default function AdminPage() {
   const { user } = useAuth();
