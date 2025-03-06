@@ -279,8 +279,8 @@ export default function AdminPage() {
 
       {/* Main content */}
       <main className={`flex-1 ${!isMobile ? "ml-16" : ""}`}>
-        <header className="sticky top-0 z-10 bg-background pt-4 md:pt-8 px-4 md:px-8 mb-4">
-          <h1 className="text-2xl font-bold ml-0 md:ml-4">Admin Dashboard</h1>
+        <header className="sticky top-0 z-10 bg-background pt-4 md:pt-6 px-4 md:px-8 mb-4 flex items-center">
+          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
         </header>
         <div className="container p-4 md:px-8">
           <div className="flex gap-2 mt-4 justify-center">
