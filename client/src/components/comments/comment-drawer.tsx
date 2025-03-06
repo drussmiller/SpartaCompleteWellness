@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface CommentDrawerProps {
   postId: number;
@@ -92,21 +93,42 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         style={{ width: '100vw', maxWidth: '100vw' }}
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
-          <SheetClose className="absolute top-4 left-4 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 bg-background shadow-sm z-[10000]">
-            <span className="text-2xl">&lt;</span>
-            <span className="sr-only">Close</span>
-          </SheetClose>
+          {/* Fixed header bar */}
+          <div className="h-14 border-b bg-background flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-[10000]">
+            <SheetClose className="p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+              <span className="text-2xl">&lt;</span>
+              <span className="sr-only">Close</span>
+            </SheetClose>
+
+            {/* Centered poster info */}
+            {originalPost && (
+              <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`}
+                  />
+                  <AvatarFallback>
+                    {originalPost.author?.username?.[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium">{originalPost.author?.username}</span>
+              </div>
+            )}
+
+            {/* Right side spacer to maintain centering */}
+            <div className="w-10"></div>
+          </div>
 
           {/* Show loading state */}
           {(isPostLoading || areCommentsLoading) && (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center mt-14">
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           )}
 
           {/* Show errors if any */}
           {(postError || commentsError) && (
-            <div className="flex-1 flex items-center justify-center text-destructive">
+            <div className="flex-1 flex items-center justify-center text-destructive mt-14">
               <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
             </div>
           )}
@@ -114,7 +136,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           {/* Post and comments section with scrolling */}
           {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
             <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-6 pt-2"> {/* Added pt-2 here */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 mt-14">
                 {originalPost && <PostView post={originalPost} />}
                 <CommentList comments={comments} postId={postId} />
               </div>
