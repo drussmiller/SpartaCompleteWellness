@@ -8,88 +8,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
-
-function ReactionSummary({ postId }: { postId: number }) {
-  const { data: reactions = [] } = useQuery<Reaction[]>({
-    queryKey: [`/api/posts/${postId}/reactions`],
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    cacheTime: 60000, // Keep in cache for 1 minute
-  });
-
-  const reactionCounts: Record<string, number> = {};
-  reactions.forEach(reaction => {
-    if (reaction.type) {
-      reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
-    }
-  });
-
-  const getEmojiForType = (type: string): string => {
-    const allEmojis: Record<string, { emoji: string, color: string }> = {
-      like: { emoji: "👍", color: "text-blue-500" },
-      love: { emoji: "❤️", color: "text-red-500" },
-      laugh: { emoji: "😂", color: "text-yellow-500" },
-      wow: { emoji: "😮", color: "text-yellow-500" },
-      sad: { emoji: "😢", color: "text-blue-500" },
-      angry: { emoji: "😡", color: "text-red-500" },
-      celebrate: { emoji: "🎉", color: "text-purple-500" },
-      clap: { emoji: "👏", color: "text-yellow-500" },
-      fire: { emoji: "🔥", color: "text-orange-500" },
-      pray: { emoji: "🙏", color: "text-amber-500" },
-      support: { emoji: "🤗", color: "text-green-500" },
-      muscle: { emoji: "💪", color: "text-blue-500" },
-      star: { emoji: "⭐", color: "text-yellow-500" },
-      heart_eyes: { emoji: "😍", color: "text-red-500" },
-      raised_hands: { emoji: "🙌", color: "text-amber-500" },
-      trophy: { emoji: "🏆", color: "text-yellow-500" },
-      thumbs_down: { emoji: "👎", color: "text-slate-500" },
-      salad: { emoji: "🥗", color: "text-green-500" },
-      fruit: { emoji: "🍎", color: "text-red-500" },
-      water: { emoji: "💧", color: "text-blue-500" },
-      run: { emoji: "🏃", color: "text-purple-500" },
-      bike: { emoji: "🚴", color: "text-green-500" },
-      weight: { emoji: "🏋️", color: "text-indigo-500" },
-      angel: { emoji: "😇", color: "text-sky-500" },
-      dove: { emoji: "🕊️", color: "text-white-500" },
-      church: { emoji: "⛪", color: "text-stone-500" },
-      idea: { emoji: "💡", color: "text-yellow-500" },
-      rocket: { emoji: "🚀", color: "text-indigo-500" },
-      sparkles: { emoji: "✨", color: "text-purple-500" },
-    };
-
-    return allEmojis[type]?.emoji || "👍";
-  };
-
-  const sortedReactions = Object.entries(reactionCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5); 
-
-  if (sortedReactions.length === 0) return null;
-
-  return (
-    <div className="flex items-center gap-1 text-sm">
-      <TooltipProvider>
-        <div className="flex flex-wrap gap-1">
-          {sortedReactions.map(([type, count]) => (
-            <Tooltip key={type}>
-              <TooltipTrigger asChild>
-                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span>{getEmojiForType(type)}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{type.replace('_', ' ')}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      </TooltipProvider>
-    </div>
-  );
-}
 
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
@@ -182,7 +104,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             </span>
           </div>
 
-          <ReactionSummary postId={post.id} />
+          <div className="mt-2 flex justify-end">
+            <ReactionSummary postId={post.id} />
+          </div>
 
           <div className="mt-4 flex items-center gap-2">
             <ReactionButton postId={post.id} />
