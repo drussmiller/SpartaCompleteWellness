@@ -99,10 +99,12 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
             <span className="text-xs text-muted-foreground">•</span>
+            <div>
+              <ReactionSummary postId={post.id} />
+            </div>
           </div>
           <div className="border-t border-gray-200"></div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-2 py-0 h-6">
             <ReactionButton postId={post.id} variant="icon" />
             <Button 
@@ -114,11 +116,6 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               <MessageCircle className="h-4 w-4" />
               {commentCount}
             </Button>
-          </div>
-
-          {/* Reactions display */}
-          <div className="flex justify-between items-center mt-2">
-            <ReactionSummary postId={post.id} />
           </div>
         </div>
       </CardContent>
