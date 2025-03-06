@@ -307,7 +307,7 @@ export default function AdminPage() {
         </div>
 
         {/* Main content */}
-        <div className={`flex-1 ${!isMobile ? "md:ml-24" : ""}`}>
+        <div className={`flex-1 ${!isMobile ? "md:ml-[5rem]" : ""}`}>
           <div className="container p-4 md:px-8">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>

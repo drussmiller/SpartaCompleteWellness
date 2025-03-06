@@ -60,7 +60,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 relative">
-      <header className="sticky top-0 z-50 bg-background border-b border-border ml-0 md:ml-20"> {/* Increased margin from 16 to 20 */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border ml-0 md:ml-[5rem]"> {/* Using absolute size to match admin page */}
         <div className="p-4">
           <h1 className="text-xl font-bold pl-2">Notifications</h1>
         </div>
