@@ -14,9 +14,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
-// Added imports for mobile navigation
-import { useIsMobile } from "@/hooks/use-mobile"; // Correct import path
-import { BottomNav } from "@/components/bottom-nav"; // Use named import instead of default
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 type ContentField = {
@@ -25,25 +23,6 @@ type ContentField = {
   content: string;
   title: string;
 };
-
-// Added AppLayout component
-const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const isMobile = useIsMobile();
-  return (
-    <div className="flex">
-      {/* Sidebar (only on larger screens) */}
-      {!isMobile && (
-        <aside className="bg-gray-100 w-64 p-4">
-          {/* Add your sidebar content here */}
-          <p>Left Sidebar</p>
-        </aside>
-      )}
-      <main className="flex-1">{children}</main>
-      {isMobile && <BottomNav />} {/* BottomNav only on mobile */}
-    </div>
-  );
-};
-
 
 export default function ActivityManagementPage() {
   const { user } = useAuth();
@@ -54,7 +33,7 @@ export default function ActivityManagementPage() {
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
-  const isMobile = useIsMobile(); // Use the isMobile hook
+  const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
@@ -93,7 +72,6 @@ export default function ActivityManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      // Clean up states
       setDeleteDialogOpen(false);
       setActivityToDelete(null);
       toast({
@@ -108,7 +86,6 @@ export default function ActivityManagementPage() {
         description: error.message || "Failed to delete activity",
         variant: "destructive"
       });
-      // Clean up states even on error
       setDeleteDialogOpen(false);
       setActivityToDelete(null);
     },
@@ -270,321 +247,319 @@ export default function ActivityManagementPage() {
   }
 
   return (
-    <AppLayout>
-      <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="flex items-center mb-6">
-          <Button 
-            variant="ghost" 
-            onClick={() => window.history.back()} 
-            className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-          >
-            <ChevronLeft className="h-8 w-8" />
-            <span className="sr-only">Back</span>
-          </Button>
-          <h1 className="text-2xl font-bold">Activity Management</h1>
-        </div>
+    <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => window.history.back()} 
+          className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+        >
+          <ChevronLeft className="h-8 w-8" />
+          <span className="sr-only">Back</span>
+        </Button>
+        <h1 className="text-2xl font-bold">Activity Management</h1>
+      </div>
 
-        <Card>
-          <CardContent className="space-y-6 pt-6">
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              const data = {
-                week: parseInt(formData.get('week') as string),
-                day: parseInt(formData.get('day') as string),
-                contentFields
-              };
+      <Card>
+        <CardContent className="space-y-6 pt-6">
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const data = {
+              week: parseInt(formData.get('week') as string),
+              day: parseInt(formData.get('day') as string),
+              contentFields
+            };
 
-              try {
-                console.log('Submitting activity data:', data);
-                const res = await apiRequest("POST", "/api/activities", data);
-                if (!res.ok) {
-                  const errorData = await res.json();
-                  throw new Error(errorData.message || 'Failed to create activity');
-                }
-
-                toast({
-                  title: "Success",
-                  description: "Activity created successfully"
-                });
-
-                queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-                setContentFields([]);
-                (e.target as HTMLFormElement).reset();
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: error instanceof Error ? error.message : "Failed to create activity",
-                  variant: "destructive"
-                });
+            try {
+              console.log('Submitting activity data:', data);
+              const res = await apiRequest("POST", "/api/activities", data);
+              if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to create activity');
               }
-            }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="week">Week</Label>
-                  <Input type="number" name="week" required min="1" />
-                </div>
-                <div>
-                  <Label htmlFor="day">Day</Label>
-                  <Input type="number" name="day" required min="1" max="7" />
-                </div>
+
+              toast({
+                title: "Success",
+                description: "Activity created successfully"
+              });
+
+              queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+              setContentFields([]);
+              (e.target as HTMLFormElement).reset();
+            } catch (error) {
+              toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to create activity",
+                variant: "destructive"
+              });
+            }
+          }} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="week">Week</Label>
+                <Input type="number" name="week" required min="1" />
               </div>
-
-              <div className="mb-4">
-                <Label htmlFor="docUpload">Upload Word Document</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="docUpload"
-                    type="file"
-                    accept=".docx"
-                    onChange={handleFileUpload}
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" onClick={() => document.getElementById('docUpload')?.click()}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upload a Word document to automatically create content with embedded videos
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {contentFields.map((field) => (
-                  <div key={field.id} className="space-y-2 p-4 border rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeContentField(field.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="Title"
-                      value={field.title}
-                      onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
-                    />
-                    {field.type === 'video' ? (
-                      <Input
-                        type="text"
-                        placeholder="YouTube Video URL"
-                        value={field.content}
-                        onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
-                      />
-                    ) : (
-                      <RichTextEditor
-                        content={field.content}
-                        onChange={(newContent) => updateContentField(field.id, 'content', newContent)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => addContentField('text')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Text
-                </Button>
-                <Button type="button" variant="outline" onClick={() => addContentField('video')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Video
-                </Button>
-              </div>
-
-              <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">Add Activity</Button>
-            </form>
-
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Existing Activities</h3>
-              <div className="space-y-4 mb-20">
-                {activities
-                  ?.slice()
-                  .sort((a, b) => a.week !== b.week ? a.week - b.week : a.day - b.day)
-                  .map((activity) => (
-                  <Card key={activity.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">
-                            Week {activity.week} - Day {activity.day}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditActivity(activity)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteActivity(activity.id)}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div>
+                <Label htmlFor="day">Day</Label>
+                <Input type="number" name="day" required min="1" max="7" />
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
-          <DialogContent className="max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>Edit Activity</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] pr-4 mb-20">
-              <Form>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
-                  const data = {
-                    week: parseInt(formData.get('week') as string),
-                    day: parseInt(formData.get('day') as string),
-                    contentFields: editingContentFields
-                  };
-                  updateActivityMutation.mutate(data);
-                }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="week">Week</Label>
-                      <Input
-                        type="number"
-                        name="week"
-                        defaultValue={editingActivity?.week}
-                        required
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="day">Day</Label>
-                      <Input
-                        type="number"
-                        name="day"
-                        defaultValue={editingActivity?.day}
-                        required
-                        min="1"
-                        max="7"
-                      />
-                    </div>
+            <div className="mb-4">
+              <Label htmlFor="docUpload">Upload Word Document</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="docUpload"
+                  type="file"
+                  accept=".docx"
+                  onChange={handleFileUpload}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={() => document.getElementById('docUpload')?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Upload a Word document to automatically create content with embedded videos
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {contentFields.map((field) => (
+                <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeContentField(field.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
+                  <Input
+                    type="text"
+                    placeholder="Title"
+                    value={field.title}
+                    onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
+                  />
+                  {field.type === 'video' ? (
+                    <Input
+                      type="text"
+                      placeholder="YouTube Video URL"
+                      value={field.content}
+                      onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
+                    />
+                  ) : (
+                    <RichTextEditor
+                      content={field.content}
+                      onChange={(newContent) => updateContentField(field.id, 'content', newContent)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
 
-                  <div className="space-y-4">
-                    {editingContentFields.map((field) => (
-                      <div key={field.id} className="space-y-2 p-4 border rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeEditingContentField(field.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => addContentField('text')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Text
+              </Button>
+              <Button type="button" variant="outline" onClick={() => addContentField('video')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Video
+              </Button>
+            </div>
+
+            <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">Add Activity</Button>
+          </form>
+
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold mb-4">Existing Activities</h3>
+            <div className="space-y-4 mb-20">
+              {activities
+                ?.slice()
+                .sort((a, b) => a.week !== b.week ? a.week - b.week : a.day - b.day)
+                .map((activity) => (
+                <Card key={activity.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">
+                          Week {activity.week} - Day {activity.day}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditActivity(activity)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteActivity(activity.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
+        <DialogContent className="max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Edit Activity</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[70vh] pr-4 mb-20">
+            <Form>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target as HTMLFormElement);
+                const data = {
+                  week: parseInt(formData.get('week') as string),
+                  day: parseInt(formData.get('day') as string),
+                  contentFields: editingContentFields
+                };
+                updateActivityMutation.mutate(data);
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="week">Week</Label>
+                    <Input
+                      type="number"
+                      name="week"
+                      defaultValue={editingActivity?.week}
+                      required
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="day">Day</Label>
+                    <Input
+                      type="number"
+                      name="day"
+                      defaultValue={editingActivity?.day}
+                      required
+                      min="1"
+                      max="7"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {editingContentFields.map((field) => (
+                    <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEditingContentField(field.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Title"
+                        value={field.title}
+                        onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
+                      />
+                      {field.type === 'video' ? (
                         <Input
                           type="text"
-                          placeholder="Title"
-                          value={field.title}
-                          onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
+                          placeholder="YouTube Video URL"
+                          value={field.content}
+                          onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
                         />
-                        {field.type === 'video' ? (
-                          <Input
-                            type="text"
-                            placeholder="YouTube Video URL"
-                            value={field.content}
-                            onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
-                          />
-                        ) : (
-                          <RichTextEditor
-                            content={field.content}
-                            onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                      ) : (
+                        <RichTextEditor
+                          content={field.content}
+                          onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => addEditingContentField('text')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Text
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => addEditingContentField('video')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Video
-                    </Button>
-                  </div>
-
-                  <Button type="submit" disabled={updateActivityMutation.isPending}>
-                    {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => addEditingContentField('text')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Text
                   </Button>
-                </form>
-              </Form>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+                  <Button type="button" variant="outline" onClick={() => addEditingContentField('video')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Video
+                  </Button>
+                </div>
 
-        <Dialog 
-          open={deleteDialogOpen} 
-          onOpenChange={(open) => {
-            if (!open) {
-              setDeleteDialogOpen(false);
-              setActivityToDelete(null);
-            }
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Activity</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this activity? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDeleteDialogOpen(false);
-                  setActivityToDelete(null);
-                }}
-                disabled={deleteActivityMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={confirmDelete}
-                disabled={deleteActivityMutation.isPending}
-              >
-                {deleteActivityMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete Activity"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </AppLayout>
+                <Button type="submit" disabled={updateActivityMutation.isPending}>
+                  {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                </Button>
+              </form>
+            </Form>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={deleteDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogOpen(false);
+            setActivityToDelete(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Activity</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this activity? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setActivityToDelete(null);
+              }}
+              disabled={deleteActivityMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteActivityMutation.isPending}
+            >
+              {deleteActivityMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Activity"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
