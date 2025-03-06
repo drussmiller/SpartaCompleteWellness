@@ -1,5 +1,5 @@
-
-import { useState, KeyboardEvent, RefObject, forwardRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { forwardRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -23,7 +23,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const internalRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // This will help us expose the textarea element to both refs
   const setRefs = (element: HTMLTextAreaElement | null) => {
     // Update both refs
@@ -39,7 +39,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
     internalRef.current = element;
   };
-  
+
   // Focus using the internal ref when component mounts
   useEffect(() => {
     if (internalRef.current) {
