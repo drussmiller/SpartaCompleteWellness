@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
+import { ReactionSummary } from "@/components/reaction-summary";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -200,6 +201,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
+                <div className="mt-2 flex justify-end">
+                  <ReactionSummary postId={comment.id} />
+                </div>
               </CardContent>
             </Card>
             <div className="flex items-center gap-4">

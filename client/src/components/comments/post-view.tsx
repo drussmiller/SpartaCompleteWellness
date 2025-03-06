@@ -5,6 +5,7 @@ import { Post, User } from "@shared/schema";
 import { MessageCircle } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { useCommentCount } from "@/hooks/use-comment-count";
+import { ReactionSummary } from "@/components/reaction-summary";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -38,6 +39,9 @@ export function PostView({ post }: PostViewProps) {
                 className="w-full h-auto object-contain rounded-md mb-4"
               />
             )}
+            <div className="mt-2 flex justify-end">
+              <ReactionSummary postId={post.id} />
+            </div>
 
             <div className="mt-4 flex items-center gap-2">
               <ReactionButton postId={post.id} />
