@@ -23,6 +23,7 @@ export function PostView({ post }: PostViewProps) {
                 {new Date(post.createdAt!).toLocaleString()}
               </p>
             </div>
+            <div className="mt-2 border-t border-gray-200"></div>
           </div>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
           {post.imageUrl && (
@@ -37,6 +38,7 @@ export function PostView({ post }: PostViewProps) {
           <div className="mt-2">
             <ReactionSummary postId={post.id} />
           </div>
+          <div className="mt-2 border-t border-gray-200"></div>
           <div className="mt-2 flex items-center gap-2">
             <ReactionButton postId={post.id} />
             <Button
