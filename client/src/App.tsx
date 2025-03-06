@@ -16,6 +16,8 @@ import NotificationsPage from "@/pages/notifications-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
 import { BottomNav } from "@/components/bottom-nav";
+// Placeholder -  needs actual implementation
+const VerticalNav = () => <div>Vertical Navigation</div>;
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -52,7 +54,10 @@ function MainContent() {
   // If authenticated, show the app with routes
   return (
     <div className="min-h-screen">
-      <Switch>
+      <>
+            {/* Add vertical nav that displays on all authenticated pages */}
+            {user && <VerticalNav />}
+            <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/activity" component={ActivityPage} />
         <Route path="/activity-management" component={ActivityManagementPage} />
@@ -60,7 +65,9 @@ function MainContent() {
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/profile" component={ProfilePage} />
         {user.isAdmin && <Route path="/admin" component={AdminPage} />}
+        <Route path="*">Not found</Route>
       </Switch>
+      </>
       <BottomNav />
     </div>
   );
