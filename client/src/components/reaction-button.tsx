@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -99,9 +98,10 @@ type ReactionType = keyof typeof reactionEmojis;
 
 interface ReactionButtonProps {
   postId: number;
+  variant?: 'icon' | 'text';
 }
 
-export function ReactionButton({ postId }: ReactionButtonProps) {
+export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -153,22 +153,19 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
   const handleReaction = (type: ReactionType) => {
     const userReactions = reactions.filter(r => r.userId === Number(localStorage.getItem('userId')));
     const hasReactedWithSameType = userReactions.some(r => r.type === type);
-    
-    // If user already reacted with a different type, remove that reaction first
+
     if (userReactions.length > 0 && !hasReactedWithSameType) {
-      // Remove all existing user reactions
       userReactions.forEach(reaction => {
         removeReactionMutation.mutate(reaction.type as ReactionType);
       });
     }
-    
-    // Toggle the current reaction
+
     if (hasReactedWithSameType) {
       removeReactionMutation.mutate(type);
     } else {
       addReactionMutation.mutate(type);
     }
-    
+
     setIsOpen(false);
   };
 
@@ -178,11 +175,20 @@ export function ReactionButton({ postId }: ReactionButtonProps) {
         <Button
           variant="ghost"
           size="sm"
+          className={variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""}
         >
-          <ThumbsUp className="h-4 w-4" />
+          {variant === 'icon' ? (
+            <ThumbsUp className="h-4 w-4" />
+          ) : (
+            'Like'
+          )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="p-2 grid grid-cols-6 gap-1 w-60">
+      <DropdownMenuContent 
+        align="start" 
+        className="p-2 grid grid-cols-6 gap-1 w-60"
+        style={{ zIndex: 99999 }} // Ensure it appears above the slider
+      >
         {Object.entries(reactionEmojis).map(([type, { emoji }]) => (
           <DropdownMenuItem
             key={type}
