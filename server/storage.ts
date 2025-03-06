@@ -43,7 +43,7 @@ export const storage = {
       const result = await db
         .select()
         .from(users)
-        .where(eq(users.username, username))
+        .where(sql`LOWER(${users.username}) = LOWER(${username})`)
         .limit(1);
       return result[0] || null;
     } catch (error) {
@@ -52,6 +52,19 @@ export const storage = {
     }
   },
 
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      const result = await db
+        .select()
+        .from(users)
+        .where(sql`LOWER(${users.email}) = LOWER(${email})`)
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      logger.error(`Failed to get user by email ${email}: ${error}`);
+      throw error;
+    }
+  },
   async getUser(id: number): Promise<User | null> {
     try {
       const result = await db
