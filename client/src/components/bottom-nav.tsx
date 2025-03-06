@@ -25,7 +25,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       // Mobile styles (bottom nav)
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
       // Desktop styles (side nav)
-      orientation === "vertical" && "w-16 h-full"
+      orientation === "vertical" && "w-20 h-full"
     )}>
       <div className={cn(
         // Base styles
