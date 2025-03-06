@@ -41,19 +41,20 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
 
   if (reactions.length === 0) return null;
 
+  // Get unique emoji reactions
+  const uniqueEmojis = [...new Set(sortedUniqueReactions.map(type => getEmojiForType(type)))];
+
   return (
     <div className="flex items-center justify-between text-sm">
       <TooltipProvider>
         <div className="flex flex-wrap gap-1">
-          {sortedUniqueReactions.map((type) => (
-            <Tooltip key={type}>
+          {uniqueEmojis.map((emoji, index) => (
+            <Tooltip key={index}>
               <TooltipTrigger asChild>
-                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span>{getEmojiForType(type)}</span>
-                </div>
+                <span className="text-base">{emoji}</span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{type.replace('_', ' ')}</p>
+                <p>{sortedUniqueReactions.find(type => getEmojiForType(type) === emoji)?.replace('_', ' ')}</p>
               </TooltipContent>
             </Tooltip>
           ))}
