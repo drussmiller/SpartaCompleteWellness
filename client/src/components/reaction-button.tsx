@@ -163,18 +163,20 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="start" 
-        className="p-2 grid grid-cols-6 gap-1 w-60"
+        className="p-2 grid grid-cols-5 gap-1 w-60"
         style={{ zIndex: 99999 }} // Ensure it appears above the slider
       >
-        {Object.entries(reactionEmojis).map(([type, { emoji }]) => (
-          <DropdownMenuItem
-            key={type}
-            className="flex-col gap-1 px-2 py-2 cursor-pointer hover:bg-muted"
-            onClick={() => handleReaction(type as ReactionType)}
-          >
-            <span className="text-lg">{emoji}</span>
-            <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
-          </DropdownMenuItem>
+        {Object.entries(reactionEmojis)
+          .filter(([type]) => ['like', 'love', 'laugh', 'wow', 'sad', 'angry', 'fire', 'pray', 'muscle', 'thumbs_down'].includes(type))
+          .map(([type, { emoji }]) => (
+            <DropdownMenuItem
+              key={type}
+              className="flex-col gap-1 px-2 py-2 cursor-pointer hover:bg-muted"
+              onClick={() => handleReaction(type as ReactionType)}
+            >
+              <span className="text-lg">{emoji}</span>
+              <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
+            </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
