@@ -2,13 +2,11 @@ import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
-import { Post, User } from "@shared/schema";
+import { Post } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDistanceToNow } from "date-fns";
 
 interface CommentDrawerProps {
   postId: number;
@@ -101,17 +99,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <span className="sr-only">Close</span>
             </SheetClose>
 
-            {/* Centered poster info with timestamp */}
-            {originalPost && (
-              <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-                <span className="font-medium">{originalPost.author?.username}</span>
-                <span className="text-sm text-muted-foreground">
-                  • {formatDistanceToNow(new Date(originalPost.createdAt || Date.now()), { addSuffix: false })}
-                </span>
-              </div>
-            )}
-
-            {/* Right side spacer to maintain centering */}
+            {/* Right side spacer */}
             <div className="w-10"></div>
           </div>
 
