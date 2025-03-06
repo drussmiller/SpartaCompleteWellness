@@ -49,7 +49,7 @@ const reactionLabels = {
   fire: "Fire",
   pray: "Pray",
   muscle: "Strength",
-  thumbs_down: "Dislike"h",
+  thumbs_down: "Dislike",
   faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
