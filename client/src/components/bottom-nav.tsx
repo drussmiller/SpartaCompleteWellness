@@ -21,19 +21,19 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
   return (
     <nav className={cn(
       // Base styles
-      "bg-background z-[100] shadow-lg",
+      "bg-background z-[100]",
       // Mobile styles (bottom nav)
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
       // Desktop styles (side nav)
-      orientation === "vertical" && "w-full h-full py-4"
+      orientation === "vertical" && "w-16 h-full"
     )}>
       <div className={cn(
-        // Container styles
+        // Base styles
         "flex items-center",
         // Mobile layout
         orientation === "horizontal" && "h-16 justify-around",
         // Desktop layout
-        orientation === "vertical" && "flex-col h-full space-y-4"
+        orientation === "vertical" && "flex-col h-full py-6 space-y-6"
       )}>
         {items.map(({ icon: Icon, label, href }) => (
           <div
@@ -42,7 +42,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
+              orientation === "horizontal" ? "h-full w-full" : "w-full px-3",
               // Text styles
               location === href
                 ? "text-primary"
@@ -58,9 +58,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             onClick={() => setLocation("/admin")}
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer",
-              // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-              // Text styles
+              orientation === "horizontal" ? "h-full w-full" : "w-full px-3",
               location === "/admin"
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
@@ -74,9 +72,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           onClick={() => setLocation("/profile")}
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
-            // Size styles
-            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-            // Text styles
+            orientation === "horizontal" ? "h-full w-full" : "w-full px-3",
             location === "/profile"
               ? "text-primary"
               : "text-muted-foreground hover:text-primary transition-colors"

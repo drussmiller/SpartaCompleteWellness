@@ -15,9 +15,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       {/* Left sidebar - only visible on non-mobile devices */}
       {!isMobile && (
         <div className="fixed left-0 top-0 h-full w-16 bg-background z-40 border-r border-border">
-          <nav className="flex flex-col h-full">
-            <BottomNav orientation="vertical" />
-          </nav>
+          <BottomNav orientation="vertical" />
         </div>
       )}
 
