@@ -16,8 +16,6 @@ import NotificationsPage from "@/pages/notifications-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
 import { BottomNav } from "@/components/bottom-nav";
-// Placeholder -  needs actual implementation
-const VerticalNav = () => <div>Vertical Navigation</div>;
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -55,8 +53,6 @@ function MainContent() {
   return (
     <div className="min-h-screen">
       <>
-            {/* Add vertical nav that displays on all authenticated pages */}
-            {user && <VerticalNav />}
             <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/activity" component={ActivityPage} />
