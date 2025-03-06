@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -133,16 +134,18 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="w-full p-4 space-y-6 pb-32">
-        <PostView post={originalPost} />
-        <CommentList comments={comments} postId={parseInt(postId)} />
-        <CommentForm
-          onSubmit={async (content) => {
-            await createCommentMutation.mutateAsync(content);
-          }}
-          isSubmitting={createCommentMutation.isPending}
-        />
-      </div>
+      <ScrollArea className="h-[calc(100vh-4rem)]">
+        <div className="w-full p-4 space-y-6 pb-32">
+          <PostView post={originalPost} />
+          <CommentList comments={comments} postId={parseInt(postId)} />
+          <CommentForm
+            onSubmit={async (content) => {
+              await createCommentMutation.mutateAsync(content);
+            }}
+            isSubmitting={createCommentMutation.isPending}
+          />
+        </div>
+      </ScrollArea>
     </AppLayout>
   );
 }
