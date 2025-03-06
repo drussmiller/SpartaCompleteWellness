@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
 import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
@@ -41,6 +40,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const replyInputRef = useRef<HTMLInputElement>(null); 
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -251,6 +251,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const selectedCommentData = findSelectedComment(threadedComments);
 
+  useEffect(() => {
+    if (replyingTo && replyInputRef.current) {
+      replyInputRef.current.focus();
+    }
+  }, [replyingTo]); 
+
   return (
     <>
       <div className="space-y-4">
@@ -280,6 +286,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
+            inputRef={replyInputRef} 
           />
         </div>
       )}

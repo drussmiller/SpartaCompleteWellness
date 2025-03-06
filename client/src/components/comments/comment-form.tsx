@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, RefObject } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -9,6 +9,7 @@ interface CommentFormProps {
   placeholder?: string;
   defaultValue?: string;
   onCancel?: () => void;
+  inputRef?: RefObject<HTMLTextAreaElement>;
 }
 
 export function CommentForm({ 
@@ -16,7 +17,8 @@ export function CommentForm({
   isSubmitting, 
   placeholder = "Enter a comment...",
   defaultValue = "",
-  onCancel 
+  onCancel,
+  inputRef
 }: CommentFormProps) {
   const [content, setContent] = useState(defaultValue);
 
@@ -39,6 +41,7 @@ export function CommentForm({
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
         <Textarea
+          ref={inputRef} // Added ref prop here
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
