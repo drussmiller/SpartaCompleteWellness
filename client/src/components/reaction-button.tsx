@@ -150,24 +150,35 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     },
   });
 
-  const handleReaction = (type: ReactionType) => {
-    const userReactions = reactions.filter(r => r.userId === Number(localStorage.getItem('userId')));
-    const hasReactedWithSameType = userReactions.some(r => r.type === type);
+  const handleReaction = async (type: ReactionType) => {
+    if (!user?.id) return;
 
-    if (userReactions.length > 0 && !hasReactedWithSameType) {
-      userReactions.forEach(reaction => {
-        removeReactionMutation.mutate(reaction.type as ReactionType);
-      });
-    }
+    // Find user's existing reaction
+    const existingReaction = reactions.find(r => r.userId === user.id);
 
-    if (hasReactedWithSameType) {
-      removeReactionMutation.mutate(type);
-    } else {
-      addReactionMutation.mutate(type);
+    try {
+      // If user has an existing reaction and it's different from the new one
+      if (existingReaction) {
+        // Remove the existing reaction first
+        await removeReactionMutation.mutateAsync(existingReaction.type as ReactionType);
+
+        // If user clicked the same reaction type, don't add a new one
+        if (existingReaction.type !== type) {
+          await addReactionMutation.mutateAsync(type);
+        }
+      } else {
+        // No existing reaction, just add the new one
+        await addReactionMutation.mutateAsync(type);
+      }
+    } catch (error) {
+      console.error('Error handling reaction:', error);
     }
 
     setIsOpen(false);
   };
+
+  // Get the current user's reaction if any
+  const userReaction = reactions.find(r => r.userId === user?.id);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -175,12 +186,16 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
         <Button
           variant="ghost"
           size="sm"
-          className={variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""}
+          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color : ""}`}
         >
           {variant === 'icon' ? (
-            <ThumbsUp className="h-4 w-4" />
+            userReaction ? (
+              <span className="text-lg">{reactionEmojis[userReaction.type as ReactionType]?.emoji}</span>
+            ) : (
+              <ThumbsUp className="h-4 w-4" />
+            )
           ) : (
-            'Like'
+            userReaction ? reactionLabels[userReaction.type as ReactionType] : 'Like'
           )}
         </Button>
       </DropdownMenuTrigger>
