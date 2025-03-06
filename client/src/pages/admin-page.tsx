@@ -297,7 +297,7 @@ export default function AdminPage() {
   const isMobile = window.innerWidth <= 768; 
 
   return (
-    <AppLayout sidebarWidth="80px">
+    <AppLayout sidebarWidth="80">
       <div className="min-h-screen flex flex-col">
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
@@ -307,7 +307,7 @@ export default function AdminPage() {
         </div>
 
         {/* Main content */}
-        <div className={`flex-1 ${!isMobile ? "md:ml-[80px]" : ""}`}>
+        <div className="flex-1">
           <div className="container p-4 md:px-8">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>
