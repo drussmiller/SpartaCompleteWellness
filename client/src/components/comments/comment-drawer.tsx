@@ -26,10 +26,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   // Focus on the comment input when the drawer opens
   useEffect(() => {
     if (isOpen && commentInputRef.current) {
-      // Small delay to ensure the drawer is fully opened
-      setTimeout(() => {
-        commentInputRef.current?.focus();
-      }, 300);
+      // Try multiple times with increasing delays to ensure focus works
+      const attempts = [10, 100, 300, 500, 1000];
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          if (commentInputRef.current) {
+            commentInputRef.current.focus();
+            console.log(`Attempting to focus at ${delay}ms`);
+          }
+        }, delay);
+      });
     }
   }, [isOpen]);
 
