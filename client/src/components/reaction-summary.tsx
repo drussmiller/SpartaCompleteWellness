@@ -1,6 +1,7 @@
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+import { Reaction } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import type { Reaction } from "@shared/schema";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReactionSummaryProps {
   postId: number;
@@ -12,12 +13,11 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
     staleTime: 30000,
   });
 
-  const reactionCounts: Record<string, number> = {};
-  reactions.forEach(reaction => {
-    if (reaction.type) {
-      reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
-    }
-  });
+  // Count total reactions
+  const totalReactions = reactions.length;
+  
+  // Get unique reaction types
+  const uniqueReactionTypes = [...new Set(reactions.map(r => r.type))];
 
   const getEmojiForType = (type: string): string => {
     const allEmojis: Record<string, { emoji: string, color: string }> = {
@@ -36,31 +36,31 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
     return allEmojis[type]?.emoji || "👍";
   };
 
-  const sortedReactions = Object.entries(reactionCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  // Sort unique reactions (can sort by frequency if you have that data)
+  const sortedUniqueReactions = uniqueReactionTypes.slice(0, 5);
 
-  if (sortedReactions.length === 0) return null;
+  if (reactions.length === 0) return null;
+
+  // Get unique emoji reactions
+  const uniqueEmojis = [...new Set(sortedUniqueReactions.map(type => getEmojiForType(type)))];
 
   return (
-    <div className="flex items-center gap-1 text-sm">
+    <div className="flex items-center justify-between text-sm h-full">
       <TooltipProvider>
-        <div className="flex flex-wrap gap-1">
-          {sortedReactions.map(([type, count]) => (
-            <Tooltip key={type}>
+        <div className="flex flex-wrap gap-0 items-center h-full">
+          {uniqueEmojis.map((emoji, index) => (
+            <Tooltip key={index}>
               <TooltipTrigger asChild>
-                <div className="flex items-center bg-muted rounded-full px-2 py-0.5">
-                  <span>{getEmojiForType(type)}</span>
-                  <span className="ml-1 text-xs text-muted-foreground">{count}</span>
-                </div>
+                <span className="text-base -mr-0.5">{emoji}</span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{type.replace('_', ' ')}</p>
+                <p>{sortedUniqueReactions.find(type => getEmojiForType(type) === emoji)?.replace('_', ' ')}</p>
               </TooltipContent>
             </Tooltip>
           ))}
         </div>
       </TooltipProvider>
+      <div className="text-xs text-muted-foreground ml-2">{totalReactions}</div>
     </div>
   );
 }

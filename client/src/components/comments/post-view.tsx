@@ -18,33 +18,41 @@ export function PostView({ post }: PostViewProps) {
         <div className="flex flex-col">
           <div>
             <div className="flex justify-between">
-              <p className="font-medium">{post.author?.username}</p>
-              <p className="text-sm text-muted-foreground">
-                {new Date(post.createdAt!).toLocaleString()}
-              </p>
+              <div className="flex items-center">
+                <p className="font-medium">{post.author?.username}</p>
+              </div>
             </div>
+            <div className="mt-2 border-t border-gray-200"></div>
           </div>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
           {post.imageUrl && (
-            <img 
-              src={post.imageUrl} 
-              alt={post.type}
-              className="w-full h-auto object-contain rounded-md mt-4"
-            />
+            <div className="mt-2 mb-2">
+              <img
+                src={post.imageUrl}
+                alt={post.type}
+                className="w-full h-auto object-contain rounded-md"
+              />
+            </div>
           )}
-          <div className="mt-2">
-            <ReactionSummary postId={post.id} />
-          </div>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="border-t border-gray-200"></div>
+          <div className="flex items-center gap-2 py-0.5">
             <ReactionButton postId={post.id} />
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="gap-1.5"
             >
               <MessageCircle className="h-4 w-4" />
               {commentCount}
             </Button>
+          </div>
+
+          {/* Grey line separator */}
+          <div className="border-t border-gray-200 mt-0.5"></div>
+
+          {/* Reactions display */}
+          <div className="flex justify-between items-center">
+            <ReactionSummary postId={post.id} />
           </div>
         </div>
       </CardContent>

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -53,18 +54,30 @@ export default function CommentsPage() {
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: content.trim(),
-        parentId: parseInt(postId!),
-        points: 1
-      });
+    mutationFn: async (data: { content: string; postId: number }) => {
+      if (!user?.id) throw new Error("You must be logged in to comment");
 
-      if (!res.ok) {
-        throw new Error(await res.text());
+      try {
+        // Submit the comment
+        const response = await apiRequest("POST", `/api/posts/comments`, {
+          type: "comment",
+          content: data.content,
+          parentId: data.postId
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to create comment");
+        }
+
+        // Refresh the comments list
+        await queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+
+        return await response.json();
+      } catch (error) {
+        console.error("Error creating comment:", error);
+        throw error;
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
@@ -133,15 +146,22 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="w-full p-4 space-y-6 pb-32">
-        <PostView post={originalPost} />
-        <CommentList comments={comments} postId={parseInt(postId)} />
-        <CommentForm
-          onSubmit={async (content) => {
-            await createCommentMutation.mutateAsync(content);
-          }}
-          isSubmitting={createCommentMutation.isPending}
-        />
+      <div className="h-full w-full overflow-hidden">
+        <ScrollArea className="h-[calc(100vh-4rem)] w-full">
+          <div className="w-full p-4 space-y-6 pb-32">
+            <PostView post={originalPost} />
+            <CommentList comments={comments} postId={parseInt(postId)} />
+            <CommentForm
+              onSubmit={async (content) => {
+                await createCommentMutation.mutateAsync({
+                  content: content,
+                  postId: parseInt(postId)
+                });
+              }}
+              isSubmitting={createCommentMutation.isPending}
+            />
+          </div>
+        </ScrollArea>
       </div>
     </AppLayout>
   );

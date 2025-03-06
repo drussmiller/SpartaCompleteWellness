@@ -76,7 +76,7 @@ export default function HomePage() {
         {/* Team name */}
         <div className="px-6 py-3 border-t border-border">
           <h2 className="text-sm text-muted-foreground">
-            {teamInfo?.name || "Join a Team"}
+            {teamInfo?.name || ""}
           </h2>
           {!user?.teamId && (
             <p className="text-sm text-muted-foreground mt-1">

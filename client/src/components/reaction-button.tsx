@@ -112,72 +112,91 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     },
   });
 
-  const handleReaction = async (type: ReactionType) => {
-    if (!user?.id) return;
+  const handleReaction = async (type: ReactionType = 'like') => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to react to posts",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Find user's existing reaction
-    const existingReaction = reactions.find(r => r.userId === user.id);
+    // Find user's existing reaction of this type
+    const existingReaction = reactions.find(r => r.userId === user.id && r.type === type);
 
     try {
-      // If user has an existing reaction and it's different from the new one
       if (existingReaction) {
-        // Remove the existing reaction first
-        await removeReactionMutation.mutateAsync(existingReaction.type as ReactionType);
-
-        // If user clicked the same reaction type, don't add a new one
-        if (existingReaction.type !== type) {
-          await addReactionMutation.mutateAsync(type);
-        }
+        // If already reacted with this type, remove it
+        await removeReactionMutation.mutateAsync(type);
       } else {
-        // No existing reaction, just add the new one
+        // Not reacted yet with this type, add it
         await addReactionMutation.mutateAsync(type);
       }
     } catch (error) {
       console.error('Error handling reaction:', error);
     }
-
-    setIsOpen(false);
   };
 
   // Get the current user's reaction if any
   const userReaction = reactions.find(r => r.userId === user?.id);
+  
+  // Only include the specified reaction types
+  const allReactions: ReactionType[] = [
+    'like', 'love', 'laugh', 'wow', 'sad', 
+    'angry', 'fire', 'pray', 'muscle', 'thumbs_down'
+  ];
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
+    <DropdownMenu open={isOpen} onOpenChange={(open) => {
+      // Only allow opening via right-click
+      if (!open) {
+        setIsOpen(false);
+      }
+    }} modal={true}>
+      <DropdownMenuTrigger asChild onContextMenu={(e) => {
+        e.preventDefault();
+        setIsOpen(true);
+      }}>
         <Button
           variant="ghost"
           size="sm"
-          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color : ""}`}
+          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
+          onClick={(e) => {
+            e.preventDefault(); // Prevent default action
+            e.stopPropagation(); // Prevent event bubbling
+            
+            // Prevent dropdown from opening
+            setIsOpen(false);
+            
+            // Handle the like reaction directly
+            handleReaction('like');
+          }}
         >
           {variant === 'icon' ? (
-            userReaction ? (
-              <span className="text-lg">{reactionEmojis[userReaction.type as ReactionType]?.emoji}</span>
-            ) : (
-              <ThumbsUp className="h-4 w-4" />
-            )
+            <div className="flex items-center gap-1">
+              <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
+              <span>Like</span>
+            </div>
           ) : (
-            userReaction ? reactionLabels[userReaction.type as ReactionType] : 'Like'
+            <span>Like</span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="start" 
-        className="p-2 grid grid-cols-5 gap-1 w-60"
-        style={{ zIndex: 99999 }} // Ensure it appears above the slider
-      >
-        {Object.entries(reactionEmojis)
-          .filter(([type]) => ['like', 'love', 'laugh', 'wow', 'sad', 'angry', 'fire', 'pray', 'muscle', 'thumbs_down'].includes(type))
-          .map(([type, { emoji }]) => (
+      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top" sideOffset={5} style={{ zIndex: 9999 }}>
+        {allReactions.map((type) => {
+          const isActive = reactions.some(r => r.userId === user?.id && r.type === type);
+          return (
             <DropdownMenuItem
               key={type}
-              className="flex-col gap-1 px-2 py-2 cursor-pointer hover:bg-muted"
-              onClick={() => handleReaction(type as ReactionType)}
+              className={`flex flex-col items-center justify-center h-12 w-12 rounded hover:bg-muted ${isActive ? reactionEmojis[type]?.color || "" : ""}`}
+              onClick={() => handleReaction(type)}
             >
-              <span className="text-lg">{emoji}</span>
-              <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
+              <span className="text-lg">{reactionEmojis[type]?.emoji}</span>
+              <span className="text-xs capitalize">{reactionLabels[type] || type.replace('_', ' ')}</span>
             </DropdownMenuItem>
-        ))}
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );

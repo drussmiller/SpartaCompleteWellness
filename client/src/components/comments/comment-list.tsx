@@ -271,6 +271,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <Button
                 variant="ghost"
                 size="sm"
+                className="p-1 h-7"
                 className="text-sm text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
