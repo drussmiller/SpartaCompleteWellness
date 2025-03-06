@@ -276,9 +276,9 @@ export default function ActivityManagementPage() {
           <Button 
             variant="ghost" 
             onClick={() => window.history.back()} 
-            className="p-4 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
           >
-            <ChevronLeft className="h-7 w-7" />
+            <ChevronLeft className="h-8 w-8" />
             <span className="sr-only">Back</span>
           </Button>
           <h1 className="text-2xl font-bold">Activity Management</h1>
