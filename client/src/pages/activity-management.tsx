@@ -273,7 +273,7 @@ export default function ActivityManagementPage() {
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
         <div className="mb-6">
-          <Button variant="outline" onClick={() => window.history.back()} className="px-2">
+          <Button variant="ghost" onClick={() => window.history.back()} className="px-2">
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
