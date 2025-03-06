@@ -7,6 +7,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
 
 interface CommentDrawerProps {
   postId: number;
@@ -16,6 +19,19 @@ interface CommentDrawerProps {
 
 export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch team info
+  const { data: teamInfo } = useQuery({
+    queryKey: ["/api/teams", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return null;
+      const response = await apiRequest("GET", `/api/teams/${user.teamId}`);
+      if (!response.ok) throw new Error("Failed to fetch team info");
+      return response.json();
+    },
+    enabled: isOpen && !!user?.teamId
+  });
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -93,49 +109,81 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
           {/* Fixed header bar */}
-          <div className="h-14 border-b bg-background flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-[10000]">
-            <SheetClose className="p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+          <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
+            {/* Back button */}
+            <SheetClose className="absolute top-4 left-4 p-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <span className="text-2xl">&lt;</span>
               <span className="sr-only">Close</span>
             </SheetClose>
 
-            {/* Right side spacer */}
-            <div className="w-10"></div>
+            {/* User info with team name */}
+            {user && (
+              <div className="flex flex-col items-center justify-center h-full">
+                {/* Team name */}
+                <div className="text-sm text-muted-foreground mb-1">
+                  {teamInfo?.name || "No Team"}
+                </div>
+                {/* User info and time */}
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage
+                      src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
+                      alt={user.username}
+                    />
+                    <AvatarFallback>
+                      {user.username?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{user.username}</span>
+                  {originalPost?.createdAt && (
+                    <>
+                      <span className="text-muted-foreground">-</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Show loading state */}
-          {(isPostLoading || areCommentsLoading) && (
-            <div className="flex-1 flex items-center justify-center mt-14">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          )}
-
-          {/* Show errors if any */}
-          {(postError || commentsError) && (
-            <div className="flex-1 flex items-center justify-center text-destructive mt-14">
-              <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
-            </div>
-          )}
-
-          {/* Post and comments section with scrolling */}
-          {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
-            <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-6 mt-14">
-                {originalPost && <PostView post={originalPost} />}
-                <CommentList comments={comments} postId={postId} />
+          {/* Content area - adjust top margin to account for header */}
+          <div className="flex-1 overflow-hidden mt-20">
+            {/* Show loading state */}
+            {(isPostLoading || areCommentsLoading) && (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin" />
               </div>
+            )}
 
-              {/* Fixed comment form at the bottom */}
-              <div className="p-4 border-t bg-background">
-                <CommentForm
-                  onSubmit={async (content) => {
-                    await createCommentMutation.mutateAsync(content);
-                  }}
-                  isSubmitting={createCommentMutation.isPending}
-                />
+            {/* Show errors if any */}
+            {(postError || commentsError) && (
+              <div className="flex-1 flex items-center justify-center text-destructive">
+                <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
               </div>
-            </>
-          )}
+            )}
+
+            {/* Post and comments section with scrolling */}
+            {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {originalPost && <PostView post={originalPost} />}
+                  <CommentList comments={comments} postId={postId} />
+                </div>
+
+                {/* Fixed comment form at the bottom */}
+                <div className="p-4 border-t bg-background">
+                  <CommentForm
+                    onSubmit={async (content) => {
+                      await createCommentMutation.mutateAsync(content);
+                    }}
+                    isSubmitting={createCommentMutation.isPending}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>
