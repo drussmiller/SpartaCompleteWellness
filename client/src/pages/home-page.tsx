@@ -67,9 +67,20 @@ export default function HomePage() {
   return (
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        {/* Title bar with Add Post button */}
+        {/* Title bar with logo, title and Add Post button */}
         <div className="px-6 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-semibold">Sparta</h1>
+          <div className="flex items-center gap-4">
+            <img 
+              src="/Spartans_LOGO.png" 
+              alt="Sparta Logo" 
+              className="h-8 w-auto"
+              onError={(e) => {
+                console.error('Error loading logo:', e);
+                e.currentTarget.src = '/fallback-logo.png';
+              }}
+            />
+            <h1 className="text-xl font-bold">SPARTA COMPLETE WELLNESS</h1>
+          </div>
           <CreatePostDialog remaining={remaining} />
         </div>
 
