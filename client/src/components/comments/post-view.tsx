@@ -37,8 +37,8 @@ export function PostView({ post }: PostViewProps) {
               />
             </div>
           )}
-          <div className="mt-2 border-t border-gray-200"></div>
-          <div className="flex items-center gap-2 h-8">
+          <div className="mt-1 border-t border-gray-200"></div>
+          <div className="flex items-center gap-2 py-0">
             <ReactionButton postId={post.id} />
             <Button
               variant="ghost"
