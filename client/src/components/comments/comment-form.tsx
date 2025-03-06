@@ -1,4 +1,5 @@
-import { useState, KeyboardEvent, RefObject } from "react";
+
+import { useState, KeyboardEvent, RefObject, forwardRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -12,14 +13,14 @@ interface CommentFormProps {
   inputRef?: RefObject<HTMLTextAreaElement>;
 }
 
-export function CommentForm({ 
+export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
   onSubmit, 
   isSubmitting, 
   placeholder = "Enter a comment...",
   defaultValue = "",
   onCancel,
   inputRef
-}: CommentFormProps) {
+}: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
 
   const handleSubmit = async () => {
@@ -41,7 +42,7 @@ export function CommentForm({
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
         <Textarea
-          ref={inputRef} // Added ref prop here
+          ref={ref || inputRef} // Use either the forwarded ref or inputRef
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -80,4 +81,6 @@ export function CommentForm({
       )}
     </div>
   );
-}
+});
+
+CommentForm.displayName = "CommentForm";
