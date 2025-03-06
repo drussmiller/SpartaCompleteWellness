@@ -10,6 +10,7 @@ import { Loader2, ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
+import { useRef, useEffect } from "react";
 
 interface CommentDrawerProps {
   postId: number;
@@ -20,6 +21,17 @@ interface CommentDrawerProps {
 export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus on the comment input when the drawer opens
+  useEffect(() => {
+    if (isOpen && commentInputRef.current) {
+      // Small delay to ensure the drawer is fully opened
+      setTimeout(() => {
+        commentInputRef.current?.focus();
+      }, 300);
+    }
+  }, [isOpen]);
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -163,6 +175,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                       await createCommentMutation.mutateAsync(content);
                     }}
                     isSubmitting={createCommentMutation.isPending}
+                    ref={commentInputRef}
                   />
                 </div>
               </>
