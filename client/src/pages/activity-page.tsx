@@ -75,95 +75,102 @@ export default function ActivityPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
-      <ScrollArea className="h-[calc(100vh-80px)]">
-        <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4">
-            <h1 className="text-xl font-bold">Daily Activity</h1>
-          </div>
-        </header>
+    <div className="min-h-screen pb-16">
+      <div className="flex">
+        <div className="hidden md:block"> {/* Added vertical navigation bar */}
+          <BottomNav orientation="vertical" />
+        </div>
+        <div className="container p-4 flex-1">
+          <ScrollArea className="h-[calc(100vh-80px)]">
+            <header className="sticky top-0 z-50 bg-background border-b border-border">
+              <div className="p-4">
+                <h1 className="text-xl font-bold">Daily Activity</h1>
+              </div>
+            </header>
 
-        <main className="p-4 space-y-4">
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={navigatePrevDay}
-              disabled={selectedWeek === 1 && selectedDay === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="font-medium text-lg">
-              Week {selectedWeek} - Day {selectedDay}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={navigateNextDay}
-              disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+            <main className="p-4 space-y-4">
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={navigatePrevDay}
+                  disabled={selectedWeek === 1 && selectedDay === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-medium text-lg">
+                  Week {selectedWeek} - Day {selectedDay}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={navigateNextDay}
+                  disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
 
-          {currentActivity ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="prose max-w-none">
-                  {currentActivity.contentFields?.map((field, index) => (
-                    <div key={index} className="mb-8">
-                      {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
-                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
-                      )}
-                      <div 
-                        className="rich-text-content prose-sm" 
-                        dangerouslySetInnerHTML={{ 
-                          __html: field.content 
-                        }}
-                      />
+              {currentActivity ? (
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="prose max-w-none">
+                      {currentActivity.contentFields?.map((field, index) => (
+                        <div key={index} className="mb-8">
+                          {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
+                            <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                          )}
+                          <div 
+                            className="rich-text-content prose-sm" 
+                            dangerouslySetInnerHTML={{ 
+                              __html: field.content 
+                            }}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                No activity found for this day
-              </CardContent>
-            </Card>
-          )}
-        </main>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    No activity found for this day
+                  </CardContent>
+                </Card>
+              )}
+            </main>
 
-        <style>{`
-          .rich-text-content {
-            line-height: 1.6;
-          }
-          .rich-text-content p {
-            margin-bottom: 1em;
-          }
-          .rich-text-content h2 {
-            font-size: 1.5em;
-            font-weight: bold;
-            margin: 1em 0 0.5em;
-          }
-          .video-wrapper {
-            position: relative;
-            padding-bottom: 56.25%;
-            height: 0;
-            margin: 1rem 0;
-            overflow: hidden;
-          }
-          .video-wrapper iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-          }
-        `}</style>
-      </ScrollArea>
+            <style>{`
+              .rich-text-content {
+                line-height: 1.6;
+              }
+              .rich-text-content p {
+                margin-bottom: 1em;
+              }
+              .rich-text-content h2 {
+                font-size: 1.5em;
+                font-weight: bold;
+                margin: 1em 0 0.5em;
+              }
+              .video-wrapper {
+                position: relative;
+                padding-bottom: 56.25%;
+                height: 0;
+                margin: 1rem 0;
+                overflow: hidden;
+              }
+              .video-wrapper iframe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: 0;
+              }
+            `}</style>
+          </ScrollArea>
+        </div>
+      </div>
       <BottomNav />
     </div>
   );

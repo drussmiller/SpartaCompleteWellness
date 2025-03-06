@@ -12,7 +12,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { connectionStatus } = useNotifications(); // Use the hook for WebSocket management
+  const { connectionStatus } = useNotifications();
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -59,62 +59,65 @@ export default function NotificationsPage() {
   });
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
+    <div className="min-h-screen pb-20 lg:pb-0 relative">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </header>
-
-      <main className="p-4 space-y-4">
-        {notifications?.length === 0 ? (
-          <div className="text-center py-8">
-            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-lg font-medium">No new notifications</p>
-          </div>
-        ) : (
-          notifications?.map((notification) => (
-            <Card key={notification.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-medium">{notification.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {!notification.read && (
+      <div className="flex">
+        <div className="hidden md:block"> {/* Added vertical navigation */}
+          <BottomNav orientation="vertical" />
+        </div>
+        <main className="p-4 space-y-4 flex-1"> {/* Added flex-1 to allow main content to expand */}
+          {notifications?.length === 0 ? (
+            <div className="text-center py-8">
+              <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
+              <p className="mt-4 text-lg font-medium">No new notifications</p>
+            </div>
+          ) : (
+            notifications?.map((notification) => (
+              <Card key={notification.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-medium">{notification.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {!notification.read && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => markAsReadMutation.mutate(notification.id)}
+                          disabled={markAsReadMutation.isPending}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => markAsReadMutation.mutate(notification.id)}
-                        disabled={markAsReadMutation.isPending}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => deleteNotificationMutation.mutate(notification.id)}
+                        disabled={deleteNotificationMutation.isPending}
                       >
-                        <Check className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => deleteNotificationMutation.mutate(notification.id)}
-                      disabled={deleteNotificationMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </main>
-
-      <BottomNav />
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </main>
+      </div>
+      <BottomNav /> {/* existing BottomNav remains */}
     </div>
   );
 }
