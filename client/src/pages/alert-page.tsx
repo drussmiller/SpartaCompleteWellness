@@ -18,8 +18,8 @@ export function AlertPage() {
 
       {/* Main content */}
       <main className={`flex-1 ${!isMobile ? "ml-16" : ""} pt-4`}>
-        <div className="container p-4">
-          <header className="mb-6 pt-4">
+        <div className="container p-4 md:ml-4">
+          <header className="mb-6 pt-4 md:pt-6">
             <h1 className="text-2xl font-bold">Alerts</h1>
           </header>
           
