@@ -40,26 +40,35 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const replyInputRef = useRef<HTMLTextAreaElement>(null); 
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Find the comment we're replying to
+  const replyingToComment = comments.find(c => c.id === replyingTo);
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: content.trim(),
-        parentId: parseInt(replyingTo!.toString()),
-        points: 1,
-        depth: (replyingToComment?.depth || 0) + 1
-      });
+      if (!replyingTo) throw new Error("No comment selected to reply to");
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Failed to post reply");
+      try {
+        const res = await apiRequest("POST", "/api/posts", {
+          type: "comment",
+          content: content.trim(),
+          parentId: replyingTo,
+          points: 1,
+          depth: (replyingToComment?.depth ?? 0) + 1
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || "Failed to post reply");
+        }
+        return res.json();
+      } catch (error) {
+        console.error("Error creating reply:", error);
+        throw error;
       }
-      return res.json();
     },
     onSuccess: () => {
-      // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
@@ -79,7 +88,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const editCommentMutation = useMutation({
     mutationFn: async ({ id, content }: { id: number; content: string }) => {
       const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        data: JSON.stringify({ content: content.trim() })
+        content: content.trim()
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -131,7 +140,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   };
 
   // Find the comment we're replying to
-  const replyingToComment = comments.find(c => c.id === replyingTo);
+  //const replyingToComment = comments.find(c => c.id === replyingTo);
 
   // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
@@ -288,7 +297,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
-            inputRef={replyInputRef} 
+            inputRef={replyInputRef}
           />
         </div>
       )}
