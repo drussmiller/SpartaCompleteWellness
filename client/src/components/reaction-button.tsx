@@ -148,7 +148,12 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   ];
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={(open) => {
+      // Only allow opening via right-click
+      if (!open) {
+        setIsOpen(false);
+      }
+    }}>
       <DropdownMenuTrigger asChild onContextMenu={(e) => {
         e.preventDefault();
         setIsOpen(true);
@@ -161,16 +166,11 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
             e.preventDefault(); // Prevent default action
             e.stopPropagation(); // Prevent event bubbling
             
-            // Close dropdown if it's open
-            if (isOpen) {
-              setIsOpen(false);
-            }
+            // Prevent dropdown from opening
+            setIsOpen(false);
             
             // Handle the like reaction directly
             handleReaction('like');
-            
-            // Return false to prevent dropdown from opening
-            return false;
           }}
         >
           {variant === 'icon' ? (
