@@ -23,7 +23,10 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const internalRef = useRef<HTMLTextAreaElement>(null);
-
+  
+  // Ensure container clicks don't take focus away from textarea
+  const containerRef = useRef<HTMLDivElement>(null);
+  
   // This will help us expose the textarea element to both refs
   const setRefs = (element: HTMLTextAreaElement | null) => {
     // Update both refs
@@ -38,6 +41,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       inputRef.current = element;
     }
     internalRef.current = element;
+  };
+  
+  // Function to ensure textarea has focus
+  const ensureTextareaFocus = () => {
+    if (internalRef.current) {
+      internalRef.current.focus();
+      console.log("Refocusing textarea");
+    }
   };
 
   // Focus using the internal ref when component mounts
@@ -66,7 +77,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div 
+      className="flex flex-col gap-2" 
+      ref={containerRef}
+      onClick={(e) => {
+        // When clicking anywhere in the form container, focus the textarea
+        ensureTextareaFocus();
+        // Don't propagate the click event to parent elements
+        e.stopPropagation();
+      }}
+    >
       <div className="flex gap-2">
         <Textarea
           ref={setRefs} // Use our custom ref setter

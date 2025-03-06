@@ -131,6 +131,22 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           e.preventDefault();
           // Do nothing here - we'll handle it in the useEffect
         }}
+        onMouseDown={(e) => {
+          // Prevent losing focus when clicking outside the textarea but inside the drawer
+          if (e.target instanceof HTMLTextAreaElement) {
+            // Allow normal behavior when clicking the textarea itself
+            return;
+          }
+          // For all other elements, prevent default behavior that might steal focus
+          e.preventDefault();
+          // Focus the textarea on next tick
+          setTimeout(() => {
+            const textarea = document.getElementById('comment-textarea');
+            if (textarea) {
+              (textarea as HTMLTextAreaElement).focus();
+            }
+          }, 0);
+        }}
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
           {/* Fixed header bar */}
@@ -203,24 +219,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                     ref={commentInputRef}
                     inputRef={commentInputRef}
                   />
-                  {/* Invisible button that helps with focusing the textarea */}
-                  <button 
-                    className="sr-only"
-                    ref={el => {
-                      if (el && isOpen) {
-                        // This will try to focus the textarea directly when this element mounts
-                        setTimeout(() => {
-                          const textarea = document.getElementById('comment-textarea');
-                          if (textarea) {
-                            (textarea as HTMLTextAreaElement).focus();
-                            console.log("Button-triggered focus attempt");
-                          }
-                        }, 100);
-                      }
-                    }}
-                  >
-                    Focus helper
-                  </button>
+                  {/* No longer need the invisible helper button */}
                 </div>
               </>
             )}
