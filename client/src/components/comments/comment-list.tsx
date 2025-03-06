@@ -40,8 +40,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const replyInputRef = useRef<HTMLInputElement>(null); // Add ref for reply input
-
+  const replyInputRef = useRef<HTMLInputElement>(null); 
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -256,7 +255,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
     if (replyingTo && replyInputRef.current) {
       replyInputRef.current.focus();
     }
-  }, [replyingTo]); // Focus input when replyingTo changes
+  }, [replyingTo]); 
 
   return (
     <>
@@ -287,7 +286,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
-            inputRef={replyInputRef} // Attach ref to the input
+            inputRef={replyInputRef} 
           />
         </div>
       )}
