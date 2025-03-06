@@ -280,7 +280,7 @@ export default function AdminPage() {
         <header className="sticky top-0 z-10 bg-background pt-4 md:pt-8 px-4 md:px-8 mb-4">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
         </header>
-        <div className="container p-4 md:px-8">
+        <div className="container p-4 md:px-8 md:ml-16"> {/* Added margin for non-mobile */}
           <div className="flex gap-2 mt-4 justify-center">
             <Dialog>
               <DialogTrigger asChild>
