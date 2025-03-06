@@ -238,42 +238,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-      logger.info("Received post creation request:", req.body);
+      logger.info("Received post creation request with body:", req.body);
 
-      // Handle direct JSON data (for comments/replies)
+      // Handle both direct JSON data and form data
       let postData = req.body;
 
       // If data is sent as form data (for posts with images)
-      if (req.body.data) {
+      if (typeof postData.data === 'string') {
         try {
-          postData = JSON.parse(req.body.data);
+          postData = JSON.parse(postData.data);
         } catch (parseError) {
           logger.error("Error parsing post data:", parseError);
           return res.status(400).json({ message: "Invalid post data format" });
         }
       }
 
-      // Validate the post data using Zod schema
-      const parsedData = insertPostSchema.safeParse(postData);
-      if (!parsedData.success) {
-        logger.error('Validation errors:', parsedData.error.errors);
-        return res.status(400).json({
-          message: "Invalid post data",
-          errors: parsedData.error.errors
-        });
+      // Ensure required fields are present
+      if (!postData.type || !postData.content) {
+        return res.status(400).json({ message: "Missing required fields" });
       }
+
+      logger.info("Creating post with data:", postData);
 
       // Create the post/comment
       const post = await storage.createPost({
         userId: req.user.id,
         type: postData.type,
         content: postData.content,
-        points: postData.points || 1,
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         parentId: postData.parentId || null,
-        depth: postData.depth || 0
+        depth: postData.depth || 0,
+        points: 1,
+        imageUrl: req.file ? `/uploads/${req.file.filename}` : null
       });
 
+      logger.info("Post created successfully:", post);
       res.status(201).json(post);
     } catch (error) {
       logger.error("Error creating post:", error);

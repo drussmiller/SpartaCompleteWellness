@@ -51,22 +51,18 @@ export function CommentList({ comments, postId }: CommentListProps) {
       if (!user?.id) throw new Error("You must be logged in to reply");
 
       try {
-        console.log('Sending reply:', {
+        console.log('Attempting to create reply:', {
           type: "comment",
           content: content.trim(),
           parentId: replyingTo,
-          points: 1,
           depth: (replyingToComment?.depth ?? 0) + 1
         });
 
         const res = await apiRequest("POST", "/api/posts", {
-          data: JSON.stringify({
-            type: "comment",
-            content: content.trim(),
-            parentId: replyingTo,
-            points: 1,
-            depth: (replyingToComment?.depth ?? 0) + 1
-          })
+          type: "comment",
+          content: content.trim(),
+          parentId: replyingTo,
+          depth: (replyingToComment?.depth ?? 0) + 1
         });
 
         if (!res.ok) {
@@ -81,7 +77,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
           throw new Error(errorMessage);
         }
 
-        return res.json();
+        const data = await res.json();
+        console.log('Reply created successfully:', data);
+        return data;
       } catch (error) {
         console.error("Error creating reply:", error);
         throw error instanceof Error ? error : new Error("Failed to post reply");
