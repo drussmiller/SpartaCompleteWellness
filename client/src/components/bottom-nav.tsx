@@ -23,9 +23,9 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       // Base styles
       "bg-background z-[100] shadow-lg",
       // Mobile styles (bottom nav)
-      orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border",
+      orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
       // Desktop styles (side nav)
-      orientation === "vertical" && "w-full"
+      orientation === "vertical" && "w-full hidden md:block"
     )}>
       <div className={cn(
         // Container styles
