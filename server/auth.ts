@@ -76,7 +76,23 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         console.log('Attempting login for:', username);
-        const user = await storage.getUserByUsername(username);
+
+        // Special handling for admin user
+        if (username.toLowerCase() === 'admin') {
+          const adminUser = await storage.getUserByUsername('admin');
+          if (adminUser && await comparePasswords(password, adminUser.password)) {
+            return done(null, adminUser);
+          }
+          return done(null, false);
+        }
+
+        // Try to find user by username (case insensitive)
+        let user = await storage.getUserByUsername(username);
+
+        // If not found by username, try email (case insensitive)
+        if (!user) {
+          user = await storage.getUserByEmail(username);
+        }
 
         if (!user) {
           console.log('User not found:', username);
@@ -121,11 +137,19 @@ export function setupAuth(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log('Registration attempt:', req.body.username);
-      const existingUser = await storage.getUserByUsername(req.body.username);
 
-      if (existingUser) {
+      // Check for existing username (case insensitive)
+      const existingUsername = await storage.getUserByUsername(req.body.username);
+      if (existingUsername) {
         console.log('Username already exists:', req.body.username);
         return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Check for existing email (case insensitive)
+      const existingEmail = await storage.getUserByEmail(req.body.email);
+      if (existingEmail) {
+        console.log('Email already exists:', req.body.email);
+        return res.status(400).json({ message: "Email already exists" });
       }
 
       const hashedPassword = await hashPassword(req.body.password);
@@ -138,17 +162,16 @@ export function setupAuth(app: Express) {
 
       // Notify all admins about the new user
       try {
-        // Get all admin users
         const admins = await storage.getAdminUsers();
         console.log(`Found ${admins.length} admins to notify about new user`);
 
-        // Create a notification for each admin
         const notificationPromises = admins.map(admin =>
           storage.createNotification({
             userId: admin.id,
             title: "New User Registration",
             message: `${user.preferredName || user.username} has joined the platform.`,
-            read: false
+            read: false,
+            createdAt: new Date()
           })
         );
 
@@ -158,11 +181,9 @@ export function setupAuth(app: Express) {
           })
           .catch(error => {
             console.error('Error sending some admin notifications:', error);
-            // Continue with registration even if some notifications fail
           });
       } catch (notifyError) {
         console.error('Failed to notify admins about new user:', notifyError);
-        // Continue with registration even if notifications fail
       }
 
       req.login(user, (err) => {
@@ -187,7 +208,7 @@ export function setupAuth(app: Express) {
       }
       if (!user) {
         console.log('Login failed for:', req.body.username);
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ message: "Invalid username/email or password" });
       }
       req.login(user, (err) => {
         if (err) {
@@ -198,17 +219,6 @@ export function setupAuth(app: Express) {
         res.json(user);
       });
     })(req, res, next);
-  });
-
-  app.get("/api/user", (req, res) => {
-    console.log('GET /api/user - Session:', req.sessionID);
-    console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
-    if (!req.isAuthenticated()) {
-      console.log('Unauthenticated request to /api/user');
-      return res.sendStatus(401);
-    }
-    console.log('Authenticated user:', req.user?.id);
-    res.json(req.user);
   });
 
   app.post("/api/logout", (req, res, next) => {
@@ -222,5 +232,16 @@ export function setupAuth(app: Express) {
       console.log('Logout successful for user:', userId);
       res.sendStatus(200);
     });
+  });
+
+  app.get("/api/user", (req, res) => {
+    console.log('GET /api/user - Session:', req.sessionID);
+    console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
+    if (!req.isAuthenticated()) {
+      console.log('Unauthenticated request to /api/user');
+      return res.sendStatus(401);
+    }
+    console.log('Authenticated user:', req.user?.id);
+    res.json(req.user);
   });
 }
