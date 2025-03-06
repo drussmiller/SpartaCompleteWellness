@@ -47,11 +47,11 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
   return (
     <div className="flex items-center justify-between text-sm h-full">
       <TooltipProvider>
-        <div className="flex flex-wrap gap-1 items-center h-full">
+        <div className="flex flex-wrap gap-0 items-center h-full">
           {uniqueEmojis.map((emoji, index) => (
             <Tooltip key={index}>
               <TooltipTrigger asChild>
-                <span className="text-base">{emoji}</span>
+                <span className="text-base -mr-0.5">{emoji}</span>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{sortedUniqueReactions.find(type => getEmojiForType(type) === emoji)?.replace('_', ' ')}</p>
