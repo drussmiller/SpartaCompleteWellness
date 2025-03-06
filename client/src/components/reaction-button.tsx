@@ -140,8 +140,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
 
   // Get the current user's reaction if any
   const userReaction = reactions.find(r => r.userId === user?.id);
-  const [isOpen, setIsOpen] = useState(false);
-
+  
   // Create a list of common reactions for the dropdown 
   // Use the existing reaction types from the schema
   const commonReactions: ReactionType[] = [
