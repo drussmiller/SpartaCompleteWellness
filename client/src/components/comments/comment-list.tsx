@@ -58,6 +58,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
           depth: (replyingToComment?.depth ?? 0) + 1
         });
 
+        // Send comment data directly, not wrapped in data property
         const res = await apiRequest("POST", "/api/posts", {
           type: "comment",
           content: content.trim(),
@@ -105,20 +106,47 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const editCommentMutation = useMutation({
     mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        content: content.trim()
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      if (!content.trim()) {
+        throw new Error("Comment content cannot be empty");
+      }
+
+      try {
+        console.log('Attempting to edit comment:', { id, content: content.trim() });
+        const res = await apiRequest("PATCH", `/api/posts/${id}`, {
+          content: content.trim()
+        });
+
+        if (!res.ok) {
+          let errorMessage = "Failed to update comment";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await res.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const data = await res.json();
+        console.log('Comment updated successfully:', data);
+        return data;
+      } catch (error) {
+        console.error("Error updating comment:", error);
+        throw error instanceof Error ? error : new Error("Failed to update comment");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
       toast({
         description: "Comment updated successfully",
       });
       setEditingComment(null);
     },
     onError: (error: Error) => {
+      console.error("Edit mutation error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to update comment",
