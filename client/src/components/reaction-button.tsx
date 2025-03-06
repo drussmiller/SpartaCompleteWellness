@@ -153,7 +153,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       if (!open) {
         setIsOpen(false);
       }
-    }}>
+    }} modal={true}>
       <DropdownMenuTrigger asChild onContextMenu={(e) => {
         e.preventDefault();
         setIsOpen(true);
@@ -183,7 +183,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1">
+      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top">
         {allReactions.map((type) => {
           const isActive = reactions.some(r => r.userId === user?.id && r.type === type);
           return (
