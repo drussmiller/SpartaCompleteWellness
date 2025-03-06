@@ -65,24 +65,27 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout title="Home">
+    <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        {/* Team name header */}
-        <div className="px-4 py-3 border-b border-border">
-          <h1 className="text-lg font-semibold text-center">
+        {/* Title bar with Add Post button */}
+        <div className="px-6 py-4 flex justify-between items-center">
+          <h1 className="text-xl font-semibold">Sparta</h1>
+          <CreatePostDialog remaining={remaining} />
+        </div>
+
+        {/* Team name */}
+        <div className="px-6 py-3 border-t border-border">
+          <h2 className="text-sm text-muted-foreground">
             {teamInfo?.name || "Join a Team"}
-          </h1>
+          </h2>
           {!user?.teamId && (
-            <p className="text-sm text-muted-foreground text-center mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Join a team to start your journey
             </p>
           )}
         </div>
-        {/* Create post button */}
-        <div className="p-4 flex justify-end">
-          <CreatePostDialog remaining={remaining} />
-        </div>
       </div>
+
       <main className="p-4 max-w-2xl mx-auto">
         <div className="space-y-4">
           {posts?.map((post) => (
