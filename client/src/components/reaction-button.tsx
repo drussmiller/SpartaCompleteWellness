@@ -141,10 +141,12 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   // Get the current user's reaction if any
   const userReaction = reactions.find(r => r.userId === user?.id);
   
-  // Create a list of common reactions for the dropdown 
-  // Use the existing reaction types from the schema
-  const commonReactions: ReactionType[] = [
-    'like', 'heart', 'smile', 'celebrate', 'support'
+  // Use all available reaction types from the reactionEmojis object
+  const allReactions: ReactionType[] = [
+    'like', 'love', 'laugh', 'wow', 'sad', 
+    'angry', 'fire', 'pray', 'muscle', 'thumbs_down',
+    'weight', 'angel', 'dove', 'church', 'bible',
+    'cross', 'faith', 'idea', 'rocket', 'sparkles'
   ];
 
   return (
@@ -169,17 +171,17 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56 grid grid-cols-5 p-2 gap-1">
-        {commonReactions.map((type) => {
+      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1">
+        {allReactions.map((type) => {
           const isActive = reactions.some(r => r.userId === user?.id && r.type === type);
           return (
             <DropdownMenuItem
               key={type}
-              className={`flex flex-col items-center justify-center h-12 w-10 rounded hover:bg-muted ${isActive ? reactionEmojis[type]?.color || "" : ""}`}
+              className={`flex flex-col items-center justify-center h-12 w-12 rounded hover:bg-muted ${isActive ? reactionEmojis[type]?.color || "" : ""}`}
               onClick={() => handleReaction(type)}
             >
               <span className="text-lg">{reactionEmojis[type]?.emoji}</span>
-              <span className="text-xs">{reactionLabels[type]}</span>
+              <span className="text-xs capitalize">{reactionLabels[type] || type.replace('_', ' ')}</span>
             </DropdownMenuItem>
           );
         })}
