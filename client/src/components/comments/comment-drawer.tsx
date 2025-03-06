@@ -22,19 +22,32 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
-
+  const drawerRef = useRef<HTMLDivElement>(null);
+  
   // Focus on the comment input when the drawer opens
   useEffect(() => {
-    if (isOpen && commentInputRef.current) {
-      // Try multiple times with increasing delays to ensure focus works
-      const attempts = [10, 100, 300, 500, 1000];
-      attempts.forEach(delay => {
+    if (isOpen) {
+      // Try multiple approaches to ensure focus
+      const focusTextarea = () => {
+        // Method 1: Direct focus using our ref
+        if (commentInputRef.current) {
+          commentInputRef.current.focus();
+          console.log("Direct focus attempt");
+        }
+        
+        // Method 2: Find by query selector if ref didn't work
         setTimeout(() => {
-          if (commentInputRef.current) {
-            commentInputRef.current.focus();
-            console.log(`Attempting to focus at ${delay}ms`);
+          const textarea = document.querySelector('.comment-drawer textarea') as HTMLTextAreaElement;
+          if (textarea) {
+            textarea.focus();
+            console.log("Query selector focus attempt");
           }
-        }, delay);
+        }, 200);
+      };
+      
+      // Try focusing multiple times with increasing delays
+      [50, 150, 300, 600, 1000].forEach(delay => {
+        setTimeout(focusTextarea, delay);
       });
     }
   }, [isOpen]);
@@ -110,17 +123,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent 
         side="right" 
-        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full"
+        ref={drawerRef}
+        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full comment-drawer"
         style={{ width: '100vw', maxWidth: '100vw' }}
         onOpenAutoFocus={(e) => {
           // Prevent default autofocus and handle it ourselves
           e.preventDefault();
-          setTimeout(() => {
-            if (commentInputRef.current) {
-              commentInputRef.current.focus();
-              console.log("Focus on transition end");
-            }
-          }, 100);
+          // Do nothing here - we'll handle it in the useEffect
         }}
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
@@ -192,7 +201,26 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                     }}
                     isSubmitting={createCommentMutation.isPending}
                     ref={commentInputRef}
+                    inputRef={commentInputRef}
                   />
+                  {/* Invisible button that helps with focusing the textarea */}
+                  <button 
+                    className="sr-only"
+                    ref={el => {
+                      if (el && isOpen) {
+                        // This will try to focus the textarea directly when this element mounts
+                        setTimeout(() => {
+                          const textarea = document.getElementById('comment-textarea');
+                          if (textarea) {
+                            (textarea as HTMLTextAreaElement).focus();
+                            console.log("Button-triggered focus attempt");
+                          }
+                        }, 100);
+                      }
+                    }}
+                  >
+                    Focus helper
+                  </button>
                 </div>
               </>
             )}

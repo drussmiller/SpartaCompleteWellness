@@ -76,6 +76,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           placeholder={placeholder}
           className="resize-none bg-gray-100"
           rows={1}
+          id="comment-textarea"
           style={{ height: '38px', minHeight: '38px', maxHeight: '38px' }}
           disabled={isSubmitting}
           autoFocus={true} // Keep autoFocus attribute
