@@ -75,7 +75,7 @@ export default function ActivityPage() {
   };
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="min-h-screen relative pb-20 md:pb-0 md:ml-20">
       <div className="flex">
         <div className="hidden md:block"> {/* Added vertical navigation bar */}
           <BottomNav orientation="vertical" />

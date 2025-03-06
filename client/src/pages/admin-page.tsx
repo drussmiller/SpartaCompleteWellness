@@ -270,19 +270,12 @@ export default function AdminPage() {
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
-      <ScrollArea className="h-[calc(100vh-80px)]">
-        <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4">
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          </div>
-        </header>
-
-        <main className="p-4 flex">
-          <div className="hidden md:block w-64">
-            <BottomNav orientation="vertical" />
-          </div>
-          <div className="flex-1">
+    <div className="min-h-screen pb-20 lg:pb-0 relative">
+      <div className="flex">
+        <div className="w-64 bg-gray-100 overflow-y-auto"> {/* Sidebar - added overflow-y-auto */}
+          <BottomNav orientation="vertical" />
+        </div>
+        <div className="flex-1 p-4">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>
                 <DialogTrigger asChild>
@@ -615,9 +608,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        </main>
-      </ScrollArea>
-
+      </div>
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
         <DialogContent>
           <DialogHeader>
