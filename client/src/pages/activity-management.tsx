@@ -272,14 +272,16 @@ export default function ActivityManagementPage() {
   return (
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => window.history.back()} className="px-2">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => window.history.back()} 
+              className="p-1 mr-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Button>
             <CardTitle>Activity Management</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
