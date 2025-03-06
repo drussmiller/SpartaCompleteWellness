@@ -112,26 +112,25 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     },
   });
 
-  const handleReaction = async () => {
+  const handleReaction = async (type: ReactionType = 'like') => {
     if (!user?.id) {
       toast({
         title: "Authentication required",
-        description: "Please sign in to like posts",
+        description: "Please sign in to react to posts",
         variant: "destructive",
       });
       return;
     }
 
-    const type = 'like' as ReactionType;
-    // Find user's existing reaction
-    const existingReaction = reactions.find(r => r.userId === user.id);
+    // Find user's existing reaction of this type
+    const existingReaction = reactions.find(r => r.userId === user.id && r.type === type);
 
     try {
       if (existingReaction) {
-        // If already liked, unlike it
-        await removeReactionMutation.mutateAsync(existingReaction.type as ReactionType);
+        // If already reacted with this type, remove it
+        await removeReactionMutation.mutateAsync(type);
       } else {
-        // Not liked yet, add like
+        // Not reacted yet with this type, add it
         await addReactionMutation.mutateAsync(type);
       }
     } catch (error) {
@@ -141,22 +140,51 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
 
   // Get the current user's reaction if any
   const userReaction = reactions.find(r => r.userId === user?.id);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Create a list of common reactions for the dropdown 
+  // Use the existing reaction types from the schema
+  const commonReactions: ReactionType[] = [
+    'like', 'heart', 'smile', 'celebrate', 'support'
+  ];
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : ""} p-0 h-6`}
-      onClick={() => handleReaction('like' as ReactionType)}
-    >
-      {variant === 'icon' ? (
-        <div className="flex items-center gap-1 text-black">
-          <ThumbsUp className="h-4 w-4 text-black" />
-          <span className="text-black">Like</span>
-        </div>
-      ) : (
-        userReaction ? 'Liked' : 'Like'
-      )}
-    </Button>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild onContextMenu={(e) => {
+        e.preventDefault();
+        setIsOpen(true);
+      }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : ""} p-0 h-6`}
+          onClick={() => handleReaction('like')}
+        >
+          {variant === 'icon' ? (
+            <div className="flex items-center gap-1">
+              <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : ""}`} />
+              <span>Like</span>
+            </div>
+          ) : (
+            <span>Like</span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56 grid grid-cols-5 p-2 gap-1">
+        {commonReactions.map((type) => {
+          const isActive = reactions.some(r => r.userId === user?.id && r.type === type);
+          return (
+            <DropdownMenuItem
+              key={type}
+              className={`flex flex-col items-center justify-center h-12 w-10 rounded hover:bg-muted ${isActive ? reactionEmojis[type]?.color || "" : ""}`}
+              onClick={() => handleReaction(type)}
+            >
+              <span className="text-lg">{reactionEmojis[type]?.emoji}</span>
+              <span className="text-xs">{reactionLabels[type]}</span>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
