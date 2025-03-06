@@ -26,8 +26,8 @@ interface CommentListProps {
   postId: number;
 }
 
-type CommentWithReplies = Post & { 
-  author: User; 
+type CommentWithReplies = Post & {
+  author: User;
   replies?: CommentWithReplies[];
 };
 
@@ -48,6 +48,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!replyingTo) throw new Error("No comment selected to reply to");
+      if (!user) throw new Error("You must be logged in to reply");
 
       try {
         const res = await apiRequest("POST", "/api/posts", {
@@ -59,13 +60,14 @@ export function CommentList({ comments, postId }: CommentListProps) {
         });
 
         if (!res.ok) {
-          const errorText = await res.text();
+          const errorText = await res.text().catch(() => null);
           throw new Error(errorText || "Failed to post reply");
         }
+
         return res.json();
       } catch (error) {
         console.error("Error creating reply:", error);
-        throw error;
+        throw error instanceof Error ? error : new Error("Failed to post reply");
       }
     },
     onSuccess: () => {
@@ -78,6 +80,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
       setReplyingTo(null);
     },
     onError: (error: Error) => {
+      console.error("Reply mutation error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post reply",
@@ -139,9 +142,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
     });
   };
 
-  // Find the comment we're replying to
-  //const replyingToComment = comments.find(c => c.id === replyingTo);
-
   // Organize comments into threads
   const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
     if (comment.parentId === postId) {
@@ -191,7 +191,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
           <Avatar>
-            <AvatarImage 
+            <AvatarImage
               src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
             />
             <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
@@ -221,8 +221,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <p className="text-sm text-muted-foreground">
                 {formatTimeAgo(comment.createdAt || new Date())}
               </p>
-              <ReactionButton 
-                postId={comment.id} 
+              <ReactionButton
+                postId={comment.id}
                 variant="text"
               />
               <Button
@@ -266,7 +266,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
     if (replyingTo && replyInputRef.current) {
       replyInputRef.current.focus();
     }
-  }, [replyingTo]); 
+  }, [replyingTo]);
 
   return (
     <>
