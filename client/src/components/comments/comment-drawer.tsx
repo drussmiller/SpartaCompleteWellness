@@ -108,7 +108,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             {user && (
               <div className="flex flex-col items-center justify-center h-full">
                 {/* Team name */}
-                <div className="text-base font-medium text-muted-foreground mb-1">
+                <div className="text-xl font-semibold text-black mb-1">
                   iron-sharpens-iron
                 </div>
                 {/* User info and time */}
