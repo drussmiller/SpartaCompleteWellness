@@ -396,10 +396,13 @@ export const storage = {
       const [comment] = await db
         .insert(posts)
         .values({
-          ...data,
+          userId: data.userId,
           type: "comment",
-          createdAt: new Date(),
-          points: data.points || 1
+          content: data.content,
+          parentId: data.parentId,
+          depth: data.depth || 0,
+          points: data.points || 1,
+          createdAt: new Date()
         })
         .returning();
       logger.debug("Comment created successfully:", comment.id);
