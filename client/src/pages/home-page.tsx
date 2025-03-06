@@ -70,7 +70,7 @@ export default function HomePage() {
         {/* Team name header */}
         <div className="px-4 py-3 border-b border-border">
           <h1 className="text-lg font-semibold text-center">
-            {teamInfo?.name || "Welcome to Sparta"}
+            {teamInfo?.name || "Join a Team"}
           </h1>
           {!user?.teamId && (
             <p className="text-sm text-muted-foreground text-center mt-1">

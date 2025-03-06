@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
@@ -17,14 +16,8 @@ export function PostView({ post }: PostViewProps) {
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex items-start gap-4">
-          <Avatar>
-            <AvatarImage 
-              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`} 
-            />
-            <AvatarFallback>{post.author?.username?.[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
+        <div className="flex flex-col gap-4">
+          <div>
             <div className="flex justify-between">
               <p className="font-medium">{post.author?.username}</p>
               <p className="text-sm text-muted-foreground">
