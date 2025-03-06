@@ -45,9 +45,9 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
   const uniqueEmojis = [...new Set(sortedUniqueReactions.map(type => getEmojiForType(type)))];
 
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="flex items-center justify-between text-sm h-full">
       <TooltipProvider>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 items-center h-full">
           {uniqueEmojis.map((emoji, index) => (
             <Tooltip key={index}>
               <TooltipTrigger asChild>

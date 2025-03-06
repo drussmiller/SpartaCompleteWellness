@@ -105,8 +105,8 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           </div>
           <div className="mt-2 border-t border-gray-200"></div>
 
-          <div className="mt-4 flex items-center gap-2">
-            <ReactionButton postId={post.id} />
+          <div className="mt-4 flex items-center gap-2 h-8">
+            <ReactionButton postId={post.id} variant="icon" />
             <Button 
               variant="ghost" 
               size="sm" 
