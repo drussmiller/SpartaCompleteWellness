@@ -26,20 +26,22 @@ export function PostView({ post }: PostViewProps) {
           </div>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
           {post.imageUrl && (
-            <img 
-              src={post.imageUrl} 
-              alt={post.type}
-              className="w-full h-auto object-contain rounded-md mt-4"
-            />
+            <div className="mt-2 mb-2">
+              <img
+                src={post.imageUrl}
+                alt={post.type}
+                className="w-full h-auto object-contain rounded-md"
+              />
+            </div>
           )}
           <div className="mt-2">
             <ReactionSummary postId={post.id} />
           </div>
           <div className="mt-2 flex items-center gap-2">
             <ReactionButton postId={post.id} />
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="gap-1.5"
             >
               <MessageCircle className="h-4 w-4" />
