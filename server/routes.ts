@@ -238,28 +238,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-      logger.info("Received post creation request");
+      logger.info("Received post creation request:", req.body);
 
-      if (!req.body.data) {
-        return res.status(400).json({ message: "Missing post data" });
+      // Handle direct JSON data (for comments/replies)
+      let postData = req.body;
+
+      // If data is sent as form data (for posts with images)
+      if (req.body.data) {
+        try {
+          postData = JSON.parse(req.body.data);
+        } catch (parseError) {
+          logger.error("Error parsing post data:", parseError);
+          return res.status(400).json({ message: "Invalid post data format" });
+        }
       }
 
-      let postData;
-      try {
-        postData = JSON.parse(req.body.data);
-        logger.info("Parsed post data:", postData);
-      } catch (parseError) {
-        logger.error("Error parsing post data:", parseError);
-        return res.status(400).json({ message: "Invalid post data format" });
+      // Validate the post data using Zod schema
+      const parsedData = insertPostSchema.safeParse(postData);
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid post data",
+          errors: parsedData.error.errors
+        });
       }
 
+      // Create the post/comment
       const post = await storage.createPost({
         userId: req.user.id,
         type: postData.type,
         content: postData.content,
-        points: postData.points,
+        points: postData.points || 1,
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
-        parentId: postData.parentId || null
+        parentId: postData.parentId || null,
+        depth: postData.depth || 0
       });
 
       res.status(201).json(post);
@@ -356,16 +368,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(posts.parentId, postId))
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(posts.createdAt);
-      
+
       logger.info("Executing direct comments query:", directCommentsQuery.toSQL());
       const directComments = await directCommentsQuery;
       logger.info(`Found ${directComments.length} direct comments`);
-      
+
       // Then, get all replies to any comment in this thread
       // This includes replies to direct comments and replies to replies
       const commentIds = directComments.map(comment => comment.id);
       let allComments = [...directComments];
-      
+
       if (commentIds.length > 0) {
         const repliesQuery = db
           .select({
@@ -393,15 +405,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
           .innerJoin(users, eq(posts.userId, users.id))
           .orderBy(posts.createdAt);
-        
+
         logger.info("Executing replies query:", repliesQuery.toSQL());
         const replies = await repliesQuery;
         logger.info(`Found ${replies.length} replies to comments`);
-        
+
         // Add replies to the result
         allComments = [...directComments, ...replies];
       }
-      
+
       logger.info(`Returning ${allComments.length} total comments and replies`);
       logger.info("Comments data:", JSON.stringify(allComments, null, 2));
 
