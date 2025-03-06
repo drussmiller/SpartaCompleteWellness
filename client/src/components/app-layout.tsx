@@ -34,10 +34,12 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         {children}
       </main>
 
-      {/* Bottom navigation - always present but styled differently on desktop */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 ${!isMobile ? "left-16" : ""}`}>
-        <BottomNav />
-      </div>
+      {/* Bottom navigation - only on mobile */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <BottomNav />
+        </div>
+      )}
     </div>
   );
 }
