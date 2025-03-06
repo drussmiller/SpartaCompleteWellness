@@ -51,6 +51,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           rows={1}
           style={{ height: '38px', minHeight: '38px', maxHeight: '38px' }}
           disabled={isSubmitting}
+          autoFocus={true} // Add autoFocus attribute
         />
         {isSubmitting && (
           <div className="flex items-center justify-center">

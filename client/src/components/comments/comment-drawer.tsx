@@ -106,6 +106,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         side="right" 
         className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full"
         style={{ width: '100vw', maxWidth: '100vw' }}
+        onOpenAutoFocus={(e) => {
+          // Prevent default autofocus and handle it ourselves
+          e.preventDefault();
+          setTimeout(() => {
+            if (commentInputRef.current) {
+              commentInputRef.current.focus();
+              console.log("Focus on transition end");
+            }
+          }, 100);
+        }}
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
           {/* Fixed header bar */}
