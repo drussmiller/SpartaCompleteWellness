@@ -21,18 +21,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch team info
-  const { data: teamInfo } = useQuery({
-    queryKey: ["/api/teams", user?.teamId],
-    queryFn: async () => {
-      if (!user?.teamId) return null;
-      const response = await apiRequest("GET", `/api/teams/${user.teamId}`);
-      if (!response.ok) throw new Error("Failed to fetch team info");
-      return response.json();
-    },
-    enabled: isOpen && !!user?.teamId
-  });
-
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
     queryKey: ["/api/posts", postId],
@@ -121,11 +109,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <div className="flex flex-col items-center justify-center h-full">
                 {/* Team name */}
                 <div className="text-sm text-muted-foreground mb-1">
-                  {teamInfo?.name || "No Team"}
+                  iron-sharpens-iron
                 </div>
                 {/* User info and time */}
                 <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage
                       src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
                       alt={user.username}
