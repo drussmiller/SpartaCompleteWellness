@@ -4,7 +4,14 @@ import { AppLayout } from "@/components/app-layout";
 
 export default function HelpPage() {
   return (
-    <AppLayout title="Help Center">
+    <AppLayout>
+      {/* Fixed title bar */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="px-6 py-4">
+          <h1 className="text-xl font-bold">Help</h1>
+        </div>
+      </div>
+
       <main className="p-4 space-y-6 max-w-2xl mx-auto pb-20">
         <Card>
           <CardHeader>
