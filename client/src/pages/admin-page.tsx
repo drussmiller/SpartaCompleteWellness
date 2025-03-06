@@ -16,19 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { z } from "zod";
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-
-// Type definition for form data
-type TeamFormData = z.infer<typeof insertTeamSchema>;
+import { AppLayout } from "@/components/app-layout";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -232,47 +220,64 @@ export default function AdminPage() {
     },
   });
 
-  if (teamsLoading || usersLoading) {
+  const isLoading = teamsLoading || usersLoading;
+  const error = teamsError || usersError;
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading activities...</span>
+        </div>
+      </AppLayout>
     );
   }
 
-  if (teamsError || usersError) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-destructive">Error Loading Data</h1>
-          <p className="text-muted-foreground mt-2">
-            {teamsError?.message || usersError?.message || "An error occurred while loading the data"}
-          </p>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Data</h2>
+              <p className="text-gray-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
+              <Button
+                className="mt-4"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (!user?.isAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-destructive">Access Denied</h1>
-          <p className="text-muted-foreground mt-2">
-            You do not have permission to access this page.
-          </p>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-red-500 mb-2">Unauthorized</h2>
+              <p className="text-gray-600">You do not have permission to access this page.</p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
-  const isMobile = window.innerWidth <= 768; // Added condition for mobile
+  const isMobile = window.innerWidth <= 768; 
 
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <AppLayout>
+      <div className="min-h-screen flex flex-col">
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="px-6 py-4">
@@ -280,12 +285,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="hidden md:flex absolute inset-y-0 left-0 w-16 flex-col">
-          <BottomNav orientation="vertical" />
-        </div>
-
         {/* Main content */}
-        <main className={`flex-1 ${!isMobile ? "ml-16" : ""}`}>
+        <div className={`flex-1 ${!isMobile ? "md:ml-16" : ""}`}>
           <div className="container p-4 md:px-8">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>
@@ -619,7 +620,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        </main>
+        </div>
         <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
           <DialogContent>
             <DialogHeader>
@@ -656,5 +657,6 @@ export default function AdminPage() {
 
         <BottomNav />
       </div>
+    </AppLayout>
   );
 }
