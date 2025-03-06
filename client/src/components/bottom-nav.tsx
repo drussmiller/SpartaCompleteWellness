@@ -24,8 +24,10 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       "bg-background z-[100]",
       // Mobile styles (bottom nav)
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
-      // Desktop styles (side nav)
-      orientation === "vertical" && "w-20 h-full"
+      // Desktop styles (side nav or top nav for admin)
+      orientation === "vertical" && "w-20 fixed",
+      // On admin page, set to top position
+      location === "/admin" && orientation === "vertical" ? "h-16 top-0 left-0" : orientation === "vertical" && "h-full left-0 top-0"
     )}>
       <div className={cn(
         // Base styles

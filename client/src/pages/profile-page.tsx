@@ -116,7 +116,7 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-16 relative">
+    <div className="min-h-screen pb-20 lg:pb-0 relative md:ml-20">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
           <h1 className="text-xl font-bold">Profile</h1>
