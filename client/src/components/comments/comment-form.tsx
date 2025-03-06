@@ -63,12 +63,16 @@ export function CommentForm({
             variant="ghost"
             onClick={onCancel}
             disabled={isSubmitting}
+            size="sm"
+            className="h-8"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!content.trim() || isSubmitting}
+            size="sm"
+            className="h-8"
           >
             Update
           </Button>
