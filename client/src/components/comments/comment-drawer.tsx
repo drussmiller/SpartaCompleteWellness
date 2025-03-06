@@ -114,7 +114,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           {/* Post and comments section with scrolling */}
           {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
             <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 pt-2"> {/* Added pt-2 here */}
                 {originalPost && <PostView post={originalPost} />}
                 <CommentList comments={comments} postId={postId} />
               </div>
