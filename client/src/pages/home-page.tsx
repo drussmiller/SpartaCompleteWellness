@@ -79,7 +79,7 @@ export default function HomePage() {
                 e.currentTarget.src = '/fallback-logo.png';
               }}
             />
-            <h1 className="text-xl font-bold truncate">SPARTA COMPLETE WELLNESS</h1>
+            <h1 className="text-lg font-bold break-words">SPARTA COMPLETE WELLNESS</h1>
           </div>
           <CreatePostDialog remaining={remaining} />
         </div>
