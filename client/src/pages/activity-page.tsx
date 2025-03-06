@@ -139,39 +139,12 @@ export default function ActivityPage() {
                 </Card>
               )}
             </main>
-
-            <style>{`
-              .rich-text-content {
-                line-height: 1.6;
-              }
-              .rich-text-content p {
-                margin-bottom: 1em;
-              }
-              .rich-text-content h2 {
-                font-size: 1.5em;
-                font-weight: bold;
-                margin: 1em 0 0.5em;
-              }
-              .video-wrapper {
-                position: relative;
-                padding-bottom: 56.25%;
-                height: 0;
-                margin: 1rem 0;
-                overflow: hidden;
-              }
-              .video-wrapper iframe {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                border: 0;
-              }
-            `}</style>
-          </ScrollArea>
+          </div>
         </div>
       </div>
-      <BottomNav />
+      <div className="md:hidden">
+        <BottomNav orientation="horizontal" />
+      </div>
     </div>
   );
 }
