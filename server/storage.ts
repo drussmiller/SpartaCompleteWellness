@@ -243,7 +243,15 @@ export const storage = {
       logger.debug("Creating post with data:", data);
       const [post] = await db
         .insert(posts)
-        .values({ ...data, createdAt: new Date() })
+        .values({
+          userId: data.userId,
+          type: data.type || "comment",
+          content: data.content,
+          parentId: data.parentId || null,
+          depth: data.depth || 0,
+          points: data.points || 1,
+          createdAt: new Date()
+        })
         .returning();
       logger.debug("Post created successfully:", post.id);
       return post;
@@ -393,6 +401,10 @@ export const storage = {
   async createComment(data: Partial<Post>): Promise<Post> {
     try {
       logger.debug("Creating comment with data:", data);
+      if (!data.userId || !data.content || !data.parentId) {
+        throw new Error("Missing required fields for comment");
+      }
+
       const [comment] = await db
         .insert(posts)
         .values({
@@ -401,7 +413,7 @@ export const storage = {
           content: data.content,
           parentId: data.parentId,
           depth: data.depth || 0,
-          points: data.points || 1,
+          points: 1,
           createdAt: new Date()
         })
         .returning();

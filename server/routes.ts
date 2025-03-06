@@ -238,45 +238,91 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-      logger.info("Received post creation request with body:", req.body);
+      logger.info("\n=== Comment/Post Creation Debug ===");
+      logger.info("Raw request body:", req.body);
+      logger.info("Current user:", req.user.id);
 
-      // Handle both direct JSON data and form data
       let postData = req.body;
-
-      // If data is sent as form data (for posts with images)
       if (typeof postData.data === 'string') {
         try {
           postData = JSON.parse(postData.data);
+          logger.info("Parsed form data:", postData);
         } catch (parseError) {
           logger.error("Error parsing post data:", parseError);
           return res.status(400).json({ message: "Invalid post data format" });
         }
       }
 
-      // Ensure required fields are present
+      // Validate required fields
       if (!postData.type || !postData.content) {
+        logger.error("Missing required fields:", { type: postData.type, content: postData.content });
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      logger.info("Creating post with data:", postData);
+      // For comments, validate additional required fields
+      if (postData.type === "comment") {
+        if (!postData.parentId) {
+          logger.error("Missing parentId for comment:", postData);
+          return res.status(400).json({ message: "Parent post ID is required for comments" });
+        }
 
-      // Create the post/comment
-      const post = await storage.createPost({
-        userId: req.user.id,
-        type: postData.type,
-        content: postData.content,
-        parentId: postData.parentId || null,
-        depth: postData.depth || 0,
-        points: 1,
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : null
-      });
+        logger.info("Creating comment with data:", {
+          userId: req.user.id,
+          type: postData.type,
+          content: postData.content,
+          parentId: postData.parentId,
+          depth: postData.depth || 0
+        });
 
-      logger.info("Post created successfully:", post);
-      res.status(201).json(post);
+        try {
+          const post = await storage.createComment({
+            userId: req.user.id,
+            content: postData.content.trim(),
+            parentId: postData.parentId,
+            depth: postData.depth || 0
+          });
+          logger.info("Comment created successfully:", post);
+          res.status(201).json(post);
+        } catch (dbError) {
+          logger.error("Database error creating comment:", {
+            error: dbError,
+            stack: dbError instanceof Error ? dbError.stack : undefined
+          });
+          throw dbError;
+        }
+      } else {
+        // Handle regular post creation
+        logger.info("Creating post with data:", {
+          userId: req.user.id,
+          type: postData.type,
+          content: postData.content,
+          imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+        });
+
+        try {
+          const post = await storage.createPost({
+            userId: req.user.id,
+            type: postData.type,
+            content: postData.content.trim(),
+            imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+          });
+          logger.info("Post created successfully:", post);
+          res.status(201).json(post);
+        } catch (dbError) {
+          logger.error("Database error creating post:", {
+            error: dbError,
+            stack: dbError instanceof Error ? dbError.stack : undefined
+          });
+          throw dbError;
+        }
+      }
     } catch (error) {
-      logger.error("Error creating post:", error);
+      logger.error("Error in post/comment creation:", {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       res.status(500).json({
-        message: error instanceof Error ? error.message : "Failed to create post",
+        message: error instanceof Error ? error.message : "Failed to create post/comment",
         error: error instanceof Error ? error.stack : "Unknown error"
       });
     }
@@ -550,6 +596,86 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add this endpoint after the other post-related endpoints
+  router.patch("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        logger.error('Invalid post ID:', req.params.id);
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      logger.info('Update request for post:', {
+        postId,
+        userId: req.user.id,
+        content: req.body.content
+      });
+
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post) {
+        logger.error('Post not found:', postId);
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user is admin or the post owner
+      if (!req.user.isAdmin && post.userId !== req.user.id) {
+        logger.error('Unauthorized edit attempt:', {
+          userId: req.user.id,
+          postUserId: post.userId,
+          isAdmin: req.user.isAdmin
+        });
+        return res.status(403).json({ message: "Not authorized to edit this post" });
+      }
+
+      // Validate content
+      if (!req.body.content || typeof req.body.content !== 'string' || !req.body.content.trim()) {
+        logger.error('Invalid content:', req.body.content);
+        return res.status(400).json({ message: "Content cannot be empty" });
+      }
+
+      logger.info("Updating post with data:", {
+        id: postId,
+        content: req.body.content.trim()
+      });
+
+      try {
+        // Update post in database
+        const [updatedPost] = await db
+          .update(posts)
+          .set({
+            content: req.body.content.trim()
+          })
+          .where(eq(posts.id, postId))
+          .returning();
+
+        logger.info("Post updated successfully:", updatedPost);
+        res.json(updatedPost);
+      } catch (dbError) {
+        logger.error("Database error during update:", {
+          error: dbError,
+          stack: dbError instanceof Error ? dbError.stack : undefined
+        });
+        throw dbError;
+      }
+    } catch (error) {
+      logger.error("Error updating post:", {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      res.status(500).json({
+        message: "Failed to update post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   router.get("/api/posts/counts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -775,8 +901,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('------------------------');
-        logger.error('Error:', processingError.message);
-        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({
