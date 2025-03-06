@@ -134,18 +134,20 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <ScrollArea className="h-[calc(100vh-4rem)]">
-        <div className="w-full p-4 space-y-6 pb-32">
-          <PostView post={originalPost} />
-          <CommentList comments={comments} postId={parseInt(postId)} />
-          <CommentForm
-            onSubmit={async (content) => {
-              await createCommentMutation.mutateAsync(content);
-            }}
-            isSubmitting={createCommentMutation.isPending}
-          />
-        </div>
-      </ScrollArea>
+      <div className="h-full w-full overflow-hidden">
+        <ScrollArea className="h-[calc(100vh-4rem)] w-full">
+          <div className="w-full p-4 space-y-6 pb-32">
+            <PostView post={originalPost} />
+            <CommentList comments={comments} postId={parseInt(postId)} />
+            <CommentForm
+              onSubmit={async (content) => {
+                await createCommentMutation.mutateAsync(content);
+              }}
+              isSubmitting={createCommentMutation.isPending}
+            />
+          </div>
+        </ScrollArea>
+      </div>
     </AppLayout>
   );
 }
