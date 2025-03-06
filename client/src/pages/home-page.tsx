@@ -12,6 +12,18 @@ export default function HomePage() {
   const { user } = useAuth();
   const { remaining } = usePostLimits();
 
+  // Query for team information
+  const { data: teamInfo } = useQuery({
+    queryKey: ["/api/teams", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return null;
+      const response = await apiRequest("GET", `/api/teams/${user.teamId}`);
+      if (!response.ok) throw new Error("Failed to fetch team info");
+      return response.json();
+    },
+    enabled: !!user?.teamId
+  });
+
   const { data: posts, isLoading, error } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
     queryFn: async () => {
@@ -55,6 +67,18 @@ export default function HomePage() {
   return (
     <AppLayout title="Home">
       <div className="sticky top-0 z-50 bg-background border-b border-border">
+        {/* Team name header */}
+        <div className="px-4 py-3 border-b border-border">
+          <h1 className="text-lg font-semibold text-center">
+            {teamInfo?.name || "Welcome to Sparta"}
+          </h1>
+          {!user?.teamId && (
+            <p className="text-sm text-muted-foreground text-center mt-1">
+              Join a team to start your journey
+            </p>
+          )}
+        </div>
+        {/* Create post button */}
         <div className="p-4 flex justify-end">
           <CreatePostDialog remaining={remaining} />
         </div>
