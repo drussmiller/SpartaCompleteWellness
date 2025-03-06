@@ -100,7 +100,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
             {/* Back button */}
             <SheetClose className="absolute top-4 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-              <span className="text-xl">&lt;</span>
+              <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </SheetClose>
 

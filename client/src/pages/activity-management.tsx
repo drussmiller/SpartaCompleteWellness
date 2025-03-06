@@ -274,7 +274,7 @@ export default function ActivityManagementPage() {
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
         <div className="mb-6">
           <Button variant="outline" onClick={() => window.history.back()} className="p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-            <span className="text-xl">&lt;</span>
+            <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Button>
         </div>
