@@ -27,12 +27,10 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
       wow: { emoji: "😮", color: "text-yellow-500" },
       sad: { emoji: "😢", color: "text-blue-500" },
       angry: { emoji: "😡", color: "text-red-500" },
-      celebrate: { emoji: "🎉", color: "text-purple-500" },
-      clap: { emoji: "👏", color: "text-yellow-500" },
       fire: { emoji: "🔥", color: "text-orange-500" },
       pray: { emoji: "🙏", color: "text-amber-500" },
-      support: { emoji: "🤗", color: "text-green-500" },
       muscle: { emoji: "💪", color: "text-blue-500" },
+      thumbs_down: { emoji: "👎", color: "text-slate-500" },
     };
 
     return allEmojis[type]?.emoji || "👍";

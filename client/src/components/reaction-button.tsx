@@ -21,30 +21,10 @@ const reactionEmojis = {
   wow: { emoji: "😮", color: "text-yellow-500" },
   sad: { emoji: "😢", color: "text-blue-500" },
   angry: { emoji: "😡", color: "text-red-500" },
-
-  // Wellness & Fitness
-  celebrate: { emoji: "🎉", color: "text-purple-500" },
-  clap: { emoji: "👏", color: "text-yellow-500" },
   fire: { emoji: "🔥", color: "text-orange-500" },
   pray: { emoji: "🙏", color: "text-amber-500" },
-  support: { emoji: "🤗", color: "text-green-500" },
-  muscle: { emoji: "💪", color: "text-blue-500" },
-
-  // Additional positive emojis
-  star: { emoji: "⭐", color: "text-yellow-500" },
-  heart_eyes: { emoji: "😍", color: "text-red-500" },
-  raised_hands: { emoji: "🙌", color: "text-amber-500" },
-  trophy: { emoji: "🏆", color: "text-yellow-500" },
-  thumbs_down: { emoji: "👎", color: "text-slate-500" },
-
-  // Food related
-  salad: { emoji: "🥗", color: "text-green-500" },
-  fruit: { emoji: "🍎", color: "text-red-500" },
-  water: { emoji: "💧", color: "text-blue-500" },
-
-  // Exercise related
-  run: { emoji: "🏃", color: "text-purple-500" },
-  bike: { emoji: "🚴", color: "text-green-500" },
+  muscle: { emoji: "💪", color: "text-blue-500" }, // Renamed from 'strength'
+  thumbs_down: { emoji: "👎", color: "text-slate-500" }, // Renamed from 'dislike'green-500" },
   weight: { emoji: "🏋️", color: "text-indigo-500" },
 
   // Spiritual
@@ -66,28 +46,10 @@ const reactionLabels = {
   wow: "Wow",
   sad: "Sad",
   angry: "Angry",
-  celebrate: "Celebrate",
-  clap: "Applause",
   fire: "Fire",
   pray: "Pray",
-  support: "Support",
   muscle: "Strength",
-  star: "Star",
-  heart_eyes: "Love it",
-  raised_hands: "Praise",
-  trophy: "Achievement",
-  thumbs_down: "Dislike",
-  salad: "Healthy Meal",
-  fruit: "Fruit",
-  water: "Hydration",
-  run: "Running",
-  bike: "Cycling",
-  weight: "Weightlifting",
-  angel: "Blessed",
-  dove: "Peace",
-  church: "Church",
-  bible: "Scripture",
-  cross: "Faith",
+  thumbs_down: "Dislike"h",
   faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
