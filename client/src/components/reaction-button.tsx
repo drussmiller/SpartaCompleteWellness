@@ -152,17 +152,25 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       <DropdownMenuTrigger asChild onContextMenu={(e) => {
         e.preventDefault();
         setIsOpen(true);
-      }} onClick={() => {
-        // Prevent dropdown from opening on left click
-        return false; 
       }}>
         <Button
           variant="ghost"
           size="sm"
           className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
           onClick={(e) => {
-            e.stopPropagation(); // Prevent triggering the dropdown
+            e.preventDefault(); // Prevent default action
+            e.stopPropagation(); // Prevent event bubbling
+            
+            // Close dropdown if it's open
+            if (isOpen) {
+              setIsOpen(false);
+            }
+            
+            // Handle the like reaction directly
             handleReaction('like');
+            
+            // Return false to prevent dropdown from opening
+            return false;
           }}
         >
           {variant === 'icon' ? (
