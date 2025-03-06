@@ -156,12 +156,12 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
         <Button
           variant="ghost"
           size="sm"
-          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : ""} p-0 h-6`}
+          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
           onClick={() => handleReaction('like')}
         >
           {variant === 'icon' ? (
             <div className="flex items-center gap-1">
-              <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : ""}`} />
+              <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
               <span>Like</span>
             </div>
           ) : (
