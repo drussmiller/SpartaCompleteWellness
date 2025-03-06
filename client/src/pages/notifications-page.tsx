@@ -8,6 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/use-notifications";
+import { AppLayout } from "@/components/app-layout";
 
 export default function NotificationsPage() {
   const { user } = useAuth();
@@ -59,17 +60,14 @@ export default function NotificationsPage() {
   });
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 relative">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4">
-          <h1 className="text-xl font-bold pl-2">Notifications</h1>
-        </div>
-      </header>
-      <div className="flex">
-        <div className="hidden md:block"> {/* Added vertical navigation */}
-          <BottomNav orientation="vertical" />
-        </div>
-        <main className="p-4 space-y-4 flex-1"> {/* Added flex-1 to allow main content to expand */}
+    <AppLayout>
+      <div className="min-h-screen pb-20 lg:pb-0 relative">
+        <header className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="p-4">
+            <h1 className="text-xl font-bold pl-2">Notifications</h1>
+          </div>
+        </header>
+        <main className="p-4 space-y-4">
           {notifications?.length === 0 ? (
             <div className="text-center py-8">
               <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -117,7 +115,6 @@ export default function NotificationsPage() {
           )}
         </main>
       </div>
-      <BottomNav /> {/* existing BottomNav remains */}
-    </div>
+    </AppLayout>
   );
 }
