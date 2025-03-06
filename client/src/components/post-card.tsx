@@ -102,11 +102,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             <span className="text-xs text-muted-foreground">
               {new Date(post.createdAt!).toLocaleDateString()}
             </span>
-          </div>
-          <div className="mt-2 border-t border-gray-200"></div>
-
-          <div className="mt-2 flex justify-end">
-            <ReactionSummary postId={post.id} />
+            <div className="ml-4">
+              <ReactionSummary postId={post.id} />
+            </div>
           </div>
           <div className="mt-2 border-t border-gray-200"></div>
 

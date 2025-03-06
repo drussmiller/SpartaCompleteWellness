@@ -18,7 +18,12 @@ export function PostView({ post }: PostViewProps) {
         <div className="flex flex-col">
           <div>
             <div className="flex justify-between">
-              <p className="font-medium">{post.author?.username}</p>
+              <div className="flex items-center">
+                <p className="font-medium">{post.author?.username}</p>
+                <div className="ml-4">
+                  <ReactionSummary postId={post.id} />
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {new Date(post.createdAt!).toLocaleString()}
               </p>
@@ -35,9 +40,6 @@ export function PostView({ post }: PostViewProps) {
               />
             </div>
           )}
-          <div className="mt-2">
-            <ReactionSummary postId={post.id} />
-          </div>
           <div className="mt-2 border-t border-gray-200"></div>
           <div className="mt-2 flex items-center gap-2">
             <ReactionButton postId={post.id} />
