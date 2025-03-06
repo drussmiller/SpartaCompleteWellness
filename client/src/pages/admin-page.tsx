@@ -269,6 +269,8 @@ export default function AdminPage() {
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
+  const isMobile = window.innerWidth <= 768; // Added condition for mobile
+
   return (
     <div className="min-h-screen flex flex-col relative">
       <div className="hidden md:flex absolute inset-y-0 left-0 w-16 flex-col">
@@ -276,11 +278,11 @@ export default function AdminPage() {
       </div>
 
       {/* Main content */}
-      <main className={`flex-1`}>
+      <main className={`flex-1 ${!isMobile ? "ml-16" : ""}`}>
         <header className="sticky top-0 z-10 bg-background pt-4 md:pt-8 px-4 md:px-8 mb-4">
-          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold ml-0 md:ml-4">Admin Dashboard</h1>
         </header>
-        <div className="container p-4 md:px-8 md:ml-16"> {/* Added margin for non-mobile */}
+        <div className="container p-4 md:px-8">
           <div className="flex gap-2 mt-4 justify-center">
             <Dialog>
               <DialogTrigger asChild>
