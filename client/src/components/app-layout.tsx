@@ -26,7 +26,7 @@ export function AppLayout({ children, title, sidebarWidth = "16" }: AppLayoutPro
 
       {/* Main content */}
       <main 
-        className={`flex-1 ${!isMobile ? "ml-0" : ""}`}
+        className="flex-1 w-full"
         style={!isMobile ? { marginLeft: sidebarWidthPx } : {}}
       >
         {children}
