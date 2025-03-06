@@ -107,10 +107,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             {/* User info with team name */}
             {user && (
               <div className="flex flex-col items-center justify-center h-full">
-                {/* Team name */}
-                <div className="text-xl font-semibold text-black mb-1">
-                  iron-sharpens-iron
-                </div>
                 {/* User info and time */}
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
@@ -122,7 +118,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                       {user.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{user.username}</span>
+                  <span className="text-xl font-semibold">{user.username}</span>
                   {originalPost?.createdAt && (
                     <>
                       <span className="text-muted-foreground">-</span>
