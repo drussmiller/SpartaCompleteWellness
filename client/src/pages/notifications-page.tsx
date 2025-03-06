@@ -62,7 +62,7 @@ export default function NotificationsPage() {
     <div className="min-h-screen pb-20 lg:pb-0 relative">
       <header className="sticky top-0 z-50 bg-background border-b border-border ml-0 md:ml-16"> {/* Reduced margin from 64 to 16 */}
         <div className="p-4">
-          <h1 className="text-xl font-bold">Notifications</h1>
+          <h1 className="text-xl font-bold pl-2">Notifications</h1>
         </div>
       </header>
       <div className="flex">
