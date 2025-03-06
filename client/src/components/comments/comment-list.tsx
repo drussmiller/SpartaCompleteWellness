@@ -60,11 +60,13 @@ export function CommentList({ comments, postId }: CommentListProps) {
         });
 
         const res = await apiRequest("POST", "/api/posts", {
-          type: "comment",
-          content: content.trim(),
-          parentId: replyingTo,
-          points: 1,
-          depth: (replyingToComment?.depth ?? 0) + 1
+          data: JSON.stringify({
+            type: "comment",
+            content: content.trim(),
+            parentId: replyingTo,
+            points: 1,
+            depth: (replyingToComment?.depth ?? 0) + 1
+          })
         });
 
         if (!res.ok) {
