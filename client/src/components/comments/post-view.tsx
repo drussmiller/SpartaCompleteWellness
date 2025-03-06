@@ -20,9 +20,6 @@ export function PostView({ post }: PostViewProps) {
             <div className="flex justify-between">
               <div className="flex items-center">
                 <p className="font-medium">{post.author?.username}</p>
-                <div className="ml-4">
-                  <ReactionSummary postId={post.id} />
-                </div>
               </div>
             </div>
             <div className="mt-2 border-t border-gray-200"></div>
@@ -48,6 +45,11 @@ export function PostView({ post }: PostViewProps) {
               <MessageCircle className="h-4 w-4" />
               {commentCount}
             </Button>
+          </div>
+          
+          {/* Reactions display */}
+          <div className="flex justify-between items-center mt-2">
+            <ReactionSummary postId={post.id} />
           </div>
         </div>
       </CardContent>
