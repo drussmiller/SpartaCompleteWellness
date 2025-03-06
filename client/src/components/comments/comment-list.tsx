@@ -40,27 +40,29 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const replyInputRef = useRef<HTMLInputElement>(null); 
+  const replyInputRef = useRef<HTMLTextAreaElement>(null); 
 
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
-      const data = {
+      const res = await apiRequest("POST", "/api/posts", {
         type: "comment",
         content: content.trim(),
-        parentId: replyingTo,
+        parentId: parseInt(replyingTo!.toString()),
         points: 1,
-        userId: user?.id
-      };
-
-      const res = await apiRequest("POST", "/api/posts", {
-        data: JSON.stringify(data)
+        depth: (replyingToComment?.depth || 0) + 1
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to post reply");
+      }
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
       toast({
         description: "Reply posted successfully",
       });
