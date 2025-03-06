@@ -99,10 +99,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
             <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground">
-              {new Date(post.createdAt!).toLocaleDateString()}
-            </span>
-            <div className="ml-4">
+            <div>
               <ReactionSummary postId={post.id} />
             </div>
           </div>

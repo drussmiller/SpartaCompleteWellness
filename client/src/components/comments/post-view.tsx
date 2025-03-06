@@ -24,9 +24,6 @@ export function PostView({ post }: PostViewProps) {
                   <ReactionSummary postId={post.id} />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {new Date(post.createdAt!).toLocaleString()}
-              </p>
             </div>
             <div className="mt-2 border-t border-gray-200"></div>
           </div>
