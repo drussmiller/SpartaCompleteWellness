@@ -150,7 +150,10 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       onClick={() => handleReaction('like' as ReactionType)}
     >
       {variant === 'icon' ? (
-        <ThumbsUp className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          <ThumbsUp className="h-4 w-4" />
+          <span>Like</span>
+        </div>
       ) : (
         userReaction ? 'Liked' : 'Like'
       )}
