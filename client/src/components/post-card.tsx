@@ -103,9 +103,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
               <ReactionSummary postId={post.id} />
             </div>
           </div>
-          <div className="mt-1 border-t border-gray-200"></div>
+          <div className="border-t border-gray-200"></div>
 
-          <div className="mt-1 flex items-center gap-2 py-0">
+          <div className="flex items-center gap-2 py-0 h-6">
             <ReactionButton postId={post.id} variant="icon" />
             <Button 
               variant="ghost" 

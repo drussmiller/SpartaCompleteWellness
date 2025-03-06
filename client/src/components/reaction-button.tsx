@@ -146,7 +146,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     <Button
       variant="ghost"
       size="sm"
-      className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : ""} p-1 h-7`}
+      className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : ""} p-0 h-6`}
       onClick={() => handleReaction('like' as ReactionType)}
     >
       {variant === 'icon' ? (
