@@ -48,9 +48,17 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const createReplyMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!replyingTo) throw new Error("No comment selected to reply to");
-      if (!user) throw new Error("You must be logged in to reply");
+      if (!user?.id) throw new Error("You must be logged in to reply");
 
       try {
+        console.log('Sending reply:', {
+          type: "comment",
+          content: content.trim(),
+          parentId: replyingTo,
+          points: 1,
+          depth: (replyingToComment?.depth ?? 0) + 1
+        });
+
         const res = await apiRequest("POST", "/api/posts", {
           type: "comment",
           content: content.trim(),
@@ -60,8 +68,15 @@ export function CommentList({ comments, postId }: CommentListProps) {
         });
 
         if (!res.ok) {
-          const errorText = await res.text().catch(() => null);
-          throw new Error(errorText || "Failed to post reply");
+          let errorMessage = "Failed to post reply";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await res.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
         return res.json();
