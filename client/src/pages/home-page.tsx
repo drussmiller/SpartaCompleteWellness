@@ -71,7 +71,7 @@ export default function HomePage() {
         <div className="px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <img 
-              src="/Spartans_LOGO.png" 
+              src="/Sparta_Logo.jpg" 
               alt="Sparta Logo" 
               className="h-8 w-auto"
               onError={(e) => {
