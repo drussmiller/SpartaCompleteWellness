@@ -104,21 +104,21 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <span className="sr-only">Close</span>
             </SheetClose>
 
-            {/* User info with team name */}
-            {user && (
+            {/* Post author info */}
+            {originalPost?.author && (
               <div className="flex flex-col items-start justify-center h-full ml-14">
                 {/* User info and time */}
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
                     <AvatarImage
-                      src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
-                      alt={user.username}
+                      src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
+                      alt={originalPost.author.username}
                     />
                     <AvatarFallback>
-                      {user.username?.[0].toUpperCase()}
+                      {originalPost.author.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xl font-semibold">{user.username}</span>
+                  <span className="text-xl font-semibold">{originalPost.author.username}</span>
                   {originalPost?.createdAt && (
                     <>
                       <span className="text-muted-foreground">-</span>
