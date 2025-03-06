@@ -21,30 +21,10 @@ const reactionEmojis = {
   wow: { emoji: "😮", color: "text-yellow-500" },
   sad: { emoji: "😢", color: "text-blue-500" },
   angry: { emoji: "😡", color: "text-red-500" },
-
-  // Wellness & Fitness
-  celebrate: { emoji: "🎉", color: "text-purple-500" },
-  clap: { emoji: "👏", color: "text-yellow-500" },
   fire: { emoji: "🔥", color: "text-orange-500" },
   pray: { emoji: "🙏", color: "text-amber-500" },
-  support: { emoji: "🤗", color: "text-green-500" },
-  muscle: { emoji: "💪", color: "text-blue-500" },
-
-  // Additional positive emojis
-  star: { emoji: "⭐", color: "text-yellow-500" },
-  heart_eyes: { emoji: "😍", color: "text-red-500" },
-  raised_hands: { emoji: "🙌", color: "text-amber-500" },
-  trophy: { emoji: "🏆", color: "text-yellow-500" },
-  thumbs_down: { emoji: "👎", color: "text-slate-500" },
-
-  // Food related
-  salad: { emoji: "🥗", color: "text-green-500" },
-  fruit: { emoji: "🍎", color: "text-red-500" },
-  water: { emoji: "💧", color: "text-blue-500" },
-
-  // Exercise related
-  run: { emoji: "🏃", color: "text-purple-500" },
-  bike: { emoji: "🚴", color: "text-green-500" },
+  muscle: { emoji: "💪", color: "text-blue-500" }, // Renamed from 'strength'
+  thumbs_down: { emoji: "👎", color: "text-slate-500" }, // Renamed from 'dislike'green-500" },
   weight: { emoji: "🏋️", color: "text-indigo-500" },
 
   // Spiritual
@@ -66,28 +46,10 @@ const reactionLabels = {
   wow: "Wow",
   sad: "Sad",
   angry: "Angry",
-  celebrate: "Celebrate",
-  clap: "Applause",
   fire: "Fire",
   pray: "Pray",
-  support: "Support",
   muscle: "Strength",
-  star: "Star",
-  heart_eyes: "Love it",
-  raised_hands: "Praise",
-  trophy: "Achievement",
   thumbs_down: "Dislike",
-  salad: "Healthy Meal",
-  fruit: "Fruit",
-  water: "Hydration",
-  run: "Running",
-  bike: "Cycling",
-  weight: "Weightlifting",
-  angel: "Blessed",
-  dove: "Peace",
-  church: "Church",
-  bible: "Scripture",
-  cross: "Faith",
   faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
@@ -201,18 +163,20 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="start" 
-        className="p-2 grid grid-cols-6 gap-1 w-60"
+        className="p-2 grid grid-cols-5 gap-1 w-60"
         style={{ zIndex: 99999 }} // Ensure it appears above the slider
       >
-        {Object.entries(reactionEmojis).map(([type, { emoji }]) => (
-          <DropdownMenuItem
-            key={type}
-            className="flex-col gap-1 px-2 py-2 cursor-pointer hover:bg-muted"
-            onClick={() => handleReaction(type as ReactionType)}
-          >
-            <span className="text-lg">{emoji}</span>
-            <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
-          </DropdownMenuItem>
+        {Object.entries(reactionEmojis)
+          .filter(([type]) => ['like', 'love', 'laugh', 'wow', 'sad', 'angry', 'fire', 'pray', 'muscle', 'thumbs_down'].includes(type))
+          .map(([type, { emoji }]) => (
+            <DropdownMenuItem
+              key={type}
+              className="flex-col gap-1 px-2 py-2 cursor-pointer hover:bg-muted"
+              onClick={() => handleReaction(type as ReactionType)}
+            >
+              <span className="text-lg">{emoji}</span>
+              <span className="text-xs">{reactionLabels[type as ReactionType]}</span>
+            </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

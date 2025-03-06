@@ -1,8 +1,8 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 
 const Dialog = DialogPrimitive.Root
 
@@ -42,6 +42,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
+      <Button type="submit" style={{ backgroundColor: 'mediumpurple' }}>Update</Button> {/* Added button with updated text and color */}
     </DialogPrimitive.Content>
   </DialogPortal>
 ))
