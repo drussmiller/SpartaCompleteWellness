@@ -8,6 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatDistanceToNow } from "date-fns";
 
 interface CommentDrawerProps {
   postId: number;
@@ -100,18 +101,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <span className="sr-only">Close</span>
             </SheetClose>
 
-            {/* Centered poster info */}
+            {/* Centered poster info with timestamp */}
             {originalPost && (
               <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage
-                    src={originalPost.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author?.username}`}
-                  />
-                  <AvatarFallback>
-                    {originalPost.author?.username?.[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
                 <span className="font-medium">{originalPost.author?.username}</span>
+                <span className="text-sm text-muted-foreground">
+                  • {formatDistanceToNow(new Date(originalPost.createdAt || Date.now()), { addSuffix: false })}
+                </span>
               </div>
             )}
 
