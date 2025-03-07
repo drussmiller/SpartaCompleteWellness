@@ -42,12 +42,12 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       return result as PostLimitsResponse;
     },
     // Get fresh data but not too frequently
-    staleTime: 5000, // Data is fresh for 5 seconds
+    staleTime: 15000, // Data is fresh for 15 seconds
     cacheTime: 60000, // Keep in cache for 1 minute
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000, // Refetch every 10 seconds (further reduced)
-    retry: 2,
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 1, // Only retry once
     enabled: !!user
   });
 
@@ -70,7 +70,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
       const intervalId = setInterval(() => {
         fetchData();
-      }, 10000); 
+      }, 30000); // Match the refetchInterval timing 
 
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
