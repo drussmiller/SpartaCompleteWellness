@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
+import { Plus, CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -17,8 +17,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { X } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Loader2 } from 'lucide-react';
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-type CreatePostForm = z.infer<typeof insertPostSchema>;
+type CreatePostForm = z.infer<typeof insertPostSchema> & {
+  postDate?: Date;
+};
 
 export function CreatePostDialog({ remaining }: { remaining: Record<string, number> }) {
   const [open, setOpen] = useState(false);
@@ -38,7 +43,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       type: "food",
       content: "",
       imageUrl: null,
-      points: 3
+      points: 3,
+      postDate: new Date()
     }
   });
 
@@ -67,6 +73,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           type: data.type,
           content: data.content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
+          createdAt: data.postDate ? data.postDate.toISOString() : new Date().toISOString()
         };
 
         formData.append("data", JSON.stringify(postData));
@@ -74,7 +81,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         console.log("Submitting post data:", {
           type: data.type,
           content: data.content,
-          hasImage: data.imageUrl && data.imageUrl.length > 0
+          hasImage: data.imageUrl && data.imageUrl.length > 0,
+          postDate: data.postDate
         });
 
         const res = await fetch("/api/posts", {
@@ -272,6 +280,43 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                       value={field.value || ''}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="postDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Post Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

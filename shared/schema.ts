@@ -142,7 +142,8 @@ export const insertPostSchema = createInsertSchema(posts)
     type: z.enum(["food", "workout", "scripture", "memory_verse", "comment"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
-    depth: z.number().default(0)
+    depth: z.number().default(0),
+    createdAt: z.string().optional()
   });
 
 export const insertUserSchema = createInsertSchema(users)
