@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
 
 interface PostLimits {
   food: number;
@@ -22,7 +23,7 @@ interface PostLimitsResponse {
 
 export function usePostLimits(date?: Date) {
   const { user } = useAuth();
-  const { data } = useQuery<PostLimitsResponse>({
+  const { data, refetch } = useQuery<PostLimitsResponse>({
     queryKey: ["/api/posts/counts", date?.toISOString()],
     enabled: !!user,
     queryFn: async () => {
@@ -45,10 +46,17 @@ export function usePostLimits(date?: Date) {
       console.log('Post limits response:', data);
       return data;
     },
-    staleTime: 30000, // Refetch after 30 seconds
+    staleTime: 0, // Always get fresh data
     refetchOnMount: true,
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    cacheTime: 0 // Don't cache the data
   });
+
+  // Force refetch when date changes
+  useEffect(() => {
+    refetch();
+  }, [date, refetch]);
 
   // Log the current state
   if (data) {
