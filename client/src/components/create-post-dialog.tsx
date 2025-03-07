@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, CalendarIcon, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -14,11 +14,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { useAuth } from "@/hooks/use-auth";
-import { X } from "lucide-react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
@@ -28,13 +23,9 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { canPost, counts, remaining: dateLimits, refetch } = usePostLimits(selectedDate);
+  const { canPost, counts } = usePostLimits();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Use either the date-specific limits or the default remaining
-  const effectiveRemaining = dateLimits || remaining;
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -42,22 +33,17 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       type: "food",
       content: "",
       imageUrl: null,
-      points: 3,
-      postDate: selectedDate
+      points: 3
     }
   });
 
   function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
-      const isSaturday = selectedDate.getDay() === 6;
-      return canPost.memory_verse && isSaturday ? "(Available on Saturday)" : "(Weekly limit reached)";
+      return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    const remainingPosts = effectiveRemaining?.[type] ?? 0;
-    const isToday = new Date().toDateString() === selectedDate.toDateString();
-    const dayText = isToday ? 'today' : 'on this day';
-
-    return remainingPosts <= 0 ? `(Daily limit reached)` : `(${remainingPosts} remaining ${dayText})`;
+    const remainingPosts = remaining?.[type] ?? 0;
+    return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining today)`;
   }
 
   const createPostMutation = useMutation({
@@ -74,7 +60,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           type: data.type,
           content: data.content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
-          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
+          createdAt: new Date().toISOString()
         };
 
         formData.append("data", JSON.stringify(postData));
@@ -103,7 +89,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
-      // Invalidate post counts for both current date and selected date
+      // Invalidate post counts
       queryClient.invalidateQueries({ 
         queryKey: ["/api/posts/counts"],
         exact: false
@@ -119,15 +105,6 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         title: "Success",
         description: "Post created successfully!",
       });
-
-      // Refetch limits after a small delay to ensure server has processed the new post
-      setTimeout(() => {
-        refetch().then(() => {
-          console.log("Post limits refreshed after posting");
-        }).catch(error => {
-          console.error("Error refreshing post limits:", error);
-        });
-      }, 500);
     },
     onError: (error) => {
       console.error("Create post mutation error:", error);
@@ -140,7 +117,6 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   });
 
   const onSubmit = (data: CreatePostForm) => {
-    data.postDate = selectedDate;
     createPostMutation.mutate(data);
   };
 
@@ -177,47 +153,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
             )}
           </Button>
         </div>
+        <DialogDescription className="text-center">
+          Share your wellness journey with your team
+        </DialogDescription>
 
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="postDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Post Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => {
-                          if (date) {
-                            setSelectedDate(date);
-                            field.onChange(date);
-                          }
-                        }}
-                        disabled={(date) => date > new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="type"
@@ -248,6 +189,68 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                 </FormItem>
               )}
             />
+
+            {(form.watch("type") === "food" || form.watch("type") === "workout") && (
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = async () => {
+                              try {
+                                const compressed = await compressImage(reader.result as string);
+                                setImagePreview(compressed);
+                                field.onChange(compressed);
+                              } catch (error) {
+                                console.error('Error compressing image:', error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to process image. Please try again.",
+                                  variant: "destructive",
+                                });
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        ref={fileInputRef}
+                      />
+                    </FormControl>
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="max-h-40 rounded-md"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            setImagePreview(null);
+                            field.onChange(null);
+                          }}
+                        >
+                          Remove Image
+                        </Button>
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
