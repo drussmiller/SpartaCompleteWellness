@@ -43,7 +43,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       content: "",
       imageUrl: null,
       points: 3,
-      postDate: new Date()
+      postDate: selectedDate
     }
   });
 
@@ -57,7 +57,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     const isToday = new Date().toDateString() === selectedDate.toDateString();
     const dayText = isToday ? 'today' : 'on this day';
 
-    return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining ${dayText})`;
+    return remainingPosts <= 0 ? `(Daily limit reached)` : `(${remainingPosts} remaining ${dayText})`;
   }
 
   const createPostMutation = useMutation({
@@ -74,7 +74,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           type: data.type,
           content: data.content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
-          createdAt: data.postDate ? data.postDate.toISOString() : new Date().toISOString()
+          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
 
         formData.append("data", JSON.stringify(postData));
@@ -101,14 +101,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       // Invalidate post counts for both current date and selected date
-      const today = new Date().toISOString();
-      const selectedDateString = selectedDate.toISOString();
-
       queryClient.invalidateQueries({ 
         queryKey: ["/api/posts/counts"],
-        exact: false // This ensures we invalidate all variations of the counts query
+        exact: false
       });
 
       // Close dialog and reset form
@@ -129,7 +127,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         }).catch(error => {
           console.error("Error refreshing post limits:", error);
         });
-      }, 500); // Increased delay to ensure server processing
+      }, 500);
     },
     onError: (error) => {
       console.error("Create post mutation error:", error);
@@ -142,7 +140,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   });
 
   const onSubmit = (data: CreatePostForm) => {
-    console.log('Submitting form with data:', data);
+    data.postDate = selectedDate;
     createPostMutation.mutate(data);
   };
 
@@ -160,10 +158,6 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogPrimitive.Close className="absolute left-4 top-8 opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:text-muted-foreground border-none">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
         <div className="flex justify-between items-center mb-4">
           <DialogTitle className="flex-1 text-center">Create Post</DialogTitle>
           <Button
@@ -186,6 +180,44 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="postDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Post Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                        >
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSelectedDate(date);
+                            field.onChange(date);
+                          }
+                        }}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="type"
@@ -230,48 +262,6 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                       value={field.value || ''}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="postDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Post Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          if (date) {
-                            setSelectedDate(date);
-                          }
-                        }}
-                        disabled={(date) => date > new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

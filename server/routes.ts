@@ -479,231 +479,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // The post counts endpoint has been moved to the top of the file to avoid routing conflicts
-
-// This section has been moved up in the file to ensure proper route ordering
-
-// Now we can define the dynamic route for getting a specific post
-// Define specific routes BEFORE the dynamic :postId route
-router.get("/api/posts/counts", authenticate, async (req, res) => {
-  try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-    // Get timezone offset from query params (in minutes)
-    const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-
-    // Get specific date if provided, or use current date
-    let userDate;
-    if (req.query.date) {
-      // Convert the provided date string to a Date object
-      userDate = new Date(req.query.date as string);
-      if (isNaN(userDate.getTime())) {
-        return res.status(400).json({ message: "Invalid date format" });
-      }
-    } else {
-      // Use current date
-      const now = new Date();
-      // Convert server UTC time to user's local time
-      userDate = new Date(now.getTime() - (tzOffset * 60000));
-    }
-
-    const startOfDay = new Date(
-      userDate.getFullYear(),
-      userDate.getMonth(),
-      userDate.getDate()
-    );
-    const endOfDay = new Date(
-      userDate.getFullYear(),
-      userDate.getMonth(),
-      userDate.getDate() + 1
-    );
-
-    // Convert local time boundaries back to UTC for database query
-    const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
-    const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
-
-    logger.info('Post count query parameters:', {
-      userId: req.user.id,
-      userLocalTime: userDate.toISOString(),
-      utcStart: utcStart.toISOString(),
-      utcEnd: utcEnd.toISOString(),
-      tzOffset,
-      specificDate: req.query.date || 'current'
-    });
-
-    // Query posts for today by type
-    const result = await db
-      .select({
-        type: posts.type,
-        count: sql<number>`count(*)::integer`
-      })
-      .from(posts)
-      .where(
-        and(
-          eq(posts.userId, req.user.id),
-          gte(posts.createdAt, utcStart),
-          lt(posts.createdAt, utcEnd),
-          isNull(posts.parentId) // Don't count comments
-        )
-      )
-      .groupBy(posts.type);
-
-    logger.info('Post counts query result:', result);
-
-    // Convert result to expected format
-    const counts = {
-      food: 0,
-      workout: 0,
-      scripture: 0,
-      memory_verse: 0
-    };
-
-    result.forEach(row => {
-      if (row.type in counts) {
-        counts[row.type as keyof typeof counts] = Number(row.count);
-      }
-    });
-
-    // Define maximum posts allowed per type
-    const maxPosts = {
-      food: 3,
-      workout: 1,
-      scripture: 1,
-      memory_verse: 1
-    };
-
-    // Calculate if user can post for each type
-    const canPost = {
-      food: counts.food < maxPosts.food,
-      workout: counts.workout < maxPosts.workout,
-      scripture: counts.scripture < maxPosts.scripture,
-      memory_verse: userDate.getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
-    };
-
-    // Calculate remaining posts for each type
-    const remaining = {
-      food: Math.max(0, maxPosts.food - counts.food),
-      workout: Math.max(0, maxPosts.workout - counts.workout),
-      scripture: Math.max(0, maxPosts.scripture - counts.scripture),
-      memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
-    };
-
-    logger.info('Response data:', {
-      counts,
-      canPost,
-      remaining,
-      userLocalDay: userDate.getDay()
-    });
-
-    res.json({ counts, canPost, remaining });
-  } catch (error) {
-    logger.error('Error getting post counts:', error);
-    res.status(500).json({
-      message: "Failed to get post counts",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-});
-
-// Get comments endpoint - must come before dynamic post routes
-router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
-  try {
-    logger.info("\n=== Comment Endpoint Debug ===");
-    logger.info("Request params:", req.params);
-    logger.info("User:", req.user?.id);
-
-    const postId = parseInt(req.params.postId);
-    if (isNaN(postId)) {
-      logger.info("Invalid post ID:", req.params.postId);
-      return res.status(400).json({ message: "Invalid post ID" });
-    }
-
-    // Rest of comment endpoint code...
-    logger.info("Fetching comments for post", postId);
-
-    // First, get direct comments for this post
-    const directCommentsQuery = db
-      .select({
-        id: posts.id,
-        userId: posts.userId,
-        type: posts.type,
-        content: posts.content,
-        imageUrl: posts.imageUrl,
-        points: posts.points,
-        createdAt: posts.createdAt,
-        parentId: posts.parentId,
-        depth: posts.depth,
-        author: {
-          id: users.id,
-          username: users.username,
-          imageUrl: users.imageUrl
-        }
-      })
-      .from(posts)
-      .where(eq(posts.parentId, postId))
-      .innerJoin(users, eq(posts.userId, users.id))
-      .orderBy(posts.createdAt);
-
-    logger.info("Executing direct comments query:", directCommentsQuery.toSQL());
-    const directComments = await directCommentsQuery;
-    logger.info(`Found ${directComments.length} direct comments`);
-
-    // Then, get all replies to any comment in this thread
-    const commentIds = directComments.map(comment => comment.id);
-    let allComments = [...directComments];
-
-    if (commentIds.length > 0) {
-      const repliesQuery = db
-        .select({
-          id: posts.id,
-          userId: posts.userId,
-          type: posts.type,
-          content: posts.content,
-          imageUrl: posts.imageUrl,
-          points: posts.points,
-          createdAt: posts.createdAt,
-          parentId: posts.parentId,
-          depth: posts.depth,
-          author: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl
-          }
-        })
-        .from(posts)
-        .where(
-          and(
-            or(...commentIds.map(id => eq(posts.parentId, id))),
-            sql`${posts.id} <> ${postId}` // Ensure we don't get the original post
-          )
-        )
-        .innerJoin(users, eq(posts.userId, users.id))
-        .orderBy(posts.createdAt);
-
-      logger.info("Executing replies query:", repliesQuery.toSQL());
-      const replies = await repliesQuery;
-      logger.info(`Found ${replies.length} replies to comments`);
-
-      // Add replies to the result
-      allComments = [...directComments, ...replies];
-    }
-
-    logger.info(`Returning ${allComments.length} total comments and replies`);
-    res.json(allComments);
-  } catch (error) {
-    logger.error("=== Comment Endpoint Error ===");
-    logger.error("Error details:", error);
-    res.status(500).json({
-      message: "Failed to fetch comments",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-});
-
-// Now we can define the dynamic route for getting a specific post
-router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
+  // Get original post endpoint
+  router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
     try {
-      
+      // Skip processing if this is the "counts" endpoint - it's handled by a different route
+      if (req.params.postId === 'counts') {
+        return next();
+      }
+
       logger.info("\n=== Post Fetch Debug ===");
       logger.info("Request params:", req.params);
       logger.info("User:", req.user?.id);
@@ -905,7 +688,112 @@ router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
     }
   });
 
-  // The post counts endpoint has been moved up in the route order
+  router.get("/api/posts/counts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      const dateParam = req.query.date ? new Date(req.query.date as string) : new Date();
+
+      // Convert server UTC time to user's local time
+      const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
+      const startOfDay = new Date(
+        userDate.getFullYear(),
+        userDate.getMonth(),
+        userDate.getDate()
+      );
+      const endOfDay = new Date(
+        userDate.getFullYear(),
+        userDate.getMonth(),
+        userDate.getDate() + 1
+      );
+
+      // Convert local time boundaries back to UTC for database query
+      const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
+      const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
+
+      logger.info('Post count query parameters:', {
+        userId: req.user.id,
+        userLocalTime: userDate.toISOString(),
+        utcStart: utcStart.toISOString(),
+        utcEnd: utcEnd.toISOString(),
+        tzOffset
+      });
+
+      // Query posts for the specified date by type
+      const result = await db
+        .select({
+          type: posts.type,
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, utcStart),
+            lt(posts.createdAt, utcEnd),
+            isNull(posts.parentId) // Don't count comments
+          )
+        )
+        .groupBy(posts.type);
+
+      logger.info('Post counts query result:', result);
+
+      // Convert result to expected format
+      const counts = {
+        food: 0,
+        workout: 0,
+        scripture: 0,
+        memory_verse: 0
+      };
+
+      result.forEach(row => {
+        if (row.type in counts) {
+          counts[row.type as keyof typeof counts] = Number(row.count);
+        }
+      });
+
+      // Define maximum posts allowed per type
+      const maxPosts = {
+        food: 3,
+        workout: 1,
+        scripture: 1,
+        memory_verse: 1
+      };
+
+      // Calculate if user can post for each type
+      const canPost = {
+        food: counts.food < maxPosts.food,
+        workout: counts.workout < maxPosts.workout,
+        scripture: counts.scripture < maxPosts.scripture,
+        memory_verse: userDate.getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
+      };
+
+      // Calculate remaining posts for each type
+      const remaining = {
+        food: Math.max(0, maxPosts.food - counts.food),
+        workout: Math.max(0, maxPosts.workout - counts.workout),
+        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
+        memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
+      };
+
+      logger.info('Response data:', {
+        counts,
+        canPost,
+        remaining,
+        userLocalDay: userDate.getDay()
+      });
+
+      res.json({ counts, canPost, remaining });
+    } catch (error) {
+      logger.error('Error getting post counts:', error);
+      res.status(500).json({
+        message: "Failed to get post counts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Delete post endpoint
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
