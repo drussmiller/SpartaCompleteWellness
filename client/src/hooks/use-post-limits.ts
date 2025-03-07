@@ -43,11 +43,12 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       console.log("Post limits API response:", result);
       return result as PostLimitsResponse;
     },
-    // Always get fresh data
-    staleTime: 0,
-    cacheTime: 0,
+    // Get fresh data but not too frequently
+    staleTime: 2000, // Data is fresh for 2 seconds
+    cacheTime: 60000, // Keep in cache for 1 minute
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Refetch every 5 seconds
     retry: 2,
     enabled: !!user
   });
@@ -87,7 +88,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       // Also set up interval for periodic refresh as backup
       const intervalId = setInterval(() => {
         fetchData();
-      }, 2000); // Refresh every 2 seconds
+      }, 5000); // Refresh every 5 seconds
       
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
