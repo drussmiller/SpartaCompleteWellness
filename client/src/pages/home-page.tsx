@@ -10,7 +10,15 @@ import { AppLayout } from "@/components/app-layout";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { remaining } = usePostLimits();
+  const { remaining, counts } = usePostLimits();
+  
+  // Debug post counts and remaining values
+  console.log("Home page post limits:", { 
+    remaining, 
+    counts,
+    foodCount: counts?.food,
+    foodRemaining: remaining?.food 
+  });
 
   // Query for team information
   const { data: teamInfo } = useQuery({

@@ -52,6 +52,15 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     // This should display the correct number of posts remaining
     const remainingPosts = remaining[type as keyof typeof remaining];
     
+    // Debug the data for food posts
+    if (type === 'food') {
+      console.log(`Food post remaining data check:`, {
+        fromProp: remaining.food,
+        calculated: remainingPosts,
+        type
+      });
+    }
+    
     // Display the current limit
     return remainingPosts <= 0 
       ? "(Daily limit reached)" 
