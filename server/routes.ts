@@ -256,7 +256,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Validate required fields
       const hasImage = req.file !== undefined;
       const isEmptyContentAllowed = hasImage && (postData.type === 'food' || postData.type === 'workout');
-      
+
       if (!postData.type || (!postData.content && !isEmptyContentAllowed)) {
         logger.error("Missing required fields:", { type: postData.type, content: postData.content, hasImage });
         return res.status(400).json({ message: "Missing required fields" });
@@ -305,7 +305,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         try {
           const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
           console.log("Image URL for new post:", imageUrl);
-          
+
           const post = await storage.createPost({
             userId: req.user.id,
             type: postData.type,
@@ -486,7 +486,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (req.params.postId === 'counts') {
         return next();
       }
-      
+
       logger.info("\n=== Post Fetch Debug ===");
       logger.info("Request params:", req.params);
       logger.info("User:", req.user?.id);
@@ -694,11 +694,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      const dateParam = req.query.date ? new Date(req.query.date as string) : new Date();
 
-      // Calculate start and end of day in user's timezone
-      const now = new Date();
       // Convert server UTC time to user's local time
-      const userDate = new Date(now.getTime() - (tzOffset * 60000));
+      const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
       const startOfDay = new Date(
         userDate.getFullYear(),
         userDate.getMonth(),
@@ -722,7 +721,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         tzOffset
       });
 
-      // Query posts for today by type
+      // Query posts for the specified date by type
       const result = await db
         .select({
           type: posts.type,
