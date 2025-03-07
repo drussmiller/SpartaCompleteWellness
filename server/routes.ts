@@ -699,11 +699,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Convert server UTC time to user's local time
       const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
+
+      // Create start of day in user's timezone
       const startOfDay = new Date(
         userDate.getFullYear(),
         userDate.getMonth(),
         userDate.getDate()
       );
+
+      // Create end of day in user's timezone
       const endOfDay = new Date(
         userDate.getFullYear(),
         userDate.getMonth(),
@@ -739,9 +743,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type);
 
-      logger.info('Post counts query result:', result);
-
-      // Convert result to expected format with proper initialization
+      // Initialize counts with zeros
       const counts = {
         food: 0,
         workout: 0,
@@ -749,6 +751,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: 0
       };
 
+      // Update counts from query results
       result.forEach(row => {
         if (row.type in counts) {
           counts[row.type as keyof typeof counts] = Number(row.count);
