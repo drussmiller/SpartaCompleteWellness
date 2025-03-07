@@ -603,7 +603,7 @@ router.get("/api/posts/counts", authenticate, async (req, res) => {
 router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
     try {
       // Skip processing for special endpoints that have their own handlers
-      if (req.params.postId === 'counts') {
+      if (req.params.postId === 'counts' || req.params.postId === 'comments') {
         return next();
       }
       
