@@ -57,12 +57,18 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       try {
         const formData = new FormData();
 
+        // For food and workout posts, ensure we have an image
+        if ((data.type === 'food' || data.type === 'workout') && (!data.imageUrl || data.imageUrl.length === 0)) {
+          throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
+        }
+
         if (data.imageUrl && data.imageUrl.length > 0) {
           try {
             const blob = await fetch(data.imageUrl).then(r => r.blob());
             formData.append("image", blob, "image.jpeg");
           } catch (error) {
             console.error("Error processing image:", error);
+            throw new Error("Failed to process image");
           }
         }
 
