@@ -1,77 +1,65 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/use-auth";
+import { useState, useMemo } from "react";
 
-interface PostLimits {
-  food: number;
-  workout: number;
-  scripture: number;
-  memory_verse: number;
-}
+export function usePostLimits(date: Date = new Date()) {
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
 
-interface PostLimitsResponse {
-  counts: PostLimits;
-  canPost: {
-    food: boolean;
-    workout: boolean;
-    scripture: boolean;
-    memory_verse: boolean;
-  };
-  remaining: PostLimits;
-}
+  // Format date for the query key to ensure it refreshes when the date changes
+  const dateKey = date.toISOString();
 
-export function usePostLimits() {
-  const { user } = useAuth();
-  const { data } = useQuery<PostLimitsResponse>({
-    queryKey: ["/api/posts/counts"],
-    enabled: !!user,
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["/api/posts/counts", dateKey, tzOffset],
     queryFn: async () => {
-      console.log('Fetching post limits for user:', user?.id);
-
-      // Get local timezone offset in minutes
-      const tzOffset = new Date().getTimezoneOffset();
-      const res = await apiRequest("GET", `/api/posts/counts?tzOffset=${tzOffset}`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch post limits');
+      try {
+        const response = await apiRequest(
+          "GET", 
+          `/api/posts/counts?tzOffset=${tzOffset}&date=${encodeURIComponent(dateKey)}`
+        );
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error(`Failed to fetch post limits: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+        }
+        return response.json();
+      } catch (err) {
+        console.error("API GET request to /api/posts/counts?tzOffset=" + tzOffset + "&date=" + dateKey + " threw an exception:", err);
+        throw err;
       }
-      const data = await res.json();
-      console.log('Post limits response:', data);
-      return data;
     },
-    staleTime: 30000, // Refetch after 30 seconds
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
+    enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
+    retry: 3
   });
 
-  // Log the current state
-  if (data) {
-    console.log('Current post counts:', data.counts);
-    console.log('Can post status:', data.canPost);
-    console.log('Remaining posts:', data.remaining);
-  }
+  // Default values
+  const defaultCounts = {
+    food: 0,
+    workout: 0,
+    scripture: 0,
+    memory_verse: 0
+  };
 
-  // Define default post limits based on the application rules
-  const defaultLimits = {
+  const defaultCanPost = {
+    food: true,
+    workout: true,
+    scripture: true,
+    memory_verse: date.getDay() === 6 // Only available on Saturday
+  };
+
+  const defaultRemaining = {
     food: 3,
     workout: 1,
     scripture: 1,
-    memory_verse: 1
+    memory_verse: date.getDay() === 6 ? 1 : 0
   };
 
   return {
-    counts: data?.counts || {
-      food: 0,
-      workout: 0,
-      scripture: 0,
-      memory_verse: 0
-    },
-    canPost: data?.canPost || {
-      food: true,
-      workout: true,
-      scripture: true,
-      memory_verse: new Date().getDay() === 6 // Only on Saturday
-    },
-    remaining: data?.remaining || defaultLimits,
-    isSaturday: new Date().getDay() === 6
+    counts: data?.counts || defaultCounts,
+    canPost: data?.canPost || defaultCanPost,
+    remaining: data?.remaining || defaultRemaining,
+    isLoading,
+    error,
+    refetch
   };
 }
