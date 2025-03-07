@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
 
 interface PostLimits {
   food: number;
@@ -21,24 +20,17 @@ interface PostLimitsResponse {
   remaining: PostLimits;
 }
 
-export function usePostLimits(date?: Date) {
+export function usePostLimits() {
   const { user } = useAuth();
-  const { data, isLoading, error, refetch } = useQuery<PostLimitsResponse>({
-    queryKey: ["/api/posts/counts", date?.toISOString()],
+  const { data } = useQuery<PostLimitsResponse>({
+    queryKey: ["/api/posts/counts"],
     enabled: !!user,
     queryFn: async () => {
-      console.log('Fetching post limits for user:', user?.id, 'date:', date ? date.toISOString() : 'current');
+      console.log('Fetching post limits for user:', user?.id);
 
       // Get local timezone offset in minutes
       const tzOffset = new Date().getTimezoneOffset();
-      let url = `/api/posts/counts?tzOffset=${tzOffset}`;
-
-      // Add date parameter if provided
-      if (date) {
-        url += `&date=${date.toISOString()}`;
-      }
-
-      const res = await apiRequest("GET", url);
+      const res = await apiRequest("GET", `/api/posts/counts?tzOffset=${tzOffset}`);
       if (!res.ok) {
         throw new Error('Failed to fetch post limits');
       }
@@ -46,51 +38,10 @@ export function usePostLimits(date?: Date) {
       console.log('Post limits response:', data);
       return data;
     },
-    staleTime: 0, // Always get fresh data
+    staleTime: 30000, // Refetch after 30 seconds
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    cacheTime: 0 // Don't cache the data
+    refetchOnWindowFocus: true
   });
-
-  // Force refetch when date changes or when posts are created/deleted
-  useEffect(() => {
-    // Track if we're already processing a change to prevent infinite loops
-    let isRefetching = false;
-    
-    // Set up subscription for post changes
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      if (isRefetching) return; // Skip if already processing a refetch
-      
-      const matchPattern = /\/api\/posts$/;
-      const queriesChanged = queryClient.getQueryCache().getAll().some(
-        query => typeof query.queryKey[0] === 'string' && 
-                matchPattern.test(query.queryKey[0] as string) && 
-                query.state.dataUpdateCount > 0
-      );
-
-      if (queriesChanged) {
-        console.log('Post data changed, refreshing post limits');
-        isRefetching = true;
-        
-        // Use setTimeout to break the potential call stack cycle
-        setTimeout(() => {
-          refetch().finally(() => {
-            isRefetching = false;
-          });
-        }, 0);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [refetch]);
-
-  // Also refetch when date changes
-  useEffect(() => {
-    refetch();
-  }, [date, refetch]);
 
   // Log the current state
   if (data) {
@@ -106,25 +57,21 @@ export function usePostLimits(date?: Date) {
     scripture: 1,
     memory_verse: 1
   };
-  const defaultCounts = {
-    food: 0,
-    workout: 0,
-    scripture: 0,
-    memory_verse: 0
-  };
-  const defaultCanPost = {
-    food: true,
-    workout: true,
-    scripture: true,
-    memory_verse: new Date().getDay() === 6 // Only on Saturday
-  };
 
   return {
-    counts: data?.counts || defaultCounts,
-    canPost: data?.canPost || defaultCanPost,
+    counts: data?.counts || {
+      food: 0,
+      workout: 0,
+      scripture: 0,
+      memory_verse: 0
+    },
+    canPost: data?.canPost || {
+      food: true,
+      workout: true,
+      scripture: true,
+      memory_verse: new Date().getDay() === 6 // Only on Saturday
+    },
     remaining: data?.remaining || defaultLimits,
-    isLoading,
-    error,
-    refetch
+    isSaturday: new Date().getDay() === 6
   };
 }
