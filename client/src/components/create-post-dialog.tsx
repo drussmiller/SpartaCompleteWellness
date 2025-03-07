@@ -49,18 +49,10 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     }
 
     // Get the correct remaining posts count from the API
-    // When post limit is reached, canPost will be false and we show 0 remaining
-    console.log(`Post limit for ${type}:`, { 
-      canPost: canPost?.[type], 
-      remaining: remaining?.[type],
-      display: remaining?.[type] ?? 0 
-    });
+    const remainingPosts = remaining[type as keyof typeof remaining] ?? 0;
+    const isDisabled = !canPost[type as keyof typeof canPost];
 
-    // Use the API response data to determine remaining posts
-    // Always show actual remaining count from API
-    const remainingPosts = remaining?.[type] ?? 0;
-
-    return remainingPosts <= 0 
+    return isDisabled 
       ? "(Daily limit reached)" 
       : `(${remainingPosts} remaining today)`;
   }
