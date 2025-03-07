@@ -42,22 +42,27 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     }
   });
 
-function getRemainingMessage(type: string) {
+  function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
       const isSaturday = selectedDate.getDay() === 6;
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
     // Get the correct remaining posts count from the API
-    const remainingPosts = remaining[type as keyof typeof remaining];
-    const isDisabled = !canPost[type as keyof typeof canPost];
+    // When post limit is reached, canPost will be false and we show 0 remaining
+    console.log(`Post limit for ${type}:`, { 
+      canPost: canPost?.[type], 
+      remaining: remaining?.[type],
+      display: remaining?.[type] ?? 0 
+    });
 
-    if (isDisabled) {
-      return "(Daily limit reached)";
-    }
+    // Use the API response data to determine remaining posts
+    // Always show actual remaining count from API
+    const remainingPosts = remaining?.[type] ?? 0;
 
-    // Always show the actual remaining count from the API
-    return `(${remainingPosts} remaining today)`;
+    return remainingPosts <= 0 
+      ? "(Daily limit reached)" 
+      : `(${remainingPosts} remaining today)`;
   }
 
   const createPostMutation = useMutation({
