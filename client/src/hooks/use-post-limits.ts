@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,7 +28,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   const tzOffset = new Date().getTimezoneOffset();
   const queryKey = ["/api/posts/counts", selectedDate.toISOString(), tzOffset];
 
-  const { data, refetch, isLoading } = useQuery({
+  const { data, refetch, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
       const response = await apiRequest(
@@ -38,42 +39,20 @@ export function usePostLimits(selectedDate: Date = new Date()) {
         throw new Error("Failed to fetch post limits");
       }
       const result = await response.json();
-      // Remove console logging of API response data
+      console.log("Post counts API result:", result);
       return result as PostLimitsResponse;
     },
-    // Get fresh data but not too frequently
-    staleTime: 15000, // Data is fresh for 15 seconds
-    cacheTime: 60000, // Keep in cache for 1 minute
+    staleTime: 15000,
+    cacheTime: 60000,
     refetchOnMount: true,
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchInterval: 30000, // Refetch every 30 seconds
-    retry: 1, // Only retry once
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
+    retry: 1,
     enabled: !!user
   });
 
   useEffect(() => {
     if (user) {
-      const fetchData = async () => {
-        // Use more specific query key to prevent widespread cache invalidation
-        queryClient.invalidateQueries({ 
-          queryKey: queryKey
-        });
-        
-        // Avoid refetching too many additional queries
-        queryClient.invalidateQueries({ 
-          queryKey: ["/api/posts"],
-          exact: false,
-          refetchType: "inactive"
-        });
-
-        // Single refetch is enough
-        await refetch();
-      };
-
-      // Initial fetch when component mounts
-      fetchData();
-
-      // Add event listener for post changes
       const handlePostChange = () => {
         queryClient.invalidateQueries({ queryKey });
       };
@@ -81,10 +60,10 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
       
-      // Use a less frequent interval to reduce server load
+      // Less frequent interval to reduce API load
       const intervalId = setInterval(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 60000); // Reduced frequency to once per minute
+      }, 60000);
       
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
@@ -92,20 +71,20 @@ export function usePostLimits(selectedDate: Date = new Date()) {
         clearInterval(intervalId);
       };
     }
-  }, [user, selectedDate, refetch, queryClient, queryKey]);
-
-  const defaultCanPost = {
-    food: true,
-    workout: true,
-    scripture: true,
-    memory_verse: selectedDate.getDay() === 6 
-  };
+  }, [user, queryClient, queryKey]);
 
   const defaultCounts = {
     food: 0,
     workout: 0,
     scripture: 0,
     memory_verse: 0
+  };
+
+  const defaultCanPost = {
+    food: true,
+    workout: true,
+    scripture: true,
+    memory_verse: selectedDate.getDay() === 6
   };
 
   const defaultRemaining = {
@@ -115,15 +94,24 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     memory_verse: selectedDate.getDay() === 6 ? 1 : 0
   };
 
+  // IMPORTANT: Make sure we're using the server-provided data and not defaulting to max values
+  const counts = data?.counts || defaultCounts;
+  const canPost = data?.canPost || defaultCanPost;
+  const remaining = data?.remaining || defaultRemaining;
+
+  console.log("usePostLimits returning values:", {
+    counts,
+    canPost,
+    remaining,
+    isFromServer: !!data
+  });
+
   return {
-    counts: data?.counts || defaultCounts,
-    canPost: data?.canPost || defaultCanPost,
-    remaining: data?.remaining || defaultRemaining,
-    refetch: () => {
-      queryClient.invalidateQueries({ queryKey });
-      return refetch();
-    },
+    counts,
+    canPost,
+    remaining,
     isLoading,
-    isSaturday: selectedDate.getDay() === 6
+    error,
+    refetch
   };
 }
