@@ -55,8 +55,13 @@ export function usePostLimits(date?: Date) {
 
   // Force refetch when date changes or when posts are created/deleted
   useEffect(() => {
+    // Track if we're already processing a change to prevent infinite loops
+    let isRefetching = false;
+    
     // Set up subscription for post changes
     const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+      if (isRefetching) return; // Skip if already processing a refetch
+      
       const matchPattern = /\/api\/posts$/;
       const queriesChanged = queryClient.getQueryCache().getAll().some(
         query => typeof query.queryKey[0] === 'string' && 
@@ -66,7 +71,14 @@ export function usePostLimits(date?: Date) {
 
       if (queriesChanged) {
         console.log('Post data changed, refreshing post limits');
-        refetch();
+        isRefetching = true;
+        
+        // Use setTimeout to break the potential call stack cycle
+        setTimeout(() => {
+          refetch().finally(() => {
+            isRefetching = false;
+          });
+        }, 0);
       }
     });
 

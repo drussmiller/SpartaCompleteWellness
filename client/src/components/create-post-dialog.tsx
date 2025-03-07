@@ -120,10 +120,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       // Explicitly invalidate the post counts query to force a refresh
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
 
-      // Force a refetch to ensure the UI is immediately updated
-      refetch().then(() => {
-        console.log("Post limits refreshed after posting");
-      });
+      // Force a refetch after a small delay to ensure the UI is updated and prevent infinite loops
+      setTimeout(() => {
+        refetch().then(() => {
+          console.log("Post limits refreshed after posting");
+        });
+      }, 100);
 
       setOpen(false);
       form.reset();
