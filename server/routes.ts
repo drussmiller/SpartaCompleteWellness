@@ -479,7 +479,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Post counts endpoint - must be defined BEFORE the post detail endpoint to avoid routing conflicts
+  // The post counts endpoint has been moved to the top of the file to avoid routing conflicts
+
+// Special endpoints should be defined FIRST, before ANY dynamic routes
 router.get("/api/posts/counts", authenticate, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -600,12 +602,106 @@ router.get("/api/posts/counts", authenticate, async (req, res) => {
   }
 });
 
+// Get comments endpoint must come before dynamic post routes
+router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
+  try {
+    logger.info("\n=== Comment Endpoint Debug ===");
+    logger.info("Request params:", req.params);
+    logger.info("User:", req.user?.id);
+
+    const postId = parseInt(req.params.postId);
+    if (isNaN(postId)) {
+      logger.info("Invalid post ID:", req.params.postId);
+      return res.status(400).json({ message: "Invalid post ID" });
+    }
+
+    logger.info("Fetching comments for post", postId);
+
+    // First, get direct comments for this post
+    const directCommentsQuery = db
+      .select({
+        id: posts.id,
+        userId: posts.userId,
+        type: posts.type,
+        content: posts.content,
+        imageUrl: posts.imageUrl,
+        points: posts.points,
+        createdAt: posts.createdAt,
+        parentId: posts.parentId,
+        depth: posts.depth,
+        author: {
+          id: users.id,
+          username: users.username,
+          imageUrl: users.imageUrl
+        }
+      })
+      .from(posts)
+      .where(eq(posts.parentId, postId))
+      .innerJoin(users, eq(posts.userId, users.id))
+      .orderBy(posts.createdAt);
+
+    logger.info("Executing direct comments query:", directCommentsQuery.toSQL());
+    const directComments = await directCommentsQuery;
+    logger.info(`Found ${directComments.length} direct comments`);
+
+    // Then, get all replies to any comment in this thread
+    // This includes replies to direct comments and replies to replies
+    const commentIds = directComments.map(comment => comment.id);
+    let allComments = [...directComments];
+
+    if (commentIds.length > 0) {
+      const repliesQuery = db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl
+          }
+        })
+        .from(posts)
+        .where(
+          and(
+            or(...commentIds.map(id => eq(posts.parentId, id))),
+            sql`${posts.id} <> ${postId}` // Ensure we don't get the original post
+          )
+        )
+        .innerJoin(users, eq(posts.userId, users.id))
+        .orderBy(posts.createdAt);
+
+      logger.info("Executing replies query:", repliesQuery.toSQL());
+      const replies = await repliesQuery;
+      logger.info(`Found ${replies.length} replies to comments`);
+
+      // Add replies to the result
+      allComments = [...directComments, ...replies];
+    }
+
+    logger.info(`Returning ${allComments.length} total comments and replies`);
+    logger.info("Comments data:", JSON.stringify(allComments, null, 2));
+
+    res.json(allComments);
+  } catch (error) {
+    logger.error("=== Comment Endpoint Error ===");
+    logger.error("Error details:", error);
+    res.status(500).json({
+      message: "Failed to fetch comments",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Now we can define the dynamic route for getting a specific post
 router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
     try {
-      // Skip processing for special endpoints that have their own handlers
-      if (req.params.postId === 'counts' || req.params.postId === 'comments') {
-        return next();
-      }
       
       logger.info("\n=== Post Fetch Debug ===");
       logger.info("Request params:", req.params);
