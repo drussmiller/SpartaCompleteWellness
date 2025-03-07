@@ -247,10 +247,11 @@ export const storage = {
           userId: data.userId,
           type: data.type || "comment",
           content: data.content,
+          imageUrl: data.imageUrl,
           parentId: data.parentId || null,
           depth: data.depth || 0,
           points: data.points || 1,
-          createdAt: new Date()
+          createdAt: data.createdAt || new Date()
         })
         .returning();
       logger.debug("Post created successfully:", post.id);

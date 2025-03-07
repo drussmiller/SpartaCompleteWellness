@@ -303,11 +303,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
 
         try {
+          const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+          console.log("Image URL for new post:", imageUrl);
+          
           const post = await storage.createPost({
             userId: req.user.id,
             type: postData.type,
             content: postData.content.trim(),
-            imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+            imageUrl: imageUrl,
             createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
           });
           logger.info("Post created successfully:", post);
