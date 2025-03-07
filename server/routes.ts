@@ -700,29 +700,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Convert server UTC time to user's local time
       const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
 
-      // Create start of day in user's timezone
+      // Create start and end of day in UTC
       const startOfDay = new Date(
         userDate.getFullYear(),
         userDate.getMonth(),
         userDate.getDate()
       );
-
-      // Create end of day in user's timezone
-      const endOfDay = new Date(
-        userDate.getFullYear(),
-        userDate.getMonth(),
-        userDate.getDate() + 1
-      );
-
-      // Convert local time boundaries back to UTC for database query
-      const utcStart = new Date(startOfDay.getTime() + (tzOffset * 60000));
-      const utcEnd = new Date(endOfDay.getTime() + (tzOffset * 60000));
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
 
       logger.info('Post count query parameters:', {
         userId: req.user.id,
         userLocalTime: userDate.toISOString(),
-        utcStart: utcStart.toISOString(),
-        utcEnd: utcEnd.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
         tzOffset
       });
 
@@ -736,12 +727,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             eq(posts.userId, req.user.id),
-            gte(posts.createdAt, utcStart),
-            lt(posts.createdAt, utcEnd),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
             isNull(posts.parentId) // Don't count comments
           )
         )
         .groupBy(posts.type);
+
+      logger.info('Post counts query result:', result);
 
       // Initialize counts with zeros
       const counts = {
@@ -757,6 +750,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           counts[row.type as keyof typeof counts] = Number(row.count);
         }
       });
+
+      logger.info('Counts after processing:', counts);
 
       // Define maximum posts allowed per type
       const maxPosts = {
@@ -783,7 +778,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: isSaturday ? Math.max(0, maxPosts.memory_verse - counts.memory_verse) : 0
       };
 
-      logger.info('Response data:', {
+      logger.info('Final response data:', {
         counts,
         canPost,
         remaining,
@@ -902,8 +897,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });
-        }
+          return res.status(400).json({ error: "No content could be extracted" });        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -928,10 +922,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     } catch (error) {
       logger.error('💥 [UPLOAD] Fatal error:');
-      logger.error('------------------------');
+      logger.info('------------------------');
       logger.error('Error:', error.message);
       logger.error('Stack:', error.stack);
-      logger.error('------------------------');
+      logger.info('------------------------');
 
       return res.status(500).json({
         error: "Upload failed",
