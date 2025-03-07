@@ -54,46 +54,41 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
-        // Force a hard reset of the cache for post counts
-        queryClient.resetQueries({ 
-          queryKey: ["/api/posts/counts"]
+        // Use more specific query key to prevent widespread cache invalidation
+        queryClient.invalidateQueries({ 
+          queryKey: queryKey
+        });
+        
+        // Avoid refetching too many additional queries
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/posts"],
+          exact: false,
+          refetchType: "inactive"
         });
 
-        // Invalidate all other related queries
-        queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-
-        if (user?.teamId) {
-          queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
-        }
-
-        // Dispatch a custom event to notify all components to refresh
-        const event = new CustomEvent('post-counts-changed');
-        window.dispatchEvent(event);
-
-        // Force immediate refetch
-        refetch();
-
-        // Try again after a short delay to ensure server had time to process
-        setTimeout(() => {
-          refetch();
-        }, 1000);
+        // Single refetch is enough
+        await refetch();
       };
 
+      // Initial fetch when component mounts
       fetchData();
 
+      // Add event listener for post changes
       const handlePostChange = () => {
-        fetchData();
+        queryClient.invalidateQueries({ queryKey });
       };
 
       window.addEventListener('post-mutation', handlePostChange);
-
+      window.addEventListener('post-counts-changed', handlePostChange);
+      
+      // Use a less frequent interval to reduce server load
       const intervalId = setInterval(() => {
-        fetchData();
-      }, 30000); // Match the refetchInterval timing 
-
+        queryClient.invalidateQueries({ queryKey });
+      }, 60000); // Reduced frequency to once per minute
+      
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
+        window.removeEventListener('post-counts-changed', handlePostChange);
         clearInterval(intervalId);
       };
     }

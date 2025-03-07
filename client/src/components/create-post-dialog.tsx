@@ -113,28 +113,17 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       // Track what type of post was created (without debug logging)
       const createdPostType = form.getValues("type");
 
-      // Force a hard reset of the cache for post counts
-      queryClient.resetQueries({ 
+      // More focused invalidation to prevent excessive refetches
+      queryClient.invalidateQueries({ 
         queryKey: ["/api/posts/counts"]
       });
-
-      // Invalidate all other related queries
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-
-      if (user?.teamId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
-      }
-
-      // Force multiple refetches to ensure the counts update (without logging)
-      setTimeout(() => {
-        refetch();
-
-        // Try again after a short delay to ensure server had time to process
-        setTimeout(() => {
-          refetch();
-        }, 1000);
-      }, 500);
+      
+      // Trigger a single refresh
+      refetch();
+      
+      // Dispatch event to notify other components
+      const event = new CustomEvent('post-counts-changed');
+      window.dispatchEvent(event);
 
       toast({
         title: "Success",
