@@ -93,16 +93,18 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     memory_verse: selectedDate.getDay() === 6 ? 1 : 0
   };
 
-  // IMPORTANT: Make sure we're using the server-provided data and not defaulting to max values
-  const counts = data?.counts || defaultCounts;
-  const canPost = data?.canPost || defaultCanPost;
-  const remaining = data?.remaining || defaultRemaining;
+  // Strict prioritization of server data over defaults
+  // Only use defaults if data is completely null/undefined
+  const counts = data ? data.counts : defaultCounts;
+  const canPost = data ? data.canPost : defaultCanPost;
+  const remaining = data ? data.remaining : defaultRemaining;
 
   console.log("usePostLimits returning values:", {
     counts,
     canPost,
     remaining,
-    isFromServer: !!data
+    isFromServer: !!data,
+    rawServerData: data
   });
 
   return {
