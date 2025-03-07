@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -59,12 +58,12 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
-      
+
       // Less frequent interval to reduce API load
       const intervalId = setInterval(() => {
         queryClient.invalidateQueries({ queryKey });
       }, 60000);
-      
+
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
         window.removeEventListener('post-counts-changed', handlePostChange);

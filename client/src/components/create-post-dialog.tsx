@@ -48,23 +48,16 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Get the actual remaining count from the server data
-    // This should display the correct number of posts remaining
-    const remainingPosts = remaining[type as keyof typeof remaining];
+    // Force use of latest "remaining" data from API (passed as prop)
+    // Double-check using canPost as well for consistency
+    const remainingPosts = remaining[type as keyof typeof remaining] || 0;
+    const isLimitReached = !canPost[type as keyof typeof canPost];
     
-    // Debug the data for food posts
-    if (type === 'food') {
-      console.log(`Food post remaining data check:`, {
-        fromProp: remaining.food,
-        calculated: remainingPosts,
-        type
-      });
+    if (isLimitReached) {
+      return "(Daily limit reached)";
     }
     
-    // Display the current limit
-    return remainingPosts <= 0 
-      ? "(Daily limit reached)" 
-      : `(${remainingPosts} remaining today)`;
+    return `(${remainingPosts} remaining today)`;
   }
 
   const createPostMutation = useMutation({
@@ -119,16 +112,17 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       form.reset();
       setImagePreview(null);
 
-      // Track what type of post was created (without debug logging)
+      // Track what type of post was created
       const createdPostType = form.getValues("type");
 
-      // More focused invalidation to prevent excessive refetches
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/posts/counts"]
-      });
+      // Aggressively clear cache and force immediate refetch
+      queryClient.resetQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       
-      // Trigger a single refresh
-      refetch();
+      // Force immediate refresh of post counts data
+      setTimeout(() => {
+        refetch();
+      }, 100);
       
       // Dispatch event to notify other components
       const event = new CustomEvent('post-counts-changed');
