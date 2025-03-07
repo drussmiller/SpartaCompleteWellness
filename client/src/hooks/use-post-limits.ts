@@ -11,6 +11,17 @@ export interface PostLimits {
   memory_verse: number;
 }
 
+interface PostLimitsResponse {
+  counts: PostLimits;
+  canPost: {
+    food: boolean;
+    workout: boolean;
+    scripture: boolean;
+    memory_verse: boolean;
+  };
+  remaining: PostLimits;
+}
+
 export function usePostLimits(selectedDate: Date = new Date()) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -33,20 +44,23 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     // Enable automatic refetching when the component regains focus
     refetchOnWindowFocus: true,
     // Enable refetching when component remounts
-    refetchOnMount: true
+    refetchOnMount: true,
+    enabled: !!user
   });
 
   // Force refresh the data whenever the component using this hook mounts
   useEffect(() => {
-    refetch();
-    
-    // Set up an interval to refresh counts every 10 seconds
-    const intervalId = setInterval(() => {
+    if (user) {
       refetch();
-    }, 10000);
-    
-    return () => clearInterval(intervalId);
-  }, [refetch]);
+      
+      // Set up an interval to refresh counts every 10 seconds
+      const intervalId = setInterval(() => {
+        refetch();
+      }, 10000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [refetch, user]);
 
   // Define default post limits based on the application rules
   const defaultLimits = {
@@ -56,17 +70,19 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     memory_verse: 1
   };
 
+  // Use server-provided remaining values when available
   return {
     counts: data?.counts || { food: 0, workout: 0, scripture: 0, memory_verse: 0 },
     canPost: data?.canPost || { 
       food: true, 
       workout: true, 
       scripture: true, 
-      memory_verse: new Date().getDay() === 6 // Only on Saturday
+      memory_verse: selectedDate.getDay() === 6 // Only on Saturday
     },
+    // Use the server-calculated remaining posts
     remaining: data?.remaining || defaultLimits,
     refetch,
     isLoading,
-    isSaturday: new Date().getDay() === 6
+    isSaturday: selectedDate.getDay() === 6
   };
 }
