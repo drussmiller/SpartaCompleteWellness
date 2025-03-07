@@ -102,17 +102,32 @@ class Logger {
   }
 
   public info(message: string, metadata: Partial<LogMetadata> = {}): void {
+    // More aggressive filtering of console output
+    const skipConsoleOutput = 
+      (metadata.route && (
+        metadata.route.includes('/api/posts/counts') || 
+        metadata.route.includes('/api/posts')
+      )) ||
+      (message && (
+        message.includes('Post count') || 
+        message.includes('GET /api/posts/counts') ||
+        message.includes('Deserializing user')
+      ));
+    
     const entry = this.formatLogEntry(message, {
       ...metadata,
       timestamp: new Date().toISOString(),
       level: 'INFO',
     });
-    console.log(entry);
+    
+    if (!skipConsoleOutput) {
+      console.log(entry);
+    }
 
-    // Buffer non-error logs
+    // Buffer non-error logs with longer timeout
     this.logBuffer.push(entry);
     if (!this.bufferTimeout) {
-      this.bufferTimeout = setTimeout(() => this.flushBuffer(), 1000);
+      this.bufferTimeout = setTimeout(() => this.flushBuffer(), 10000); // Increased to 10 seconds
     }
   }
 
@@ -135,11 +150,11 @@ class Logger {
         timestamp: new Date().toISOString(),
         level: 'DEBUG',
       });
-      console.log(entry);
-
+      // Skip console output for debug logs (still saved to file)
+      
       this.logBuffer.push(entry);
       if (!this.bufferTimeout) {
-        this.bufferTimeout = setTimeout(() => this.flushBuffer(), 1000);
+        this.bufferTimeout = setTimeout(() => this.flushBuffer(), 5000); // Increased to 5 seconds
       }
     }
   }
