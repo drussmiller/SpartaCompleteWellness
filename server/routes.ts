@@ -481,7 +481,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // The post counts endpoint has been moved to the top of the file to avoid routing conflicts
 
-// Special endpoints should be defined FIRST, before ANY dynamic routes
+// This section has been moved up in the file to ensure proper route ordering
+
+// Now we can define the dynamic route for getting a specific post
+// Define specific routes BEFORE the dynamic :postId route
 router.get("/api/posts/counts", authenticate, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -602,7 +605,7 @@ router.get("/api/posts/counts", authenticate, async (req, res) => {
   }
 });
 
-// Get comments endpoint must come before dynamic post routes
+// Get comments endpoint - must come before dynamic post routes
 router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
   try {
     logger.info("\n=== Comment Endpoint Debug ===");
@@ -615,6 +618,7 @@ router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
       return res.status(400).json({ message: "Invalid post ID" });
     }
 
+    // Rest of comment endpoint code...
     logger.info("Fetching comments for post", postId);
 
     // First, get direct comments for this post
@@ -645,7 +649,6 @@ router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     logger.info(`Found ${directComments.length} direct comments`);
 
     // Then, get all replies to any comment in this thread
-    // This includes replies to direct comments and replies to replies
     const commentIds = directComments.map(comment => comment.id);
     let allComments = [...directComments];
 
@@ -686,8 +689,6 @@ router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     }
 
     logger.info(`Returning ${allComments.length} total comments and replies`);
-    logger.info("Comments data:", JSON.stringify(allComments, null, 2));
-
     res.json(allComments);
   } catch (error) {
     logger.error("=== Comment Endpoint Error ===");
