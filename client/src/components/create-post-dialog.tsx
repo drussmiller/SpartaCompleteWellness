@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -14,6 +14,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { useAuth } from "@/hooks/use-auth";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
@@ -23,7 +26,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const { canPost, counts } = usePostLimits();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { canPost, counts, refetch } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,7 +37,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       type: "food",
       content: "",
       imageUrl: null,
-      points: 3
+      points: 3,
+      postDate: selectedDate
     }
   });
 
@@ -60,7 +65,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           type: data.type,
           content: data.content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
-          createdAt: new Date().toISOString()
+          createdAt: data.postDate ? data.postDate.toISOString() : new Date().toISOString()
         };
 
         formData.append("data", JSON.stringify(postData));
@@ -105,6 +110,11 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         title: "Success",
         description: "Post created successfully!",
       });
+
+      // Refetch limits after a small delay
+      setTimeout(() => {
+        refetch();
+      }, 500);
     },
     onError: (error) => {
       console.error("Create post mutation error:", error);
@@ -117,6 +127,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   });
 
   const onSubmit = (data: CreatePostForm) => {
+    data.postDate = selectedDate;
     createPostMutation.mutate(data);
   };
 
@@ -159,6 +170,44 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="postDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Post Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                        >
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSelectedDate(date);
+                            field.onChange(date);
+                          }
+                        }}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="type"
