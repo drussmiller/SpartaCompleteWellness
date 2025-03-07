@@ -157,7 +157,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
             form="create-post-form"
             variant="default"
             size="sm"
-            className="h-6 w-20 bg-violet-700 hover:bg-violet-800 text-lg" // Modified for smaller size and larger text
+            className="h-6 w-20 bg-violet-700 hover:bg-violet-800 text-sm" // Changed from text-lg to text-sm
             disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
           >
             {createPostMutation.isPending ? (

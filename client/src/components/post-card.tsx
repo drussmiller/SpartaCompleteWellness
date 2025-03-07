@@ -105,15 +105,15 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
           </div>
           <div className="border-t border-gray-200"></div>
 
-          <div className="flex items-center gap-2 py-0 h-6">
+          <div className="flex items-center gap-2 py-1 h-10">
             <ReactionButton postId={post.id} variant="icon" />
             <Button 
               variant="ghost" 
-              size="sm" 
-              className="gap-1.5"
+              size="default" 
+              className="gap-2"
               onClick={() => setIsCommentsOpen(true)}
             >
-              <MessageCircle className="h-4 w-4" />
+              <MessageCircle className="h-5 w-5" />
               {commentCount}
             </Button>
           </div>
