@@ -304,7 +304,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             userId: req.user.id,
             type: postData.type,
             content: postData.content.trim(),
-            imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+            imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+            createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
           });
           logger.info("Post created successfully:", post);
           res.status(201).json(post);
@@ -900,7 +901,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
-        logger.error('------------------------');
+        logger.error('--------------------------------');
         logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
