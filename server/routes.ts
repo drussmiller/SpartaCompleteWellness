@@ -122,7 +122,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type);
 
+      // Log the raw SQL query for debugging
+      const sqlQuery = db
+        .select({
+          type: posts.type,
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId)
+          )
+        )
+        .groupBy(posts.type)
+        .toSQL();
+      
+      logger.info('Post counts SQL query:', sqlQuery);
       logger.info('Post counts query result:', JSON.stringify(result));
+      logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
 
       // Initialize counts with zeros
       const counts = {

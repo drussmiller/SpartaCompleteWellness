@@ -104,15 +104,16 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       form.reset();
       setImagePreview(null);
       
-      // Then invalidate all related queries
-      const tzOffset = new Date().getTimezoneOffset();
+      // Track what type of post was created for debugging
+      const createdPostType = form.getValues("type");
+      console.log(`Successfully created a ${createdPostType} post`);
       
-      // Force clear cache for post counts specifically
-      queryClient.removeQueries({ 
-        queryKey: ["/api/posts/counts"] 
+      // Force a hard reset of the cache for post counts
+      queryClient.resetQueries({ 
+        queryKey: ["/api/posts/counts"]
       });
       
-      // Invalidate other related queries
+      // Invalidate all other related queries
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
@@ -120,14 +121,21 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       
-      // Force an immediate refetch of the counts
+      // Force multiple refetches to ensure the counts update
       setTimeout(() => {
+        console.log("First refetch attempt");
         refetch();
+        
+        // Try again after a short delay to ensure server had time to process
+        setTimeout(() => {
+          console.log("Second refetch attempt");
+          refetch();
+        }, 1000);
       }, 500);
       
       toast({
         title: "Success",
-        description: "Post created successfully!",
+        description: `${createdPostType.charAt(0).toUpperCase() + createdPostType.slice(1)} post created successfully!`,
       });
     },
     onError: (error) => {
