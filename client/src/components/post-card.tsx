@@ -26,9 +26,28 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/posts/${post.id}`);
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      // Force immediate invalidation of relevant queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      
+      // Make sure ALL post count queries are invalidated regardless of date
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === "/api/posts/counts"
+      });
+      
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      // Force refetch of post counts to update the UI immediately
+      const postLimitsQueries = queryClient.getQueriesData({ 
+        queryKey: ["/api/posts/counts"] 
+      });
+      
+      // Refetch all post count queries
+      await Promise.all(
+        postLimitsQueries.map(([queryKey]) => 
+          queryClient.refetchQueries({ queryKey })
+        )
+      );
     },
     onSuccess: () => {
       console.log("Post deleted successfully!");
