@@ -74,6 +74,105 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // IMPORTANT: Define the post counts endpoint BEFORE any dynamic routes
+  // This prevents it from being caught by the /:postId param
+  router.get("/api/posts/counts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      const dateParam = req.query.date ? new Date(req.query.date as string) : new Date();
+
+      // Convert server UTC time to user's local time
+      const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
+
+      // Create start and end of day in UTC
+      const startOfDay = new Date(
+        userDate.getFullYear(),
+        userDate.getMonth(),
+        userDate.getDate()
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      logger.info('Post count query parameters:', {
+        userId: req.user.id,
+        userLocalTime: userDate.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+        tzOffset
+      });
+
+      // Query posts for the specified date by type
+      const result = await db
+        .select({
+          type: posts.type,
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId) // Don't count comments
+          )
+        )
+        .groupBy(posts.type);
+
+      logger.info('Post counts query result:', result);
+
+      // Initialize counts with zeros
+      const counts = {
+        food: 0,
+        workout: 0,
+        scripture: 0,
+        memory_verse: 0
+      };
+
+      // Update counts from query results
+      result.forEach(row => {
+        if (row.type in counts) {
+          counts[row.type as keyof typeof counts] = Number(row.count);
+        }
+      });
+
+      // Define maximum posts allowed per type
+      const maxPosts = {
+        food: 3,
+        workout: 1,
+        scripture: 1,
+        memory_verse: 1
+      };
+
+      // Calculate if user can post for each type
+      const isSaturday = userDate.getDay() === 6;
+      const canPost = {
+        food: counts.food < maxPosts.food,
+        workout: counts.workout < maxPosts.workout,
+        scripture: counts.scripture < maxPosts.scripture,
+        memory_verse: isSaturday && counts.memory_verse < maxPosts.memory_verse
+      };
+
+      // Calculate remaining posts for each type
+      const remaining = {
+        food: Math.max(0, maxPosts.food - counts.food),
+        workout: Math.max(0, maxPosts.workout - counts.workout),
+        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
+        memory_verse: isSaturday ? Math.max(0, maxPosts.memory_verse - counts.memory_verse) : 0
+      };
+
+      res.json({ counts, canPost, remaining });
+    } catch (error) {
+      logger.error('Error getting post counts:', error);
+      res.status(500).json({
+        message: "Failed to get post counts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add JSON content type header for all API routes
   router.use('/api', (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
@@ -487,13 +586,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Get original post endpoint
-  router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
+  router.get("/api/posts/:postId", authenticate, async (req, res) => {
     try {
-      // Skip processing if this is the "counts" endpoint - it's handled by a different route
-      if (req.params.postId === 'counts') {
-        return next();
-      }
-
       logger.info("\n=== Post Fetch Debug ===");
       logger.info("Request params:", req.params);
       logger.info("User:", req.user?.id);
@@ -695,113 +789,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Update the post counts endpoint to fix the limits logic
-  router.get("/api/posts/counts", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      // Get timezone offset from query params (in minutes)
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-      const dateParam = req.query.date ? new Date(req.query.date as string) : new Date();
-
-      // Convert server UTC time to user's local time
-      const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
-
-      // Create start and end of day in UTC
-      const startOfDay = new Date(
-        userDate.getFullYear(),
-        userDate.getMonth(),
-        userDate.getDate()
-      );
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
-
-      logger.info('Post count query parameters:', {
-        userId: req.user.id,
-        userLocalTime: userDate.toISOString(),
-        startOfDay: startOfDay.toISOString(),
-        endOfDay: endOfDay.toISOString(),
-        tzOffset
-      });
-
-      // Query posts for the specified date by type
-      const result = await db
-        .select({
-          type: posts.type,
-          count: sql<number>`count(*)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId) // Don't count comments
-          )
-        )
-        .groupBy(posts.type);
-
-      logger.info('Post counts query result:', result);
-
-      // Initialize counts with zeros
-      const counts = {
-        food: 0,
-        workout: 0,
-        scripture: 0,
-        memory_verse: 0
-      };
-
-      // Update counts from query results
-      result.forEach(row => {
-        if (row.type in counts) {
-          counts[row.type as keyof typeof counts] = Number(row.count);
-        }
-      });
-
-      logger.info('Counts after processing:', counts);
-
-      // Define maximum posts allowed per type
-      const maxPosts = {
-        food: 3,
-        workout: 1,
-        scripture: 1,
-        memory_verse: 1
-      };
-
-      // Calculate if user can post for each type
-      const isSaturday = userDate.getDay() === 6;
-      const canPost = {
-        food: counts.food < maxPosts.food,
-        workout: counts.workout < maxPosts.workout,
-        scripture: counts.scripture < maxPosts.scripture,
-        memory_verse: isSaturday && counts.memory_verse < maxPosts.memory_verse
-      };
-
-      // Calculate remaining posts for each type
-      const remaining = {
-        food: Math.max(0, maxPosts.food - counts.food),
-        workout: Math.max(0, maxPosts.workout - counts.workout),
-        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
-        memory_verse: isSaturday ? Math.max(0, maxPosts.memory_verse - counts.memory_verse) : 0
-      };
-
-      logger.info('Final response data:', {
-        counts,
-        canPost,
-        remaining,
-        userLocalDay: userDate.getDay(),
-        isSaturday
-      });
-
-      res.json({ counts, canPost, remaining });
-    } catch (error) {
-      logger.error('Error getting post counts:', error);
-      res.status(500).json({
-        message: "Failed to get post counts",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+  // Post counts endpoint is now defined at the top of the file to avoid route conflicts
 
   // Delete post endpoint
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
