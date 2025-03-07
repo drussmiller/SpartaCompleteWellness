@@ -25,29 +25,34 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("DELETE", `/api/posts/${post.id}`);
+      console.log(`Deleting post ${post.id} of type ${post.type}`);
+      const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to delete post: ${response.status}`);
+      }
       
-      // Force immediate invalidation of relevant queries
-      await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      console.log("Post deleted, now refreshing all related data");
       
-      // Make sure ALL post count queries are invalidated regardless of date
-      await queryClient.invalidateQueries({ 
-        predicate: (query) => query.queryKey[0] === "/api/posts/counts"
-      });
+      // First invalidate all queries to clear cache
+      queryClient.invalidateQueries();
       
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      // Force immediate refetch of essential data
+      await Promise.all([
+        // Refresh all posts
+        queryClient.refetchQueries({ queryKey: ["/api/posts"] }),
+        
+        // Refresh all post count queries (for any date)
+        queryClient.refetchQueries({ 
+          predicate: (query) => 
+            typeof query.queryKey[0] === 'string' && 
+            query.queryKey[0].includes("/api/posts/counts")
+        }),
+        
+        // Refresh user data
+        queryClient.refetchQueries({ queryKey: ["/api/user"] })
+      ]);
       
-      // Force refetch of post counts to update the UI immediately
-      const postLimitsQueries = queryClient.getQueriesData({ 
-        queryKey: ["/api/posts/counts"] 
-      });
-      
-      // Refetch all post count queries
-      await Promise.all(
-        postLimitsQueries.map(([queryKey]) => 
-          queryClient.refetchQueries({ queryKey })
-        )
-      );
+      console.log("All data refreshed after post deletion");
     },
     onSuccess: () => {
       console.log("Post deleted successfully!");
