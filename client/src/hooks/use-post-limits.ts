@@ -1,6 +1,8 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
 
 export interface PostLimits {
   food: number;
@@ -10,6 +12,8 @@ export interface PostLimits {
 }
 
 export function usePostLimits(selectedDate: Date = new Date()) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const tzOffset = new Date().getTimezoneOffset();
   
   const { data, refetch, isLoading } = useQuery({
@@ -24,7 +28,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       }
       return response.json();
     },
-    // Set a shorter stale time to ensure more frequent refreshes
+    // Shorter stale time for more frequent refreshes
     staleTime: 5000, 
     // Enable automatic refetching when the component regains focus
     refetchOnWindowFocus: true,
@@ -32,11 +36,37 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     refetchOnMount: true
   });
 
+  // Force refresh the data whenever the component using this hook mounts
+  useEffect(() => {
+    refetch();
+    
+    // Set up an interval to refresh counts every 10 seconds
+    const intervalId = setInterval(() => {
+      refetch();
+    }, 10000);
+    
+    return () => clearInterval(intervalId);
+  }, [refetch]);
+
+  // Define default post limits based on the application rules
+  const defaultLimits = {
+    food: 3,
+    workout: 1,
+    scripture: 1,
+    memory_verse: 1
+  };
+
   return {
     counts: data?.counts || { food: 0, workout: 0, scripture: 0, memory_verse: 0 },
-    canPost: data?.canPost || { food: true, workout: true, scripture: true, memory_verse: false },
-    remaining: data?.remaining || { food: 3, workout: 1, scripture: 1, memory_verse: 1 },
+    canPost: data?.canPost || { 
+      food: true, 
+      workout: true, 
+      scripture: true, 
+      memory_verse: new Date().getDay() === 6 // Only on Saturday
+    },
+    remaining: data?.remaining || defaultLimits,
     refetch,
-    isLoading
+    isLoading,
+    isSaturday: new Date().getDay() === 6
   };
 }
