@@ -688,6 +688,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Update the post counts endpoint to fix the limits logic
   router.get("/api/posts/counts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -740,7 +741,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info('Post counts query result:', result);
 
-      // Convert result to expected format
+      // Convert result to expected format with proper initialization
       const counts = {
         food: 0,
         workout: 0,
@@ -763,11 +764,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       };
 
       // Calculate if user can post for each type
+      const isSaturday = userDate.getDay() === 6;
       const canPost = {
         food: counts.food < maxPosts.food,
         workout: counts.workout < maxPosts.workout,
         scripture: counts.scripture < maxPosts.scripture,
-        memory_verse: userDate.getDay() === 6 && counts.memory_verse < maxPosts.memory_verse
+        memory_verse: isSaturday && counts.memory_verse < maxPosts.memory_verse
       };
 
       // Calculate remaining posts for each type
@@ -775,14 +777,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         food: Math.max(0, maxPosts.food - counts.food),
         workout: Math.max(0, maxPosts.workout - counts.workout),
         scripture: Math.max(0, maxPosts.scripture - counts.scripture),
-        memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
+        memory_verse: isSaturday ? Math.max(0, maxPosts.memory_verse - counts.memory_verse) : 0
       };
 
       logger.info('Response data:', {
         counts,
         canPost,
         remaining,
-        userLocalDay: userDate.getDay()
+        userLocalDay: userDate.getDay(),
+        isSaturday
       });
 
       res.json({ counts, canPost, remaining });
