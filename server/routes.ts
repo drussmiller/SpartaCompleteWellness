@@ -479,8 +479,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Get original post endpoint
-  // Add the post counts endpoint BEFORE the post detail endpoint to avoid routing conflicts
+  // Post counts endpoint - must be defined BEFORE the post detail endpoint to avoid routing conflicts
 router.get("/api/posts/counts", authenticate, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -603,6 +602,11 @@ router.get("/api/posts/counts", authenticate, async (req, res) => {
 
 router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
     try {
+      // Skip processing for special endpoints that have their own handlers
+      if (req.params.postId === 'counts') {
+        return next();
+      }
+      
       logger.info("\n=== Post Fetch Debug ===");
       logger.info("Request params:", req.params);
       logger.info("User:", req.user?.id);
