@@ -474,8 +474,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Get original post endpoint
-  router.get("/api/posts/:postId", authenticate, async (req, res) => {
+  router.get("/api/posts/:postId", authenticate, async (req, res, next) => {
     try {
+      // Skip processing if this is the "counts" endpoint - it's handled by a different route
+      if (req.params.postId === 'counts') {
+        return next();
+      }
+      
       logger.info("\n=== Post Fetch Debug ===");
       logger.info("Request params:", req.params);
       logger.info("User:", req.user?.id);
