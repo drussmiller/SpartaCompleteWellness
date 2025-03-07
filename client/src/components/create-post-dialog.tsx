@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2, CalendarIcon } from "lucide-react";
+import { Plus, CalendarIcon, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -44,7 +44,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
   function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
-      return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
+      const isSaturday = selectedDate.getDay() === 6;
+      return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
     const remainingPosts = remaining?.[type] ?? 0;
@@ -69,7 +70,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           type: data.type,
           content: data.content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
-          createdAt: data.postDate ? data.postDate.toISOString() : new Date().toISOString()
+          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
 
         formData.append("data", JSON.stringify(postData));
@@ -93,29 +94,31 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       }
     },
     onSuccess: () => {
+      // Invalidate queries immediately
+      const promises = [
+        queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] })
+      ];
+
       if (user?.teamId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
+        promises.push(queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] }));
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/posts/counts"],
-        exact: false
-      });
+      // Wait for all invalidations to complete
+      Promise.all(promises).then(() => {
+        setOpen(false);
+        form.reset();
+        setImagePreview(null);
 
-      setOpen(false);
-      form.reset();
-      setImagePreview(null);
-
-      toast({
-        title: "Success",
-        description: "Post created successfully!",
-      });
-
-      setTimeout(() => {
+        // Force an immediate refetch of the counts
         refetch();
-      }, 500);
+
+        toast({
+          title: "Success",
+          description: "Post created successfully!",
+        });
+      });
     },
     onError: (error) => {
       console.error("Create post mutation error:", error);
@@ -136,8 +139,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
       if (!isOpen) {
-        setImagePreview(null);
         form.reset();
+        setImagePreview(null);
       }
     }}>
       <DialogTrigger asChild>
@@ -233,7 +236,6 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                       <option value="memory_verse" disabled={!canPost.memory_verse}>
                         Memory Verse {getRemainingMessage('memory_verse')}
                       </option>
-                      <option value="comment">Comment</option>
                     </select>
                   </FormControl>
                   <FormMessage />
