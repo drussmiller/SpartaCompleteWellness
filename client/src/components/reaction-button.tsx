@@ -140,7 +140,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
 
   // Get the current user's reaction if any
   const userReaction = reactions.find(r => r.userId === user?.id);
-  
+
   // Only include the specified reaction types
   const allReactions: ReactionType[] = [
     'like', 'love', 'laugh', 'wow', 'sad', 
@@ -160,15 +160,15 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       }}>
         <Button
           variant="ghost"
-          size="sm"
+          size="lg"  {/* Increased button size */}
           className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
           onClick={(e) => {
             e.preventDefault(); // Prevent default action
             e.stopPropagation(); // Prevent event bubbling
-            
+
             // Prevent dropdown from opening
             setIsOpen(false);
-            
+
             // Handle the like reaction directly
             handleReaction('like');
           }}
