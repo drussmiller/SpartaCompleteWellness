@@ -257,10 +257,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const hasImage = req.file !== undefined;
       const isEmptyContentAllowed = hasImage && (postData.type === 'food' || postData.type === 'workout');
 
-      if (!postData.type || (!postData.content && !isEmptyContentAllowed)) {
-        logger.error("Missing required fields:", { type: postData.type, content: postData.content, hasImage });
-        return res.status(400).json({ message: "Missing required fields" });
+      if (!postData.type) {
+        logger.error("Missing post type");
+        return res.status(400).json({ message: "Post type is required" });
       }
+
+      // Allow empty content for food and workout posts with images
+      if (!isEmptyContentAllowed && (!postData.content || !postData.content.trim())) {
+        logger.error("Missing required content:", { type: postData.type, content: postData.content, hasImage });
+        return res.status(400).json({ message: "Content is required" });
+      }
+
 
       // For comments, validate additional required fields
       if (postData.type === "comment") {
