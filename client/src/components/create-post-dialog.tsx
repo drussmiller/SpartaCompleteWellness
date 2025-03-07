@@ -48,8 +48,14 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    const remainingPosts = remaining?.[type] ?? 0;
-    return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining today)`;
+    // Use the API response data to determine remaining posts
+    const remainingPosts = canPost?.[type] 
+      ? (remaining?.[type] ?? 0) 
+      : 0;
+      
+    return remainingPosts <= 0 
+      ? "(Daily limit reached)" 
+      : `(${remainingPosts} remaining today)`;
   }
 
   const createPostMutation = useMutation({
