@@ -52,16 +52,22 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     enabled: !!user
   });
 
-  // Force immediate refresh on mount
+  // Force immediate refresh on mount and register listener for post changes
   useEffect(() => {
     if (user) {
+      console.log("Setting up post limits refresh for date:", selectedDate.toISOString());
+      
       // Force immediate refetch when hook is used
       const fetchData = async () => {
         try {
-          // Invalidate first to clear any stale data
-          await queryClient.invalidateQueries({ queryKey });
+          console.log("Invalidating post counts cache and fetching fresh data");
+          // Force invalidate by cache key pattern
+          await queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[0] === "/api/posts/counts"
+          });
           // Then fetch fresh data
-          await refetch();
+          const result = await refetch();
+          console.log("Fresh post limits data:", result.data);
         } catch (error) {
           console.error("Error refreshing post limits:", error);
         }
@@ -69,12 +75,24 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       
       fetchData();
       
-      // Also set up interval for periodic refresh
+      // Listen for global events when posts are modified
+      const handlePostChange = () => {
+        console.log("Post mutation detected, refreshing post limits");
+        fetchData();
+      };
+      
+      // Add event listener for post mutations
+      window.addEventListener('post-mutation', handlePostChange);
+      
+      // Also set up interval for periodic refresh as backup
       const intervalId = setInterval(() => {
         fetchData();
-      }, 3000); // Refresh every 3 seconds
+      }, 2000); // Refresh every 2 seconds
       
-      return () => clearInterval(intervalId);
+      return () => {
+        window.removeEventListener('post-mutation', handlePostChange);
+        clearInterval(intervalId);
+      };
     }
   }, [user, selectedDate, refetch, queryClient, queryKey]);
 
