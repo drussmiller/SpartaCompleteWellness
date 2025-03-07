@@ -117,8 +117,13 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      // Explicitly invalidate the post counts query to force a refresh
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
+      // Force a refetch to ensure the UI is immediately updated
+      refetch().then(() => {
+        console.log("Post limits refreshed after posting");
+      });
 
       setOpen(false);
       form.reset();

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 
@@ -53,7 +53,29 @@ export function usePostLimits(date?: Date) {
     cacheTime: 0 // Don't cache the data
   });
 
-  // Force refetch when date changes
+  // Force refetch when date changes or when posts are created/deleted
+  useEffect(() => {
+    // Set up subscription for post changes
+    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+      const matchPattern = /\/api\/posts$/;
+      const queriesChanged = queryClient.getQueryCache().getAll().some(
+        query => typeof query.queryKey[0] === 'string' && 
+                matchPattern.test(query.queryKey[0] as string) && 
+                query.state.dataUpdateCount > 0
+      );
+      
+      if (queriesChanged) {
+        console.log('Post data changed, refreshing post limits');
+        refetch();
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [refetch]);
+  
+  // Also refetch when date changes
   useEffect(() => {
     refetch();
   }, [date, refetch]);
