@@ -694,11 +694,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-
-      // Calculate start and end of day in user's timezone
-      const now = new Date();
-      // Convert server UTC time to user's local time
-      const userDate = new Date(now.getTime() - (tzOffset * 60000));
+      
+      // Get specific date if provided, or use current date
+      let userDate;
+      if (req.query.date) {
+        // Convert the provided date string to a Date object
+        userDate = new Date(req.query.date as string);
+        if (isNaN(userDate.getTime())) {
+          return res.status(400).json({ message: "Invalid date format" });
+        }
+      } else {
+        // Use current date
+        const now = new Date();
+        // Convert server UTC time to user's local time
+        userDate = new Date(now.getTime() - (tzOffset * 60000));
+      }
+      
       const startOfDay = new Date(
         userDate.getFullYear(),
         userDate.getMonth(),
@@ -719,7 +730,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         userLocalTime: userDate.toISOString(),
         utcStart: utcStart.toISOString(),
         utcEnd: utcEnd.toISOString(),
-        tzOffset
+        tzOffset,
+        specificDate: req.query.date || 'current'
       });
 
       // Query posts for today by type

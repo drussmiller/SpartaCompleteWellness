@@ -29,13 +29,18 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const { canPost, counts } = usePostLimits();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { canPost, counts, remaining: dateLimits } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   console.log('Current post counts:', counts);
   console.log('Can post status:', canPost);
   console.log('Remaining posts:', remaining);
+  console.log('Post limits for selected date:', dateLimits);
+  
+  // Use either the date-specific limits or the default remaining
+  const effectiveRemaining = dateLimits || remaining;
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -50,13 +55,19 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
   function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
-      return canPost.memory_verse ? "(Available on Saturday)" : "(Weekly limit reached)";
+      // Check if selected date is a Saturday
+      const isSaturday = selectedDate.getDay() === 6;
+      return canPost.memory_verse && isSaturday ? "(Available on Saturday)" : "(Weekly limit reached)";
     }
 
-    const remainingPosts = remaining?.[type] ?? 0;
+    const remainingPosts = effectiveRemaining?.[type] ?? 0;
     console.log(`Post type ${type} remaining:`, remainingPosts);
 
-    return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining today)`;
+    // Check if selected date is today
+    const isToday = new Date().toDateString() === selectedDate.toDateString();
+    const dayText = isToday ? 'today' : 'on this day';
+
+    return remainingPosts <= 0 ? "(Daily limit reached)" : `(${remainingPosts} remaining ${dayText})`;
   }
 
   const createPostMutation = useMutation({
@@ -311,7 +322,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          if (date) {
+                            setSelectedDate(date);
+                          }
+                        }}
                         disabled={(date) => date > new Date()}
                         initialFocus
                       />
