@@ -68,7 +68,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
         const postData = {
           type: data.type,
-          content: data.content,
+          content: data.content.trim(),
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
@@ -124,7 +124,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "Failed to create post",
         variant: "destructive",
       });
     },
