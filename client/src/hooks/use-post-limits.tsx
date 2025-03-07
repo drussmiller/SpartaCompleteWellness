@@ -20,17 +20,24 @@ interface PostLimitsResponse {
   remaining: PostLimits;
 }
 
-export function usePostLimits() {
+export function usePostLimits(date?: Date) {
   const { user } = useAuth();
   const { data } = useQuery<PostLimitsResponse>({
-    queryKey: ["/api/posts/counts"],
+    queryKey: ["/api/posts/counts", date?.toISOString()],
     enabled: !!user,
     queryFn: async () => {
-      console.log('Fetching post limits for user:', user?.id);
+      console.log('Fetching post limits for user:', user?.id, 'date:', date ? date.toISOString() : 'current');
 
       // Get local timezone offset in minutes
       const tzOffset = new Date().getTimezoneOffset();
-      const res = await apiRequest("GET", `/api/posts/counts?tzOffset=${tzOffset}`);
+      let url = `/api/posts/counts?tzOffset=${tzOffset}`;
+      
+      // Add date parameter if provided
+      if (date) {
+        url += `&date=${date.toISOString()}`;
+      }
+      
+      const res = await apiRequest("GET", url);
       if (!res.ok) {
         throw new Error('Failed to fetch post limits');
       }
