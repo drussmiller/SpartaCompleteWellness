@@ -30,7 +30,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { canPost, counts, remaining: dateLimits } = usePostLimits(selectedDate);
+  const { canPost, counts, remaining: dateLimits, refetch } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +38,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   console.log('Can post status:', canPost);
   console.log('Remaining posts:', remaining);
   console.log('Post limits for selected date:', dateLimits);
-  
+
   // Use either the date-specific limits or the default remaining
   const effectiveRemaining = dateLimits || remaining;
 
@@ -295,7 +295,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="postDate"
