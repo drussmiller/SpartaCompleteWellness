@@ -297,17 +297,17 @@ export default function AdminPage() {
   const isMobile = window.innerWidth <= 768; 
 
   return (
-    <AppLayout>
+    <AppLayout sidebarWidth="80">
       <div className="min-h-screen flex flex-col">
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="px-6 py-4">
-            <h1 className="text-xl font-bold">Admin Dashboard</h1>
+          <div className="p-4 flex items-center">
+            <h1 className="text-xl font-semibold pl-2">Admin Dashboard</h1>
           </div>
         </div>
 
         {/* Main content */}
-        <div className={`flex-1 ${!isMobile ? "md:ml-16" : ""}`}>
+        <div className="flex-1">
           <div className="container p-4 md:px-8">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>

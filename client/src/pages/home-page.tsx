@@ -69,17 +69,17 @@ export default function HomePage() {
       <div className="sticky top-0 z-50 bg-background border-b border-border">
         {/* Title bar with logo, title and Add Post button */}
         <div className="px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 max-w-[70%]">
             <img 
               src="/Sparta_Logo.jpg" 
               alt="Sparta Logo" 
-              className="h-8 w-auto"
+              className="h-8 w-auto flex-shrink-0"
               onError={(e) => {
                 console.error('Error loading logo:', e);
                 e.currentTarget.src = '/fallback-logo.png';
               }}
             />
-            <h1 className="text-xl font-bold">SPARTA COMPLETE WELLNESS</h1>
+            <h1 className="text-lg font-bold break-words">SPARTA COMPLETE WELLNESS</h1>
           </div>
           <CreatePostDialog remaining={remaining} />
         </div>
