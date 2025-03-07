@@ -21,21 +21,19 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
   return (
     <nav className={cn(
       // Base styles
-      "bg-background z-[100]",
-      // Mobile styles (bottom nav)
+      "bg-background z-[100] shadow-lg",
+      // Mobile styles (bottom nav) - always hidden on desktop
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
-      // Desktop styles (side nav or top nav for admin)
-      orientation === "vertical" && "w-20 fixed",
-      // On admin page, set to top position
-      location === "/admin" && orientation === "vertical" ? "h-16 top-0 left-0" : orientation === "vertical" && "h-full left-0 top-0"
+      // Desktop styles (side nav) - now we use VerticalNav component instead
+      orientation === "vertical" && "w-full hidden"
     )}>
       <div className={cn(
-        // Base styles
+        // Container styles
         "flex items-center",
         // Mobile layout
         orientation === "horizontal" && "h-16 justify-around",
         // Desktop layout
-        orientation === "vertical" && "flex-col h-full py-6 space-y-6"
+        orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
         {items.map(({ icon: Icon, label, href }) => (
           <div
@@ -44,7 +42,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full px-3",
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Text styles
               location === href
                 ? "text-primary"
@@ -60,7 +58,9 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             onClick={() => setLocation("/admin")}
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer",
-              orientation === "horizontal" ? "h-full w-full" : "w-full px-3",
+              // Size styles
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
+              // Text styles
               location === "/admin"
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
@@ -74,7 +74,9 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           onClick={() => setLocation("/profile")}
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
-            orientation === "horizontal" ? "h-full w-full" : "w-full px-3",
+            // Size styles
+            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
+            // Text styles
             location === "/profile"
               ? "text-primary"
               : "text-muted-foreground hover:text-primary transition-colors"
