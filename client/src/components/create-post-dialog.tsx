@@ -86,8 +86,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           throw new Error(errorData.message || `Failed to create post: ${response.status}`);
         }
 
-        const result = await response.json();
-        return result;
+        return response.json();
       } catch (error) {
         console.error("Post creation error:", error);
         throw error;
@@ -95,9 +94,14 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     },
     onSuccess: () => {
       // Invalidate queries immediately
+      const tzOffset = new Date().getTimezoneOffset();
+
       const promises = [
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/posts/counts", selectedDate.toISOString(), tzOffset],
+          exact: true 
+        }),
         queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/user"] })
       ];
 
