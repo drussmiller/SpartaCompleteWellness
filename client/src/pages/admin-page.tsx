@@ -410,8 +410,8 @@ export default function AdminPage() {
                               </form>
                             ) : (
                               <>
-                                <CardTitle>{team.name}</CardTitle>
-                                <CardDescription className="line-clamp-2">
+                                <CardTitle className="text-sm">{team.name}</CardTitle>
+                                <CardDescription className="line-clamp-2 text-xs">
                                   {team.description}
                                 </CardDescription>
                               </>
