@@ -26,10 +26,12 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const tzOffset = new Date().getTimezoneOffset();
+  const queryKey = ["/api/posts/counts", selectedDate.toISOString(), tzOffset];
   
   const { data, refetch, isLoading } = useQuery({
-    queryKey: ["/api/posts/counts", selectedDate.toISOString(), tzOffset],
+    queryKey,
     queryFn: async () => {
+      console.log("Fetching post counts for date:", selectedDate.toISOString());
       const response = await apiRequest(
         "GET", 
         `/api/posts/counts?tzOffset=${tzOffset}&date=${selectedDate.toISOString()}`
@@ -37,56 +39,84 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       if (!response.ok) {
         throw new Error("Failed to fetch post limits");
       }
-      return response.json();
+      const result = await response.json();
+      console.log("Post limits API response:", result);
+      return result as PostLimitsResponse;
     },
-    // Shorter stale time for more frequent refreshes
-    staleTime: 2000, 
-    // Enable automatic refetching when the component regains focus
-    refetchOnWindowFocus: true,
-    // Enable refetching when component remounts
+    // Always get fresh data
+    staleTime: 0,
+    cacheTime: 0,
     refetchOnMount: true,
-    // Always refetch when called
-    refetchOnReconnect: true,
-    // Disable caching to always get fresh data
-    cacheTime: 1000,
+    refetchOnWindowFocus: true,
+    retry: 2,
     enabled: !!user
   });
 
-  // Force refresh the data whenever the component using this hook mounts
+  // Force immediate refresh on mount
   useEffect(() => {
     if (user) {
-      // Immediate refetch when component mounts
-      refetch();
+      // Force immediate refetch when hook is used
+      const fetchData = async () => {
+        try {
+          // Invalidate first to clear any stale data
+          await queryClient.invalidateQueries({ queryKey });
+          // Then fetch fresh data
+          await refetch();
+        } catch (error) {
+          console.error("Error refreshing post limits:", error);
+        }
+      };
       
-      // Set up an interval to refresh counts every 5 seconds
+      fetchData();
+      
+      // Also set up interval for periodic refresh
       const intervalId = setInterval(() => {
-        refetch();
-      }, 5000);
+        fetchData();
+      }, 3000); // Refresh every 3 seconds
       
       return () => clearInterval(intervalId);
     }
-  }, [refetch, user, selectedDate]); // Include selectedDate in dependency array
+  }, [user, selectedDate, refetch, queryClient, queryKey]);
 
-  // Define default post limits based on the application rules
-  const defaultLimits = {
+  // Default values when data is not available
+  const defaultCanPost = {
+    food: true,
+    workout: true,
+    scripture: true,
+    memory_verse: selectedDate.getDay() === 6 // Only on Saturday
+  };
+  
+  const defaultCounts = {
+    food: 0,
+    workout: 0,
+    scripture: 0,
+    memory_verse: 0
+  };
+  
+  const defaultRemaining = {
     food: 3,
     workout: 1,
     scripture: 1,
-    memory_verse: 1
+    memory_verse: selectedDate.getDay() === 6 ? 1 : 0
   };
 
-  // Use server-provided remaining values when available
+  // Log what we're returning for debugging
+  console.log("usePostLimits hook returning:", { 
+    counts: data?.counts || defaultCounts,
+    canPost: data?.canPost || defaultCanPost,
+    remaining: data?.remaining || defaultRemaining,
+    isLoading
+  });
+
   return {
-    counts: data?.counts || { food: 0, workout: 0, scripture: 0, memory_verse: 0 },
-    canPost: data?.canPost || { 
-      food: true, 
-      workout: true, 
-      scripture: true, 
-      memory_verse: selectedDate.getDay() === 6 // Only on Saturday
+    counts: data?.counts || defaultCounts,
+    canPost: data?.canPost || defaultCanPost,
+    remaining: data?.remaining || defaultRemaining,
+    refetch: () => {
+      // Invalidate and refetch in one operation
+      queryClient.invalidateQueries({ queryKey });
+      return refetch();
     },
-    // Use the server-calculated remaining posts
-    remaining: data?.remaining || defaultLimits,
-    refetch,
     isLoading,
     isSaturday: selectedDate.getDay() === 6
   };
