@@ -54,10 +54,30 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
-        queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey[0] === "/api/posts/counts"
+        // Force a hard reset of the cache for post counts
+        queryClient.resetQueries({ 
+          queryKey: ["/api/posts/counts"]
         });
-        await refetch();
+
+        // Invalidate all other related queries
+        queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
+        if (user?.teamId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
+        }
+
+        // Dispatch a custom event to notify all components to refresh
+        const event = new CustomEvent('post-counts-changed');
+        window.dispatchEvent(event);
+
+        // Force immediate refetch
+        refetch();
+
+        // Try again after a short delay to ensure server had time to process
+        setTimeout(() => {
+          refetch();
+        }, 1000);
       };
 
       fetchData();

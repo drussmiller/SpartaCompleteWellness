@@ -48,12 +48,11 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Use the API response data to determine remaining posts
-    // Always show actual remaining count from API
+    // Make sure we're getting the latest data from the API
+    // Force direct usage of the data from the API response
     const remainingPosts = remaining?.[type] ?? 0;
-
-    // Remove debug logging to reduce console output
-
+    
+    // Check if the user has reached their daily limit
     return remainingPosts <= 0 
       ? "(Daily limit reached)" 
       : `(${remainingPosts} remaining today)`;
