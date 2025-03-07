@@ -40,27 +40,32 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       return response.json();
     },
     // Shorter stale time for more frequent refreshes
-    staleTime: 5000, 
+    staleTime: 2000, 
     // Enable automatic refetching when the component regains focus
     refetchOnWindowFocus: true,
     // Enable refetching when component remounts
     refetchOnMount: true,
+    // Always refetch when called
+    refetchOnReconnect: true,
+    // Disable caching to always get fresh data
+    cacheTime: 1000,
     enabled: !!user
   });
 
   // Force refresh the data whenever the component using this hook mounts
   useEffect(() => {
     if (user) {
+      // Immediate refetch when component mounts
       refetch();
       
-      // Set up an interval to refresh counts every 10 seconds
+      // Set up an interval to refresh counts every 5 seconds
       const intervalId = setInterval(() => {
         refetch();
-      }, 10000);
+      }, 5000);
       
       return () => clearInterval(intervalId);
     }
-  }, [refetch, user]);
+  }, [refetch, user, selectedDate]); // Include selectedDate in dependency array
 
   // Define default post limits based on the application rules
   const defaultLimits = {
