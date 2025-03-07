@@ -99,35 +99,35 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       }
     },
     onSuccess: () => {
-      // Invalidate queries immediately
+      // Immediately close the dialog and reset form
+      setOpen(false);
+      form.reset();
+      setImagePreview(null);
+      
+      // Then invalidate all related queries
       const tzOffset = new Date().getTimezoneOffset();
-
-      const promises = [
-        queryClient.invalidateQueries({ 
-          queryKey: ["/api/posts/counts", selectedDate.toISOString(), tzOffset],
-          exact: true 
-        }),
-        queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] })
-      ];
-
+      
+      // Force clear cache for post counts specifically
+      queryClient.removeQueries({ 
+        queryKey: ["/api/posts/counts"] 
+      });
+      
+      // Invalidate other related queries
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       if (user?.teamId) {
-        promises.push(queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] }));
+        queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
-
-      // Wait for all invalidations to complete
-      Promise.all(promises).then(() => {
-        setOpen(false);
-        form.reset();
-        setImagePreview(null);
-
-        // Force an immediate refetch of the counts
+      
+      // Force an immediate refetch of the counts
+      setTimeout(() => {
         refetch();
-
-        toast({
-          title: "Success",
-          description: "Post created successfully!",
-        });
+      }, 500);
+      
+      toast({
+        title: "Success",
+        description: "Post created successfully!",
       });
     },
     onError: (error) => {

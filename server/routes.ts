@@ -116,12 +116,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             eq(posts.userId, req.user.id),
             gte(posts.createdAt, startOfDay),
             lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId) // Don't count comments
+            isNull(posts.parentId), // Don't count comments
+            sql`${posts.type} IN ('food', 'workout', 'scripture', 'memory_verse')` // Explicitly filter only these types
           )
         )
         .groupBy(posts.type);
 
-      logger.info('Post counts query result:', result);
+      logger.info('Post counts query result:', JSON.stringify(result));
 
       // Initialize counts with zeros
       const counts = {
