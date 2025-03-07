@@ -111,9 +111,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       form.reset();
       setImagePreview(null);
 
-      // Track what type of post was created for debugging
+      // Track what type of post was created (without debug logging)
       const createdPostType = form.getValues("type");
-      console.log(`Successfully created a ${createdPostType} post`);
 
       // Force a hard reset of the cache for post counts
       queryClient.resetQueries({ 
@@ -128,14 +127,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
 
-      // Force multiple refetches to ensure the counts update
+      // Force multiple refetches to ensure the counts update (without logging)
       setTimeout(() => {
-        console.log("First refetch attempt");
         refetch();
 
         // Try again after a short delay to ensure server had time to process
         setTimeout(() => {
-          console.log("Second refetch attempt");
           refetch();
         }, 1000);
       }, 500);

@@ -102,10 +102,17 @@ class Logger {
   }
 
   public info(message: string, metadata: Partial<LogMetadata> = {}): void {
-    // Skip console logging for API endpoints that are called frequently
+    // More aggressive filtering of console output
     const skipConsoleOutput = 
-      (metadata.route && metadata.route.includes('/api/posts/counts')) ||
-      (message && message.includes('Post count'));
+      (metadata.route && (
+        metadata.route.includes('/api/posts/counts') || 
+        metadata.route.includes('/api/posts')
+      )) ||
+      (message && (
+        message.includes('Post count') || 
+        message.includes('GET /api/posts/counts') ||
+        message.includes('Deserializing user')
+      ));
     
     const entry = this.formatLogEntry(message, {
       ...metadata,
@@ -117,10 +124,10 @@ class Logger {
       console.log(entry);
     }
 
-    // Buffer non-error logs
+    // Buffer non-error logs with longer timeout
     this.logBuffer.push(entry);
     if (!this.bufferTimeout) {
-      this.bufferTimeout = setTimeout(() => this.flushBuffer(), 5000); // Increased to 5 seconds
+      this.bufferTimeout = setTimeout(() => this.flushBuffer(), 10000); // Increased to 10 seconds
     }
   }
 

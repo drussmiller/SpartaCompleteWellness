@@ -37,13 +37,16 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       if (!response.ok) {
         throw new Error("Failed to fetch post limits");
       }
-      return response.json() as Promise<PostLimitsResponse>;
+      const result = await response.json();
+      // Remove console logging of API response data
+      return result as PostLimitsResponse;
     },
-    staleTime: 2000, 
-    cacheTime: 60000, 
+    // Get fresh data but not too frequently
+    staleTime: 5000, // Data is fresh for 5 seconds
+    cacheTime: 60000, // Keep in cache for 1 minute
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 10000, // Increased refetch interval to 10 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds (further reduced)
     retry: 2,
     enabled: !!user
   });
