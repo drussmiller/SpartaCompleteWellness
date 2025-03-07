@@ -79,7 +79,7 @@ export default function HomePage() {
                 e.currentTarget.src = '/fallback-logo.png';
               }}
             />
-            <h1 className="text-lg font-bold break-words">Sparta Complete Wellness</h1>
+            <h1 className="text-lg font-bold whitespace-nowrap overflow-hidden text-ellipsis">Sparta Complete Wellness</h1>
           </div>
         </div>
 
