@@ -48,15 +48,16 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Use the API response data to determine remaining posts
-    // Always show actual remaining count from API
-    const remainingPosts = remaining?.[type] ?? 0;
-
-    // Remove debug logging to reduce console output
-
-    return remainingPosts <= 0 
-      ? "(Daily limit reached)" 
-      : `(${remainingPosts} remaining today)`;
+    // Force use of latest "remaining" data from API (passed as prop)
+    // Double-check using canPost as well for consistency
+    const remainingPosts = remaining[type as keyof typeof remaining] || 0;
+    const isLimitReached = !canPost[type as keyof typeof canPost];
+    
+    if (isLimitReached) {
+      return "(Daily limit reached)";
+    }
+    
+    return `(${remainingPosts} remaining today)`;
   }
 
   const createPostMutation = useMutation({
@@ -111,31 +112,21 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       form.reset();
       setImagePreview(null);
 
-      // Track what type of post was created (without debug logging)
+      // Track what type of post was created
       const createdPostType = form.getValues("type");
 
-      // Force a hard reset of the cache for post counts
-      queryClient.resetQueries({ 
-        queryKey: ["/api/posts/counts"]
-      });
-
-      // Invalidate all other related queries
+      // Aggressively clear cache and force immediate refetch
+      queryClient.resetQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-
-      if (user?.teamId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
-      }
-
-      // Force multiple refetches to ensure the counts update (without logging)
+      
+      // Force immediate refresh of post counts data
       setTimeout(() => {
         refetch();
-
-        // Try again after a short delay to ensure server had time to process
-        setTimeout(() => {
-          refetch();
-        }, 1000);
-      }, 500);
+      }, 100);
+      
+      // Dispatch event to notify other components
+      const event = new CustomEvent('post-counts-changed');
+      window.dispatchEvent(event);
 
       toast({
         title: "Success",
