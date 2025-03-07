@@ -160,7 +160,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       }}>
         <Button
           variant="ghost"
-          size="lg"  {/* Increased button size */}
+          size="lg"  /* Increased button size */
           className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
           onClick={(e) => {
             e.preventDefault(); // Prevent default action
