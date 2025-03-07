@@ -16,6 +16,7 @@ import NotificationsPage from "@/pages/notifications-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
 import { BottomNav } from "@/components/bottom-nav";
+import { VerticalNav } from "@/components/vertical-nav";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -52,18 +53,19 @@ function MainContent() {
   // If authenticated, show the app with routes
   return (
     <div className="min-h-screen">
-      <>
-            <Switch>
-        <Route path="/" component={HomePage} />
-        <Route path="/activity" component={ActivityPage} />
-        <Route path="/activity-management" component={ActivityManagementPage} />
-        <Route path="/help" component={HelpPage} />
-        <Route path="/notifications" component={NotificationsPage} />
-        <Route path="/profile" component={ProfilePage} />
-        {user.isAdmin && <Route path="/admin" component={AdminPage} />}
-        <Route path="*">Not found</Route>
-      </Switch>
-      </>
+      {user && <VerticalNav />}
+      <div className="md:pl-16"> {/* Add padding to content to account for vertical nav */}
+        <Switch>
+          <Route path="/" component={HomePage} />
+          <Route path="/activity" component={ActivityPage} />
+          <Route path="/activity-management" component={ActivityManagementPage} />
+          <Route path="/help" component={HelpPage} />
+          <Route path="/notifications" component={NotificationsPage} />
+          <Route path="/profile" component={ProfilePage} />
+          {user.isAdmin && <Route path="/admin" component={AdminPage} />}
+          <Route path="*">Not found</Route>
+        </Switch>
+      </div>
       <BottomNav />
     </div>
   );
