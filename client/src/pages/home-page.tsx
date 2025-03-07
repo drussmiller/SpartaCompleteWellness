@@ -95,7 +95,9 @@ export default function HomePage() {
               </p>
             )}
           </div>
-          <CreatePostDialog remaining={remaining} />
+          <div className="scale-90">
+            <CreatePostDialog remaining={remaining} />
+          </div>
         </div>
       </div>
 

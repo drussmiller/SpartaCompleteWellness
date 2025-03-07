@@ -134,7 +134,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
     }}>
       <DialogTrigger asChild>
         <Button size="icon" className="h-10 w-10 bg-gray-200 hover:bg-gray-300">
-          <Plus className="h-9 w-9 text-black font-extrabold" />
+          <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -149,7 +149,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
             form="create-post-form"
             variant="default"
             size="sm"
-            className="h-8 bg-violet-700 hover:bg-violet-800"
+            className="h-6 w-20 bg-violet-700 hover:bg-violet-800 text-lg" // Modified for smaller size and larger text
             disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
           >
             {createPostMutation.isPending ? (
