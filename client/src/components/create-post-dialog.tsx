@@ -57,8 +57,12 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         const formData = new FormData();
 
         if (data.imageUrl && data.imageUrl.length > 0) {
-          const blob = await fetch(data.imageUrl).then(r => r.blob());
-          formData.append("image", blob, "image.jpeg");
+          try {
+            const blob = await fetch(data.imageUrl).then(r => r.blob());
+            formData.append("image", blob, "image.jpeg");
+          } catch (error) {
+            console.error("Error processing image:", error);
+          }
         }
 
         const postData = {
@@ -70,48 +74,45 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
         formData.append("data", JSON.stringify(postData));
 
-        const res = await fetch("/api/posts", {
+        const response = await fetch("/api/posts", {
           method: "POST",
           body: formData,
           credentials: "include",
         });
 
-        if (!res.ok) {
-          throw new Error(`Failed to create post: ${res.status} ${res.statusText}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to create post: ${response.status}`);
         }
 
-        return res.json();
+        const result = await response.json();
+        return result;
       } catch (error) {
         console.error("Post creation error:", error);
         throw error;
       }
     },
     onSuccess: () => {
-      // Invalidate both posts and counts queries
       if (user?.teamId) {
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
-      // Invalidate post counts
       queryClient.invalidateQueries({ 
         queryKey: ["/api/posts/counts"],
         exact: false
       });
 
-      // Close dialog and reset form
       setOpen(false);
       form.reset();
       setImagePreview(null);
 
-      // Show success message
       toast({
         title: "Success",
         description: "Post created successfully!",
       });
 
-      // Refetch limits after a small delay
       setTimeout(() => {
         refetch();
       }, 500);
@@ -157,7 +158,8 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           >
             {createPostMutation.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
               </>
             ) : (
               "Post"
