@@ -254,8 +254,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Validate required fields
-      if (!postData.type || !postData.content) {
-        logger.error("Missing required fields:", { type: postData.type, content: postData.content });
+      const hasImage = req.file !== undefined;
+      const isEmptyContentAllowed = hasImage && (postData.type === 'food' || postData.type === 'workout');
+      
+      if (!postData.type || (!postData.content && !isEmptyContentAllowed)) {
+        logger.error("Missing required fields:", { type: postData.type, content: postData.content, hasImage });
         return res.status(400).json({ message: "Missing required fields" });
       }
 
