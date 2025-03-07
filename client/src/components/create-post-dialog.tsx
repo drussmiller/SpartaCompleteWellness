@@ -50,16 +50,16 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
 
     // Get the correct remaining posts count from the API
     // When post limit is reached, canPost will be false and we show 0 remaining
-    const remainingPosts = canPost?.[type] 
-      ? (remaining?.[type] ?? 0) 
-      : 0;
-    
     console.log(`Post limit for ${type}:`, { 
       canPost: canPost?.[type], 
-      remaining: remaining?.[type], 
-      display: remainingPosts
+      remaining: remaining?.[type],
+      display: remaining?.[type] ?? 0 
     });
-      
+
+    // Use the API response data to determine remaining posts
+    // Always show actual remaining count from API
+    const remainingPosts = remaining?.[type] ?? 0;
+
     return remainingPosts <= 0 
       ? "(Daily limit reached)" 
       : `(${remainingPosts} remaining today)`;
@@ -116,36 +116,36 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       setOpen(false);
       form.reset();
       setImagePreview(null);
-      
+
       // Track what type of post was created for debugging
       const createdPostType = form.getValues("type");
       console.log(`Successfully created a ${createdPostType} post`);
-      
+
       // Force a hard reset of the cache for post counts
       queryClient.resetQueries({ 
         queryKey: ["/api/posts/counts"]
       });
-      
+
       // Invalidate all other related queries
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      
+
       if (user?.teamId) {
         queryClient.invalidateQueries({ queryKey: ["/api/posts", user.teamId] });
       }
-      
+
       // Force multiple refetches to ensure the counts update
       setTimeout(() => {
         console.log("First refetch attempt");
         refetch();
-        
+
         // Try again after a short delay to ensure server had time to process
         setTimeout(() => {
           console.log("Second refetch attempt");
           refetch();
         }, 1000);
       }, 500);
-      
+
       toast({
         title: "Success",
         description: `${createdPostType.charAt(0).toUpperCase() + createdPostType.slice(1)} post created successfully!`,
