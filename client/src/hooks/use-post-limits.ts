@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -38,14 +39,13 @@ export function usePostLimits(selectedDate: Date = new Date()) {
         throw new Error("Failed to fetch post limits");
       }
       const result = await response.json();
-      console.log("Post counts API result:", result);
       return result as PostLimitsResponse;
     },
-    staleTime: 60000, // Increase stale time to 1 minute
-    cacheTime: 120000, // Increase cache time to 2 minutes
-    refetchOnMount: false, // Don't refetch on every mount
-    refetchOnWindowFocus: false, // Don't refetch when window gets focus
-    refetchInterval: 300000, // Refetch every 5 minutes instead of every 30 seconds
+    staleTime: 300000, // 5 minutes
+    cacheTime: 600000, // 10 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: null, // Disable automatic polling completely
     retry: 1,
     enabled: !!user
   });
@@ -59,9 +59,6 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
-
-      // Less frequent interval to reduce API load
-      // Remove the additional interval that was causing redundant refetching
 
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
@@ -96,14 +93,6 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   const counts = data ? data.counts : defaultCounts;
   const canPost = data ? data.canPost : defaultCanPost;
   const remaining = data ? data.remaining : defaultRemaining;
-
-  console.log("usePostLimits returning values:", {
-    counts,
-    canPost,
-    remaining,
-    isFromServer: !!data,
-    rawServerData: data
-  });
 
   return {
     counts,

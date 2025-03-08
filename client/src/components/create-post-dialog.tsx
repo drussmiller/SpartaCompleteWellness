@@ -48,16 +48,9 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Direct server data access with debuggable values
+    // Direct server data access
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
-    
-    // Log the exact values we're using for this specific post type
-    console.log(`Post type ${type} limits:`, {
-      remaining: remainingPosts,
-      canPost: canPost[typeKey],
-      fromServer: true
-    });
     
     if (remainingPosts <= 0) {
       return "(Daily limit reached)";

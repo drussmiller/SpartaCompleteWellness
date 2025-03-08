@@ -33,8 +33,10 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    // Skip logging for comment count API requests to reduce noise
-    if (path.includes('/api/posts/comments/')) {
+    // Skip logging for high-frequency endpoints to reduce noise
+    if (path.includes('/api/posts/comments/') || 
+        path.includes('/api/posts/counts') || 
+        req.path === '/api/posts') {
       return;
     }
 
