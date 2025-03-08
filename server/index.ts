@@ -107,11 +107,15 @@ app.use('/api', (req, res, next) => {
 
     // ALWAYS serve the app on port 5000
     const port = 5000;
+    
+    // Disable console logging
+    logger.setConsoleOutputEnabled(false);
 
     // Enhanced port cleanup function with detailed logging (from original)
     const killPort = async (port: number): Promise<void> => {
       try {
-        console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
+        // Disabled console output
+        // console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
 
         if (process.platform === "win32") {
           const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
