@@ -43,8 +43,17 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
   });
 
   function getRemainingMessage(type: string) {
+    // Force debugger to stop execution here
+    debugger; // This statement will make the browser pause execution
+
+    // Add verbose logging to see this function is being called
+    console.log("getRemainingMessage called with type:", type);
+    console.log("selectedDate:", selectedDate);
+    console.log("remaining data:", remaining);
+    
     if (type === 'memory_verse') {
       const isSaturday = selectedDate.getDay() === 6;
+      console.log("Memory verse check - is Saturday?", isSaturday);
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
