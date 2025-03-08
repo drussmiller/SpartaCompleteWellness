@@ -7,17 +7,25 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { remaining, counts } = usePostLimits();
-  
-  // Debug post counts and remaining values
-  console.log("Home page post limits:", { 
-    remaining, 
+  const { remaining, counts, refetch: refetchLimits } = usePostLimits();
+
+  // Force immediate refetch of limits on mount
+  useEffect(() => {
+    if (user) {
+      console.log("Home page forcing post limits refresh");
+      refetchLimits();
+    }
+  }, [user, refetchLimits]);
+
+  console.log("Home page post limits:", {
+    remaining,
     counts,
     foodCount: counts?.food,
-    foodRemaining: remaining?.food 
+    foodRemaining: remaining?.food
   });
 
   // Query for team information
@@ -78,9 +86,9 @@ export default function HomePage() {
         {/* Title bar with logo and title */}
         <div className="px-6 py-4 flex items-center  rounded-md m-2">
           <div className="flex items-center gap-2 max-w-[100%]">
-            <img 
-              src="/Sparta_Logo.jpg" 
-              alt="Sparta Logo" 
+            <img
+              src="/Sparta_Logo.jpg"
+              alt="Sparta Logo"
               className="h-14 w-auto flex-shrink-0"
               onError={(e) => {
                 console.error('Error loading logo:', e);
