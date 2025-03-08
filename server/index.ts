@@ -109,6 +109,7 @@ app.use('/api', (req, res, next) => {
     const port = 5000;
     
     // Disable console logging
+    import { logger } from "./logger";
     logger.setConsoleOutputEnabled(false);
 
     // Enhanced port cleanup function with detailed logging (from original)
