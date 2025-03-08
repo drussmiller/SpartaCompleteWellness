@@ -110,7 +110,7 @@ app.use('/api', (req, res, next) => {
 
     // ALWAYS serve the app on port 5000
     const port = 5000;
-    
+
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
 
@@ -272,3 +272,10 @@ async function runMigrations() {
 // Serve static files
 app.use(express.static("client/dist"));
 app.use('/uploads', express.static('uploads'));
+
+app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    res.json(req.user);
+  });
