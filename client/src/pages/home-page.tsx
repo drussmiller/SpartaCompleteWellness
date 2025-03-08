@@ -13,11 +13,19 @@ export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
 
-  // Force immediate refetch of limits on mount
+  // Only refetch when actually needed, not on every mount
   useEffect(() => {
     if (user) {
-      console.log("Home page forcing post limits refresh");
-      refetchLimits();
+      // Only log, don't force refetch on every page load
+      console.log("Home page loaded, using cached post limits");
+      // Only refetch if data is stale (over 5 minutes old)
+      const lastRefetchTime = localStorage.getItem('lastPostLimitsRefetch');
+      const now = Date.now();
+      if (!lastRefetchTime || now - parseInt(lastRefetchTime) > 300000) {
+        console.log("Refreshing post limits (stale data)");
+        refetchLimits();
+        localStorage.setItem('lastPostLimitsRefetch', now.toString());
+      }
     }
   }, [user, refetchLimits]);
 

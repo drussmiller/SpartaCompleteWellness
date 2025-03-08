@@ -41,11 +41,11 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       console.log("Post counts API result:", result);
       return result as PostLimitsResponse;
     },
-    staleTime: 15000,
-    cacheTime: 60000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    staleTime: 60000, // Increase stale time to 1 minute
+    cacheTime: 120000, // Increase cache time to 2 minutes
+    refetchOnMount: false, // Don't refetch on every mount
+    refetchOnWindowFocus: false, // Don't refetch when window gets focus
+    refetchInterval: 300000, // Refetch every 5 minutes instead of every 30 seconds
     retry: 1,
     enabled: !!user
   });
@@ -53,6 +53,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   useEffect(() => {
     if (user) {
       const handlePostChange = () => {
+        // Only invalidate when actually needed
         queryClient.invalidateQueries({ queryKey });
       };
 
@@ -60,14 +61,11 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       window.addEventListener('post-counts-changed', handlePostChange);
 
       // Less frequent interval to reduce API load
-      const intervalId = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey });
-      }, 60000);
+      // Remove the additional interval that was causing redundant refetching
 
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
         window.removeEventListener('post-counts-changed', handlePostChange);
-        clearInterval(intervalId);
       };
     }
   }, [user, queryClient, queryKey]);
