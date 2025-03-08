@@ -7,6 +7,7 @@ import { Server as HttpServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
+import { logger } from "./logger";
 
 const execAsync = promisify(exec);
 
@@ -109,7 +110,6 @@ app.use('/api', (req, res, next) => {
     const port = 5000;
     
     // Disable console logging
-    import { logger } from "./logger";
     logger.setConsoleOutputEnabled(false);
 
     // Enhanced port cleanup function with detailed logging (from original)
