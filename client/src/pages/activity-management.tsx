@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useIsMobile } from "@/hooks/use-mobile";
-import AppLayout from "@/components/app-layout";
+import { AppLayout } from "@/components/app-layout";
 
 type ContentField = {
   id: string;
