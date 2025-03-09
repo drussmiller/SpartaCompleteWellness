@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,7 +53,7 @@ export default function ActivityPage() {
     const maxDayInCurrentWeek = Math.max(...(activities
       ?.filter((a) => a.week === selectedWeek)
       .map((a) => a.day) || [7]));
-    
+
     if (selectedDay < maxDayInCurrentWeek) {
       setSelectedDay(selectedDay + 1);
     } else if (selectedWeek < Math.max(...weeks)) {
@@ -76,7 +75,7 @@ export default function ActivityPage() {
             </div>
           </header>
 
-          <main className="p-4 space-y-4">
+          <main className="p-4 max-w-3xl mx-auto w-full"> {/* Added max-width and centering */}
             <div className="flex items-center justify-center gap-4">
               <Button
                 variant="outline"

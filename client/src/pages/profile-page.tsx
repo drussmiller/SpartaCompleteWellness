@@ -116,14 +116,14 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 relative md:ml-20">
+    <div className="min-h-screen pb-20 lg:pb-0">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
-          <h1 className="text-xl font-bold">Profile</h1>
+          <h1 className="text-xl font-bold pl-2">Profile</h1>
         </div>
       </header>
 
-      <main className="p-4 space-y-6 pb-24 lg:pb-4 flex">
+      <main className="p-4 space-y-6 max-w-3xl mx-auto w-full">
         <div className="hidden md:block lg:w-64">
           <BottomNav orientation="vertical" />
         </div>
