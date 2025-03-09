@@ -424,5 +424,38 @@ export const storage = {
       logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
-  }
+  },
+  async createMissedPostsNotification(userId: number, missingPosts: {
+    food: number;
+    workout: number;
+    scripture: number;
+  }): Promise<Notification | null> {
+    // Skip if no posts are missing
+    if (missingPosts.food <= 0 && missingPosts.workout <= 0 && missingPosts.scripture <= 0) {
+      return null;
+    }
+
+    // Build notification message based on what's missing
+    let message = "Yesterday you missed: ";
+    const missing: string[] = [];
+
+    if (missingPosts.food > 0) {
+      missing.push(`${missingPosts.food} Food post${missingPosts.food > 1 ? 's' : ''}`);
+    }
+    if (missingPosts.workout > 0) {
+      missing.push(`${missingPosts.workout} Workout post`);
+    }
+    if (missingPosts.scripture > 0) {
+      missing.push(`${missingPosts.scripture} Scripture post`);
+    }
+
+    message += missing.join(", ");
+
+    return this.createNotification({
+      userId,
+      title: "Missing Daily Posts",
+      message,
+      read: false
+    });
+  },
 };
