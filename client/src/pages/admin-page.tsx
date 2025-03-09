@@ -269,12 +269,31 @@ export default function AdminPage() {
             <CardContent className="p-6">
               <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Data</h2>
               <p className="text-gray-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
-              <Button
-                className="mt-4"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
-              >
-                Retry
-              </Button>
+              <div className="mt-4 flex flex-col gap-2">
+                <Button
+                  onClick={() => {
+                    // Invalidate all query data to ensure a fresh start
+                    queryClient.invalidateQueries();
+                    // Specifically invalidate the teams and users queries
+                    queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                    // Force window reload if needed
+                    if (error instanceof Error && error.message.includes('HTML')) {
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Retry
+                </Button>
+                {error instanceof Error && error.message.includes('HTML') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                  >
+                    Reload Page
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
