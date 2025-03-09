@@ -896,7 +896,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Step 1: Log file details
-      logger.info('📁 [UPLOAD] File received:');
+      logger.info('📁 [UPLOAD] File received:);
       logger.info('------------------------');
       logger.info(`Name: ${req.file.originalname}`);
       logger.info(`Size: ${req.file.size} bytes`);
@@ -1158,100 +1158,3 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   return httpServer;
 };
-
-  // This route is already defined in the setupAuth function
-  // Removed duplicate route definition that was causing the crash
-
-  // Endpoint to check for missed posts and create notifications
-  router.post("/api/notifications/check-missed-posts", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      logger.info("Starting missed posts check");
-
-      // Get all users
-      const allUsers = await storage.getAllUsers();
-
-      // Get yesterday's date
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const startOfYesterday = new Date(
-        yesterday.getFullYear(),
-        yesterday.getMonth(),
-        yesterday.getDate()
-      );
-      const endOfYesterday = new Date(startOfYesterday);
-      endOfYesterday.setDate(endOfYesterday.getDate() + 1);
-
-      logger.info(`Checking posts between ${startOfYesterday.toISOString()} and ${endOfYesterday.toISOString()}`);
-
-      // Track notifications created
-      let notificationsCreated = 0;
-
-      // Process each user
-      for (const user of allUsers) {
-        // Skip processing for admin users if needed
-        if (user.isAdmin) continue;
-
-        // Get user's posts from yesterday
-        const userPosts = await db
-          .select({
-            type: posts.type,
-            count: sql<number>`count(*)::integer`
-          })
-          .from(posts)
-          .where(
-            and(
-              eq(posts.userId, user.id),
-              gte(posts.createdAt, startOfYesterday),
-              lt(posts.createdAt, endOfYesterday),
-              isNull(posts.parentId), // Don't count comments
-              sql`${posts.type} IN ('food', 'workout', 'scripture')` // Only check these types
-            )
-          )
-          .groupBy(posts.type);
-
-        // Initialize counts with zeros
-        const counts = {
-          food: 0,
-          workout: 0,
-          scripture: 0
-        };
-
-        // Update counts from query results
-        userPosts.forEach(row => {
-          if (row.type in counts) {
-            counts[row.type as keyof typeof counts] = Number(row.count);
-          }
-        });
-
-        // Calculate missing posts
-        const missingPosts = {
-          food: Math.max(0, 3 - counts.food),
-          workout: Math.max(0, 1 - counts.workout),
-          scripture: Math.max(0, 1 - counts.scripture)
-        };
-
-        // Create notification if posts are missing
-        const notification = await storage.createMissedPostsNotification(user.id, missingPosts);
-        if (notification) {
-          notificationsCreated++;
-          logger.info(`Created notification for user ${user.id}: Missing ${JSON.stringify(missingPosts)}`);
-        }
-      }
-
-      res.json({
-        success: true,
-        message: `Created ${notificationsCreated} notifications for missed posts`,
-        notificationsCreated
-      });
-    } catch (error) {
-      logger.error("Error checking missed posts:", error);
-      res.status(500).json({
-        message: "Failed to check missed posts",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
