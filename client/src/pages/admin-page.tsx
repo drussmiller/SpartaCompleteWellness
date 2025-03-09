@@ -51,10 +51,16 @@ export default function AdminPage() {
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
+    queryFn: async () => {
+      return apiRequest("GET", "/api/teams");
+    }
   });
 
   const { data: users, isLoading: usersLoading, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    queryFn: async () => {
+      return apiRequest("GET", "/api/users");
+    }
   });
 
   const form = useForm<TeamFormData>({

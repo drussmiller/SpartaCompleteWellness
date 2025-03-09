@@ -1,153 +1,130 @@
-
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // Enhanced error handling for authentication errors
-    if (res.status === 401) {
-      throw new Error("Unauthorized - Please log in to continue");
-    }
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    try {
-      const res = await fetch(queryKey[0] as string, {
-        credentials: "include", // Ensure cookies are sent with queries
-        headers: {
-          "Accept": "application/json",
-        },
-      });
-
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-        return null;
-      }
-
-      await throwIfResNotOk(res);
-      return await res.json();
-    } catch (error) {
-      console.error('Query error:', error);
-      throw error;
-    }
-  };
-
-export const queryClient = new QueryClient({
+const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      queryFn: (async ({ queryKey }) => {
+        const [url, ...rest] = queryKey as string[];
+        const res = await fetch(url, {
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        await throwIfResNotOk(res);
+        return res.json();
+      }) as QueryFunction,
     },
   },
 });
 
+export { queryClient };
+
 /**
- * Make API requests with automatic error handling
+ * Make API requests with proper error handling
  */
 export async function apiRequest(
-  method: string | RequestInit, 
-  url?: string | RequestInit, 
+  method: string, 
+  url: string,
   data?: any
 ): Promise<any> {
-  // Handle different parameter patterns
-  let requestMethod: string;
-  let requestUrl: string;
-  let requestOptions: RequestInit = {};
-  
-  if (typeof method === 'string' && typeof url === 'string') {
-    // Case: apiRequest("GET", "/api/users")
-    requestMethod = method;
-    requestUrl = url;
-    requestOptions.body = data ? JSON.stringify(data) : undefined;
-  } else if (typeof method === 'string' && typeof url === 'object') {
-    // Case: apiRequest("/api/users", { method: "GET" })
-    requestUrl = method;
-    requestOptions = url;
-  } else if (typeof method === 'object') {
-    // Case: apiRequest({ method: "GET", url: "/api/users" })
-    requestOptions = method;
-    requestUrl = '';
-  } else {
-    throw new Error("Invalid arguments for apiRequest");
-  }
+  // Ensure URL properly formatted
+  const baseUrl = url.startsWith('/api') ? '' : '/api';
+  const fullUrl = `${baseUrl}${url}`;
 
-  // Ensure method is set correctly
-  requestOptions.method = requestOptions.method || requestMethod || "GET";
-  
-  // Prepare the full URL
-  const baseUrl = '/api';
-  const fullUrl = requestUrl.startsWith('/') 
-    ? `${baseUrl}${requestUrl}` 
-    : `${baseUrl}/${requestUrl}`;
-
-  // Default options for all requests
-  const defaultOptions: RequestInit = {
+  const options: RequestInit = {
+    method: method,
     headers: {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Content-Type': 'application/json',
     },
     credentials: 'include',
   };
 
-  // Combine options
-  const combinedOptions: RequestInit = {
-    ...defaultOptions,
-    ...requestOptions,
-    headers: {
-      ...defaultOptions.headers,
-      ...requestOptions.headers,
-    },
-  };
+  // Add body if data is provided and method is not GET
+  if (data && method.toUpperCase() !== 'GET') {
+    options.body = JSON.stringify(data);
+  }
 
   try {
-    const response = await fetch(fullUrl, combinedOptions);
+    console.log(`Making ${method} request to ${fullUrl}`);
+    const response = await fetch(fullUrl, options);
 
-    // Check content type before trying to parse JSON
+    // Check if the response is JSON
     const contentType = response.headers.get('content-type');
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized - Please log in to continue");
-      }
-      
-      // Try to get error message
-      let errorMessage: string;
-      try {
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json();
-          errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } else {
-          errorMessage = await response.text();
-        }
-      } catch {
-        errorMessage = `Error ${response.status}: ${response.statusText}`;
-      }
-      
-      throw new Error(errorMessage);
-    }
-    
-    // For success responses, parse accordingly
     if (contentType && contentType.includes('application/json')) {
-      return await response.json();
+      const jsonData = await response.json();
+
+      // Handle error responses with proper status
+      if (!response.ok) {
+        throw new Error(jsonData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      return jsonData;
     } else {
+      // Not JSON, handle as text
       const text = await response.text();
-      console.warn('Received non-JSON response:', text.substring(0, 100) + '...');
-      return { success: true, text };
+      console.error('Received non-JSON response:', text.substring(0, 100) + '...');
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Return a structured response for non-JSON success responses
+      return { 
+        ok: response.ok,
+        status: response.status,
+        text: text,
+        contentType: contentType || 'unknown' 
+      };
     }
   } catch (error) {
     console.error('API request error:', error);
     throw error;
   }
 }
+
+type UnauthorizedBehavior = "returnNull" | "throw";
+
+export const createProtectedQueryFn = (
+  unauthorizedBehavior: UnauthorizedBehavior = "throw"
+) => {
+  return async ({ queryKey }: { queryKey: readonly unknown[] }) => {
+    const [url, ...rest] = queryKey as string[];
+    try {
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.status === 401) {
+        if (unauthorizedBehavior === "returnNull") {
+          return null;
+        } else {
+          throw new Error("Unauthorized");
+        }
+      }
+
+      await throwIfResNotOk(res);
+      return res.json();
+    } catch (e) {
+      if (e instanceof Error && e.message === "Unauthorized") {
+        throw e;
+      }
+      console.error(`Error fetching ${url}:`, e);
+      throw e;
+    }
+  };
+};
