@@ -1,3 +1,4 @@
+
 import React from "react";
 import { VerticalNav } from "./vertical-nav";
 import { BottomNav } from "./bottom-nav";
@@ -10,7 +11,7 @@ interface AppLayoutProps {
   sidebarWidth?: string;
 }
 
-export default function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
@@ -38,3 +39,6 @@ export default function AppLayout({ children, title, sidebarWidth = "250" }: App
     </div>
   );
 }
+
+// Also export as default for backward compatibility
+export default AppLayout;
