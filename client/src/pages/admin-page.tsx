@@ -298,7 +298,7 @@ export default function AdminPage() {
 
   return (
     <AppLayout sidebarWidth="80">
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col w-full">
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4 flex items-center">

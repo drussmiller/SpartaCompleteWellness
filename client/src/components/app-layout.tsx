@@ -54,3 +54,34 @@ export function AppLayout({ children, title, sidebarWidth = 16 }: AppLayoutProps
     </div>
   );
 }
+import React from "react";
+import { VerticalNav } from "./vertical-nav";
+import { BottomNav } from "./bottom-nav";
+import { useMobile } from "../hooks/use-mobile";
+import { cn } from "@/lib/utils";
+
+interface AppLayoutProps {
+  children: React.ReactNode;
+  sidebarWidth?: string;
+}
+
+export function AppLayout({ children, sidebarWidth = "250" }: AppLayoutProps) {
+  const isMobile = useMobile();
+
+  return (
+    <div className="flex h-full">
+      {!isMobile && (
+        <aside className={`w-[${sidebarWidth}px] fixed inset-y-0 z-20 flex-shrink-0 border-r border-border bg-sidebar`}>
+          <VerticalNav />
+        </aside>
+      )}
+      <div className={cn(
+        "flex flex-col flex-1 min-h-screen",
+        !isMobile ? `ml-[${sidebarWidth}px]` : ""
+      )}>
+        {children}
+        {isMobile && <BottomNav />}
+      </div>
+    </div>
+  );
+}
