@@ -365,9 +365,7 @@ export default function AdminPage() {
                 size="default"
                 className="px-4 bg-violet-700 text-white hover:bg-violet-800"
                 onClick={() => {
-                  apiRequest("/api/admin/send-test-notification", {
-                    method: "POST"
-                  })
+                  apiRequest("POST", "/api/admin/send-test-notification")
                     .then(() => {
                       toast({
                         title: "Success",
