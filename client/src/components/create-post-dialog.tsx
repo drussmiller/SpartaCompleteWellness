@@ -169,21 +169,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         >
           <span className="text-lg">×</span>
         </Button>
-        <div className="flex justify-between items-center mb-4">
-          <DialogTitle className="flex-1 text-center">Create Post</DialogTitle>
-          <Button
-            type="submit"
-            form="create-post-form"
-            variant="default"
-            size="sm"
-            className="h-6 w-20 bg-violet-700 hover:bg-violet-800 text-sm"
-            disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
-          >
-            {createPostMutation.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Post
-          </Button>
+        <div className="flex justify-center items-center mb-4">
+          <DialogTitle className="text-center">Create Post</DialogTitle>
         </div>
         <DialogDescription className="text-center">
           Share your wellness journey with your team
@@ -338,6 +325,21 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 </FormItem>
               )}
             />
+            
+            <div className="flex justify-center mt-6">
+              <Button
+                type="submit"
+                form="create-post-form"
+                variant="default"
+                className="w-full bg-violet-700 hover:bg-violet-800"
+                disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
+              >
+                {createPostMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Post
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
