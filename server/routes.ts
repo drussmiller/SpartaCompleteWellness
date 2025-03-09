@@ -1159,12 +1159,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   return httpServer;
 };
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    res.json(req.user);
-  });
+  // This route is already defined in the setupAuth function
+  // Removed duplicate route definition that was causing the crash
 
   // Endpoint to check for missed posts and create notifications
   router.post("/api/notifications/check-missed-posts", authenticate, async (req, res) => {
