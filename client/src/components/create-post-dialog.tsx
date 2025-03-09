@@ -161,6 +161,14 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
         </Button>
       </DialogTrigger>
       <DialogContent>
+        <Button 
+          onClick={() => setOpen(false)} 
+          variant="ghost" 
+          className="absolute left-2 top-2 h-8 w-8 p-0"
+          aria-label="Close"
+        >
+          <span className="text-lg">×</span>
+        </Button>
         <div className="flex justify-between items-center mb-4">
           <DialogTitle className="flex-1 text-center">Create Post</DialogTitle>
           <Button
