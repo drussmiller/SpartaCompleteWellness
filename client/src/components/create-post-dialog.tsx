@@ -48,7 +48,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Direct server data access
+    // Get remaining data from the hook
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
     
