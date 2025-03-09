@@ -34,10 +34,26 @@ export async function apiRequest<T = any>(
     },
   });
 
-  const data = await response.json();
+  // Check content type before trying to parse JSON
+  const contentType = response.headers.get('content-type');
+  let data;
+  
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('Error parsing JSON response:', parseError);
+      throw new Error('Invalid JSON response from server');
+    }
+  } else {
+    // Not JSON, get text and report error
+    const text = await response.text();
+    console.error('Received non-JSON response:', text.substring(0, 100) + '...');
+    throw new Error(`Expected JSON response but received: ${contentType || 'unknown content type'}`);
+  }
 
   if (!response.ok) {
-    const error = new Error(data.message || 'Something went wrong');
+    const error = new Error(data?.message || 'Something went wrong');
     throw Object.assign(error, { status: response.status, data });
   }
 
