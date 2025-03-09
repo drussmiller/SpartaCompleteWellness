@@ -388,7 +388,7 @@ export default function AdminPage() {
               </Button>
             </div>
             
-            <div className="flex justify-center mt-2">
+            <div className="flex justify-center mt-2 gap-2">
               <Button
                 size="default"
                 className="px-4 bg-violet-700 text-white hover:bg-violet-800"
@@ -412,6 +412,36 @@ export default function AdminPage() {
               >
                 <Bell className="h-4 w-4 mr-2" />
                 Send Test Notification
+              </Button>
+              <Button
+                size="default"
+                className="px-4 bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => {
+                  apiRequest("GET", "/api/notifications")
+                    .then((data) => {
+                      if (data && data.length > 0) {
+                        toast({
+                          title: "Notifications",
+                          description: `Found ${data.length} notifications. Latest: "${data[0].title}"`,
+                        });
+                      } else {
+                        toast({
+                          title: "No Notifications",
+                          description: "No notifications found in database",
+                        });
+                      }
+                    })
+                    .catch((error) => {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to fetch notifications",
+                        variant: "destructive",
+                      });
+                    });
+                }}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                View Notifications
               </Button>
             </div>
 
