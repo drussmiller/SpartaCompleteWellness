@@ -115,7 +115,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="p-4 max-w-2xl mx-auto">
+      <main className="p-4 max-w-2xl mx-auto w-full">
         <div className="space-y-4">
           {posts?.map((post) => (
             <PostCard key={post.id} post={post} />
