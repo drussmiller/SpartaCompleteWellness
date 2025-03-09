@@ -22,12 +22,12 @@ type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
 };
 
-export function CreatePostDialog({ remaining }: { remaining: Record<string, number> }) {
+export function CreatePostDialog({ remaining: propRemaining }: { remaining: Record<string, number> }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { canPost, counts, refetch } = usePostLimits(selectedDate);
+  const { canPost, counts, refetch, remaining } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +48,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Get remaining data from the hook
+    // Use the hook's remaining data, not the prop
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
     
