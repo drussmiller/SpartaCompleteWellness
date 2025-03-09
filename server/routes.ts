@@ -896,7 +896,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Step 1: Log file details
-      logger.info('📁 [UPLOAD] File received:);
+      logger.info('📁 [UPLOAD] File received:');
       logger.info('------------------------');
       logger.info(`Name: ${req.file.originalname}`);
       logger.info(`Size: ${req.file.size} bytes`);
