@@ -22,12 +22,12 @@ type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
 };
 
-export function CreatePostDialog({ remaining }: { remaining: Record<string, number> }) {
+export function CreatePostDialog({ remaining: propRemaining }: { remaining: Record<string, number> }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { canPost, counts, refetch } = usePostLimits(selectedDate);
+  const { canPost, counts, refetch, remaining } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +48,7 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Direct server data access
+    // Use the hook's remaining data, not the prop
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
     
@@ -160,26 +160,17 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
           <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <div className="flex justify-between items-center mb-4">
-          <DialogTitle className="flex-1 text-center">Create Post</DialogTitle>
-          <Button
-            type="submit"
-            form="create-post-form"
-            variant="default"
-            size="sm"
-            className="h-6 w-20 bg-violet-700 hover:bg-violet-800 text-sm"
-            disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
-          >
-            {createPostMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              "Post"
-            )}
-          </Button>
+      <DialogContent className="max-h-[90vh] overflow-y-auto pb-25">
+        <Button 
+          onClick={() => setOpen(false)} 
+          variant="ghost" 
+          className="absolute left-2 top-2 h-8 w-8 p-0"
+          aria-label="Close"
+        >
+          <span className="text-lg">×</span>
+        </Button>
+        <div className="flex justify-center items-center mb-4">
+          <DialogTitle className="text-center">Create Post</DialogTitle>
         </div>
         <DialogDescription className="text-center">
           Share your wellness journey with your team
@@ -334,6 +325,21 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
                 </FormItem>
               )}
             />
+            
+            <div className="flex justify-center mt-6">
+              <Button
+                type="submit"
+                form="create-post-form"
+                variant="default"
+                className="w-full bg-violet-700 hover:bg-violet-800"
+                disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
+              >
+                {createPostMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Post
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
