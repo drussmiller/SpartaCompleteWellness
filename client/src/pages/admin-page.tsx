@@ -386,6 +386,9 @@ export default function AdminPage() {
               >
                 Activity Management
               </Button>
+            </div>
+            
+            <div className="flex justify-center mt-2">
               <Button
                 size="default"
                 className="px-4 bg-violet-700 text-white hover:bg-violet-800"
