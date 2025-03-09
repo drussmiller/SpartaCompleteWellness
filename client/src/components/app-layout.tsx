@@ -1,5 +1,3 @@
-
-import { VerticalNav } from "@/components/vertical-nav";
 import { BottomNav } from "@/components/bottom-nav";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ReactNode } from "react";
@@ -7,12 +5,12 @@ import { ReactNode } from "react";
 interface AppLayoutProps {
   children: ReactNode;
   title?: string;
-  sidebarWidth?: number;
+  sidebarWidth?: string;
 }
 
-export function AppLayout({ children, title, sidebarWidth = 16 }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "16" }: AppLayoutProps) {
   const isMobile = useIsMobile();
-  const sidebarWidthPx = `${sidebarWidth}rem`;
+  const sidebarWidthPx = `${sidebarWidth}px`;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -22,7 +20,7 @@ export function AppLayout({ children, title, sidebarWidth = 16 }: AppLayoutProps
           className="fixed left-0 top-0 h-full bg-background z-50 border-r border-border"
           style={{ width: sidebarWidthPx }}
         >
-          <VerticalNav />
+          <BottomNav orientation="vertical" />
         </div>
       )}
 
