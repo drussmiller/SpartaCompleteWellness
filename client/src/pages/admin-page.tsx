@@ -302,7 +302,7 @@ export default function AdminPage() {
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4 flex items-center">
-            <h1 className="text-xl font-semibold pl-2">Admin Dashboard</h1>
+            <h1 className="text-xl font-bold pl-2">Admin Dashboard</h1>
           </div>
         </div>
 
