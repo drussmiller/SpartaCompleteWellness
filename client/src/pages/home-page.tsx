@@ -13,20 +13,18 @@ export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
 
-  // Force immediate refetch of limits on mount
+  // Only refetch when actually needed, not on every mount
   useEffect(() => {
     if (user) {
-      console.log("Home page forcing post limits refresh");
-      refetchLimits();
+      // Only refetch if data is very stale (over 30 minutes old) or doesn't exist
+      const lastRefetchTime = localStorage.getItem('lastPostLimitsRefetch');
+      const now = Date.now();
+      if (!lastRefetchTime || now - parseInt(lastRefetchTime) > 1800000) {
+        refetchLimits();
+        localStorage.setItem('lastPostLimitsRefetch', now.toString());
+      }
     }
   }, [user, refetchLimits]);
-
-  console.log("Home page post limits:", {
-    remaining,
-    counts,
-    foodCount: counts?.food,
-    foodRemaining: remaining?.food
-  });
 
   // Query for team information
   const { data: teamInfo } = useQuery({

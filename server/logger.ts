@@ -1,3 +1,4 @@
+
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
@@ -29,9 +30,12 @@ class Logger {
   private static instance: Logger;
   private logBuffer: string[] = [];
   private bufferTimeout: NodeJS.Timeout | null = null;
+  private consoleOutputEnabled: boolean = false;
 
   private constructor() {
     this.setupLogRotation();
+    // Check environment variable to enable/disable console output
+    this.consoleOutputEnabled = process.env.ENABLE_CONSOLE_LOGGING === 'true';
   }
 
   public static getInstance(): Logger {
@@ -57,15 +61,25 @@ class Logger {
         await fs.promises.writeFile(logPath, '');
       }
     } catch (err) {
-      console.error('Error rotating log files:', err);
+      if (this.consoleOutputEnabled) {
+        console.error('Error rotating log files:', err);
+      }
     }
   }
 
   private setupLogRotation(): void {
     // Check log sizes every hour
     setInterval(() => {
-      this.rotateLog(errorLogPath).catch(console.error);
-      this.rotateLog(accessLogPath).catch(console.error);
+      this.rotateLog(errorLogPath).catch(err => {
+        if (this.consoleOutputEnabled) {
+          console.error(err);
+        }
+      });
+      this.rotateLog(accessLogPath).catch(err => {
+        if (this.consoleOutputEnabled) {
+          console.error(err);
+        }
+      });
     }, 3600000);
   }
 
@@ -88,7 +102,9 @@ class Logger {
     try {
       await appendFile(logPath, entry);
     } catch (err) {
-      console.error('Failed to write to log file:', err);
+      if (this.consoleOutputEnabled) {
+        console.error('Failed to write to log file:', err);
+      }
     }
   }
 
@@ -96,38 +112,44 @@ class Logger {
     if (this.logBuffer.length > 0) {
       const buffer = this.logBuffer.join('');
       this.logBuffer = [];
-      this.writeLog(buffer, accessLogPath).catch(console.error);
+      this.writeLog(buffer, accessLogPath).catch(err => {
+        if (this.consoleOutputEnabled) {
+          console.error(err);
+        }
+      });
     }
     this.bufferTimeout = null;
   }
 
   public info(message: string, metadata: Partial<LogMetadata> = {}): void {
-    // More aggressive filtering of console output
-    const skipConsoleOutput = 
-      (metadata.route && (
-        metadata.route.includes('/api/posts/counts') || 
-        metadata.route.includes('/api/posts')
-      )) ||
-      (message && (
-        message.includes('Post count') || 
-        message.includes('GET /api/posts/counts') ||
-        message.includes('Deserializing user')
-      ));
-    
     const entry = this.formatLogEntry(message, {
       ...metadata,
       timestamp: new Date().toISOString(),
       level: 'INFO',
     });
     
-    if (!skipConsoleOutput) {
-      console.log(entry);
+    // Only log to console if explicitly enabled
+    if (this.consoleOutputEnabled) {
+      const skipConsoleOutput = 
+        (metadata.route && (
+          metadata.route.includes('/api/posts/counts') || 
+          metadata.route.includes('/api/posts')
+        )) ||
+        (message && (
+          message.includes('Post count') || 
+          message.includes('GET /api/posts/counts') ||
+          message.includes('Deserializing user')
+        ));
+        
+      if (!skipConsoleOutput) {
+        console.log(entry);
+      }
     }
 
-    // Buffer non-error logs with longer timeout
+    // Always write to file logs
     this.logBuffer.push(entry);
     if (!this.bufferTimeout) {
-      this.bufferTimeout = setTimeout(() => this.flushBuffer(), 10000); // Increased to 10 seconds
+      this.bufferTimeout = setTimeout(() => this.flushBuffer(), 10000);
     }
   }
 
@@ -137,10 +159,18 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'ERROR',
     }, error);
-    console.error(entry);
+    
+    // Only critical errors to console
+    if (this.consoleOutputEnabled) {
+      console.error(entry);
+    }
 
-    // Write errors immediately
-    this.writeLog(entry, errorLogPath).catch(console.error);
+    // Write errors immediately to file
+    this.writeLog(entry, errorLogPath).catch(err => {
+      if (this.consoleOutputEnabled) {
+        console.error(err);
+      }
+    });
   }
 
   public debug(message: string, metadata: Partial<LogMetadata> = {}): void {
@@ -150,11 +180,11 @@ class Logger {
         timestamp: new Date().toISOString(),
         level: 'DEBUG',
       });
-      // Skip console output for debug logs (still saved to file)
       
+      // Debug logs only to file, not console
       this.logBuffer.push(entry);
       if (!this.bufferTimeout) {
-        this.bufferTimeout = setTimeout(() => this.flushBuffer(), 5000); // Increased to 5 seconds
+        this.bufferTimeout = setTimeout(() => this.flushBuffer(), 5000);
       }
     }
   }
@@ -165,12 +195,20 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'WARN',
     });
-    console.warn(entry);
+    
+    if (this.consoleOutputEnabled) {
+      console.warn(entry);
+    }
 
     this.logBuffer.push(entry);
     if (!this.bufferTimeout) {
       this.bufferTimeout = setTimeout(() => this.flushBuffer(), 1000);
     }
+  }
+
+  // Method to enable/disable console output at runtime
+  public setConsoleOutputEnabled(enabled: boolean): void {
+    this.consoleOutputEnabled = enabled;
   }
 }
 

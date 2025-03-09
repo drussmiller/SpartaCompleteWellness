@@ -7,6 +7,7 @@ import { Server as HttpServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
+import { logger } from "./logger";
 
 const execAsync = promisify(exec);
 
@@ -32,8 +33,10 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    // Skip logging for comment count API requests to reduce noise
-    if (path.includes('/api/posts/comments/')) {
+    // Skip logging for high-frequency endpoints to reduce noise
+    if (path.includes('/api/posts/comments/') || 
+        path.includes('/api/posts/counts') || 
+        req.path === '/api/posts') {
       return;
     }
 
@@ -108,10 +111,14 @@ app.use('/api', (req, res, next) => {
     // ALWAYS serve the app on port 5000
     const port = 5000;
 
+    // Disable console logging
+    logger.setConsoleOutputEnabled(false);
+
     // Enhanced port cleanup function with detailed logging (from original)
     const killPort = async (port: number): Promise<void> => {
       try {
-        console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
+        // Disabled console output
+        // console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
 
         if (process.platform === "win32") {
           const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
@@ -265,3 +272,10 @@ async function runMigrations() {
 // Serve static files
 app.use(express.static("client/dist"));
 app.use('/uploads', express.static('uploads'));
+
+app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    res.json(req.user);
+  });

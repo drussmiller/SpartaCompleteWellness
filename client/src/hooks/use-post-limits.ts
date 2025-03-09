@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -38,14 +39,13 @@ export function usePostLimits(selectedDate: Date = new Date()) {
         throw new Error("Failed to fetch post limits");
       }
       const result = await response.json();
-      console.log("Post counts API result:", result);
       return result as PostLimitsResponse;
     },
-    staleTime: 15000,
-    cacheTime: 60000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    staleTime: 300000, // 5 minutes
+    cacheTime: 600000, // 10 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: null, // Disable automatic polling completely
     retry: 1,
     enabled: !!user
   });
@@ -53,21 +53,16 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   useEffect(() => {
     if (user) {
       const handlePostChange = () => {
+        // Only invalidate when actually needed
         queryClient.invalidateQueries({ queryKey });
       };
 
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
 
-      // Less frequent interval to reduce API load
-      const intervalId = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey });
-      }, 60000);
-
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
         window.removeEventListener('post-counts-changed', handlePostChange);
-        clearInterval(intervalId);
       };
     }
   }, [user, queryClient, queryKey]);
@@ -98,14 +93,6 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   const counts = data ? data.counts : defaultCounts;
   const canPost = data ? data.canPost : defaultCanPost;
   const remaining = data ? data.remaining : defaultRemaining;
-
-  console.log("usePostLimits returning values:", {
-    counts,
-    canPost,
-    remaining,
-    isFromServer: !!data,
-    rawServerData: data
-  });
 
   return {
     counts,
