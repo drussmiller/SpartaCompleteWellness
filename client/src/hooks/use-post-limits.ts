@@ -43,7 +43,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     },
     staleTime: 300000, // 5 minutes
     cacheTime: 600000, // 10 minutes
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchInterval: null, // Disable automatic polling completely
     retry: 1,
@@ -88,11 +88,10 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     memory_verse: selectedDate.getDay() === 6 ? 1 : 0
   };
 
-  // Strict prioritization of server data over defaults
-  // Only use defaults if data is completely null/undefined
-  const counts = data ? data.counts : defaultCounts;
-  const canPost = data ? data.canPost : defaultCanPost;
-  const remaining = data ? data.remaining : defaultRemaining;
+  // Check if we have valid data from the API before using defaults
+  const counts = data?.counts || defaultCounts;
+  const canPost = data?.canPost || defaultCanPost;
+  const remaining = data?.remaining || defaultRemaining;
 
   return {
     counts,

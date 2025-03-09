@@ -42,7 +42,6 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <Button type="submit" style={{ backgroundColor: 'mediumpurple' }}>Update</Button> {/* Added button with updated text and color */}
     </DialogPrimitive.Content>
   </DialogPortal>
 ))
