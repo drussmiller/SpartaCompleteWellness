@@ -42,14 +42,10 @@ export default function HomePage() {
     queryKey: ["/api/posts"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/posts");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status} ${response.statusText}`);
-        }
-        return response.json();
+        return await apiRequest("GET", "/api/posts");
       } catch (err) {
         console.error("Error fetching posts:", err);
-        throw err;
+        throw new Error(err instanceof Error ? err.message : "Failed to fetch posts");
       }
     },
     enabled: !!user,
