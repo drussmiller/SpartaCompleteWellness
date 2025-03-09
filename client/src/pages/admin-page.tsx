@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
@@ -453,12 +452,12 @@ export default function AdminPage() {
                           "/api/notifications/check-missed-posts",
                           {}
                         );
-                        
+
                         if (!res.ok) {
                           const errorData = await res.json();
                           throw new Error(errorData.message || "Failed to create notifications");
                         }
-                        
+
                         const data = await res.json();
                         toast({
                           title: "Success",
