@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
+import { ChevronLeft, Plus, Lock, Trash2, Loader2, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -360,6 +360,32 @@ export default function AdminPage() {
                 onClick={() => setLocation("/activity-management")}
               >
                 Activity Management
+              </Button>
+              <Button
+                size="default"
+                className="px-4 bg-violet-700 text-white hover:bg-violet-800"
+                onClick={() => {
+                  apiRequest("/api/admin/send-test-notification", {
+                    method: "POST"
+                  })
+                    .then(() => {
+                      toast({
+                        title: "Success",
+                        description: "Test notification sent successfully",
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                    })
+                    .catch((error) => {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to send test notification",
+                        variant: "destructive",
+                      });
+                    });
+                }}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Send Test Notification
               </Button>
             </div>
 

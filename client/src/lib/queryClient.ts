@@ -11,40 +11,37 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<Response> {
-  const headers: HeadersInit = {};
+export async function apiRequest<T = any>(
+  url: string, 
+  options: RequestInit = {}
+): Promise<T> {
+  const baseUrl = '/api';
+  const fullUrl = url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
 
-  if (body && !(body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+  const defaultOptions: RequestInit = {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  };
+
+  const response = await fetch(fullUrl, {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data.message || 'Something went wrong');
+    throw Object.assign(error, { status: response.status, data });
   }
 
-  try {
-    const response = await fetch(`${path}`, {
-      method,
-      headers,
-      body: body instanceof FormData ? body : JSON.stringify(body),
-      credentials: 'include',
-    });
-
-    // Log failed API requests for debugging
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API ${method} request to ${path} failed:`, {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-    }
-
-    return response;
-  } catch (error) {
-    console.error(`API ${method} request to ${path} threw an exception:`, error);
-    throw error;
-  }
+  return data as T;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

@@ -219,6 +219,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     res.json({ message: "pong" });
   });
 
+  // Test notification endpoint
+  router.post("/api/admin/send-test-notification", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      logger.info('Sending test notification to admin');
+      
+      // Create a test notification for the admin
+      const notification = await db
+        .insert(notifications)
+        .values({
+          userId: req.user.id,
+          title: "Test Notification",
+          message: "This is a test notification from the admin panel",
+          read: false
+        })
+        .returning();
+        
+      logger.info('Test notification created:', notification);
+      
+      res.status(201).json({ 
+        message: "Test notification sent successfully",
+        notification: notification[0]
+      });
+    } catch (error) {
+      logger.error('Error sending test notification:', error);
+      res.status(500).json({ 
+        message: "Failed to send test notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Protected endpoint example
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
