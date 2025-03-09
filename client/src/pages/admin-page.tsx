@@ -1,43 +1,48 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+
 import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { insertTeamSchema, type Team, type User } from "@shared/schema";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BottomNav } from "@/components/bottom-nav";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { AppLayout } from "@/components/app-layout";
+import { insertTeamSchema, type Team, type User } from "@shared/schema";
+import { apiRequest } from "@/lib/utils";
+
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { z } from "zod";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel,
-  AlertDialogContent, 
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogTrigger 
-} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AppLayout from "@/components/app-layout";
 
-// Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
 
 export default function AdminPage() {
@@ -66,24 +71,93 @@ export default function AdminPage() {
     },
   });
 
+  const queryClient = useQueryClient();
+
   const createTeamMutation = useMutation({
     mutationFn: async (data: TeamFormData) => {
       const res = await apiRequest("POST", "/api/teams", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create team");
-      }
+      if (!res.ok) throw new Error("Failed to create team");
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      form.reset();
       toast({
         title: "Success",
         description: "Team created successfully",
       });
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateTeamMutation = useMutation({
+    mutationFn: async (data: Partial<Team>) => {
+      const res = await apiRequest("PUT", `/api/teams/${editingTeam?.id}`, data);
+      if (!res.ok) throw new Error("Failed to update team");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setEditingTeam(null);
+      toast({
+        title: "Success",
+        description: "Team updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: Partial<User>) => {
+      const res = await apiRequest("PUT", `/api/users/${editingUser?.id}`, data);
+      if (!res.ok) throw new Error("Failed to update user");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setEditingUser(null);
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, { password });
+      if (!res.ok) throw new Error("Failed to reset password");
+      return res.json();
+    },
+    onSuccess: () => {
+      setResetPasswordOpen(false);
+      setSelectedUserId(null);
+      setNewPassword("");
+      toast({
+        title: "Success",
+        description: "Password reset successfully",
+      });
+    },
+    onError: (error) => {
       toast({
         title: "Error",
         description: error.message,
@@ -95,20 +169,17 @@ export default function AdminPage() {
   const deleteTeamMutation = useMutation({
     mutationFn: async (teamId: number) => {
       const res = await apiRequest("DELETE", `/api/teams/${teamId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete team");
-      }
+      if (!res.ok) throw new Error("Failed to delete team");
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       toast({
         title: "Success",
         description: "Team deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: error.message,
@@ -117,185 +188,66 @@ export default function AdminPage() {
     },
   });
 
-  const updateUserTeamMutation = useMutation({
-    mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}`, { teamId });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user's team");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User's team updated successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const onSubmit = (data: TeamFormData) => {
+    createTeamMutation.mutate(data);
+  };
 
-  const updateUserRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, value }: { userId: number; role: 'isAdmin' | 'isTeamLead'; value: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role, value });
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User's role updated successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+  };
 
-  const updateTeamMutation = useMutation({
-    mutationFn: async ({ teamId, data }: { teamId: number; data: Partial<Team> }) => {
-      const res = await apiRequest("PATCH", `/api/teams/${teamId}`, data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update team");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Team updated successfully",
-      });
-      setEditingTeam(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+  };
 
-  const updateUserMutation = useMutation({
-    mutationFn: async ({ userId, data }: { userId: number; data: Partial<User> }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      });
-      setEditingUser(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleResetPassword = (userId: number) => {
+    setSelectedUserId(userId);
+    setResetPasswordOpen(true);
+  };
 
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleSubmitPasswordReset = () => {
+    if (selectedUserId) {
+      resetPasswordMutation.mutate({ userId: selectedUserId, password: newPassword });
+    }
+  };
 
-  const isLoading = teamsLoading || usersLoading;
-  const error = teamsError || usersError;
+  const handleDeleteTeam = (teamId: number) => {
+    if (confirm("Are you sure you want to delete this team?")) {
+      deleteTeamMutation.mutate(teamId);
+    }
+  };
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading activities...</span>
-        </div>
-      </AppLayout>
-    );
-  }
+  const handleUpdateTeam = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    updateTeamMutation.mutate({ name, description });
+  };
 
-  if (error) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-6">
-              <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Data</h2>
-              <p className="text-gray-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
-              <Button
-                className="mt-4"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
-              >
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </AppLayout>
-    );
-  }
+  const handleUpdateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const isTeamLead = formData.get("isTeamLead") === "on";
+    const isAdmin = formData.get("isAdmin") === "on";
+    const teamId = parseInt(formData.get("teamId") as string) || null;
+    updateUserMutation.mutate({ isTeamLead, isAdmin, teamId });
+  };
+
+  const handleManageActivities = () => {
+    setLocation("/activity-management");
+  };
 
   if (!user?.isAdmin) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-6">
-              <h2 className="text-xl font-bold text-red-500 mb-2">Unauthorized</h2>
-              <p className="text-gray-600">You do not have permission to access this page.</p>
-            </CardContent>
-          </Card>
+        <div className="flex flex-col items-center justify-center h-full">
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-gray-500">You do not have permission to access this page.</p>
         </div>
       </AppLayout>
     );
   }
-
-  const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
-
-  const isMobile = window.innerWidth <= 768; 
 
   return (
     <AppLayout sidebarWidth="80">
@@ -307,178 +259,349 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Main content */}
-        <div className="flex-1">
-          <div className="container p-4 md:px-8">
-            <Tabs defaultValue="users" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="users">User Management</TabsTrigger>
-                <TabsTrigger value="activities">Activity Management</TabsTrigger>
-                <TabsTrigger value="teams">Team Management</TabsTrigger>
-                <TabsTrigger value="notifications">Notifications</TabsTrigger>
-              </TabsList>
-              <TabsContent value="users" className="space-y-4">
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Users</h2>
-                  {/* Existing user management content */}
-                  {sortedUsers?.map((user) => (
-                    <Card key={user.id}>
-                      {/* ...rest of user card content... */}
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-              <TabsContent value="teams" className="space-y-4">
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Teams</h2>
-                  {/* Existing team management content */}
-                  {sortedTeams?.map((team) => (
-                    <Card key={team.id}>
-                      {/* ...rest of team card content... */}
-                    </Card>
-                  ))}
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="default" className="px-4 bg-violet-700 text-white hover:bg-violet-800">
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Team
+        <div className="px-4 pt-6 pb-20 flex-1 overflow-auto">
+          <Tabs defaultValue="teams">
+            <TabsList>
+              <TabsTrigger value="teams">Teams</TabsTrigger>
+              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="activities">Activities</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="teams" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create New Team</CardTitle>
+                  <CardDescription>
+                    Add a new team to the system for grouping users.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Team Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="iron-sharpens-iron" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              Lowercase name with hyphens, no spaces.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Team description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" disabled={createTeamMutation.isPending}>
+                        {createTeamMutation.isPending ? "Creating..." : "Create Team"}
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create New Team</DialogTitle>
-                      </DialogHeader>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Name</FormLabel>
-                                <FormControl>
-                                  <Input {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl>
-                                  <Textarea {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <Button type="submit" disabled={createTeamMutation.isPending}>
-                            {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                          </Button>
-                        </form>
-                      </Form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </TabsContent>
-              <TabsContent value="activities" className="space-y-4">
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Activity Management</h2>
-                  {/* Existing activity management content */}
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manage Teams</CardTitle>
+                  <CardDescription>View and edit existing teams.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {teamsLoading ? (
+                    <p>Loading teams...</p>
+                  ) : teamsError ? (
+                    <p className="text-red-500">{(teamsError as Error).message}</p>
+                  ) : (
+                    <ScrollArea className="h-[300px]">
+                      <div className="space-y-4">
+                        {teams?.map((team) => (
+                          <Card key={team.id}>
+                            <CardHeader className="py-4">
+                              <CardTitle className="text-lg">{team.name}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="py-2">
+                              <p className="text-sm text-muted-foreground">{team.description}</p>
+                            </CardContent>
+                            <CardFooter className="flex justify-between py-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditTeam(team)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteTeam(team.id)}
+                              >
+                                Delete
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="users" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manage Users</CardTitle>
+                  <CardDescription>
+                    View and edit user roles and team assignments.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {usersLoading ? (
+                    <p>Loading users...</p>
+                  ) : usersError ? (
+                    <p className="text-red-500">{(usersError as Error).message}</p>
+                  ) : (
+                    <ScrollArea className="h-[500px]">
+                      <div className="space-y-4">
+                        {users?.map((user) => (
+                          <Card key={user.id}>
+                            <CardHeader className="py-4">
+                              <div className="flex justify-between">
+                                <CardTitle className="text-lg">{user.username}</CardTitle>
+                                <div className="flex space-x-2">
+                                  {user.isAdmin && (
+                                    <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+                                      Admin
+                                    </span>
+                                  )}
+                                  {user.isTeamLead && (
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                      Team Lead
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <CardDescription>
+                                {user.email} • Team:{" "}
+                                {teams?.find((t) => t.id === user.teamId)?.name || "None"}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardFooter className="flex justify-between py-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditUser(user)}
+                              >
+                                Edit Roles
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleResetPassword(user.id)}
+                              >
+                                Reset Password
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="activities" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manage Activities</CardTitle>
+                  <CardDescription>Create and edit weekly activities.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={handleManageActivities}>Open Activity Management</Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="notifications" className="space-y-4 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notifications</CardTitle>
+                  <CardDescription>Manage system notifications</CardDescription>
+                </CardHeader>
+                <CardContent>
                   <Button
-                    size="default"
-                    className="px-4 bg-violet-700 text-white hover:bg-violet-800"
-                    onClick={() => setLocation("/activity-management")}
+                    onClick={async () => {
+                      try {
+                        const res = await apiRequest(
+                          "POST",
+                          "/api/notifications/check-missed-posts",
+                          {}
+                        );
+                        
+                        if (!res.ok) {
+                          const errorData = await res.json();
+                          throw new Error(errorData.message || "Failed to create notifications");
+                        }
+                        
+                        const data = await res.json();
+                        toast({
+                          title: "Success",
+                          description: data.message
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: error instanceof Error ? error.message : "Unknown error",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
                   >
-                    Activity Management
+                    Create Missed Post Notifications
                   </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="notifications" className="space-y-4">
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Notification Management</h2>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Check for Missed Posts</CardTitle>
-                      <CardDescription>
-                        Creates notifications for users who didn't complete all required posts yesterday
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        onClick={async () => {
-                          try {
-                            const response = await apiRequest(
-                              "POST", 
-                              "/api/notifications/check-missed-posts"
-                            );
-
-                            if (!response.ok) {
-                              throw new Error("Failed to check for missed posts");
-                            }
-
-                            const result = await response.json();
-                            toast({
-                              title: "Check Complete",
-                              description: `Created ${result.notificationsCreated} notifications for missed posts.`,
-                            });
-                          } catch (error) {
-                            toast({
-                              title: "Error",
-                              description: error instanceof Error ? error.message : "Failed to check missed posts",
-                              variant: "destructive"
-                            });
-                          }
-                        }}
-                      >
-                        Check Missed Posts
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
-        <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+
+        {/* Edit Team Dialog */}
+        <Dialog open={!!editingTeam} onOpenChange={(open) => !open && setEditingTeam(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Reset Password</DialogTitle>
-              <DialogDescription>
-                Enter a new password for the user.
-              </DialogDescription>
+              <DialogTitle>Edit Team</DialogTitle>
+              <DialogDescription>Update the team details.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (selectedUserId && newPassword) {
-                // Handle password reset
-                setResetPasswordOpen(false);
-                setNewPassword("");
-              }
-            }}>
-              <div className="space-y-4 mt-2">
-                <div className="relative">
+            <form onSubmit={handleUpdateTeam}>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Team Name</Label>
                   <Input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="New password"
-                    required
+                    id="name"
+                    name="name"
+                    defaultValue={editingTeam?.name || ""}
+                    placeholder="Lowercase with hyphens"
                   />
                 </div>
-                <Button type="submit">
-                  Reset Password
-                </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    name="description"
+                    defaultValue={editingTeam?.description || ""}
+                    placeholder="Team description"
+                  />
+                </div>
               </div>
+              <DialogFooter>
+                <Button type="submit" disabled={updateTeamMutation.isPending}>
+                  {updateTeamMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
 
-        <BottomNav />
+        {/* Edit User Dialog */}
+        <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User: {editingUser?.username}</DialogTitle>
+              <DialogDescription>Update user roles and team assignment.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateUser}>
+              <div className="space-y-4 py-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isAdmin"
+                    name="isAdmin"
+                    defaultChecked={editingUser?.isAdmin}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="isAdmin">Admin Role</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isTeamLead"
+                    name="isTeamLead"
+                    defaultChecked={editingUser?.isTeamLead}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="isTeamLead">Team Lead Role</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="teamId">Assign to Team</Label>
+                  <select
+                    id="teamId"
+                    name="teamId"
+                    defaultValue={editingUser?.teamId || ""}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2"
+                  >
+                    <option value="">No Team</option>
+                    {teams?.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={updateUserMutation.isPending}>
+                  {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset User Password</DialogTitle>
+              <DialogDescription>
+                Enter a new password for this user. They will need to use this password for their next
+                login.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSubmitPasswordReset} disabled={resetPasswordMutation.isPending}>
+                {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
