@@ -34,59 +34,118 @@ export { queryClient };
  * Make API requests with proper error handling
  */
 export async function apiRequest(
-  method: string, 
-  url: string,
+  method: string | RequestInit, 
+  url?: string | RequestInit, 
   data?: any
 ): Promise<any> {
-  // Ensure URL properly formatted
-  const baseUrl = url.startsWith('/api') ? '' : '/api';
-  const fullUrl = `${baseUrl}${url}`;
+  // Handle different parameter patterns
+  let requestMethod: string;
+  let requestUrl: string;
+  let requestOptions: RequestInit = {};
 
-  const options: RequestInit = {
-    method: method,
+  if (typeof method === 'string' && typeof url === 'string') {
+    // Case: apiRequest("GET", "/api/users")
+    requestMethod = method;
+    requestUrl = url;
+    if (data && (requestMethod === 'POST' || requestMethod === 'PUT' || requestMethod === 'PATCH')) {
+      requestOptions.body = JSON.stringify(data);
+    }
+  } else if (typeof method === 'string' && typeof url === 'object') {
+    // Case: apiRequest("/api/users", { method: "GET" })
+    requestUrl = method;
+    requestOptions = url;
+  } else if (typeof method === 'object') {
+    // Case: apiRequest({ method: "GET", url: "/api/users" })
+    requestOptions = method;
+    requestUrl = '';
+  } else {
+    throw new Error("Invalid arguments for apiRequest");
+  }
+
+  // Ensure method is set correctly
+  requestOptions.method = requestOptions.method || requestMethod || "GET";
+
+  // Prepare the full URL - ensure we don't double-add /api prefix
+  let fullUrl = requestUrl;
+  if (!requestUrl.startsWith('/api')) {
+    const baseUrl = '/api';
+    fullUrl = requestUrl.startsWith('/') 
+      ? `${baseUrl}${requestUrl}` 
+      : `${baseUrl}/${requestUrl}`;
+  }
+
+  // Default options for all requests
+  const defaultOptions: RequestInit = {
     headers: {
-      'Accept': 'application/json',
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
     credentials: 'include',
   };
 
-  // Add body if data is provided and method is not GET
-  if (data && method.toUpperCase() !== 'GET') {
-    options.body = JSON.stringify(data);
-  }
+  // Combine options
+  const combinedOptions: RequestInit = {
+    ...defaultOptions,
+    ...requestOptions,
+    headers: {
+      ...defaultOptions.headers,
+      ...requestOptions.headers,
+    },
+  };
 
   try {
-    console.log(`Making ${method} request to ${fullUrl}`);
-    const response = await fetch(fullUrl, options);
+    console.log(`Making ${requestOptions.method} request to ${fullUrl}`);
+    const response = await fetch(fullUrl, combinedOptions);
 
-    // Check if the response is JSON
+    // Check content type before trying to parse JSON
     const contentType = response.headers.get('content-type');
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized - Please log in to continue");
+      }
+
+      // Try to get error message
+      let errorMessage: string;
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
+        } else {
+          const text = await response.text();
+          if (text.includes('<!DOCTYPE html>')) {
+            console.warn('Received HTML error response');
+            errorMessage = `Error ${response.status}: Server returned HTML instead of JSON`;
+          } else {
+            errorMessage = text || `Error ${response.status}: ${response.statusText}`;
+          }
+        }
+      } catch (parseError) {
+        errorMessage = `Error ${response.status}: ${response.statusText}`;
+      }
+
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    // For success responses, parse accordingly
     if (contentType && contentType.includes('application/json')) {
-      const jsonData = await response.json();
-
-      // Handle error responses with proper status
-      if (!response.ok) {
-        throw new Error(jsonData.message || `Error ${response.status}: ${response.statusText}`);
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        throw new Error(`Failed to parse JSON response: ${jsonError.message}`);
       }
-
-      return jsonData;
     } else {
-      // Not JSON, handle as text
       const text = await response.text();
-      console.error('Received non-JSON response:', text.substring(0, 100) + '...');
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (text.includes('<!DOCTYPE html>')) {
+        console.warn('Received non-JSON response:', text.substring(0, 100) + '...');
+        throw new Error('Server returned HTML instead of JSON');
+      } else {
+        console.warn('Received non-JSON response:', text.substring(0, 100) + '...');
+        return { success: true, text };
       }
-
-      // Return a structured response for non-JSON success responses
-      return { 
-        ok: response.ok,
-        status: response.status,
-        text: text,
-        contentType: contentType || 'unknown' 
-      };
     }
   } catch (error) {
     console.error('API request error:', error);
