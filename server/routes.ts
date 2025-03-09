@@ -139,7 +139,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type)
         .toSQL();
-      
+
       logger.info('Post counts SQL query:', sqlQuery);
       logger.info('Post counts query result:', JSON.stringify(result));
       logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
@@ -892,7 +892,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.file) {
         logger.info('🚫 [UPLOAD] No file received');
-        return res.status(400).json({ error: "No file uploaded" });
+        return res.status(40).json({ error: "No file uploaded" });
       }
 
       // Step 1: Log file details

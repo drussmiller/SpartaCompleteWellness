@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,7 +53,7 @@ export default function ActivityPage() {
     const maxDayInCurrentWeek = Math.max(...(activities
       ?.filter((a) => a.week === selectedWeek)
       .map((a) => a.day) || [7]));
-    
+
     if (selectedDay < maxDayInCurrentWeek) {
       setSelectedDay(selectedDay + 1);
     } else if (selectedWeek < Math.max(...weeks)) {
@@ -64,71 +63,64 @@ export default function ActivityPage() {
   };
 
   return (
-    <div className="min-h-screen relative pb-20 md:pb-0 md:ml-20">
-      <div className="flex">
-        <div className="hidden md:block"> {/* Added vertical navigation bar */}
-          <BottomNav orientation="vertical" />
+    <div className="min-h-screen pb-20 lg:pb-0">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="p-4">
+          <h1 className="text-xl font-bold pl-2">Daily Activity</h1>
         </div>
-        <div className="w-full">
-          <header className="w-full bg-background border-b border-border">
-            <div className="p-4">
-              <h1 className="text-xl font-bold">Daily Activity</h1>
-            </div>
-          </header>
+      </header>
 
-          <main className="p-4 space-y-4">
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={navigatePrevDay}
-                disabled={selectedWeek === 1 && selectedDay === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="font-medium text-lg">
-                Week {selectedWeek} - Day {selectedDay}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={navigateNextDay}
-                disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+      <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
+        <div className="flex items-center justify-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={navigatePrevDay}
+            disabled={selectedWeek === 1 && selectedDay === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="font-medium text-lg">
+            Week {selectedWeek} - Day {selectedDay}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={navigateNextDay}
+            disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
 
-            {currentActivity ? (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="prose max-w-none">
-                    {currentActivity.contentFields?.map((field, index) => (
-                      <div key={index} className="mb-8">
-                        {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
-                          <h2 className="text-xl font-bold mb-4">{field.title}</h2>
-                        )}
-                        <div 
-                          className="rich-text-content prose-sm" 
-                          dangerouslySetInnerHTML={{ 
-                            __html: field.content 
-                          }}
-                        />
-                      </div>
-                    ))}
+        {currentActivity ? (
+          <Card>
+            <CardContent className="p-6">
+              <div className="prose max-w-none">
+                {currentActivity.contentFields?.map((field, index) => (
+                  <div key={index} className="mb-8">
+                    {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
+                      <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                    )}
+                    <div 
+                      className="rich-text-content prose-sm" 
+                      dangerouslySetInnerHTML={{ 
+                        __html: field.content 
+                      }}
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  No activity found for this day
-                </CardContent>
-              </Card>
-            )}
-          </main>
-        </div>
-      </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              No activity found for this day
+            </CardContent>
+          </Card>
+        )}
+      </main>
       <div className="md:hidden">
         <BottomNav orientation="horizontal" />
       </div>

@@ -1,43 +1,40 @@
-import { BottomNav } from "@/components/bottom-nav";
+import React from "react";
+import { VerticalNav } from "./vertical-nav";
+import { BottomNav } from "./bottom-nav";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
   title?: string;
   sidebarWidth?: string;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "16" }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Left sidebar - only visible on non-mobile devices */}
+    <div className="flex h-full">
       {!isMobile && (
-        <div 
-          className="fixed left-0 top-0 h-full bg-background z-50 border-r border-border"
-          style={{ width: sidebarWidthPx }}
-        >
-          <BottomNav orientation="vertical" />
-        </div>
+        <aside className={`w-[${sidebarWidth}px] fixed inset-y-0 z-20 flex-shrink-0 border-r border-border bg-sidebar`}>
+          <VerticalNav />
+        </aside>
       )}
-
-      {/* Main content */}
-      <main 
-        className="flex-1 w-full"
-        style={!isMobile ? { marginLeft: sidebarWidthPx } : {}}
-      >
+      <div className={cn(
+        "flex flex-col flex-1 min-h-screen",
+        !isMobile ? `ml-[${sidebarWidth}px]` : ""
+      )}>
+        {title && (
+          <header className="sticky top-0 z-40 border-b border-border bg-background">
+            <div className="container py-3">
+              <h1 className="text-lg font-semibold">{title}</h1>
+            </div>
+          </header>
+        )}
         {children}
-      </main>
-
-      {/* Bottom navigation - only on mobile */}
-      {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 z-50">
-          <BottomNav />
-        </div>
-      )}
+        {isMobile && <BottomNav />}
+      </div>
     </div>
   );
 }
