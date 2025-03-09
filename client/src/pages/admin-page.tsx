@@ -422,7 +422,7 @@ export default function AdminPage() {
                       if (data && data.length > 0) {
                         toast({
                           title: "Notifications",
-                          description: `Found ${data.length} notifications. Latest: "${data[0].title}"`,
+                          description: `Found ${data.length} notifications. Latest: "${data[0].title}" (${new Date(data[0].createdAt).toLocaleString()})`,
                         });
                       } else {
                         toast({
