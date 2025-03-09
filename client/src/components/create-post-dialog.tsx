@@ -179,14 +179,10 @@ export function CreatePostDialog({ remaining }: { remaining: Record<string, numb
             className="h-6 w-20 bg-violet-700 hover:bg-violet-800 text-sm"
             disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
           >
-            {createPostMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              "Post"
+            {createPostMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
+            Post
           </Button>
         </div>
         <DialogDescription className="text-center">
