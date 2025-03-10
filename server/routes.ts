@@ -227,26 +227,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      logger.info('Sending test notification for admin user:', req.user.id);
+      logger.info('Starting test notification creation for admin user:', req.user.id);
 
-      // Create a test notification for the admin
-      const [notification] = await db
-        .insert(notifications)
-        .values({
+      try {
+        // Create a test notification for the admin using the storage interface
+        const notification = await storage.createNotification({
           userId: req.user.id,
           title: "Test Notification",
           message: "This is a test notification from the admin panel",
           read: false,
           createdAt: new Date()
-        })
-        .returning();
+        });
 
-      logger.info('Test notification created:', { notificationId: notification.id });
+        logger.info('Test notification created successfully:', { notificationId: notification.id });
 
-      res.status(201).json({ 
-        message: "Test notification sent successfully",
-        notification
-      });
+        res.status(201).json({ 
+          message: "Test notification sent successfully",
+          notification
+        });
+      } catch (dbError) {
+        logger.error('Database error creating notification:', {
+          error: dbError instanceof Error ? dbError.message : dbError,
+          stack: dbError instanceof Error ? dbError.stack : undefined
+        });
+        throw dbError;
+      }
     } catch (error) {
       logger.error('Error sending test notification:', error);
       res.status(500).json({ 
