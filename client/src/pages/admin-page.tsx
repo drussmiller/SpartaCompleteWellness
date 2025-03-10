@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { insertTeamSchema, type Team, type User } from "@shared/schema";
-import { apiRequest } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";  // Updated import path
 
 import { Button } from "@/components/ui/button";
 import {
@@ -459,8 +459,7 @@ export default function AdminPage() {
                       try {
                         const res = await apiRequest(
                           "POST",
-                          "/api/notifications/check-missed-posts",
-                          {}
+                          "/api/notifications/check-missed-posts"
                         );
 
                         if (!res.ok) {
