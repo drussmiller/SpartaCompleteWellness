@@ -22,6 +22,7 @@ export default function NotificationsPage() {
     enabled: !!user,
     onSuccess: (data) => {
       console.log("Notifications fetched:", data?.length, "notifications");
+      console.log("Raw notifications data:", data);
     },
     onError: (err) => {
       console.error("Error fetching notifications:", err);
@@ -32,6 +33,8 @@ export default function NotificationsPage() {
       });
     },
   });
+
+  console.log("Current notifications state:", { notifications, isLoading, error });
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: number) => {
