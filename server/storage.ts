@@ -37,6 +37,19 @@ export const storage = {
     }
   },
 
+  async createTeam(teamData): Promise<Team> {
+    try {
+      const [newTeam] = await db
+        .insert(teams)
+        .values(teamData)
+        .returning();
+      return newTeam;
+    } catch (error) {
+      logger.error(`Failed to create team: ${error}`);
+      throw error;
+    }
+  },
+
   // Users
   async getUserByUsername(username: string): Promise<User | null> {
     try {
