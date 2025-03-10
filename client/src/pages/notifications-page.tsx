@@ -15,9 +15,26 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const { connectionStatus } = useNotifications();
 
-  const { data: notifications } = useQuery<Notification[]>({
+  console.log("Notifications page render - User:", user?.id);
+
+  const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    enabled: !!user,
+    onSuccess: (data) => {
+      console.log("Notifications fetched:", data?.length, "notifications");
+      console.log("Raw notifications data:", data);
+    },
+    onError: (err) => {
+      console.error("Error fetching notifications:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      });
+    },
   });
+
+  console.log("Current notifications state:", { notifications, isLoading, error });
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: number) => {
@@ -59,6 +76,36 @@ export default function NotificationsPage() {
     },
   });
 
+  if (!user) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen pb-20 lg:pb-0">
+          <div className="p-4">Please log in to view notifications</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen pb-20 lg:pb-0">
+          <div className="p-4">Loading notifications...</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen pb-20 lg:pb-0">
+          <div className="p-4 text-destructive">Error loading notifications</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="min-h-screen pb-20 lg:pb-0 relative">
@@ -68,14 +115,14 @@ export default function NotificationsPage() {
           </div>
         </header>
         <main className="p-4 max-w-2xl mx-auto w-full">
-          {notifications?.length === 0 ? (
+          {!notifications?.length ? (
             <div className="text-center py-8">
               <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-lg font-medium">No new notifications</p>
             </div>
           ) : (
             notifications?.map((notification) => (
-              <Card key={notification.id}>
+              <Card key={notification.id} className="mb-4">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -84,7 +131,7 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(notification.createdAt).toLocaleString()}
+                        {new Date(notification.createdAt!).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
