@@ -234,23 +234,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       try {
         // Create a test notification for the admin using the storage interface
-        // Force the current timestamp and ensure it's correctly formatted
-        const currentDate = new Date();
-        logger.info('Creating test notification with timestamp:', currentDate.toISOString());
-        
         const notification = await storage.createNotification({
           userId: req.user.id,
-          title: `Test Notification (${currentDate.toLocaleTimeString()})`,
-          message: `This is a test notification from the admin panel sent at ${currentDate.toISOString()}`,
+          title: "Test Notification",
+          message: "This is a test notification from the admin panel",
           read: false,
-          createdAt: currentDate
+          createdAt: new Date()
         });
 
         logger.info('Test notification created successfully:', { notificationId: notification.id });
         logger.info('Full notification data:', notification);
-
-        // Force refresh notifications in the database
-        await db.execute(sql`REFRESH MATERIALIZED VIEW IF EXISTS notifications_view`);
 
         res.status(201).json({
           message: "Test notification sent successfully",
