@@ -135,7 +135,7 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      logger.debug("Creating notification:", data);
+      logger.debug("Creating notification with data:", data);
       const [notification] = await db
         .insert(notifications)
         .values({
@@ -150,7 +150,8 @@ export const storage = {
       return notification;
     } catch (error) {
       logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);
-      throw error;
+      // Ensure we throw a proper error object that can be converted to JSON
+      throw new Error(error instanceof Error ? error.message : "Failed to create notification");
     }
   },
 
