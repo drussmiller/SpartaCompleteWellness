@@ -139,7 +139,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type)
         .toSQL();
-      
+
       logger.info('Post counts SQL query:', sqlQuery);
       logger.info('Post counts query result:', JSON.stringify(result));
       logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
@@ -217,41 +217,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/ping", (req, res) => {
     logger.info('Ping request received', { requestId: req.requestId });
     res.json({ message: "pong" });
-  });
-
-  // Test notification endpoint
-  router.post("/api/admin/send-test-notification", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-      
-      logger.info('Sending test notification to admin');
-      
-      // Create a test notification for the admin
-      const notification = await db
-        .insert(notifications)
-        .values({
-          userId: req.user.id,
-          title: "Test Notification",
-          message: "This is a test notification from the admin panel",
-          read: false
-        })
-        .returning();
-        
-      logger.info('Test notification created:', notification);
-      
-      res.status(201).json({ 
-        message: "Test notification sent successfully",
-        notification: notification[0]
-      });
-    } catch (error) {
-      logger.error('Error sending test notification:', error);
-      res.status(500).json({ 
-        message: "Failed to send test notification",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
   });
 
   // Protected endpoint example
@@ -927,7 +892,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.file) {
         logger.info('🚫 [UPLOAD] No file received');
-        return res.status(400).json({ error: "No file uploaded" });
+        return res.status(40).json({ error: "No file uploaded" });
       }
 
       // Step 1: Log file details
