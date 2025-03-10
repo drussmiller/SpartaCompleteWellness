@@ -74,9 +74,23 @@ export default function AdminPage() {
 
   const createTeamMutation = useMutation({
     mutationFn: async (data: TeamFormData) => {
-      const res = await apiRequest("POST", "/api/teams", data);
-      if (!res.ok) throw new Error("Failed to create team");
-      return res.json();
+      try {
+        const res = await apiRequest("POST", "/api/teams", data);
+        if (!res.ok) {
+          // Check if response is HTML (error page)
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("text/html")) {
+            throw new Error("Server returned an HTML error page. Please try again later.");
+          }
+          // Try to get a more specific error message
+          const errorData = await res.json().catch(() => ({ message: "Failed to create team" }));
+          throw new Error(errorData.message || "Failed to create team");
+        }
+        return res.json();
+      } catch (error) {
+        console.error("Team creation error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -89,7 +103,7 @@ export default function AdminPage() {
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unknown error creating team",
         variant: "destructive",
       });
     },
@@ -285,10 +299,10 @@ export default function AdminPage() {
                           <FormItem>
                             <FormLabel>Team Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="iron-sharpens-iron" {...field} />
+                              <Input placeholder="Team Name" {...field} />
                             </FormControl>
                             <FormDescription>
-                              Lowercase name with hyphens, no spaces.
+                              Enter a name for the team.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -326,36 +340,34 @@ export default function AdminPage() {
                   ) : teamsError ? (
                     <p className="text-red-500">{(teamsError as Error).message}</p>
                   ) : (
-                    <ScrollArea className="h-[300px]">
-                      <div className="space-y-4">
-                        {teams?.map((team) => (
-                          <Card key={team.id}>
-                            <CardHeader className="py-4">
-                              <CardTitle className="text-lg">{team.name}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="py-2">
-                              <p className="text-sm text-muted-foreground">{team.description}</p>
-                            </CardContent>
-                            <CardFooter className="flex justify-between py-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditTeam(team)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteTeam(team.id)}
-                              >
-                                Delete
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                    <div className="space-y-4">
+                      {teams?.map((team) => (
+                        <Card key={team.id}>
+                          <CardHeader className="py-4">
+                            <CardTitle className="text-lg">{team.name}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="py-2">
+                            <p className="text-sm text-muted-foreground">{team.description}</p>
+                          </CardContent>
+                          <CardFooter className="flex justify-between py-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditTeam(team)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteTeam(team.id)}
+                            >
+                              Delete
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -375,51 +387,49 @@ export default function AdminPage() {
                   ) : usersError ? (
                     <p className="text-red-500">{(usersError as Error).message}</p>
                   ) : (
-                    <ScrollArea className="h-[500px]">
-                      <div className="space-y-4">
-                        {users?.map((user) => (
-                          <Card key={user.id}>
-                            <CardHeader className="py-4">
-                              <div className="flex justify-between">
-                                <CardTitle className="text-lg">{user.username}</CardTitle>
-                                <div className="flex space-x-2">
-                                  {user.isAdmin && (
-                                    <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
-                                      Admin
-                                    </span>
-                                  )}
-                                  {user.isTeamLead && (
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                      Team Lead
-                                    </span>
-                                  )}
-                                </div>
+                    <div className="space-y-4">
+                      {users?.map((user) => (
+                        <Card key={user.id}>
+                          <CardHeader className="py-4">
+                            <div className="flex justify-between">
+                              <CardTitle className="text-lg">{user.username}</CardTitle>
+                              <div className="flex space-x-2">
+                                {user.isAdmin && (
+                                  <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+                                    Admin
+                                  </span>
+                                )}
+                                {user.isTeamLead && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                    Team Lead
+                                  </span>
+                                )}
                               </div>
-                              <CardDescription>
-                                {user.email} • Team:{" "}
-                                {teams?.find((t) => t.id === user.teamId)?.name || "None"}
-                              </CardDescription>
-                            </CardHeader>
-                            <CardFooter className="flex justify-between py-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditUser(user)}
-                              >
-                                Edit Roles
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleResetPassword(user.id)}
-                              >
-                                Reset Password
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                            </div>
+                            <CardDescription>
+                              {user.email} • Team:{" "}
+                              {teams?.find((t) => t.id === user.teamId)?.name || "None"}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardFooter className="flex justify-between py-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              Edit Roles
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleResetPassword(user.id)}
+                            >
+                              Reset Password
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
