@@ -139,7 +139,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type)
         .toSQL();
-      
+
       logger.info('Post counts SQL query:', sqlQuery);
       logger.info('Post counts query result:', JSON.stringify(result));
       logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
@@ -223,27 +223,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/admin/send-test-notification", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
+        logger.info('Unauthorized test notification attempt:', { userId: req.user?.id });
         return res.status(403).json({ message: "Not authorized" });
       }
-      
-      logger.info('Sending test notification to admin');
-      
+
+      logger.info('Sending test notification for admin user:', req.user.id);
+
       // Create a test notification for the admin
-      const notification = await db
+      const [notification] = await db
         .insert(notifications)
         .values({
           userId: req.user.id,
           title: "Test Notification",
           message: "This is a test notification from the admin panel",
-          read: false
+          read: false,
+          createdAt: new Date()
         })
         .returning();
-        
-      logger.info('Test notification created:', notification);
-      
+
+      logger.info('Test notification created:', { notificationId: notification.id });
+
       res.status(201).json({ 
         message: "Test notification sent successfully",
-        notification: notification[0]
+        notification
       });
     } catch (error) {
       logger.error('Error sending test notification:', error);
@@ -254,16 +256,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add this route after the test notification endpoint
+  // Notifications fetch endpoint
   router.get("/api/notifications", authenticate, async (req, res) => {
     try {
       if (!req.user) {
+        logger.info('Unauthorized notifications fetch attempt');
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       logger.info('Fetching notifications for user:', req.user.id);
-      const notifications = await storage.getNotifications(req.user.id);
-      res.json(notifications);
+
+      // Get notifications directly from the database
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt));
+
+      logger.info('Found notifications:', { 
+        userId: req.user.id, 
+        count: userNotifications.length 
+      });
+
+      res.json(userNotifications);
     } catch (error) {
       logger.error('Error fetching notifications:', error);
       res.status(500).json({ 
