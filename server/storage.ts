@@ -116,35 +116,21 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      logger.debug("Creating notification - Input data:", data);
-
-      // Validate required fields
-      if (!data.userId || !data.title || !data.message) {
-        const error = new Error("Missing required notification fields");
-        logger.error("Notification creation failed:", error);
-        throw error;
-      }
-
-      // Use a transaction to ensure data consistency
-      const notification = await db.transaction(async (tx) => {
-        const [result] = await tx
-          .insert(notifications)
-          .values({
-            userId: data.userId,
-            title: data.title,
-            message: data.message,
-            read: false,
-            createdAt: new Date()
-          })
-          .returning();
-
-        logger.debug("Notification created in database:", result);
-        return result;
-      });
-
+      logger.debug("Creating notification:", data);
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId: data.userId,
+          title: data.title,
+          message: data.message,
+          read: data.read ?? false,
+          createdAt: new Date()
+        })
+        .returning();
+      logger.debug("Notification created successfully:", notification.id);
       return notification;
     } catch (error) {
-      logger.error("Failed to create notification:", error);
+      logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
   },
@@ -438,5 +424,38 @@ export const storage = {
       logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
-  }
+  },
+  async createMissedPostsNotification(userId: number, missingPosts: {
+    food: number;
+    workout: number;
+    scripture: number;
+  }): Promise<Notification | null> {
+    // Skip if no posts are missing
+    if (missingPosts.food <= 0 && missingPosts.workout <= 0 && missingPosts.scripture <= 0) {
+      return null;
+    }
+
+    // Build notification message based on what's missing
+    let message = "Yesterday you missed: ";
+    const missing: string[] = [];
+
+    if (missingPosts.food > 0) {
+      missing.push(`${missingPosts.food} Food post${missingPosts.food > 1 ? 's' : ''}`);
+    }
+    if (missingPosts.workout > 0) {
+      missing.push(`${missingPosts.workout} Workout post`);
+    }
+    if (missingPosts.scripture > 0) {
+      missing.push(`${missingPosts.scripture} Scripture post`);
+    }
+
+    message += missing.join(", ");
+
+    return this.createNotification({
+      userId,
+      title: "Missing Daily Posts",
+      message,
+      read: false
+    });
+  },
 };
