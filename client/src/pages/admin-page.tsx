@@ -453,7 +453,7 @@ export default function AdminPage() {
                   <CardTitle>Notifications</CardTitle>
                   <CardDescription>Manage system notifications</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <Button
                     onClick={async () => {
                       try {
@@ -486,34 +486,40 @@ export default function AdminPage() {
                   <Button
                     onClick={async () => {
                       try {
-                        // First check if we have a test user to send notification to
                         const res = await apiRequest(
                           "POST",
                           "/api/notifications/test",
                           {
-                            userId: user?.id, // Send to current admin user
+                            userId: user?.id,
                             title: "Test Notification",
                             message: "This is a test notification from the admin panel"
                           }
                         );
 
-                        if (!res.ok) {
-                          const errorData = await res.json();
-                          throw new Error(errorData.message || "Failed to create test notification");
+                        // Handle non-JSON responses
+                        const contentType = res.headers.get("content-type");
+                        if (!res.ok || !contentType?.includes("application/json")) {
+                          const errorText = await res.text();
+                          throw new Error(
+                            contentType?.includes("application/json")
+                              ? JSON.parse(errorText).message
+                              : "Server error: Invalid response format"
+                          );
                         }
 
                         const data = await res.json();
                         toast({
                           title: "Success",
-                          description: data.message || "Test notification created successfully"
+                          description: "Test notification created successfully"
                         });
 
-                        // Invalidate notifications query to refresh the list
+                        // Refresh notifications list
                         queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
                       } catch (error) {
+                        console.error("Notification error:", error);
                         toast({
                           title: "Error",
-                          description: error instanceof Error ? error.message : "Unknown error",
+                          description: error instanceof Error ? error.message : "Failed to create notification",
                           variant: "destructive"
                         });
                       }
