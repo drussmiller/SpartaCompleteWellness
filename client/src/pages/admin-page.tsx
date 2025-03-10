@@ -326,36 +326,34 @@ export default function AdminPage() {
                   ) : teamsError ? (
                     <p className="text-red-500">{(teamsError as Error).message}</p>
                   ) : (
-                    <ScrollArea className="h-[300px]">
-                      <div className="space-y-4">
-                        {teams?.map((team) => (
-                          <Card key={team.id}>
-                            <CardHeader className="py-4">
-                              <CardTitle className="text-lg">{team.name}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="py-2">
-                              <p className="text-sm text-muted-foreground">{team.description}</p>
-                            </CardContent>
-                            <CardFooter className="flex justify-between py-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditTeam(team)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteTeam(team.id)}
-                              >
-                                Delete
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                    <div className="space-y-4">
+                      {teams?.map((team) => (
+                        <Card key={team.id}>
+                          <CardHeader className="py-4">
+                            <CardTitle className="text-lg">{team.name}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="py-2">
+                            <p className="text-sm text-muted-foreground">{team.description}</p>
+                          </CardContent>
+                          <CardFooter className="flex justify-between py-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditTeam(team)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteTeam(team.id)}
+                            >
+                              Delete
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
