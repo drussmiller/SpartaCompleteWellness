@@ -123,11 +123,11 @@ export const storage = {
           userId: data.userId,
           title: data.title,
           message: data.message,
-          read: data.read ?? false,
+          read: false,
           createdAt: new Date()
         })
         .returning();
-      logger.debug("Notification created successfully:", notification.id);
+      logger.debug("Notification created successfully:", notification);
       return notification;
     } catch (error) {
       logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);

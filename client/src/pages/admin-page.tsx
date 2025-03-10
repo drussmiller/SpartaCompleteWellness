@@ -26,18 +26,74 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
+import {
+  AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent, 
+  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-  AlertDialogTrigger 
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
+
+const SendTestNotificationButton = () => {
+  const { toast } = useToast();
+
+  return (
+    <Button
+      size="default"
+      className="px-4 bg-violet-700 text-white hover:bg-violet-800"
+      onClick={async () => {
+        try {
+          console.log('Sending test notification request...');
+          const response = await fetch('/api/admin/send-test-notification', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+          });
+
+          console.log('Test notification response status:', response.status);
+          const data = await response.json();
+          console.log('Test notification response data:', data);
+
+          if (!response.ok) {
+            console.error('Failed to send notification:', data);
+            toast({
+              title: "Error",
+              description: data.message || "Failed to send test notification",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          toast({
+            title: "Success",
+            description: `Test notification sent successfully. ID: ${data.notification.id}`,
+          });
+
+          // Force refresh notifications
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        } catch (error) {
+          console.error('Error sending test notification:', error);
+          toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : "Failed to send test notification",
+            variant: "destructive",
+          });
+        }
+      }}
+    >
+      <Bell className="h-4 w-4 mr-2" />
+      Send Test Notification
+    </Button>
+  );
+};
+
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -319,7 +375,7 @@ export default function AdminPage() {
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
-  const isMobile = window.innerWidth <= 768; 
+  const isMobile = window.innerWidth <= 768;
 
   return (
     <AppLayout sidebarWidth="80">
@@ -387,32 +443,9 @@ export default function AdminPage() {
                 Activity Management
               </Button>
             </div>
-            
+
             <div className="flex justify-center mt-2 gap-2">
-              <Button
-                size="default"
-                className="px-4 bg-violet-700 text-white hover:bg-violet-800"
-                onClick={() => {
-                  apiRequest("POST", "/api/admin/send-test-notification")
-                    .then(() => {
-                      toast({
-                        title: "Success",
-                        description: "Test notification sent successfully",
-                      });
-                      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                    })
-                    .catch((error) => {
-                      toast({
-                        title: "Error",
-                        description: error.message || "Failed to send test notification",
-                        variant: "destructive",
-                      });
-                    });
-                }}
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                Send Test Notification
-              </Button>
+              <SendTestNotificationButton />
               <Button
                 size="default"
                 className="px-4 bg-blue-600 text-white hover:bg-blue-700"
@@ -421,19 +454,19 @@ export default function AdminPage() {
                     .then((data) => {
                       if (data && data.length > 0) {
                         // Sort notifications by createdAt in descending order (newest first)
-                        const sortedNotifications = [...data].sort((a, b) => 
+                        const sortedNotifications = [...data].sort((a, b) =>
                           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                         );
-                        
+
                         const latestNotification = sortedNotifications[0];
                         const createdDate = new Date(latestNotification.createdAt);
-                        
+
                         // Display more detailed information about the date
                         toast({
                           title: "Notifications",
                           description: `Found ${data.length} notifications. Latest: "${latestNotification.title}" created on ${createdDate.toLocaleDateString()} at ${createdDate.toLocaleTimeString()} (${createdDate.toISOString()})`,
                         });
-                        
+
                         // Log to console for debugging
                         console.log("All notifications:", sortedNotifications.map(n => ({
                           id: n.id,
