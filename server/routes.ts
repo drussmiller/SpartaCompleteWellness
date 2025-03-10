@@ -256,13 +256,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       
       // Create team in database
-      const team = await storage.createTeam(parseResult.data);
-      logger.info('Team created successfully:', team);
-      
-      res.status(201).json(team);
+      try {
+        const team = await storage.createTeam(parseResult.data);
+        logger.info('Team created successfully:', team);
+        return res.status(201).json(team);
+      } catch (dbError) {
+        logger.error('Database error creating team:', dbError);
+        return res.status(500).json({ 
+          message: "Database error creating team", 
+          error: dbError instanceof Error ? dbError.message : "Unknown database error" 
+        });
+      }
     } catch (error) {
       logger.error('Error creating team:', error);
-      res.status(500).json({ 
+      // Ensure we always return JSON, not HTML error pages
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ 
         message: "Failed to create team", 
         error: error instanceof Error ? error.message : "Unknown error" 
       });
