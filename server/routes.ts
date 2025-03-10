@@ -254,6 +254,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add this route after the test notification endpoint
+  router.get("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      logger.info('Fetching notifications for user:', req.user.id);
+      const notifications = await storage.getNotifications(req.user.id);
+      res.json(notifications);
+    } catch (error) {
+      logger.error('Error fetching notifications:', error);
+      res.status(500).json({ 
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Protected endpoint example
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
