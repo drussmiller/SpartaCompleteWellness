@@ -483,6 +483,44 @@ export default function AdminPage() {
                   >
                     Create Missed Post Notifications
                   </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        // First check if we have a test user to send notification to
+                        const res = await apiRequest(
+                          "POST",
+                          "/api/notifications/test",
+                          {
+                            userId: user?.id, // Send to current admin user
+                            title: "Test Notification",
+                            message: "This is a test notification from the admin panel"
+                          }
+                        );
+
+                        if (!res.ok) {
+                          const errorData = await res.json();
+                          throw new Error(errorData.message || "Failed to create test notification");
+                        }
+
+                        const data = await res.json();
+                        toast({
+                          title: "Success",
+                          description: data.message || "Test notification created successfully"
+                        });
+
+                        // Invalidate notifications query to refresh the list
+                        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: error instanceof Error ? error.message : "Unknown error",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    Create Test Notification
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
