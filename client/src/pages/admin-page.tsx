@@ -48,7 +48,7 @@ const SendTestNotificationButton = () => {
       className="px-4 bg-violet-700 text-white hover:bg-violet-800"
       onClick={async () => {
         try {
-          console.log('Sending test notification request...', new Date().toISOString());
+          console.log('Sending test notification request...');
           const response = await fetch('/api/admin/send-test-notification', {
             method: 'POST',
             headers: {
@@ -60,13 +60,6 @@ const SendTestNotificationButton = () => {
           console.log('Test notification response status:', response.status);
           const data = await response.json();
           console.log('Test notification response data:', data);
-          
-          // Log detailed notification data for debugging
-          if (data.notification) {
-            console.log('Created notification ID:', data.notification.id);
-            console.log('Created notification timestamp:', data.notification.createdAt);
-            console.log('Created notification formatted date:', new Date(data.notification.createdAt).toLocaleString());
-          }
 
           if (!response.ok) {
             console.error('Failed to send notification:', data);
@@ -457,10 +450,6 @@ export default function AdminPage() {
                 size="default"
                 className="px-4 bg-blue-600 text-white hover:bg-blue-700"
                 onClick={() => {
-                  // Force invalidate the notifications cache first
-                  queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                  
-                  // Then fetch the latest notifications
                   apiRequest("GET", "/api/notifications")
                     .then((data) => {
                       if (data && data.length > 0) {
