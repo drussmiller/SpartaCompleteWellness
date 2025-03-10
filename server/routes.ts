@@ -139,7 +139,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type)
         .toSQL();
-
+      
       logger.info('Post counts SQL query:', sqlQuery);
       logger.info('Post counts query result:', JSON.stringify(result));
       logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
@@ -219,86 +219,36 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     res.json({ message: "pong" });
   });
 
-  // Add detailed logging to the test notification endpoint
+  // Test notification endpoint
   router.post("/api/admin/send-test-notification", authenticate, async (req, res) => {
     try {
-      logger.info('\n=== Test Notification Debug ===');
-      logger.info('Request user:', req.user);
-
       if (!req.user?.isAdmin) {
-        logger.info('Unauthorized test notification attempt:', { userId: req.user?.id });
         return res.status(403).json({ message: "Not authorized" });
       }
-
-      logger.info('Starting test notification creation for admin user:', req.user.id);
-
-      try {
-        // Create a test notification for the admin using the storage interface
-        // Force the current timestamp and ensure it's correctly formatted
-        const currentDate = new Date();
-        logger.info('Creating test notification with timestamp:', currentDate.toISOString());
-        
-        const notification = await storage.createNotification({
+      
+      logger.info('Sending test notification to admin');
+      
+      // Create a test notification for the admin
+      const notification = await db
+        .insert(notifications)
+        .values({
           userId: req.user.id,
-          title: `Test Notification (${currentDate.toLocaleTimeString()})`,
-          message: `This is a test notification from the admin panel sent at ${currentDate.toISOString()}`,
-          read: false,
-          createdAt: currentDate
-        });
-
-        logger.info('Test notification created successfully:', { notificationId: notification.id });
-        logger.info('Full notification data:', notification);
-
-        // Force refresh notifications in the database
-        await db.execute(sql`REFRESH MATERIALIZED VIEW IF EXISTS notifications_view`);
-
-        res.status(201).json({
-          message: "Test notification sent successfully",
-          notification
-        });
-      } catch (dbError) {
-        logger.error('Database error creating notification:', {
-          error: dbError instanceof Error ? dbError.message : dbError,
-          stack: dbError instanceof Error ? dbError.stack : undefined
-        });
-        throw dbError;
-      }
+          title: "Test Notification",
+          message: "This is a test notification from the admin panel",
+          read: false
+        })
+        .returning();
+        
+      logger.info('Test notification created:', notification);
+      
+      res.status(201).json({ 
+        message: "Test notification sent successfully",
+        notification: notification[0]
+      });
     } catch (error) {
       logger.error('Error sending test notification:', error);
-      res.status(500).json({
+      res.status(500).json({ 
         message: "Failed to send test notification",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Notifications fetch endpoint
-  router.get("/api/notifications", authenticate, async (req, res) => {
-    try {
-      if (!req.user) {
-        logger.info('Unauthorized notifications fetch attempt');
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      logger.info('Fetching notifications for user:', req.user.id);
-
-      // Get notifications directly from the database
-      const userNotifications = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, req.user.id))
-        .orderBy(desc(notifications.createdAt));
-
-      logger.info('Found notifications:', {
-        userId: req.user.id,
-        count: userNotifications.length
-      });
-
-      res.json(userNotifications);
-    } catch (error) {
-      logger.error('Error fetching notifications:', error);
-      res.status(500).json({
-        message: "Failed to fetch notifications",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -998,8 +948,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });
-        }
+          return res.status(400).json({ error: "No content could be extracted" });        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -1014,8 +963,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);
-        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({
