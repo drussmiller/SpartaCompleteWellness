@@ -15,9 +15,22 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const { connectionStatus } = useNotifications();
 
-  const { data: notifications, isLoading } = useQuery<Notification[]>({
+  console.log("Notifications page render - User:", user?.id);
+
+  const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: !!user,
+    onSuccess: (data) => {
+      console.log("Notifications fetched:", data?.length, "notifications");
+    },
+    onError: (err) => {
+      console.error("Error fetching notifications:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      });
+    },
   });
 
   const markAsReadMutation = useMutation({
@@ -60,11 +73,31 @@ export default function NotificationsPage() {
     },
   });
 
+  if (!user) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen pb-20 lg:pb-0">
+          <div className="p-4">Please log in to view notifications</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (isLoading) {
     return (
       <AppLayout>
         <div className="min-h-screen pb-20 lg:pb-0">
           <div className="p-4">Loading notifications...</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen pb-20 lg:pb-0">
+          <div className="p-4 text-destructive">Error loading notifications</div>
         </div>
       </AppLayout>
     );
