@@ -219,9 +219,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     res.json({ message: "pong" });
   });
 
-  // Test notification endpoint
+  // Add detailed logging to the test notification endpoint
   router.post("/api/admin/send-test-notification", authenticate, async (req, res) => {
     try {
+      logger.info('\n=== Test Notification Debug ===');
+      logger.info('Request user:', req.user);
+
       if (!req.user?.isAdmin) {
         logger.info('Unauthorized test notification attempt:', { userId: req.user?.id });
         return res.status(403).json({ message: "Not authorized" });
@@ -240,8 +243,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
 
         logger.info('Test notification created successfully:', { notificationId: notification.id });
+        logger.info('Full notification data:', notification);
 
-        res.status(201).json({ 
+        res.status(201).json({
           message: "Test notification sent successfully",
           notification
         });
@@ -254,7 +258,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     } catch (error) {
       logger.error('Error sending test notification:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to send test notification",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -278,15 +282,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(notifications.userId, req.user.id))
         .orderBy(desc(notifications.createdAt));
 
-      logger.info('Found notifications:', { 
-        userId: req.user.id, 
-        count: userNotifications.length 
+      logger.info('Found notifications:', {
+        userId: req.user.id,
+        count: userNotifications.length
       });
 
       res.json(userNotifications);
     } catch (error) {
       logger.error('Error fetching notifications:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to fetch notifications",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -987,7 +991,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });        }
+          return res.status(400).json({ error: "No content could be extracted" });
+        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -1002,7 +1007,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);
+        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({
