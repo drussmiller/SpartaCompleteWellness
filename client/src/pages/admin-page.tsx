@@ -285,10 +285,10 @@ export default function AdminPage() {
                           <FormItem>
                             <FormLabel>Team Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="iron-sharpens-iron" {...field} />
+                              <Input placeholder="Team Name" {...field} />
                             </FormControl>
                             <FormDescription>
-                              Lowercase name with hyphens, no spaces.
+                              Enter a name for the team.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
