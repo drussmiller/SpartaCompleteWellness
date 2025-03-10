@@ -235,6 +235,48 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ message: "Failed to fetch teams" });
     }
   });
+  
+  // Team creation endpoint
+  router.post("/api/teams", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to create teams" });
+      }
+      
+      logger.info('Team creation request data:', req.body);
+      
+      // Validate team data using schema
+      const parseResult = insertTeamSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        logger.error('Team validation error:', parseResult.error);
+        return res.status(400).json({ 
+          message: "Invalid team data", 
+          errors: parseResult.error.errors 
+        });
+      }
+      
+      // Create team in database
+      try {
+        const team = await storage.createTeam(parseResult.data);
+        logger.info('Team created successfully:', team);
+        return res.status(201).json(team);
+      } catch (dbError) {
+        logger.error('Database error creating team:', dbError);
+        return res.status(500).json({ 
+          message: "Database error creating team", 
+          error: dbError instanceof Error ? dbError.message : "Unknown database error" 
+        });
+      }
+    } catch (error) {
+      logger.error('Error creating team:', error);
+      // Ensure we always return JSON, not HTML error pages
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ 
+        message: "Failed to create team", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
 
   // Activities endpoints
   router.get("/api/activities", authenticate, async (req, res) => {

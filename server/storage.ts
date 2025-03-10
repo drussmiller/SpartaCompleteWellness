@@ -16,7 +16,8 @@ import {
   type Reaction,
   type Notification,
   type Measurement,
-  type WorkoutVideo
+  type WorkoutVideo,
+  type InsertTeam,
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
@@ -33,6 +34,23 @@ export const storage = {
       return await db.select().from(teams);
     } catch (error) {
       logger.error(`Failed to get teams: ${error}`);
+      throw error;
+    }
+  },
+
+  async createTeam(teamData: InsertTeam): Promise<Team> {
+    try {
+      const [newTeam] = await db
+        .insert(teams)
+        .values({
+          name: teamData.name,
+          description: teamData.description,
+          createdAt: new Date()
+        })
+        .returning();
+      return newTeam;
+    } catch (error) {
+      logger.error(`Failed to create team: ${error}`);
       throw error;
     }
   },
@@ -65,6 +83,7 @@ export const storage = {
       throw error;
     }
   },
+
   async getUser(id: number): Promise<User | null> {
     try {
       const result = await db
@@ -124,10 +143,10 @@ export const storage = {
           title: data.title,
           message: data.message,
           read: data.read ?? false,
-          createdAt: new Date()
+          createdAt: data.createdAt || new Date()
         })
         .returning();
-      logger.debug("Notification created successfully:", notification.id);
+      logger.debug("Notification created successfully:", notification);
       return notification;
     } catch (error) {
       logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);
@@ -173,17 +192,31 @@ export const storage = {
         query = query.where(eq(activities.day, day));
       }
 
-      return await query.orderBy(activities.week, activities.day);
+      const results = await query.orderBy(activities.week, activities.day);
+      return results.map(result => ({
+        ...result,
+        contentFields: result.contentFields as Activity['contentFields']
+      }));
     } catch (error) {
       logger.error(`Failed to get activities: ${error}`);
       throw error;
     }
   },
 
-  async createActivity(data: Partial<Activity>): Promise<Activity> {
+  async createActivity(data: Omit<Activity, "id" | "createdAt">): Promise<Activity> {
     try {
-      const [activity] = await db.insert(activities).values(data).returning();
-      return activity;
+      const [activity] = await db
+        .insert(activities)
+        .values({
+          ...data,
+          createdAt: new Date(),
+          contentFields: data.contentFields || []
+        })
+        .returning();
+      return {
+        ...activity,
+        contentFields: activity.contentFields as Activity['contentFields']
+      };
     } catch (error) {
       logger.error(`Failed to create activity: ${error}`);
       throw error;
@@ -203,13 +236,11 @@ export const storage = {
   async getAllPosts(): Promise<Post[]> {
     try {
       logger.debug("Getting all posts");
-      // Get all top-level posts (not comments) sorted by newest first
       const result = await db
         .select()
         .from(posts)
         .where(isNull(posts.parentId))
         .orderBy(desc(posts.createdAt));
-
       logger.debug(`Retrieved ${result.length} posts`);
       return result;
     } catch (error) {
@@ -238,23 +269,23 @@ export const storage = {
     }
   },
 
-  async createPost(data: Partial<Post>): Promise<Post> {
+  async createPost(data: Omit<Post, "id">): Promise<Post> {
     try {
       logger.debug("Creating post with data:", data);
       const [post] = await db
         .insert(posts)
         .values({
           userId: data.userId,
-          type: data.type || "comment",
+          type: data.type,
           content: data.content,
           imageUrl: data.imageUrl,
-          parentId: data.parentId || null,
+          parentId: data.parentId,
           depth: data.depth || 0,
           points: data.points || 1,
           createdAt: data.createdAt || new Date()
         })
         .returning();
-      logger.debug("Post created successfully:", post.id);
+      logger.debug("Post created successfully:", post);
       return post;
     } catch (error) {
       logger.error(`Failed to create post: ${error instanceof Error ? error.message : error}`);
@@ -272,11 +303,14 @@ export const storage = {
   },
 
   // Reactions
-  async createReaction(data: { userId: number; postId: number; type: string }): Promise<Reaction> {
+  async createReaction(data: Omit<Reaction, "id" | "createdAt">): Promise<Reaction> {
     try {
       const [reaction] = await db
         .insert(reactions)
-        .values({ ...data, createdAt: new Date() })
+        .values({
+          ...data,
+          createdAt: new Date()
+        })
         .returning();
       return reaction;
     } catch (error) {
@@ -313,6 +347,7 @@ export const storage = {
       throw error;
     }
   },
+
   // Add deleteUser method to storage adapter
   async deleteUser(userId: number): Promise<void> {
     try {
@@ -399,7 +434,7 @@ export const storage = {
     }
   },
 
-  async createComment(data: Partial<Post>): Promise<Post> {
+  async createComment(data: Omit<Post, "id">): Promise<Post> {
     try {
       logger.debug("Creating comment with data:", data);
       if (!data.userId || !data.content || !data.parentId) {
@@ -418,7 +453,7 @@ export const storage = {
           createdAt: new Date()
         })
         .returning();
-      logger.debug("Comment created successfully:", comment.id);
+      logger.debug("Comment created successfully:", comment);
       return comment;
     } catch (error) {
       logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
@@ -455,7 +490,8 @@ export const storage = {
       userId,
       title: "Missing Daily Posts",
       message,
-      read: false
+      read: false,
+      createdAt: new Date()
     });
   },
 };
