@@ -420,10 +420,27 @@ export default function AdminPage() {
                   apiRequest("GET", "/api/notifications")
                     .then((data) => {
                       if (data && data.length > 0) {
+                        // Sort notifications by createdAt in descending order (newest first)
+                        const sortedNotifications = [...data].sort((a, b) => 
+                          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                        );
+                        
+                        const latestNotification = sortedNotifications[0];
+                        const createdDate = new Date(latestNotification.createdAt);
+                        
+                        // Display more detailed information about the date
                         toast({
                           title: "Notifications",
-                          description: `Found ${data.length} notifications. Latest: "${data[0].title}" (${new Date(data[0].createdAt).toLocaleString()})`,
+                          description: `Found ${data.length} notifications. Latest: "${latestNotification.title}" created on ${createdDate.toLocaleDateString()} at ${createdDate.toLocaleTimeString()} (${createdDate.toISOString()})`,
                         });
+                        
+                        // Log to console for debugging
+                        console.log("All notifications:", sortedNotifications.map(n => ({
+                          id: n.id,
+                          title: n.title,
+                          createdAt: n.createdAt,
+                          formattedDate: new Date(n.createdAt).toLocaleString()
+                        })));
                       } else {
                         toast({
                           title: "No Notifications",
