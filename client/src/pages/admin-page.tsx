@@ -373,51 +373,49 @@ export default function AdminPage() {
                   ) : usersError ? (
                     <p className="text-red-500">{(usersError as Error).message}</p>
                   ) : (
-                    <ScrollArea className="h-[500px]">
-                      <div className="space-y-4">
-                        {users?.map((user) => (
-                          <Card key={user.id}>
-                            <CardHeader className="py-4">
-                              <div className="flex justify-between">
-                                <CardTitle className="text-lg">{user.username}</CardTitle>
-                                <div className="flex space-x-2">
-                                  {user.isAdmin && (
-                                    <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
-                                      Admin
-                                    </span>
-                                  )}
-                                  {user.isTeamLead && (
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                      Team Lead
-                                    </span>
-                                  )}
-                                </div>
+                    <div className="space-y-4">
+                      {users?.map((user) => (
+                        <Card key={user.id}>
+                          <CardHeader className="py-4">
+                            <div className="flex justify-between">
+                              <CardTitle className="text-lg">{user.username}</CardTitle>
+                              <div className="flex space-x-2">
+                                {user.isAdmin && (
+                                  <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+                                    Admin
+                                  </span>
+                                )}
+                                {user.isTeamLead && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                    Team Lead
+                                  </span>
+                                )}
                               </div>
-                              <CardDescription>
-                                {user.email} • Team:{" "}
-                                {teams?.find((t) => t.id === user.teamId)?.name || "None"}
-                              </CardDescription>
-                            </CardHeader>
-                            <CardFooter className="flex justify-between py-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditUser(user)}
-                              >
-                                Edit Roles
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleResetPassword(user.id)}
-                              >
-                                Reset Password
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                            </div>
+                            <CardDescription>
+                              {user.email} • Team:{" "}
+                              {teams?.find((t) => t.id === user.teamId)?.name || "None"}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardFooter className="flex justify-between py-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              Edit Roles
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleResetPassword(user.id)}
+                            >
+                              Reset Password
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
