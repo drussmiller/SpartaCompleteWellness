@@ -15,8 +15,9 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const { connectionStatus } = useNotifications();
 
-  const { data: notifications } = useQuery<Notification[]>({
+  const { data: notifications, isLoading } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    enabled: !!user,
   });
 
   const markAsReadMutation = useMutation({
@@ -59,6 +60,16 @@ export default function NotificationsPage() {
     },
   });
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen pb-20 lg:pb-0">
+          <div className="p-4">Loading notifications...</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="min-h-screen pb-20 lg:pb-0 relative">
@@ -68,14 +79,14 @@ export default function NotificationsPage() {
           </div>
         </header>
         <main className="p-4 max-w-2xl mx-auto w-full">
-          {notifications?.length === 0 ? (
+          {!notifications?.length ? (
             <div className="text-center py-8">
               <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-lg font-medium">No new notifications</p>
             </div>
           ) : (
             notifications?.map((notification) => (
-              <Card key={notification.id}>
+              <Card key={notification.id} className="mb-4">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -84,7 +95,7 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(notification.createdAt).toLocaleString()}
+                        {new Date(notification.createdAt!).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
