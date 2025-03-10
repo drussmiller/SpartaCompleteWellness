@@ -74,9 +74,23 @@ export default function AdminPage() {
 
   const createTeamMutation = useMutation({
     mutationFn: async (data: TeamFormData) => {
-      const res = await apiRequest("POST", "/api/teams", data);
-      if (!res.ok) throw new Error("Failed to create team");
-      return res.json();
+      try {
+        const res = await apiRequest("POST", "/api/teams", data);
+        if (!res.ok) {
+          // Check if response is HTML (error page)
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("text/html")) {
+            throw new Error("Server returned an HTML error page. Please try again later.");
+          }
+          // Try to get a more specific error message
+          const errorData = await res.json().catch(() => ({ message: "Failed to create team" }));
+          throw new Error(errorData.message || "Failed to create team");
+        }
+        return res.json();
+      } catch (error) {
+        console.error("Team creation error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -89,7 +103,7 @@ export default function AdminPage() {
     onError: (error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unknown error creating team",
         variant: "destructive",
       });
     },
