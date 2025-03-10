@@ -1,89 +1,65 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
-
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    // Enhanced error handling for authentication errors
-    if (res.status === 401) {
-      throw new Error("Unauthorized - Please log in to continue");
-    }
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
-
-export async function apiRequest(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<Response> {
-  const headers: HeadersInit = {};
-
-  if (body && !(body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  try {
-    const response = await fetch(`${path}`, {
-      method,
-      headers,
-      body: body instanceof FormData ? body : JSON.stringify(body),
-      credentials: 'include',
-    });
-
-    // Log failed API requests for debugging
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API ${method} request to ${path} failed:`, {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-    }
-
-    return response;
-  } catch (error) {
-    console.error(`API ${method} request to ${path} threw an exception:`, error);
-    throw error;
-  }
-}
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    try {
-      const res = await fetch(queryKey[0] as string, {
-        credentials: "include", // Ensure cookies are sent with queries
-        headers: {
-          "Accept": "application/json",
-        },
-      });
-
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-        return null;
-      }
-
-      await throwIfResNotOk(res);
-      return await res.json();
-    } catch (error) {
-      console.error('Query error:', error);
-      throw error;
-    }
-  };
+import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
+      retry: 1,
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
+
+/**
+ * Make API requests with automatic error handling
+ */
+export async function apiRequest(
+  method: string, 
+  url: string, 
+  data?: any
+): Promise<any> {
+  console.log(`Making ${method} request to ${url}`);
+
+  // Configure request options
+  const options: RequestInit = {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    credentials: 'include',
+  };
+
+  // Add body data for non-GET requests
+  if (method !== 'GET' && data) {
+    options.body = JSON.stringify(data);
+  }
+
+  try {
+    const response = await fetch(url, options);
+
+    // Check content type to see if we received JSON or HTML
+    const contentType = response.headers.get('content-type');
+
+    if (contentType && contentType.includes('application/json')) {
+      // Process JSON response
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      return responseData;
+    } else {
+      // Handle non-JSON response (likely HTML)
+      const text = await response.text();
+      console.log("Received non-JSON response:", text.substring(0, 100) + "...");
+
+      // Create a more helpful error
+      throw new Error(`Received HTML instead of JSON. Server might be restarting or experiencing issues.`);
+    }
+  } catch (error) {
+    console.error("API request error:", error);
+    throw error;
+  }
+}
