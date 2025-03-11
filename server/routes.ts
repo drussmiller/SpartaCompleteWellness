@@ -1159,19 +1159,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Use UTC dates
+      // Get UTC dates
       const now = new Date();
       const joinDate = new Date(user.teamJoinedAt);
 
-      // Find the Monday of the join week (in UTC)
+      // Find the next Monday after join date (in UTC)
       const joinDayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const daysToSubtract = joinDayOfWeek === 0 ? 6 : joinDayOfWeek - 1;
-      const startOfFirstWeek = new Date(joinDate);
-      startOfFirstWeek.setUTCDate(joinDate.getUTCDate() - daysToSubtract);
-      startOfFirstWeek.setUTCHours(0, 0, 0, 0);
+      const daysUntilMonday = joinDayOfWeek === 0 ? 1 : 8 - joinDayOfWeek;
+      const startDate = new Date(joinDate);
+      startDate.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
+      startDate.setUTCHours(0, 0, 0, 0);
 
-      // Calculate weeks since program start (in UTC)
-      const millisecondsSinceStart = now.getTime() - startOfFirstWeek.getTime();
+      logger.info('Initial dates (UTC):', {
+        userId: req.user.id,
+        teamJoinedAt: joinDate.toISOString(),
+        firstMonday: startDate.toISOString(),
+        now: now.toISOString()
+      });
+
+      // If we haven't reached the start date yet, return week 1 day 1
+      if (now < startDate) {
+        return res.json({
+          currentWeek: 1,
+          currentDay: 1,
+          daysSinceStart: 0,
+          debug: {
+            teamJoinedAt: joinDate.toISOString(),
+            startDate: startDate.toISOString(),
+            now: now.toISOString(),
+            status: 'Not started yet'
+          }
+        });
+      }
+
+      // Calculate days since program start (in UTC)
+      const millisecondsSinceStart = now.getTime() - startDate.getTime();
       const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
 
       // Calculate current week (1-based) and day (Monday=1, Sunday=7)
@@ -1179,11 +1201,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let currentDay = now.getUTCDay();
       currentDay = currentDay === 0 ? 7 : currentDay; // Convert Sunday from 0 to 7
 
-      logger.info('Activity date calculation (UTC):', {
+      logger.info('Activity calculation (UTC):', {
         userId: req.user.id,
-        teamJoinedAt: user.teamJoinedAt,
-        startOfFirstWeek: startOfFirstWeek.toISOString(),
-        now: now.toISOString(),
         daysSinceStart,
         currentWeek,
         currentDay
@@ -1194,8 +1213,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         currentDay,
         daysSinceStart,
         debug: {
-          teamJoinedAt: user.teamJoinedAt,
-          startOfFirstWeek: startOfFirstWeek.toISOString(),
+          teamJoinedAt: joinDate.toISOString(),
+          startDate: startDate.toISOString(),
           now: now.toISOString()
         }
       });
