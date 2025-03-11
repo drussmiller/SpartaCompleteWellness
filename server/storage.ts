@@ -135,38 +135,50 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      logger.debug("Creating notification with data:", {
+      // Log input data
+      logger.info("Creating notification with data:", {
         userId: data.userId,
         title: data.title,
+        message: data.message,
         read: data.read,
         createdAt: data.createdAt
       });
 
+      // Sanitize input data
+      const sanitizedData = {
+        userId: data.userId,
+        title: data.title.trim(),
+        message: data.message.trim(),
+        read: data.read ?? false,
+        createdAt: data.createdAt || new Date()
+      };
+
+      logger.debug("Sanitized notification data:", sanitizedData);
+
+      // Insert into database
       const [notification] = await db
         .insert(notifications)
-        .values({
-          userId: data.userId,
-          title: data.title,
-          message: data.message,
-          read: data.read ?? false,
-          createdAt: data.createdAt || new Date()
-        })
+        .values(sanitizedData)
         .returning();
 
       if (!notification) {
-        throw new Error("Failed to create notification - no notification returned");
+        logger.error("Failed to create notification - no notification returned");
+        throw new Error("Failed to create notification - database insert failed");
       }
 
-      logger.debug("Notification created successfully:", {
+      logger.info("Notification created successfully:", {
         id: notification.id,
         userId: notification.userId,
-        title: notification.title
+        title: notification.title,
+        createdAt: notification.createdAt
       });
 
       return notification;
     } catch (error) {
-      logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);
-      // Ensure we throw a proper error object that can be converted to JSON
+      logger.error("Failed to create notification:", {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw new Error(error instanceof Error ? error.message : "Failed to create notification");
     }
   },
