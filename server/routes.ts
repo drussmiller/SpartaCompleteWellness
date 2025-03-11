@@ -892,7 +892,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         message: "Failed todelete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
-    }
+        }
   });
 
   // Add user role management endpoints
@@ -1191,13 +1191,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      logger.info('Creating test notification:', {
+        userId: req.user.id,
+        body: req.body
+      });
+
       const parseResult = insertNotificationSchema.safeParse(req.body);
       if (!parseResult.success) {
+        logger.error('Notification validation failed:', parseResult.error);
         return res.status(400).json({
           message: "Invalid notification data",
           errors: parseResult.error.errors
         });
       }
+
+      logger.info('Validated notification data:', parseResult.data);
 
       const notification = await storage.createNotification({
         userId: req.user.id,
@@ -1206,6 +1214,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         read: false,
         createdAt: new Date()
       });
+
+      logger.info('Notification created successfully:', notification);
 
       res.setHeader('Content-Type', 'application/json');
       return res.status(201).json({

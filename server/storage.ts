@@ -135,7 +135,13 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      logger.debug("Creating notification with data:", data);
+      logger.debug("Creating notification with data:", {
+        userId: data.userId,
+        title: data.title,
+        read: data.read,
+        createdAt: data.createdAt
+      });
+
       const [notification] = await db
         .insert(notifications)
         .values({
@@ -146,7 +152,17 @@ export const storage = {
           createdAt: data.createdAt || new Date()
         })
         .returning();
-      logger.debug("Notification created successfully:", notification);
+
+      if (!notification) {
+        throw new Error("Failed to create notification - no notification returned");
+      }
+
+      logger.debug("Notification created successfully:", {
+        id: notification.id,
+        userId: notification.userId,
+        title: notification.title
+      });
+
       return notification;
     } catch (error) {
       logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);

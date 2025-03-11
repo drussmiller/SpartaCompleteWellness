@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { insertTeamSchema, type Team, type User } from "@shared/schema";
+import { insertTeamSchema, type Team, type User, type Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";  // Updated import path
 
 import { Button } from "@/components/ui/button";
@@ -252,6 +252,12 @@ export default function AdminPage() {
     setLocation("/activity-management");
   };
 
+  // Add query for notifications
+  const { data: notifications, isLoading: notificationsLoading, error: notificationsError } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications"],
+  });
+
+
   if (!user?.isAdmin) {
     return (
       <AppLayout>
@@ -455,89 +461,119 @@ export default function AdminPage() {
                   <CardDescription>Manage system notifications</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const res = await apiRequest(
-                          "POST",
-                          "/api/notifications/check-missed-posts"
-                        );
-
-                        // Check content type and handle response appropriately
-                        const contentType = res.headers.get("content-type");
-                        if (!res.ok || !contentType?.includes("application/json")) {
-                          const errorText = await res.text();
-                          throw new Error(
-                            contentType?.includes("application/json")
-                              ? JSON.parse(errorText).message
-                              : "Server error: Invalid response format"
+                  <div className="space-y-4">
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const res = await apiRequest(
+                            "POST",
+                            "/api/notifications/check-missed-posts"
                           );
-                        }
 
-                        const data = await res.json();
-                        toast({
-                          title: "Success",
-                          description: data.message || "Notifications created successfully"
-                        });
-
-                        // Refresh notifications list
-                        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                      } catch (error) {
-                        console.error("Missed posts notification error:", error);
-                        toast({
-                          title: "Error",
-                          description: error instanceof Error ? error.message : "Failed to create notifications",
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                  >
-                    Create Missed Post Notifications
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const res = await apiRequest(
-                          "POST",
-                          "/api/notifications/test",
-                          {
-                            userId: user?.id,
-                            title: "Test Notification",
-                            message: "This is a test notification from the admin panel"
+                          // Check content type and handle response appropriately
+                          const contentType = res.headers.get("content-type");
+                          if (!res.ok || !contentType?.includes("application/json")) {
+                            const errorText = await res.text();
+                            throw new Error(
+                              contentType?.includes("application/json")
+                                ? JSON.parse(errorText).message
+                                : "Server error: Invalid response format"
+                            );
                           }
-                        );
 
-                        // Handle response with proper content type checking
-                        const contentType = res.headers.get("content-type");
-                        if (!res.ok || !contentType?.includes("application/json")) {
-                          const errorText = await res.text();
-                          throw new Error(
-                            contentType?.includes("application/json")
-                              ? JSON.parse(errorText).message
-                              : "Server error: Invalid response format"
-                          );
+                          const data = await res.json();
+                          toast({
+                            title: "Success",
+                            description: data.message || "Notifications created successfully"
+                          });
+
+                          // Refresh notifications list
+                          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                        } catch (error) {
+                          console.error("Missed posts notification error:", error);
+                          toast({
+                            title: "Error",
+                            description: error instanceof Error ? error.message : "Failed to create notifications",
+                            variant: "destructive"
+                          });
                         }
+                      }}
+                    >
+                      Create Missed Post Notifications
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const res = await apiRequest(
+                            "POST",
+                            "/api/notifications/test",
+                            {
+                              userId: user?.id,
+                              title: "Test Notification",
+                              message: "This is a test notification from the admin panel"
+                            }
+                          );
 
-                        const data = await res.json();
-                        toast({
-                          title: "Success",
-                          description: "Test notification created successfully"
-                        });
+                          // Handle response with proper content type checking
+                          const contentType = res.headers.get("content-type");
+                          if (!res.ok || !contentType?.includes("application/json")) {
+                            const errorText = await res.text();
+                            throw new Error(
+                              contentType?.includes("application/json")
+                                ? JSON.parse(errorText).message
+                                : "Server error: Invalid response format"
+                            );
+                          }
 
-                        // Refresh notifications list
-                        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                      } catch (error) {
-                        console.error("Test notification error:", error);
-                        toast({
-                          title: "Error",
-                          description: error instanceof Error ? error.message : "Failed to create test notification",
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                  >
-                    Create Test Notification
-                  </Button>
+                          const data = await res.json();
+                          toast({
+                            title: "Success",
+                            description: "Test notification created successfully"
+                          });
+
+                          // Refresh notifications list
+                          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                        } catch (error) {
+                          console.error("Test notification error:", error);
+                          toast({
+                            title: "Error",
+                            description: error instanceof Error ? error.message : "Failed to create test notification",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      Create Test Notification
+                    </Button>
+                  </div>
+
+                  {/* Add notifications list */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-4">Recent Notifications</h3>
+                    {notificationsLoading ? (
+                      <p>Loading notifications...</p>
+                    ) : notifications && notifications.length > 0 ? (
+                      <div className="space-y-2">
+                        {notifications.map((notification) => (
+                          <Card key={notification.id}>
+                            <CardHeader className="py-4">
+                              <CardTitle className="text-sm font-medium">
+                                {notification.title}
+                              </CardTitle>
+                              <CardDescription>
+                                {notification.message}
+                              </CardDescription>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(notification.createdAt).toLocaleString()}
+                              </p>
+                            </CardHeader>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No notifications found.</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
