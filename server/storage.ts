@@ -135,45 +135,49 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      // Log input data
-      logger.info("Creating notification with data:", {
-        userId: data.userId,
-        title: data.title,
-        message: data.message,
-        read: data.read,
-        createdAt: data.createdAt
+      // Start transaction
+      const result = await db.transaction(async (tx) => {
+        // Log input data
+        logger.info("Creating notification with data:", {
+          userId: data.userId,
+          title: data.title,
+          message: data.message,
+          read: data.read,
+          createdAt: data.createdAt
+        });
+
+        // Sanitize input data
+        const sanitizedData = {
+          userId: data.userId,
+          title: data.title.trim(),
+          message: data.message.trim(),
+          read: data.read ?? false,
+          createdAt: data.createdAt || new Date()
+        };
+
+        logger.debug("Executing notification insert with data:", sanitizedData);
+
+        // Insert into database within transaction
+        const [notification] = await tx
+          .insert(notifications)
+          .values(sanitizedData)
+          .returning();
+
+        if (!notification) {
+          throw new Error("Failed to create notification - database insert failed");
+        }
+
+        logger.info("Notification created successfully:", {
+          id: notification.id,
+          userId: notification.userId,
+          title: notification.title,
+          createdAt: notification.createdAt
+        });
+
+        return notification;
       });
 
-      // Sanitize input data
-      const sanitizedData = {
-        userId: data.userId,
-        title: data.title.trim(),
-        message: data.message.trim(),
-        read: data.read ?? false,
-        createdAt: data.createdAt || new Date()
-      };
-
-      logger.debug("Sanitized notification data:", sanitizedData);
-
-      // Insert into database
-      const [notification] = await db
-        .insert(notifications)
-        .values(sanitizedData)
-        .returning();
-
-      if (!notification) {
-        logger.error("Failed to create notification - no notification returned");
-        throw new Error("Failed to create notification - database insert failed");
-      }
-
-      logger.info("Notification created successfully:", {
-        id: notification.id,
-        userId: notification.userId,
-        title: notification.title,
-        createdAt: notification.createdAt
-      });
-
-      return notification;
+      return result;
     } catch (error) {
       logger.error("Failed to create notification:", {
         error: error instanceof Error ? error.message : error,
