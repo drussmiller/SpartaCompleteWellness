@@ -1191,42 +1191,34 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      logger.info('Test notification request received:', {
+      logger.info('=== Creating Test Notification ===');
+      logger.info('User:', req.user.id);
+
+      // Create a test notification with explicit data
+      const notificationData = {
         userId: req.user.id,
-        requestBody: req.body
+        title: "Test Notification " + new Date().toISOString(),
+        message: "This is a test notification from the admin panel",
+        read: false,
+        createdAt: new Date()
+      };
+
+      logger.info('Attempting to create notification with data:', notificationData);
+
+      const notification = await storage.createNotification(notificationData);
+
+      logger.info('Notification created successfully:', notification);
+
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(201).json({
+        message: "Test notification created successfully",
+        notification
       });
-
-      // Create notification directly since we're testing
-      try {
-        const notification = await storage.createNotification({
-          userId: req.user.id,
-          title: "Test Notification",
-          message: "This is a test notification from the admin panel",
-          read: false,
-          createdAt: new Date()
-        });
-
-        logger.info('Test notification created:', {
-          id: notification.id,
-          userId: notification.userId,
-          title: notification.title
-        });
-
-        res.setHeader('Content-Type', 'application/json');
-        return res.status(201).json({
-          message: "Test notification created successfully",
-          notification
-        });
-      } catch (dbError) {
-        logger.error('Database error creating test notification:', dbError);
-        res.setHeader('Content-Type', 'application/json');
-        return res.status(500).json({
-          message: "Failed to create notification in database",
-          error: dbError instanceof Error ? dbError.message : "Unknown database error"
-        });
-      }
     } catch (error) {
-      logger.error('Error in test notification endpoint:', error);
+      logger.error('=== Test Notification Creation Error ===');
+      logger.error('Error:', error);
+      logger.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
+
       res.setHeader('Content-Type', 'application/json');
       return res.status(500).json({
         message: "Failed to create test notification",
