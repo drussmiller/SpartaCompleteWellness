@@ -11,6 +11,8 @@ import {
   teams,
   activities,
   workoutVideos,
+  measurements,
+  reactions,
   insertTeamSchema,
   insertPostSchema,
   insertMeasurementSchema,
@@ -885,7 +887,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Delete post
+      // Delete post and its reactions
       await storage.deletePost(postId);
       logger.info(`Post ${postId} deleted successfully`);
       res.status(200).json({ message: "Post deleted successfully" });
@@ -1305,6 +1307,68 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({
         message: "Failed to calculate activity dates",
         error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Measurements endpoints
+  router.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      logger.info('Creating measurement with data:', req.body);
+      
+      const parsedData = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+        date: new Date()
+      });
+      
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsedData.error.errors
+        });
+      }
+      
+      const measurement = await db
+        .insert(measurements)
+        .values(parsedData.data)
+        .returning();
+      
+      res.status(201).json(measurement[0]);
+    } catch (error) {
+      logger.error('Error creating measurement:', error);
+      res.status(500).json({ 
+        message: "Failed to create measurement",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.get("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      
+      if (req.user.id !== userId && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to view these measurements" });
+      }
+      
+      const userMeasurements = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(desc(measurements.date));
+      
+      res.json(userMeasurements);
+    } catch (error) {
+      logger.error('Error fetching measurements:', error);
+      res.status(500).json({ 
+        message: "Failed to fetch measurements",
+        error: error instanceof Error ? error.message : "Unknown error" 
       });
     }
   });
