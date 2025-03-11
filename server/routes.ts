@@ -945,7 +945,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     } catch (error) {
       logger.error('Unexpected error in delete post endpoint:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to delete post",
         error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       });
@@ -1255,12 +1255,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   logger.info('Server routes registered successfully');
 
   // Add the activity progress endpoint before the return httpServer statement
+  // Remove previous timezone adjustment as it was being applied incorrectly
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      // Get timezone offset from query params (in minutes)
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
       // Get user's team join date
       const [user] = await db
@@ -1273,74 +1271,55 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Convert UTC server time to user's local time by adding the offset
-      // When client sends positive offset (east of UTC), we add it to get local time
-      // When client sends negative offset (west of UTC), we subtract it to get local time
-      const serverNow = new Date();
-      const userLocalNow = new Date(serverNow.getTime() - (tzOffset * 60000));
-
-      // Convert team join date to user's local time
+      // Get dates in UTC
+      const now = new Date();
       const joinDate = new Date(user.teamJoinedAt);
-      const userLocalJoinDate = new Date(joinDate.getTime() - (tzOffset * 60000));
 
-      // Find the first Monday after join date in user's local time
-      const joinDayOfWeek = userLocalJoinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek); // If Sunday, next day is Monday, otherwise calculate days until next Monday
-      const firstMonday = new Date(userLocalJoinDate);
-      firstMonday.setDate(userLocalJoinDate.getDate() + daysUntilMonday);
+      // Find the first Monday after join date
+      const joinDayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek);
+      const firstMonday = new Date(joinDate);
+      firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
       firstMonday.setHours(0, 0, 0, 0);
 
-      logger.info('Initial dates (User Local Time):', {
-        userId: req.user.id,
-        serverNow: serverNow.toISOString(),
-        userLocalNow: userLocalNow.toISOString(),
-        joinDate: joinDate.toISOString(),
-        userLocalJoinDate: userLocalJoinDate.toISOString(),
-        firstMonday: firstMonday.toISOString(),
-        tzOffset
-      });
-
       // If we haven't reached the first Monday yet, return week 1 day 1
-      if (userLocalNow < firstMonday) {
+      if (now < firstMonday) {
         return res.json({
           currentWeek: 1,
           currentDay: 1,
           daysSinceStart: 0,
           debug: {
-            status: 'Not started yet',
+            message: 'Not started yet',
             dates: {
-              serverNow: serverNow.toISOString(),
-              userLocalNow: userLocalNow.toISOString(),
+              now: now.toISOString(),
+              joinDate: joinDate.toISOString(),
               firstMonday: firstMonday.toISOString()
             }
           }
         });
       }
 
-      // Calculate days since first Monday in user's local time
-      const startOfUserLocalDay = new Date(userLocalNow);
-      startOfUserLocalDay.setHours(0, 0, 0, 0);
+      // Calculate days since program start
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
 
-      const millisecondsSinceStart = startOfUserLocalDay.getTime() - firstMonday.getTime();
+      const millisecondsSinceStart = startOfDay.getTime() - firstMonday.getTime();
       const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
 
       // Calculate current week (1-based)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
 
       // Calculate current day (1-7, Monday=1, Sunday=7)
-      // Get the current day of week, ensuring Sunday=7
-      let currentDay = userLocalNow.getDay();
+      let currentDay = now.getDay();
       currentDay = currentDay === 0 ? 7 : currentDay;
 
-      logger.info('Activity calculation (User Local Time):', {
-        userId: req.user.id,
+      logger.info('Week/Day calculations:', {
+        joinDate: joinDate.toISOString(),
+        firstMonday: firstMonday.toISOString(),
+        now: now.toISOString(),
         daysSinceStart,
         currentWeek,
-        currentDay,
-        dates: {
-          startOfUserLocalDay: startOfUserLocalDay.toISOString(),
-          firstMonday: firstMonday.toISOString()
-        }
+        currentDay
       });
 
       res.json({
@@ -1348,16 +1327,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         currentDay,
         daysSinceStart,
         debug: {
-          serverNow: serverNow.toISOString(),
-          userLocalNow: userLocalNow.toISOString(),
+          joinDate: joinDate.toISOString(),
           firstMonday: firstMonday.toISOString(),
-          tzOffset
+          now: now.toISOString(),
+          calculations: {
+            daysSinceStart,
+            weekCalc: `${daysSinceStart} / 7 + 1 = ${currentWeek}`,
+            dayOfWeek: currentDay
+          }
         }
       });
     } catch (error) {
-      logger.error('Error calculating activity dates:', error);
+      logger.error('Error calculating current activity:', error);
       res.status(500).json({
-        message: "Failed to calculate activity dates",
+        message: "Failed to calculate current activity",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
