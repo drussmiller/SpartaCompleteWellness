@@ -69,32 +69,50 @@ export default function ProfilePage() {
   const form = useForm({
     resolver: zodResolver(insertMeasurementSchema.omit({ userId: true, date: true })),
     defaultValues: {
-      weight: undefined,
-      waist: undefined,
+      weight: '',
+      waist: '',
     },
   });
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
       // Ensure we're sending at least one measurement
-      if (data.weight === undefined && data.waist === undefined) {
+      if ((data.weight === undefined || data.weight === null || data.weight === '') && 
+          (data.waist === undefined || data.waist === null || data.waist === '')) {
         throw new Error("Please enter at least one measurement");
       }
 
-      // Only send fields that have values
+      // Only send fields that have valid values
       const payload = {
-        ...(data.weight !== undefined && { weight: data.weight }),
-        ...(data.waist !== undefined && { waist: data.waist })
+        userId: user?.id,
+        ...(data.weight && data.weight !== '' && { weight: parseInt(String(data.weight)) }),
+        ...(data.waist && data.waist !== '' && { waist: parseInt(String(data.waist)) })
       };
 
       console.log('Submitting measurement:', payload);
+      
       const res = await apiRequest("POST", "/api/measurements", payload);
-
+      
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to add measurement");
+        const text = await res.text();
+        let errorMessage = "Failed to add measurement";
+        
+        try {
+          const errorData = JSON.parse(text);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError, text);
+        }
+        
+        throw new Error(errorMessage);
       }
-      return res.json();
+      
+      try {
+        return await res.json();
+      } catch (parseError) {
+        console.error('Error parsing success response:', parseError);
+        throw new Error("Invalid response from server");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
@@ -104,13 +122,12 @@ export default function ProfilePage() {
         description: "Measurement added successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       console.error('Error adding measurement:', error);
       toast({
         title: "Unable to Update",
-        description: "There was a problem updating your measurements. Please try again.",
-        variant: "default",
-        className: "bg-orange-100 text-orange-900 border-orange-200",
+        description: error.message || "There was a problem updating your measurements. Please try again.",
+        variant: "destructive",
       });
     },
   });
@@ -274,8 +291,8 @@ export default function ProfilePage() {
                             <Input
                               type="number"
                               placeholder="Enter weight"
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : '')}
                             />
                           </FormControl>
                         </FormItem>
@@ -291,8 +308,8 @@ export default function ProfilePage() {
                             <Input
                               type="number"
                               placeholder="Enter waist"
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : '')}
                             />
                           </FormControl>
                         </FormItem>
