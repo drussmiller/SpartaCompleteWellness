@@ -424,5 +424,23 @@ export const storage = {
       logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
+  },
+  async createTeam(data: InsertTeam): Promise<Team> {
+    try {
+      const [team] = await db.insert(teams).values(data).returning();
+      return team;
+    } catch (error) {
+      logger.error('Database error creating team:', error);
+      throw error;
+    }
+  },
+  
+  async deleteTeam(id: number): Promise<void> {
+    try {
+      await db.delete(teams).where(eq(teams.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete team ${id}:`, error);
+      throw error;
+    }
   }
 };
