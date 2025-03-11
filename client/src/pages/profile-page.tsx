@@ -90,17 +90,28 @@ export default function ProfilePage() {
       };
 
       console.log('Submitting measurement:', payload);
-      try {
-        const res = await apiRequest("POST", "/api/measurements", payload);
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Failed to add measurement");
+      
+      const res = await apiRequest("POST", "/api/measurements", payload);
+      
+      if (!res.ok) {
+        const text = await res.text();
+        let errorMessage = "Failed to add measurement";
+        
+        try {
+          const errorData = JSON.parse(text);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError, text);
         }
-        return res.json();
-      } catch (err) {
-        console.error('API request error:', err);
-        throw err;
+        
+        throw new Error(errorMessage);
+      }
+      
+      try {
+        return await res.json();
+      } catch (parseError) {
+        console.error('Error parsing success response:', parseError);
+        throw new Error("Invalid response from server");
       }
     },
     onSuccess: () => {
