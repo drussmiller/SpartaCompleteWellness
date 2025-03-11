@@ -115,17 +115,19 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       const createdPostType = form.getValues("type");
 
       // Aggressively clear cache and force immediate refetch
-      queryClient.resetQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.removeQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-
+      
       // Force immediate refresh of post counts data
+      console.log('Forcing immediate refetch of post count data');
       setTimeout(() => {
         refetch();
-      }, 100);
+      }, 200); // Longer timeout to ensure server processed the post
 
       // Dispatch event to notify other components
-      const event = new CustomEvent('post-counts-changed');
-      window.dispatchEvent(event);
+      console.log('Post created, dispatching events to update counts');
+      window.dispatchEvent(new CustomEvent('post-mutation'));
+      window.dispatchEvent(new CustomEvent('post-counts-changed'));
 
       toast({
         title: "Success",

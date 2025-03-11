@@ -74,8 +74,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // IMPORTANT: Define the post counts endpoint BEFORE any dynamic routes
-  // This prevents it from being caught by the /:postId param
+  // Modify the post counts endpoint to correctly handle timezones and counts
   router.get("/api/posts/counts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -87,7 +86,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Convert server UTC time to user's local time
       const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
 
-      // Create start and end of day in UTC
+      // Create start and end of day in user's timezone
       const startOfDay = new Date(
         userDate.getFullYear(),
         userDate.getMonth(),
@@ -96,11 +95,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
 
+      // Add timezone offset back to get UTC times for query
+      const queryStartTime = new Date(startOfDay.getTime() + (tzOffset * 60000));
+      const queryEndTime = new Date(endOfDay.getTime() + (tzOffset * 60000));
+
       logger.info('Post count query parameters:', {
         userId: req.user.id,
-        userLocalTime: userDate.toISOString(),
-        startOfDay: startOfDay.toISOString(),
-        endOfDay: endOfDay.toISOString(),
+        startTime: queryStartTime.toISOString(),
+        endTime: queryEndTime.toISOString(),
         tzOffset
       });
 
@@ -114,35 +116,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             eq(posts.userId, req.user.id),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
+            gte(posts.createdAt, queryStartTime),
+            lt(posts.createdAt, queryEndTime),
             isNull(posts.parentId), // Don't count comments
             sql`${posts.type} IN ('food', 'workout', 'scripture', 'memory_verse')` // Explicitly filter only these types
           )
         )
         .groupBy(posts.type);
 
-      // Log the raw SQL query for debugging
-      const sqlQuery = db
-        .select({
-          type: posts.type,
-          count: sql<number>`count(*)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId)
-          )
-        )
-        .groupBy(posts.type)
-        .toSQL();
-      
-      logger.info('Post counts SQL query:', sqlQuery);
-      logger.info('Post counts query result:', JSON.stringify(result));
-      logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
+      logger.info('Post counts raw result:', result);
 
       // Initialize counts with zeros
       const counts = {
@@ -159,6 +141,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       });
 
+      logger.info('Calculated counts:', counts);
+
       // Define maximum posts allowed per type
       const maxPosts = {
         food: 3,
@@ -166,6 +150,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         scripture: 1,
         memory_verse: 1
       };
+
+      // Calculate remaining posts for each type
+      const remaining = {
+        food: Math.max(0, maxPosts.food - counts.food),
+        workout: Math.max(0, maxPosts.workout - counts.workout),
+        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
+        memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
+      };
+
+      logger.info('Remaining posts:', remaining);
 
       // Calculate if user can post for each type
       const isSaturday = userDate.getDay() === 6;
@@ -176,15 +170,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: isSaturday && counts.memory_verse < maxPosts.memory_verse
       };
 
-      // Calculate remaining posts for each type
-      const remaining = {
-        food: Math.max(0, maxPosts.food - counts.food),
-        workout: Math.max(0, maxPosts.workout - counts.workout),
-        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
-        memory_verse: isSaturday ? Math.max(0, maxPosts.memory_verse - counts.memory_verse) : 0
-      };
+      logger.info('Can post status:', canPost);
 
-      res.json({ counts, canPost, remaining });
+      res.json({ counts, canPost, remaining, maxPosts });
     } catch (error) {
       logger.error('Error getting post counts:', error);
       res.status(500).json({
