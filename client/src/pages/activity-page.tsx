@@ -66,17 +66,25 @@ export default function ActivityPage() {
     // Only allow navigating up to current day
     if (!currentProgress) return;
 
-    const isCurrentWeek = selectedWeek === currentProgress.currentWeek;
-    const maxDayInCurrentWeek = isCurrentWeek ? 
-      currentProgress.currentDay : 
-      Math.max(...(activities?.filter((a) => a.week === selectedWeek).map((a) => a.day) || [7]));
+    // Find the maximum day in the current week
+    const currentWeekDays = activities
+      ?.filter((a) => a.week === selectedWeek)
+      .map((a) => a.day) || [];
+    
+    // Default to 7 days per week if no activities found
+    const maxDayInCurrentWeek = currentWeekDays.length > 0 
+      ? Math.max(...currentWeekDays) 
+      : 7;
 
-    if (selectedDay < maxDayInCurrentWeek) {
-      // Increment day by 1
+    // Check if we're at the end of the current week
+    const isLastDayOfWeek = selectedDay >= maxDayInCurrentWeek;
+    
+    if (!isLastDayOfWeek) {
+      // Not the last day of the week, just increment the day
       console.log(`Navigating from Day ${selectedDay} to Day ${selectedDay + 1}`);
       setSelectedDay(selectedDay + 1);
     } else if (selectedWeek < currentProgress.currentWeek) {
-      // Move to next week, day 1
+      // Last day of week, move to next week day 1
       const nextWeek = selectedWeek + 1;
       console.log(`Navigating to Week ${nextWeek}, Day 1`);
       setSelectedWeek(nextWeek);
