@@ -457,10 +457,10 @@ export default function AdminPage() {
                                     </p>
                                   )}
                                 </AlertDialogDescription>
-                                <div className="flex items-start justify-end gap-2 mt-4">
-                                  <AlertDialogCancel className="h-10">Cancel</AlertDialogCancel>
+                                <div className="flex items-center justify-end gap-2 mt-4">
+                                  <AlertDialogCancel className="h-10 px-4 py-2">Cancel</AlertDialogCancel>
                                   <AlertDialogAction
-                                    className="bg-red-600 hover:bg-red-700 text-white h-10"
+                                    className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2"
                                     onClick={() => deleteTeamMutation.mutate(team.id)}
                                   >
                                     Delete Team
