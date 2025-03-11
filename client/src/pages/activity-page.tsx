@@ -72,9 +72,14 @@ export default function ActivityPage() {
       Math.max(...(activities?.filter((a) => a.week === selectedWeek).map((a) => a.day) || [7]));
 
     if (selectedDay < maxDayInCurrentWeek) {
+      // Increment day by 1
+      console.log(`Navigating from Day ${selectedDay} to Day ${selectedDay + 1}`);
       setSelectedDay(selectedDay + 1);
     } else if (selectedWeek < currentProgress.currentWeek) {
-      setSelectedWeek(selectedWeek + 1);
+      // Move to next week, day 1
+      const nextWeek = selectedWeek + 1;
+      console.log(`Navigating to Week ${nextWeek}, Day 1`);
+      setSelectedWeek(nextWeek);
       setSelectedDay(1);
     }
   };
