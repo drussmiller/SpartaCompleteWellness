@@ -224,6 +224,35 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add the missing POST endpoint for creating teams
+  router.post("/api/teams", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      logger.info('Creating team with data:', req.body);
+      
+      const parsedData = insertTeamSchema.safeParse(req.body);
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid team data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const team = await storage.createTeam(parsedData.data);
+      res.status(201).json(team);
+    } catch (error) {
+      logger.error('Error creating team:', error);
+      res.status(500).json({ 
+        message: "Failed to create team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Activities endpoints
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
