@@ -11,6 +11,8 @@ import {
   teams,
   activities,
   workoutVideos,
+  measurements,
+  reactions,
   insertTeamSchema,
   insertPostSchema,
   insertMeasurementSchema,
