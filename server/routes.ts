@@ -889,7 +889,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     } catch (error) {
       logger.error(`Error deleting post ${req.params.postId}:`, error);
       res.status(500).json({
-        message: "Failedtodelete post",
+        message: "Failed to delete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -1194,32 +1194,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info('=== Creating Test Notification ===');
       logger.info('User:', req.user.id);
 
-      // Create a test notification with explicit data
+      // Create a test notification with the minimum required fields
       const notificationData = {
         userId: req.user.id,
-        title: "Test Notification " + new Date().toISOString(),
-        message: "This is a test notification from the admin panel",
-        read: false,
-        createdAt: new Date()
+        title: `Test Notification ${Date.now()}`,
+        message: "This is a test notification from the admin panel"
       };
 
-      logger.info('Attempting to create notification with data:', notificationData);
+      logger.info('Creating notification with data:', notificationData);
 
       const notification = await storage.createNotification(notificationData);
 
-      logger.info('Notification created successfully:', notification);
+      logger.info('Notification created:', notification);
 
-      res.setHeader('Content-Type', 'application/json');
       return res.status(201).json({
         message: "Test notification created successfully",
         notification
       });
     } catch (error) {
       logger.error('=== Test Notification Creation Error ===');
-      logger.error('Error:', error);
+      logger.error('Error:', error instanceof Error ? error.message : String(error));
       logger.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
 
-      res.setHeader('Content-Type', 'application/json');
       return res.status(500).json({
         message: "Failed to create test notification",
         error: error instanceof Error ? error.message : "Unknown error"
