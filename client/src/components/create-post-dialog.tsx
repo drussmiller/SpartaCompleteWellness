@@ -169,8 +169,18 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   });
 
   const onSubmit = (data: CreatePostForm) => {
-    data.postDate = selectedDate;
-    createPostMutation.mutate(data);
+    try {
+      console.log('Form submission data:', data);
+      data.postDate = selectedDate;
+      createPostMutation.mutate(data);
+    } catch (error) {
+      console.error('Error in form submission:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create post",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -203,7 +213,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         </DialogDescription>
 
         <Form {...form}>
-          <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="postDate"
@@ -355,7 +365,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
             <div className="flex justify-center mt-6">
               <Button
                 type="submit"
-                form="create-post-form"
                 variant="default"
                 className="w-full bg-violet-700 hover:bg-violet-800"
                 disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
