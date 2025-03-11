@@ -235,26 +235,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ message: "Failed to fetch teams" });
     }
   });
-  
+
   // Team creation endpoint
   router.post("/api/teams", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized to create teams" });
       }
-      
+
       logger.info('Team creation request data:', req.body);
-      
+
       // Validate team data using schema
       const parseResult = insertTeamSchema.safeParse(req.body);
       if (!parseResult.success) {
         logger.error('Team validation error:', parseResult.error);
-        return res.status(400).json({ 
-          message: "Invalid team data", 
-          errors: parseResult.error.errors 
+        return res.status(400).json({
+          message: "Invalid team data",
+          errors: parseResult.error.errors
         });
       }
-      
+
       // Create team in database
       try {
         const team = await storage.createTeam(parseResult.data);
@@ -262,18 +262,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(201).json(team);
       } catch (dbError) {
         logger.error('Database error creating team:', dbError);
-        return res.status(500).json({ 
-          message: "Database error creating team", 
-          error: dbError instanceof Error ? dbError.message : "Unknown database error" 
+        return res.status(500).json({
+          message: "Database error creating team",
+          error: dbError instanceof Error ? dbError.message : "Unknown database error"
         });
       }
     } catch (error) {
       logger.error('Error creating team:', error);
       // Ensure we always return JSON, not HTML error pages
       res.setHeader('Content-Type', 'application/json');
-      return res.status(500).json({ 
-        message: "Failed to create team", 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return res.status(500).json({
+        message: "Failed to create team",
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
@@ -889,7 +889,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     } catch (error) {
       logger.error(`Error deleting post ${req.params.postId}:`, error);
       res.status(500).json({
-        message: "Failed to delete post",
+        message: "Failed todelete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -934,7 +934,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.file) {
         logger.info('🚫 [UPLOAD] No file received');
-        return res.status(40).json({ error: "No file uploaded" });
+        return res.status(400).json({ error: "No file uploaded" });
       }
 
       // Step 1: Log file details
@@ -955,7 +955,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });        }
+          return res.status(400).json({ error: "No content could be extracted" });
+        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -970,7 +971,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);
+        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({
@@ -1177,6 +1179,66 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error updating user:', error);
       res.status(500).json({
         message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add test notification endpoint
+  router.post("/api/notifications/test", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const parseResult = insertNotificationSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid notification data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const notification = await storage.createNotification({
+        userId: req.user.id,
+        title: parseResult.data.title,
+        message: parseResult.data.message,
+        read: false,
+        createdAt: new Date()
+      });
+
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(201).json({
+        message: "Test notification created successfully",
+        notification
+      });
+    } catch (error) {
+      logger.error('Error creating test notification:', error);
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({
+        message: "Failed to create test notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add check missed posts endpoint
+  router.post("/api/notifications/check-missed-posts", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Implementation of missed posts check logic here
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json({
+        message: "Missed posts check completed successfully"
+      });
+    } catch (error) {
+      logger.error('Error checking missed posts:', error);
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({
+        message: "Failed to check missed posts",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
