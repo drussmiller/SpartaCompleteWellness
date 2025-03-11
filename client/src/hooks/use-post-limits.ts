@@ -61,7 +61,12 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
-
+      
+      // Initial refetch when component mounts
+      refetch();
+      
+      console.log('Post limit event listeners attached');
+      
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
         window.removeEventListener('post-counts-changed', handlePostChange);
@@ -94,6 +99,15 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   const counts = data?.counts || defaultCounts;
   const canPost = data?.canPost || defaultCanPost;
   const remaining = data?.remaining || defaultRemaining;
+
+  // Force a clean fetch of the data when the hook is used
+  useEffect(() => {
+    if (user) {
+      // Clear the cache for this query and fetch fresh data
+      queryClient.removeQueries({ queryKey });
+      refetch();
+    }
+  }, [selectedDate.toISOString()]);
 
   // Log post limits for debugging
   console.log("Post limits updated:", {
