@@ -77,26 +77,31 @@ export default function ProfilePage() {
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
       // Ensure we're sending at least one measurement
-      if ((data.weight === undefined || data.weight === null) && 
-          (data.waist === undefined || data.waist === null)) {
+      if ((data.weight === undefined || data.weight === null || data.weight === '') && 
+          (data.waist === undefined || data.waist === null || data.waist === '')) {
         throw new Error("Please enter at least one measurement");
       }
 
       // Only send fields that have valid values
       const payload = {
         userId: user?.id,
-        ...(data.weight !== undefined && data.weight !== null && { weight: parseInt(String(data.weight)) }),
-        ...(data.waist !== undefined && data.waist !== null && { waist: parseInt(String(data.waist)) })
+        ...(data.weight && data.weight !== '' && { weight: parseInt(String(data.weight)) }),
+        ...(data.waist && data.waist !== '' && { waist: parseInt(String(data.waist)) })
       };
 
       console.log('Submitting measurement:', payload);
-      const res = await apiRequest("POST", "/api/measurements", payload);
+      try {
+        const res = await apiRequest("POST", "/api/measurements", payload);
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to add measurement");
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to add measurement");
+        }
+        return res.json();
+      } catch (err) {
+        console.error('API request error:', err);
+        throw err;
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
@@ -106,13 +111,12 @@ export default function ProfilePage() {
         description: "Measurement added successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       console.error('Error adding measurement:', error);
       toast({
         title: "Unable to Update",
-        description: "There was a problem updating your measurements. Please try again.",
-        variant: "default",
-        className: "bg-orange-100 text-orange-900 border-orange-200",
+        description: error.message || "There was a problem updating your measurements. Please try again.",
+        variant: "destructive",
       });
     },
   });
