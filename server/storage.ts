@@ -135,55 +135,55 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      // Start transaction
-      const result = await db.transaction(async (tx) => {
-        // Log input data
-        logger.info("Creating notification with data:", {
-          userId: data.userId,
-          title: data.title,
-          message: data.message,
-          read: data.read,
-          createdAt: data.createdAt
-        });
+      logger.info('=== Storage: Creating Notification ===');
+      logger.info('Raw input:', { ...data, userId: data.userId });
 
-        // Sanitize input data
-        const sanitizedData = {
-          userId: data.userId,
-          title: data.title.trim(),
-          message: data.message.trim(),
-          read: data.read ?? false,
-          createdAt: data.createdAt || new Date()
-        };
+      // First validate the data exists
+      if (!data.userId || !data.title || !data.message) {
+        throw new Error("Missing required notification fields");
+      }
 
-        logger.debug("Executing notification insert with data:", sanitizedData);
+      // Create a new transaction
+      const notification = await db.transaction(async (tx) => {
+        // Log transaction start
+        logger.info('Starting notification transaction');
 
-        // Insert into database within transaction
-        const [notification] = await tx
-          .insert(notifications)
-          .values(sanitizedData)
-          .returning();
+        try {
+          const [result] = await tx
+            .insert(notifications)
+            .values({
+              userId: data.userId,
+              title: data.title,
+              message: data.message,
+              read: false,
+              createdAt: new Date()
+            })
+            .returning();
 
-        if (!notification) {
-          throw new Error("Failed to create notification - database insert failed");
+          // Log successful insert
+          logger.info('Insert successful, returned:', result);
+          return result;
+        } catch (txError) {
+          // Log transaction error
+          logger.error('Transaction error:', txError);
+          throw txError;
         }
-
-        logger.info("Notification created successfully:", {
-          id: notification.id,
-          userId: notification.userId,
-          title: notification.title,
-          createdAt: notification.createdAt
-        });
-
-        return notification;
       });
 
-      return result;
+      // Verify notification was created
+      if (!notification) {
+        throw new Error("Notification creation failed - no data returned");
+      }
+
+      logger.info('=== Notification Created Successfully ===');
+      logger.info('New notification:', notification);
+
+      return notification;
     } catch (error) {
-      logger.error("Failed to create notification:", {
-        error: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      throw new Error(error instanceof Error ? error.message : "Failed to create notification");
+      logger.error('=== Notification Creation Failed ===');
+      logger.error('Error:', error);
+      logger.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
+      throw error;
     }
   },
 
