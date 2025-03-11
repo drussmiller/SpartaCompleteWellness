@@ -51,11 +51,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     // Use the hook's remaining data, not the prop
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
-    
+
     if (remainingPosts <= 0) {
       return "(Daily limit reached)";
     }
-    
+
     return `(${remainingPosts} remaining today)`;
   }
 
@@ -107,8 +107,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     },
     onSuccess: () => {
       // Immediately close the dialog and reset form
-      setOpen(false);
       form.reset();
+      setOpen(false);
       setImagePreview(null);
 
       // Track what type of post was created
@@ -117,12 +117,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       // Aggressively clear cache and force immediate refetch
       queryClient.resetQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      
+
       // Force immediate refresh of post counts data
       setTimeout(() => {
         refetch();
       }, 100);
-      
+
       // Dispatch event to notify other components
       const event = new CustomEvent('post-counts-changed');
       window.dispatchEvent(event);
@@ -325,7 +325,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 </FormItem>
               )}
             />
-            
+
             <div className="flex justify-center mt-6">
               <Button
                 type="submit"

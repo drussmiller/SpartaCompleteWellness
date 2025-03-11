@@ -53,8 +53,10 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   useEffect(() => {
     if (user) {
       const handlePostChange = () => {
-        // Only invalidate when actually needed
+        console.log("Post change detected, invalidating post counts");
+        // Forcefully invalidate the query
         queryClient.invalidateQueries({ queryKey });
+        refetch();
       };
 
       window.addEventListener('post-mutation', handlePostChange);
@@ -92,6 +94,14 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   const counts = data?.counts || defaultCounts;
   const canPost = data?.canPost || defaultCanPost;
   const remaining = data?.remaining || defaultRemaining;
+
+  // Log post limits for debugging
+  console.log("Post limits updated:", {
+    date: selectedDate.toISOString(),
+    counts,
+    canPost,
+    remaining
+  });
 
   return {
     counts,
