@@ -1193,19 +1193,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Calculate days since program start (in UTC)
-      const millisecondsSinceStart = now.getTime() - startDate.getTime();
+      const startOfToday = new Date(now);
+      startOfToday.setUTCHours(0, 0, 0, 0);
+      const startOfStartDate = new Date(startDate);
+      startOfStartDate.setUTCHours(0, 0, 0, 0);
+
+      const millisecondsSinceStart = startOfToday.getTime() - startOfStartDate.getTime();
       const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
 
       // Calculate current week (1-based) and day (Monday=1, Sunday=7)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
-      let currentDay = now.getUTCDay();
-      currentDay = currentDay === 0 ? 7 : currentDay; // Convert Sunday from 0 to 7
+      const currentDay = ((daysSinceStart % 7) + 1);
 
       logger.info('Activity calculation (UTC):', {
         userId: req.user.id,
         daysSinceStart,
         currentWeek,
-        currentDay
+        currentDay,
+        startOfToday: startOfToday.toISOString(),
+        startOfStartDate: startOfStartDate.toISOString()
       });
 
       res.json({
@@ -1215,7 +1221,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         debug: {
           teamJoinedAt: joinDate.toISOString(),
           startDate: startDate.toISOString(),
-          now: now.toISOString()
+          now: now.toISOString(),
+          startOfToday: startOfToday.toISOString(),
+          startOfStartDate: startOfStartDate.toISOString()
         }
       });
     } catch (error) {
