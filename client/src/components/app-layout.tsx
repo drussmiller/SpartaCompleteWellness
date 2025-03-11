@@ -1,4 +1,3 @@
-
 import React from "react";
 import { VerticalNav } from "./vertical-nav";
 import { BottomNav } from "./bottom-nav";
@@ -39,6 +38,3 @@ export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutPr
     </div>
   );
 }
-
-// Also export as default for backward compatibility
-export default AppLayout;
