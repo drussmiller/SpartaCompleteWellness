@@ -69,22 +69,24 @@ export default function ProfilePage() {
   const form = useForm({
     resolver: zodResolver(insertMeasurementSchema.omit({ userId: true, date: true })),
     defaultValues: {
-      weight: undefined,
-      waist: undefined,
+      weight: '',
+      waist: '',
     },
   });
 
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
       // Ensure we're sending at least one measurement
-      if (data.weight === undefined && data.waist === undefined) {
+      if ((data.weight === undefined || data.weight === null) && 
+          (data.waist === undefined || data.waist === null)) {
         throw new Error("Please enter at least one measurement");
       }
 
-      // Only send fields that have values
+      // Only send fields that have valid values
       const payload = {
-        ...(data.weight !== undefined && { weight: data.weight }),
-        ...(data.waist !== undefined && { waist: data.waist })
+        userId: user?.id,
+        ...(data.weight !== undefined && data.weight !== null && { weight: parseInt(String(data.weight)) }),
+        ...(data.waist !== undefined && data.waist !== null && { waist: parseInt(String(data.waist)) })
       };
 
       console.log('Submitting measurement:', payload);
@@ -274,8 +276,8 @@ export default function ProfilePage() {
                             <Input
                               type="number"
                               placeholder="Enter weight"
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : '')}
                             />
                           </FormControl>
                         </FormItem>
@@ -291,8 +293,8 @@ export default function ProfilePage() {
                             <Input
                               type="number"
                               placeholder="Enter waist"
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : '')}
                             />
                           </FormControl>
                         </FormItem>
