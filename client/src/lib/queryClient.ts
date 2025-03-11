@@ -6,19 +6,7 @@ async function throwIfResNotOk(res: Response) {
     if (res.status === 401) {
       throw new Error("Unauthorized - Please log in to continue");
     }
-    const contentType = res.headers.get("content-type");
-    const text = await res.text();
-
-    // Try to parse JSON error if possible
-    if (contentType?.includes("application/json")) {
-      try {
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.message || `${res.status}: ${text}`);
-      } catch {
-        throw new Error(`${res.status}: ${text}`);
-      }
-    }
-
+    const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
 }
@@ -28,9 +16,7 @@ export async function apiRequest(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const headers: HeadersInit = {
-    'Accept': 'application/json'
-  };
+  const headers: HeadersInit = {};
 
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
@@ -46,26 +32,12 @@ export async function apiRequest(
 
     // Log failed API requests for debugging
     if (!response.ok) {
-      const contentType = response.headers.get("content-type");
       const errorText = await response.text();
       console.error(`API ${method} request to ${path} failed:`, {
         status: response.status,
         statusText: response.statusText,
-        contentType,
         body: errorText
       });
-
-      // Try to parse JSON error if possible
-      if (contentType?.includes("application/json")) {
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.message || "Request failed");
-        } catch {
-          throw new Error(`Request failed: ${errorText}`);
-        }
-      }
-
-      throw new Error(`Request failed: ${errorText}`);
     }
 
     return response;
@@ -83,7 +55,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     try {
       const res = await fetch(queryKey[0] as string, {
-        credentials: "include",
+        credentials: "include", // Ensure cookies are sent with queries
         headers: {
           "Accept": "application/json",
         },
