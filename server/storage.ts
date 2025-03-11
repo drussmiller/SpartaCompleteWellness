@@ -138,39 +138,23 @@ export const storage = {
       logger.info('=== Storage: Creating Notification ===');
       logger.info('Raw input:', { ...data, userId: data.userId });
 
-      // First validate the data exists
+      // Validate required fields
       if (!data.userId || !data.title || !data.message) {
         throw new Error("Missing required notification fields");
       }
 
-      // Create a new transaction
-      const notification = await db.transaction(async (tx) => {
-        // Log transaction start
-        logger.info('Starting notification transaction');
+      // Create notification directly without transaction
+      const [notification] = await db
+        .insert(notifications)
+        .values({
+          userId: data.userId,
+          title: data.title,
+          message: data.message,
+          read: false,
+          createdAt: new Date()
+        })
+        .returning();
 
-        try {
-          const [result] = await tx
-            .insert(notifications)
-            .values({
-              userId: data.userId,
-              title: data.title,
-              message: data.message,
-              read: false,
-              createdAt: new Date()
-            })
-            .returning();
-
-          // Log successful insert
-          logger.info('Insert successful, returned:', result);
-          return result;
-        } catch (txError) {
-          // Log transaction error
-          logger.error('Transaction error:', txError);
-          throw txError;
-        }
-      });
-
-      // Verify notification was created
       if (!notification) {
         throw new Error("Notification creation failed - no data returned");
       }
