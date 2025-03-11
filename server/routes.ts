@@ -888,7 +888,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info('------------------------');
       logger.info(`Name: ${req.file.originalname}`);
       logger.info(`Size: ${req.file.size} bytes`);
-      logger.info(`Type: ${req.file.mimetype}`);
+            logger.info(`Type: ${req.file.mimetype}`);
       logger.info('------------------------');
 
       try{        // Step 2: Extract text
@@ -1162,62 +1162,74 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Convert all dates to user's local time
-      const now = new Date();
-      const userLocalTime = new Date(now.getTime() + (tzOffset * 60000));
+      // Convert UTC server time to user's local time by adding the offset
+      // When client sends positive offset (east of UTC), we add it to get local time
+      // When client sends negative offset (west of UTC), we subtract it to get local time
+      const serverNow = new Date();
+      const userLocalNow = new Date(serverNow.getTime() - (tzOffset * 60000));
+
+      // Convert team join date to user's local time
       const joinDate = new Date(user.teamJoinedAt);
-      const userLocalJoinDate = new Date(joinDate.getTime() + (tzOffset * 60000));
+      const userLocalJoinDate = new Date(joinDate.getTime() - (tzOffset * 60000));
 
       // Find the first Monday after join date in user's local time
       const joinDayOfWeek = userLocalJoinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek); // If Sunday, next day is Monday, otherwise calculate days until next Monday
-      const startDate = new Date(userLocalJoinDate);
-      startDate.setDate(userLocalJoinDate.getDate() + daysUntilMonday);
-      startDate.setHours(0, 0, 0, 0);
+      const firstMonday = new Date(userLocalJoinDate);
+      firstMonday.setDate(userLocalJoinDate.getDate() + daysUntilMonday);
+      firstMonday.setHours(0, 0, 0, 0);
 
-      logger.info('Initial dates (Local Time):', {
+      logger.info('Initial dates (User Local Time):', {
         userId: req.user.id,
-        teamJoinedAt: userLocalJoinDate.toISOString(),
-        firstMonday: startDate.toISOString(),
-        userLocalNow: userLocalTime.toISOString(),
+        serverNow: serverNow.toISOString(),
+        userLocalNow: userLocalNow.toISOString(),
+        joinDate: joinDate.toISOString(),
+        userLocalJoinDate: userLocalJoinDate.toISOString(),
+        firstMonday: firstMonday.toISOString(),
         tzOffset
       });
 
-      // If we haven't reached the start date yet, return week 1 day 1
-      if (userLocalTime < startDate) {
+      // If we haven't reached the first Monday yet, return week 1 day 1
+      if (userLocalNow < firstMonday) {
         return res.json({
           currentWeek: 1,
           currentDay: 1,
           daysSinceStart: 0,
           debug: {
-            teamJoinedAt: userLocalJoinDate.toISOString(),
-            startDate: startDate.toISOString(),
-            userLocalTime: userLocalTime.toISOString(),
-            status: 'Not started yet'
+            status: 'Not started yet',
+            dates: {
+              serverNow: serverNow.toISOString(),
+              userLocalNow: userLocalNow.toISOString(),
+              firstMonday: firstMonday.toISOString()
+            }
           }
         });
       }
 
-      // Calculate days since program start in user's local time
-      const startOfToday = new Date(userLocalTime);
-      startOfToday.setHours(0, 0, 0, 0);
-      const startOfStartDate = new Date(startDate);
-      startOfStartDate.setHours(0, 0, 0, 0);
+      // Calculate days since first Monday in user's local time
+      const startOfUserLocalDay = new Date(userLocalNow);
+      startOfUserLocalDay.setHours(0, 0, 0, 0);
 
-      const millisecondsSinceStart = startOfToday.getTime() - startOfStartDate.getTime();
+      const millisecondsSinceStart = startOfUserLocalDay.getTime() - firstMonday.getTime();
       const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
 
-      // Calculate current week (1-based) and day (Monday=1, Sunday=7)
+      // Calculate current week (1-based)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
-      const currentDay = (daysSinceStart % 7) + 1;
 
-      logger.info('Activity calculation (Local Time):', {
+      // Calculate current day (1-7, Monday=1, Sunday=7)
+      // Get the current day of week, ensuring Sunday=7
+      let currentDay = userLocalNow.getDay();
+      currentDay = currentDay === 0 ? 7 : currentDay;
+
+      logger.info('Activity calculation (User Local Time):', {
         userId: req.user.id,
         daysSinceStart,
         currentWeek,
         currentDay,
-        startOfToday: startOfToday.toISOString(),
-        startOfStartDate: startOfStartDate.toISOString()
+        dates: {
+          startOfUserLocalDay: startOfUserLocalDay.toISOString(),
+          firstMonday: firstMonday.toISOString()
+        }
       });
 
       res.json({
@@ -1225,11 +1237,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         currentDay,
         daysSinceStart,
         debug: {
-          teamJoinedAt: userLocalJoinDate.toISOString(),
-          startDate: startDate.toISOString(),
-          userLocalTime: userLocalTime.toISOString(),
-          startOfToday: startOfToday.toISOString(),
-          startOfStartDate: startOfStartDate.toISOString(),
+          serverNow: serverNow.toISOString(),
+          userLocalNow: userLocalNow.toISOString(),
+          firstMonday: firstMonday.toISOString(),
           tzOffset
         }
       });
