@@ -135,16 +135,15 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      logger.info('=== Storage: Creating Notification ===');
-      logger.info('Raw input:', { ...data, userId: data.userId });
+      logger.info('=== Storage: Creating Notification - Step 1 ===');
+      logger.info('Input:', {
+        userId: data.userId,
+        title: data.title,
+        message: data.message
+      });
 
-      // Validate required fields
-      if (!data.userId || !data.title || !data.message) {
-        throw new Error("Missing required notification fields");
-      }
-
-      // Create notification directly without transaction
-      const [notification] = await db
+      // Build the insert query
+      const query = db
         .insert(notifications)
         .values({
           userId: data.userId,
@@ -155,18 +154,30 @@ export const storage = {
         })
         .returning();
 
-      if (!notification) {
-        throw new Error("Notification creation failed - no data returned");
+      // Log the SQL query being executed
+      const sqlQuery = query.toSQL();
+      logger.info('SQL Query:', sqlQuery);
+
+      // Execute the query
+      logger.info('=== Storage: Executing Query ===');
+      const result = await query;
+      logger.info('Query Result:', result);
+
+      if (!result || result.length === 0) {
+        logger.error('No notification returned from insert');
+        throw new Error("Failed to create notification - no result returned");
       }
 
-      logger.info('=== Notification Created Successfully ===');
+      const notification = result[0];
+      logger.info('=== Storage: Notification Created Successfully ===');
       logger.info('New notification:', notification);
 
       return notification;
     } catch (error) {
-      logger.error('=== Notification Creation Failed ===');
-      logger.error('Error:', error);
-      logger.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
+      logger.error('=== Storage: Notification Creation Failed ===');
+      logger.error('Error type:', error?.constructor?.name);
+      logger.error('Error message:', error instanceof Error ? error.message : String(error));
+      logger.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
       throw error;
     }
   },
