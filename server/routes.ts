@@ -893,256 +893,256 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       try {
         // Step 2: Extract text
-        logger.info('📝 [UPLOAD] Starting text extraction...');
-        const { value } = await mammoth.extractRawText({
-          buffer: req.file.buffer
-        });
+          logger.info('📝 [UPLOAD] Starting text extraction...');
+          const { value } = await mammoth.extractRawText({
+            buffer: req.file.buffer
+          });
 
-        // Step 3: Validate content
-        if (!value) {
-          logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });        }
+          // Step 3: Validate content
+          if (!value) {
+            logger.info('❌ [UPLOAD] No content extracted');
+            return res.status(400).json({ error: "No content could be extracted" });        }
 
-        logger.info('✅ [UPLOAD] Text extracted successfully');
-        logger.info(`Length: ${value.length} characters`);
+          logger.info('✅ [UPLOAD] Text extracted successfully');
+          logger.info(`Length: ${value.length} characters`);
 
-        // Step 4: Prepare response
-        const response = { success: true };
+          // Step 4: Prepare response
+          const response = { success: true };
 
-        // Step 5: Send response
-        logger.info('📤 [UPLOAD] Sending response:', response);
-        return res.status(200).json(response);
+          // Step 5: Send response
+          logger.info('📤 [UPLOAD] Sending response:', response);
+          return res.status(200).json(response);
 
-      } catch (processingError) {
-        logger.error('❌ [UPLOAD] Processing error:');
-        logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
-        logger.error('------------------------');
+        } catch (processingError) {
+          logger.error('❌ [UPLOAD] Processing error:');
+          logger.error('--------------------------------');
+          logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
+          logger.error('------------------------');
 
-        return res.status(500).json({
-          error: "Processing failed",
-          details: processingError.message
-        });
-      }
-    } catch (error) {
-      logger.error('💥 [UPLOAD] Fatal error:');
-      logger.info('------------------------');
-      logger.error('Error:', error.message);
-      logger.error('Stack:', error.stack);
-      logger.info('------------------------');
-
-      return res.status(500).json({
-        error: "Upload failed",
-        details: error.message
-      });
-    }
-  });
-
-  router.post("/api/register", async (req, res) => {
-    try {
-      logger.info('Registration request body:', {
-        username: req.body.username,
-        email: req.body.email
-      });
-
-      // Validate the input data
-      const parsed = insertUserSchema.safeParse(req.body);
-      if (!parsed.success) {
-        logger.error('Validation errors:', parsed.error);
-        return res.status(400).json({
-          message: "Invalid registration data",
-          errors: parsed.error.errors
-        });
-      }
-
-      // Check if username already exists
-      const existingUser = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, req.body.username))
-        .limit(1);
-
-      if (existingUser.length > 0) {
-        logger.info('Registration failed: Username already exists');
-        return res.status(400).json({
-          message: "Username already exists"
-        });
-      }
-
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(req.body.password, salt);
-
-      // Create new user
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          username: req.body.username,
-          email: req.body.email,
-          password: hashedPassword,
-          isAdmin: false,
-          isTeamLead: false,
-          points: 0,
-          preferredName: null,
-          currentWeek: 1,
-          currentDay: 1
-        })
-        .returning();
-
-      logger.info('User registered successfully:', newUser.id);
-
-      // Log the user in
-      req.login(newUser, (err) => {
-        if (err) {
-          logger.error('Login after registration failed:', err);
           return res.status(500).json({
-            message: "Registration successful but login failed",
-            error: err.message
+            error: "Processing failed",
+            details: processingError.message
           });
         }
-        res.status(201).json(newUser);
-      });
+      } catch (error) {
+        logger.error('💥 [UPLOAD] Fatal error:');
+        logger.info('------------------------');
+        logger.error('Error:', error.message);
+        logger.error('Stack:', error.stack);
+        logger.info('------------------------');
 
-    } catch (error) {
-      logger.error('Registration error:', error);
-      res.status(500).json({
-        message: "Failed to create account",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Update the user delete route handler to clean up associated data
-  router.delete("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      // Check if trying to delete the main admin account
-      const userToDelete = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!userToDelete.length) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      if (userToDelete[0].username === "admin") {
-        return res.status(403).json({
-          message: "Cannot delete the main administrator account"
+        return res.status(500).json({
+          error: "Upload failed",
+          details: error.message
         });
       }
-
-      // Start a transaction to ensure all related data is cleaned up
-      await db.transaction(async (tx) => {
-        // First delete all reactions by this user
-        await tx
-          .delete(reactions)
-          .where(eq(reactions.userId, userId));
-
-        // Delete all comments (posts with parentId) by this user
-        await tx
-          .delete(posts)
-          .where(and(
-            eq(posts.userId, userId),
-            sql`${posts.parentId} IS NOT NULL`
-          ));
-
-        // Delete all posts by this user
-        await tx
-          .delete(posts)
-          .where(eq(posts.userId, userId));
-
-        // Delete all notifications for this user
-        await tx
-          .delete(notifications)
-          .where(eq(notifications.userId, userId));
-
-        // Finally delete the user
-        await tx
-          .delete(users)
-          .where(eq(users.id, userId));
-      });
-
-      logger.info('User and related data deleted successfully:', userId);
-      res.json({ message: "User and all related data deleted successfully" });
-    } catch (error) {
-      logger.error('Error deleting user:', error);
-      res.status(500).json({
-        message: "Failed to delete user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add a general update endpoint for users
-  router.patch("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      const updateData = req.body;
-      logger.info(`Updating user ${userId} with data:`, updateData);
-
-      // Validate required fields
-      if (updateData.username !== undefined && (!updateData.username || typeof updateData.username !== 'string')) {
-        return res.status(400).json({ message: "Username is required" });
-      }
-
-      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {
-        return res.status(400).json({ message: "Valid email is required" });
-      }
-
-      // Update user in database
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(updatedUser);
-    } catch (error) {
-      logger.error('Error updating user:', error);
-      res.status(500).json({
-        message: "Failed to update user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Error handling middleware
-  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    logger.error('API Error:', err);
-    res.status(err.status || 500).json({
-      message: err.message || "Internal server error"
     });
-  });
 
-  app.use(router);
+    router.post("/api/register", async (req, res) => {
+      try {
+        logger.info('Registration request body:', {
+          username: req.body.username,
+          email: req.body.email
+        });
 
-  // Create HTTP server
-  const httpServer = createServer(app);
+        // Validate the input data
+        const parsed = insertUserSchema.safeParse(req.body);
+        if (!parsed.success) {
+          logger.error('Validation errors:', parsed.error);
+          return res.status(400).json({
+            message: "Invalid registration data",
+            errors: parsed.error.errors
+          });
+        }
 
-  // Log server startup
-  logger.info('Server routes registered successfully');
+        // Check if username already exists
+        const existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.username, req.body.username))
+          .limit(1);
 
-  return httpServer;
-};
+        if (existingUser.length > 0) {
+          logger.info('Registration failed: Username already exists');
+          return res.status(400).json({
+            message: "Username already exists"
+          });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+        // Create new user
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            username: req.body.username,
+            email: req.body.email,
+            password: hashedPassword,
+            isAdmin: false,
+            isTeamLead: false,
+            points: 0,
+            preferredName: null,
+            currentWeek: 1,
+            currentDay: 1
+          })
+          .returning();
+
+        logger.info('User registered successfully:', newUser.id);
+
+        // Log the user in
+        req.login(newUser, (err) => {
+          if (err) {
+            logger.error('Login after registration failed:', err);
+            return res.status(500).json({
+              message: "Registration successful but login failed",
+              error: err.message
+            });
+          }
+          res.status(201).json(newUser);
+        });
+
+      } catch (error) {
+        logger.error('Registration error:', error);
+        res.status(500).json({
+          message: "Failed to create account",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    // Update the user delete route handler to clean up associated data
+    router.delete("/api/users/:userId", authenticate, async (req, res) => {
+      try {
+        if (!req.user?.isAdmin) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId)) {
+          return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        // Check if trying to delete the main admin account
+        const userToDelete = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (!userToDelete.length) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (userToDelete[0].username === "admin") {
+          return res.status(403).json({
+            message: "Cannot delete the main administrator account"
+          });
+        }
+
+        // Start a transaction to ensure all related data is cleaned up
+        await db.transaction(async (tx) => {
+          // First delete all reactions by this user
+          await tx
+            .delete(reactions)
+            .where(eq(reactions.userId, userId));
+
+          // Delete all comments (posts with parentId) by this user
+          await tx
+            .delete(posts)
+            .where(and(
+              eq(posts.userId, userId),
+              sql`${posts.parentId} IS NOT NULL`
+            ));
+
+          // Delete all posts by this user
+          await tx
+            .delete(posts)
+            .where(eq(posts.userId, userId));
+
+          // Delete all notifications for this user
+          await tx
+            .delete(notifications)
+            .where(eq(notifications.userId, userId));
+
+          // Finally delete the user
+          await tx
+            .delete(users)
+            .where(eq(users.id, userId));
+        });
+
+        logger.info('User and related data deleted successfully:', userId);
+        res.json({ message: "User and all related data deleted successfully" });
+      } catch (error) {
+        logger.error('Error deleting user:', error);
+        res.status(500).json({
+          message: "Failed to delete user",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    // Add a general update endpoint for users
+    router.patch("/api/users/:userId", authenticate, async (req, res) => {
+      try {
+        if (!req.user?.isAdmin) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const userId = parseInt(req.params.userId);
+        if (isNaN(userId)) {
+          return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        const updateData = req.body;
+        logger.info(`Updating user ${userId} with data:`, updateData);
+
+        // Validate required fields
+        if (updateData.username !== undefined && (!updateData.username || typeof updateData.username !== 'string')) {
+          return res.status(400).json({ message: "Username is required" });
+        }
+
+        if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {
+          return res.status(400).json({ message: "Valid email is required" });
+        }
+
+        // Update user in database
+        const [updatedUser] = await db
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, userId))
+          .returning();
+
+        if (!updatedUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(updatedUser);
+      } catch (error) {
+        logger.error('Error updating user:', error);
+        res.status(500).json({
+          message: "Failed to update user",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    // Error handling middleware
+    router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      logger.error('API Error:', err);
+      res.status(err.status || 500).json({
+        message: err.message || "Internal server error"
+      });
+    });
+
+    app.use(router);
+
+    // Create HTTP server
+    const httpServer = createServer(app);
+
+    // Log server startup
+    logger.info('Server routes registered successfully');
+
+    return httpServer;
+  };
