@@ -167,7 +167,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="h-[95vh] overflow-y-auto pb-36 sm:pb-20">
+      <DialogContent className="h-[95vh] overflow-y-auto pb-24 sm:pb-20">
         <Button 
           onClick={() => setOpen(false)} 
           variant="ghost" 
@@ -184,7 +184,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         </DialogDescription>
 
         <Form {...form}>
-          <form id="create-post-form" onSubmit={form.handleSubmit((data) => createPostMutation.mutate(data))} className="space-y-4">
+          <form id="create-post-form" onSubmit={form.handleSubmit((data) => createPostMutation.mutate(data))} className="space-y-4 flex flex-col">
             <FormField
               control={form.control}
               name="postDate"
@@ -334,12 +334,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               )}
             />
 
-            <div className="flex justify-center mt-6 pb-24 mb-6">
+            <div className="flex justify-center mt-6 mb-20">
               <Button
                 type="submit"
                 form="create-post-form"
                 variant="default"
-                className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 fixed bottom-16 left-1/2 -translate-x-1/2 z-10 mb-4 sm:w-full sm:relative sm:bottom-auto sm:translate-x-0 sm:left-0"
+                className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
                 disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
               >
                 {createPostMutation.isPending && (
