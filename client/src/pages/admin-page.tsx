@@ -318,18 +318,18 @@ export default function AdminPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader className="flex justify-between items-center">
-                    <DialogTitle>Create New Team</DialogTitle>
+                  <div className="flex items-center mb-2">
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 w-8 p-0 rounded-full" 
+                      className="h-8 w-8 p-0 rounded-full mr-2" 
                       onClick={() => document.querySelector('div[role="dialog"] button[data-state="closed"]')?.click()}
                     >
                       <span className="sr-only">Close</span>
                       <span className="text-lg font-semibold">×</span>
                     </Button>
-                  </DialogHeader>
+                    <DialogTitle>Create New Team</DialogTitle>
+                  </div>
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
                       <FormField
