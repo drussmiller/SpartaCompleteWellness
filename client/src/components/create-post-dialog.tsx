@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, CalendarIcon, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,6 +62,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
       try {
+        console.log('Starting post creation with data:', data);
         const formData = new FormData();
 
         if ((data.type === 'food' || data.type === 'workout') && (!data.imageUrl || data.imageUrl.length === 0)) {
@@ -80,11 +81,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
         const postData = {
           type: data.type,
-          content: data.content.trim(),
+          content: data.content?.trim() || "",
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
 
+        console.log('Submitting post data:', postData);
         formData.append("data", JSON.stringify(postData));
 
         const response = await fetch("/api/posts", {
@@ -98,7 +100,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           throw new Error(errorData.message || `Failed to create post: ${response.status}`);
         }
 
-        return response.json();
+        const responseData = await response.json();
+        console.log('Post created successfully:', responseData);
+        return responseData;
       } catch (error) {
         console.error("Post creation error:", error);
         throw error;
@@ -153,12 +157,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           `Points Earned: ${points}`,
           `Created: ${dateStr} at ${timeStr}`,
         ].join('\n'),
-        duration: 5000, // Show for 5 seconds
+        duration: 5000,
       });
     },
     onError: (error, _, context) => {
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
-
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
@@ -168,11 +171,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     },
   });
 
-  const onSubmit = (data: CreatePostForm) => {
+  const handleSubmit = async (data: CreatePostForm) => {
+    console.log('Form submitted with data:', data);
     try {
-      console.log('Form submission data:', data);
       data.postDate = selectedDate;
-      createPostMutation.mutate(data);
+      await createPostMutation.mutateAsync(data);
     } catch (error) {
       console.error('Error in form submission:', error);
       toast({
@@ -213,7 +216,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         </DialogDescription>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="postDate"
