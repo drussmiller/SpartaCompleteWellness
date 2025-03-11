@@ -462,20 +462,30 @@ export default function AdminPage() {
                           "/api/notifications/check-missed-posts"
                         );
 
-                        if (!res.ok) {
-                          const errorData = await res.json();
-                          throw new Error(errorData.message || "Failed to create notifications");
+                        // Check content type and handle response appropriately
+                        const contentType = res.headers.get("content-type");
+                        if (!res.ok || !contentType?.includes("application/json")) {
+                          const errorText = await res.text();
+                          throw new Error(
+                            contentType?.includes("application/json")
+                              ? JSON.parse(errorText).message
+                              : "Server error: Invalid response format"
+                          );
                         }
 
                         const data = await res.json();
                         toast({
                           title: "Success",
-                          description: data.message
+                          description: data.message || "Notifications created successfully"
                         });
+
+                        // Refresh notifications list
+                        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
                       } catch (error) {
+                        console.error("Missed posts notification error:", error);
                         toast({
                           title: "Error",
-                          description: error instanceof Error ? error.message : "Unknown error",
+                          description: error instanceof Error ? error.message : "Failed to create notifications",
                           variant: "destructive"
                         });
                       }
@@ -496,7 +506,7 @@ export default function AdminPage() {
                           }
                         );
 
-                        // Handle non-JSON responses
+                        // Handle response with proper content type checking
                         const contentType = res.headers.get("content-type");
                         if (!res.ok || !contentType?.includes("application/json")) {
                           const errorText = await res.text();
@@ -516,10 +526,10 @@ export default function AdminPage() {
                         // Refresh notifications list
                         queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
                       } catch (error) {
-                        console.error("Notification error:", error);
+                        console.error("Test notification error:", error);
                         toast({
                           title: "Error",
-                          description: error instanceof Error ? error.message : "Failed to create notification",
+                          description: error instanceof Error ? error.message : "Failed to create test notification",
                           variant: "destructive"
                         });
                       }
