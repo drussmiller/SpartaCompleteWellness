@@ -1,12 +1,12 @@
 import React from 'react';
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
@@ -27,6 +27,7 @@ type ContentField = {
 export default function ActivityManagementPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [editActivityOpen, setEditActivityOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [contentFields, setContentFields] = useState<ContentField[]>([]);
@@ -70,25 +71,42 @@ export default function ActivityManagementPage() {
         throw new Error(error.message || "Failed to delete activity");
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+    onMutate: async (deletedActivityId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/activities"] });
+
+      // Snapshot the previous value
+      const previousActivities = queryClient.getQueryData<Activity[]>(["/api/activities"]);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<Activity[]>(["/api/activities"], (old) => 
+        old?.filter(activity => activity.id !== deletedActivityId) || []
+      );
+
+      // Return a context object with the snapshotted value
+      return { previousActivities };
+    },
+    onError: (err, newActivity, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(["/api/activities"], context?.previousActivities);
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to delete activity",
+        variant: "destructive"
+      });
+    },
+    onSettled: () => {
       setDeleteDialogOpen(false);
       setActivityToDelete(null);
+      // Always refetch after error or success to make sure our optimistic update is correct
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+    },
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Activity deleted successfully"
       });
-    },
-    onError: (error: Error) => {
-      console.error('Error deleting activity:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete activity",
-        variant: "destructive"
-      });
-      setDeleteDialogOpen(false);
-      setActivityToDelete(null);
-    },
+    }
   });
 
   const handleEditActivity = (activity: Activity) => {
@@ -104,11 +122,7 @@ export default function ActivityManagementPage() {
 
   const confirmDelete = () => {
     if (activityToDelete) {
-      try {
-        deleteActivityMutation.mutate(activityToDelete);
-      } catch (error) {
-        console.error('Error in delete handler:', error);
-      }
+      deleteActivityMutation.mutate(activityToDelete);
     }
   };
 
