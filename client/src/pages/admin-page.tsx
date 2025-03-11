@@ -76,15 +76,16 @@ export default function AdminPage() {
     mutationFn: async (data: TeamFormData) => {
       try {
         const res = await apiRequest("POST", "/api/teams", data);
-        if (!res.ok) {
-          // Check if response is HTML (error page)
-          const contentType = res.headers.get("content-type");
-          if (contentType && contentType.includes("text/html")) {
-            throw new Error("Server returned an HTML error page. Please try again later.");
-          }
-          // Try to get a more specific error message
-          const errorData = await res.json().catch(() => ({ message: "Failed to create team" }));
-          throw new Error(errorData.message || "Failed to create team");
+
+        // Check content type and handle response appropriately
+        const contentType = res.headers.get("content-type");
+        if (!res.ok || !contentType?.includes("application/json")) {
+          const errorText = await res.text();
+          throw new Error(
+            contentType?.includes("application/json")
+              ? JSON.parse(errorText).message
+              : "Server error: Invalid response format"
+          );
         }
         return res.json();
       } catch (error) {
@@ -103,7 +104,7 @@ export default function AdminPage() {
     onError: (error) => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Unknown error creating team",
+        description: error instanceof Error ? error.message : "Failed to create team",
         variant: "destructive",
       });
     },
