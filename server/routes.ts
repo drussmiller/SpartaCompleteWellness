@@ -892,7 +892,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             throw new Error("Not authorized to delete this post");
           }
 
-          logger.info(`Deleting reactions and comments for post ${postId}`);
+          logger.info(`Deleting reactions andcomments for post ${postId}`);
 
           // Delete reactions and comments in parallel using Promise.all
           await Promise.all([
@@ -1299,27 +1299,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
       }
 
-      // Calculate days since program start
+      // Get the start of today
       const startOfDay = new Date(now);
       startOfDay.setHours(0, 0, 0, 0);
 
-      const millisecondsSinceStart = startOfDay.getTime() - firstMonday.getTime();
-      const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
+      // Calculate complete weeks since first Monday
+      const completeWeeks = Math.floor((startOfDay.getTime() - firstMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
 
-      // Calculate current week (1-based)
-      const currentWeek = Math.floor(daysSinceStart / 7) + 1;
+      // Current week is complete weeks + 1 (since we start from week 1)
+      const currentWeek = completeWeeks + 1;
 
       // Calculate current day (1-7, Monday=1, Sunday=7)
       let currentDay = now.getDay();
       currentDay = currentDay === 0 ? 7 : currentDay;
 
+      // Calculate total days since start for debugging
+      const daysSinceStart = Math.floor((startOfDay.getTime() - firstMonday.getTime()) / (24 * 60 * 60 * 1000));
+
       logger.info('Week/Day calculations:', {
         joinDate: joinDate.toISOString(),
         firstMonday: firstMonday.toISOString(),
         now: now.toISOString(),
-        daysSinceStart,
+        completeWeeks,
         currentWeek,
-        currentDay
+        currentDay,
+        daysSinceStart
       });
 
       res.json({
@@ -1331,9 +1335,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           firstMonday: firstMonday.toISOString(),
           now: now.toISOString(),
           calculations: {
+            completeWeeks,
+            currentWeek: `${completeWeeks} + 1 = ${currentWeek}`,
             daysSinceStart,
-            weekCalc: `${daysSinceStart} / 7 + 1 = ${currentWeek}`,
-            dayOfWeek: currentDay
+            currentDay
           }
         }
       });
