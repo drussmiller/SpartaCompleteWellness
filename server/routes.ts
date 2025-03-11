@@ -859,54 +859,96 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Post counts endpoint is now defined at the top of the file to avoid route conflicts
 
-  // Delete post endpoint - optimized version
+  // Delete post endpoint - optimized version with better error handling
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
+        logger.error(`Invalid post ID format: ${req.params.postId}`);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
+      logger.info(`Starting deletion process for post ${postId} by user ${req.user.id}`);
+
       // Delete post and all related data in a single transaction with optimized queries
-      await db.transaction(async (tx) => {
-        // Delete reactions and comments in parallel using Promise.all
-        await Promise.all([
-          // Delete all reactions
-          tx.delete(reactions)
-            .where(eq(reactions.postId, postId)),
+      try {
+        await db.transaction(async (tx) => {
+          // First check if post exists and user has permission
+          const [post] = await tx
+            .select()
+            .from(posts)
+            .where(eq(posts.id, postId))
+            .limit(1);
 
-          // Delete all comments
-          tx.delete(posts)
-            .where(eq(posts.parentId, postId))
-        ]);
+          if (!post) {
+            logger.warn(`Post ${postId} not found during deletion attempt`);
+            throw new Error("Post not found");
+          }
 
-        // Then delete the post itself, checking permissions in the same query
-        const [deletedPost] = await tx
-          .delete(posts)
-          .where(
-            and(
-              eq(posts.id, postId),
-              or(
-                eq(posts.userId, req.user.id),
-                sql`${req.user.isAdmin} = true`
-              )
-            )
-          )
-          .returning();
+          if (!req.user.isAdmin && post.userId !== req.user.id) {
+            logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
+            throw new Error("Not authorized to delete this post");
+          }
 
-        if (!deletedPost) {
-          throw new Error("Not authorized or post not found");
+          logger.info(`Deleting reactions and comments for post ${postId}`);
+
+          // Delete reactions and comments in parallel using Promise.all
+          await Promise.all([
+            // Delete all reactions
+            tx.delete(reactions)
+              .where(eq(reactions.postId, postId))
+              .then(() => logger.info(`Reactions deleted for post ${postId}`))
+              .catch(error => {
+                logger.error(`Error deleting reactions for post ${postId}:`, error);
+                throw error;
+              }),
+
+            // Delete all comments
+            tx.delete(posts)
+              .where(eq(posts.parentId, postId))
+              .then(() => logger.info(`Comments deleted for post ${postId}`))
+              .catch(error => {
+                logger.error(`Error deleting comments for post ${postId}:`, error);
+                throw error;
+              })
+          ]);
+
+          // Finally delete the post itself
+          const [deletedPost] = await tx
+            .delete(posts)
+            .where(eq(posts.id, postId))
+            .returning();
+
+          if (!deletedPost) {
+            logger.error(`Failed to delete main post ${postId}`);
+            throw new Error("Failed to delete post");
+          }
+
+          logger.info(`Successfully deleted post ${postId} and all related data`);
+        });
+
+        res.status(200).json({ message: "Post deleted successfully" });
+      } catch (txError) {
+        // Handle specific transaction errors
+        logger.error(`Transaction error during post ${postId} deletion:`, txError);
+
+        if (txError.message === "Post not found") {
+          return res.status(404).json({ message: "Post not found" });
         }
-      });
+        if (txError.message === "Not authorized to delete this post") {
+          return res.status(403).json({ message: "Not authorized to delete this post" });
+        }
 
-      res.status(200).json({ message: "Post deleted successfully" });
-    } catch (error) {
-      if (error.message === "Not authorized or post not found") {
-        return res.status(403).json({ message: "Not authorized to delete this post or post not found" });
+        throw txError; // Re-throw for general error handling
       }
-      res.status(500).json({ message: "Failed to delete post" });
+    } catch (error) {
+      logger.error('Unexpected error in delete post endpoint:', error);
+      res.status(500).json({ 
+        message: "Failed to delete post",
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
     }
   });
 
