@@ -887,7 +887,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Delete post
+      // Delete post and its reactions
       await storage.deletePost(postId);
       logger.info(`Post ${postId} deleted successfully`);
       res.status(200).json({ message: "Post deleted successfully" });
