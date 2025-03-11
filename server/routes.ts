@@ -891,8 +891,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Type: ${req.file.mimetype}`);
       logger.info('------------------------');
 
-      try {
-        // Step 2: Extract text
+      try {        // Step 2: Extract text
         logger.info('📝 [UPLOAD] Starting text extraction...');
         const { value } = await mammoth.extractRawText({
           buffer: req.file.buffer
@@ -1149,9 +1148,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      // Get timezone offset from query params (in minutes)
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-
       // Get user's team join date
       const [user] = await db
         .select()
@@ -1163,32 +1159,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Convert dates to user's timezone
+      // Use UTC dates
       const now = new Date();
-      const userLocalTime = new Date(now.getTime() + (tzOffset * 60000));
       const joinDate = new Date(user.teamJoinedAt);
 
-      // Get the Monday of the join week
-      const joinDayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      // Find the Monday of the join week (in UTC)
+      const joinDayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const daysToSubtract = joinDayOfWeek === 0 ? 6 : joinDayOfWeek - 1;
       const startOfFirstWeek = new Date(joinDate);
-      startOfFirstWeek.setDate(joinDate.getDate() - daysToSubtract);
-      startOfFirstWeek.setHours(0, 0, 0, 0);
+      startOfFirstWeek.setUTCDate(joinDate.getUTCDate() - daysToSubtract);
+      startOfFirstWeek.setUTCHours(0, 0, 0, 0);
 
-      // Calculate weeks since program start
-      const millisecondsSinceStart = userLocalTime.getTime() - startOfFirstWeek.getTime();
+      // Calculate weeks since program start (in UTC)
+      const millisecondsSinceStart = now.getTime() - startOfFirstWeek.getTime();
       const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
 
       // Calculate current week (1-based) and day (Monday=1, Sunday=7)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
-      let currentDay = userLocalTime.getDay();
+      let currentDay = now.getUTCDay();
       currentDay = currentDay === 0 ? 7 : currentDay; // Convert Sunday from 0 to 7
 
-      logger.info('Activity date calculation:', {
+      logger.info('Activity date calculation (UTC):', {
         userId: req.user.id,
         teamJoinedAt: user.teamJoinedAt,
         startOfFirstWeek: startOfFirstWeek.toISOString(),
-        userLocalTime: userLocalTime.toISOString(),
+        now: now.toISOString(),
         daysSinceStart,
         currentWeek,
         currentDay
@@ -1201,7 +1196,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         debug: {
           teamJoinedAt: user.teamJoinedAt,
           startOfFirstWeek: startOfFirstWeek.toISOString(),
-          userLocalTime: userLocalTime.toISOString()
+          now: now.toISOString()
         }
       });
     } catch (error) {
