@@ -49,13 +49,23 @@ export default function ActivityPage() {
     if (selectedDay > 1) {
       setSelectedDay(selectedDay - 1);
     } else if (selectedWeek > 1) {
-      setSelectedWeek(selectedWeek - 1);
-      // Find the max day in the previous week
+      // Move to previous week
+      const prevWeek = selectedWeek - 1;
+      setSelectedWeek(prevWeek);
+      
+      // Find the max day number in the previous week
       const prevWeekDays = activities
-        ?.filter((a) => a.week === selectedWeek - 1)
-        .map((a) => a.day)
-        .sort((a, b) => b - a) || [];
-      setSelectedDay(prevWeekDays[0] || 7);
+        ?.filter((a) => a.week === prevWeek)
+        .map((a) => a.day) || [];
+      
+      // If we found days in the previous week, set to the maximum day
+      // Otherwise default to day 7 (assuming each week has 7 days)
+      const maxDay = prevWeekDays.length > 0 
+        ? Math.max(...prevWeekDays) 
+        : 7;
+        
+      console.log(`Navigating to Week ${prevWeek}, Day ${maxDay}`);
+      setSelectedDay(maxDay);
     }
   };
 
