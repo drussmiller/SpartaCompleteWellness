@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, CalendarIcon, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +30,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const { canPost, counts, refetch, remaining } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -48,7 +49,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
 
-    // Use the hook's remaining data, not the prop
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
 
@@ -64,7 +64,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       try {
         const formData = new FormData();
 
-        // For food and workout posts, ensure we have an image
         if ((data.type === 'food' || data.type === 'workout') && (!data.imageUrl || data.imageUrl.length === 0)) {
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
@@ -105,36 +104,43 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         throw error;
       }
     },
-    onSuccess: () => {
-      // Immediately close the dialog and reset form
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
+      const previousPosts = queryClient.getQueryData(["/api/posts"]);
+
+      const optimisticPost = {
+        id: Date.now(), 
+        type: data.type,
+        content: data.content,
+        imageUrl: imagePreview,
+        createdAt: data.postDate || new Date(),
+        author: user,
+        points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3
+      };
+
+      queryClient.setQueryData(["/api/posts"], (old: any[] = []) => [optimisticPost, ...old]);
+
+      return { previousPosts };
+    },
+    onSuccess: (newPost) => {
       form.reset();
       setOpen(false);
       setImagePreview(null);
 
-      // Track what type of post was created
-      const createdPostType = form.getValues("type");
+      queryClient.setQueryData(["/api/posts"], (old: any[] = []) => {
+        return old.map(post => post.id === Date.now() ? newPost : post);
+      });
 
-      // Aggressively clear cache and force immediate refetch
-      queryClient.removeQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      
-      // Force immediate refresh of post counts data
-      console.log('Forcing immediate refetch of post count data');
-      setTimeout(() => {
-        refetch();
-      }, 200); // Longer timeout to ensure server processed the post
-
-      // Dispatch event to notify other components
-      console.log('Post created, dispatching events to update counts');
-      window.dispatchEvent(new CustomEvent('post-mutation'));
-      window.dispatchEvent(new CustomEvent('post-counts-changed'));
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
 
       toast({
         title: "Success",
-        description: `${createdPostType.charAt(0).toUpperCase() + createdPostType.slice(1)} post created successfully!`,
+        description: `${newPost.type.charAt(0).toUpperCase() + newPost.type.slice(1)} post created successfully!`,
       });
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      queryClient.setQueryData(["/api/posts"], context?.previousPosts);
+
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
