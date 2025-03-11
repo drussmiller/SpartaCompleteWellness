@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -319,25 +320,16 @@ export default function AdminPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <div className="flex items-center mb-2 relative">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 rounded-full absolute right-2 top-2" 
-                      onClick={() => {
-                        // Direct approach to close the dialog
-                        const closeButton = document.querySelector('[data-radix-dialog-close]');
-                        if (closeButton instanceof HTMLElement) {
-                          closeButton.click();
-                        } else {
-                          // Fallback to setting state directly
-                          form.reset();
-                          document.querySelector('body')?.click();
-                        }
-                      }}
-                    >
-                      <span className="sr-only">Close</span>
-                      <span className="text-lg font-semibold">×</span>
-                    </Button>
+                    <DialogPrimitive.Close asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 rounded-full absolute right-2 top-2" 
+                      >
+                        <span className="sr-only">Close</span>
+                        <span className="text-lg font-semibold">×</span>
+                      </Button>
+                    </DialogPrimitive.Close>
                     <DialogTitle className="w-full text-center">Create New Team</DialogTitle>
                   </div>
                   <Form {...form}>
