@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BottomNav } from "@/components/bottom-nav";
@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 export default function ActivityPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Get timezone offset for the current user
   const tzOffset = new Date().getTimezoneOffset();
@@ -33,6 +34,10 @@ export default function ActivityPage() {
 
   const { data: activities, isLoading: isActivitiesLoading } = useQuery({
     queryKey: ["/api/activities"],
+    // Add optimistic updates handling
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/activities"], data);
+    }
   });
 
   const currentActivity = activities?.find(
@@ -52,11 +57,11 @@ export default function ActivityPage() {
       // Move to previous week
       const prevWeek = selectedWeek - 1;
       setSelectedWeek(prevWeek);
-      
+
       // Always use day 7 when moving to the previous week from day 1
       // This ensures we go from Week 2 - Day 1 to Week 1 - Day 7
       const maxDay = 7;
-      
+
       console.log(`Navigating to Week ${prevWeek}, Day ${maxDay}`);
       setSelectedDay(maxDay);
     }
@@ -68,10 +73,10 @@ export default function ActivityPage() {
 
     // Always assume each week has 7 days
     const maxDayInCurrentWeek = 7;
-    
+
     // Check if we're at the end of the current week
     const isLastDayOfWeek = selectedDay >= maxDayInCurrentWeek;
-    
+
     if (!isLastDayOfWeek) {
       // Not the last day of the week, just increment the day
       console.log(`Navigating from Day ${selectedDay} to Day ${selectedDay + 1}`);
