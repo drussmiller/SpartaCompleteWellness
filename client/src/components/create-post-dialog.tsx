@@ -109,7 +109,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       const previousPosts = queryClient.getQueryData(["/api/posts"]);
 
       const optimisticPost = {
-        id: Date.now(), 
+        id: Date.now(),
         type: data.type,
         content: data.content,
         imageUrl: imagePreview,
@@ -133,9 +133,27 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
 
+      // Format creation date
+      const postDate = new Date(newPost.createdAt);
+      const timeStr = postDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = postDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+
+      // Calculate points based on post type
+      const points = newPost.type === "memory_verse" ? 10 : newPost.type === "comment" ? 1 : 3;
+
+      // Format post type for display
+      const formattedType = newPost.type.split('_').map(word =>
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+
       toast({
-        title: "Success",
-        description: `${newPost.type.charAt(0).toUpperCase() + newPost.type.slice(1)} post created successfully!`,
+        title: "Post Created Successfully!",
+        description: [
+          `Type: ${formattedType}`,
+          `Points Earned: ${points}`,
+          `Created: ${dateStr} at ${timeStr}`,
+        ].join('\n'),
+        duration: 5000, // Show for 5 seconds
       });
     },
     onError: (error, _, context) => {
@@ -169,9 +187,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto pb-25">
-        <Button 
-          onClick={() => setOpen(false)} 
-          variant="ghost" 
+        <Button
+          onClick={() => setOpen(false)}
+          variant="ghost"
           className="absolute left-2 top-2 h-8 w-8 p-0"
           aria-label="Close"
         >
