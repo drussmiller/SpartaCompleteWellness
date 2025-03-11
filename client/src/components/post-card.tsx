@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
@@ -16,6 +16,7 @@ import { CommentDrawer } from "@/components/comments/comment-drawer";
 export function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -25,49 +26,47 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
-      console.log(`Deleting post ${post.id} of type ${post.type}`);
-
-      // Delete the post
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
         throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
       }
-
-      // Force immediate invalidation with more aggressive approach
-      queryClient.removeQueries({ queryKey: ["/api/posts"] });
-      queryClient.removeQueries({ 
-        predicate: (query) => 
-          typeof query.queryKey[0] === 'string' && 
-          query.queryKey[0].includes("/api/posts/counts")
-      });
-
-      // Manually trigger a refetch of all post data
-      await queryClient.refetchQueries({ 
-        queryKey: ["/api/posts"]
-      });
-
-      // Trigger a custom event that the post-limits hook will listen for
-      window.dispatchEvent(new CustomEvent('post-mutation', { 
-        detail: { postId: post.id, type: post.type }
-      }));
-
-      console.log("Post deletion completed, dispatched refresh event");
+      return post.id;
     },
-    onSuccess: () => {
-      console.log("Post deleted successfully!");
-      toast({
-        title: "Success",
-        description: "Post deleted successfully",
-      });
+    onMutate: async (postId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
+
+      // Snapshot the previous value
+      const previousPosts = queryClient.getQueryData(["/api/posts"]);
+
+      // Optimistically remove the post from the cache
+      queryClient.setQueryData(["/api/posts"], (old: any[]) =>
+        old?.filter((p) => p.id !== post.id) || []
+      );
+
+      return { previousPosts };
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      // Revert the optimistic update on error
+      queryClient.setQueryData(["/api/posts"], context?.previousPosts);
       console.error("Error deleting post:", error);
       toast({
         title: "Error Deleting Post",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
-    }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Post deleted successfully",
+      });
+
+      // Only invalidate the counts query after successful deletion
+      queryClient.invalidateQueries({
+        queryKey: ["/api/posts/counts"],
+      });
+    },
   });
 
   const handleDeletePost = () => {
@@ -118,7 +117,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
             className="w-full h-auto object-contain rounded-md mb-4"
             onError={(e) => {
               console.error("Failed to load image:", post.imageUrl);
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.style.display = "none";
             }}
           />
         )}
@@ -134,9 +133,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
           <div className="flex items-center gap-2 py-1 h-10">
             <ReactionButton postId={post.id} variant="icon" />
-            <Button 
-              variant="ghost" 
-              size="default" 
+            <Button
+              variant="ghost"
+              size="default"
               className="gap-2"
               onClick={() => setIsCommentsOpen(true)}
             >
