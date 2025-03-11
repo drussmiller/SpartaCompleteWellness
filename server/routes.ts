@@ -891,7 +891,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Type: ${req.file.mimetype}`);
       logger.info('------------------------');
 
-      try {        // Step 2: Extract text
+      try{        // Step 2: Extract text
         logger.info('📝 [UPLOAD] Starting text extraction...');
         const { value } = await mammoth.extractRawText({
           buffer: req.file.buffer
@@ -1148,6 +1148,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
       // Get user's team join date
       const [user] = await db
         .select()
@@ -1159,53 +1162,57 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Get UTC dates
+      // Convert all dates to user's local time
       const now = new Date();
+      const userLocalTime = new Date(now.getTime() + (tzOffset * 60000));
       const joinDate = new Date(user.teamJoinedAt);
+      const userLocalJoinDate = new Date(joinDate.getTime() + (tzOffset * 60000));
 
-      // Find the next Monday after join date (in UTC)
-      const joinDayOfWeek = joinDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const daysUntilMonday = joinDayOfWeek === 0 ? 1 : 8 - joinDayOfWeek;
-      const startDate = new Date(joinDate);
-      startDate.setUTCDate(joinDate.getUTCDate() + daysUntilMonday);
-      startDate.setUTCHours(0, 0, 0, 0);
+      // Find the first Monday after join date in user's local time
+      const joinDayOfWeek = userLocalJoinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek); // If Sunday, next day is Monday, otherwise calculate days until next Monday
+      const startDate = new Date(userLocalJoinDate);
+      startDate.setDate(userLocalJoinDate.getDate() + daysUntilMonday);
+      startDate.setHours(0, 0, 0, 0);
 
-      logger.info('Initial dates (UTC):', {
+      logger.info('Initial dates (Local Time):', {
         userId: req.user.id,
-        teamJoinedAt: joinDate.toISOString(),
+        teamJoinedAt: userLocalJoinDate.toISOString(),
         firstMonday: startDate.toISOString(),
-        now: now.toISOString()
+        userLocalNow: userLocalTime.toISOString(),
+        tzOffset
       });
 
       // If we haven't reached the start date yet, return week 1 day 1
-      if (now < startDate) {
+      if (userLocalTime < startDate) {
         return res.json({
           currentWeek: 1,
           currentDay: 1,
           daysSinceStart: 0,
           debug: {
-            teamJoinedAt: joinDate.toISOString(),
+            teamJoinedAt: userLocalJoinDate.toISOString(),
             startDate: startDate.toISOString(),
-            now: now.toISOString(),
+            userLocalTime: userLocalTime.toISOString(),
             status: 'Not started yet'
           }
         });
       }
 
-      // Calculate days since program start (in UTC)
-      const startOfToday = new Date(now);
-      startOfToday.setUTCHours(0, 0, 0, 0);
+      // Calculate days since program start in user's local time
+      const startOfToday = new Date(userLocalTime);
+      startOfToday.setHours(0, 0, 0, 0);
       const startOfStartDate = new Date(startDate);
-      startOfStartDate.setUTCHours(0, 0, 0, 0);
+      startOfStartDate.setHours(0, 0, 0, 0);
 
       const millisecondsSinceStart = startOfToday.getTime() - startOfStartDate.getTime();
       const daysSinceStart = Math.floor(millisecondsSinceStart / (1000 * 60 * 60 * 24));
 
       // Calculate current week (1-based) and day (Monday=1, Sunday=7)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
-      const currentDay = ((daysSinceStart % 7) + 1);
+      let currentDay = userLocalTime.getDay();
+      currentDay = currentDay === 0 ? 7 : currentDay; // Convert Sunday from 0 to 7
 
-      logger.info('Activity calculation (UTC):', {
+      logger.info('Activity calculation (Local Time):', {
         userId: req.user.id,
         daysSinceStart,
         currentWeek,
@@ -1219,11 +1226,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         currentDay,
         daysSinceStart,
         debug: {
-          teamJoinedAt: joinDate.toISOString(),
+          teamJoinedAt: userLocalJoinDate.toISOString(),
           startDate: startDate.toISOString(),
-          now: now.toISOString(),
+          userLocalTime: userLocalTime.toISOString(),
           startOfToday: startOfToday.toISOString(),
-          startOfStartDate: startOfStartDate.toISOString()
+          startOfStartDate: startOfStartDate.toISOString(),
+          tzOffset
         }
       });
     } catch (error) {
