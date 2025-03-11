@@ -1267,13 +1267,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!user?.teamJoinedAt) {
+      if (!user.teamJoinedAt) {
         return res.status(400).json({ message: "User has no team join date" });
       }
 
       // Get dates in UTC
       const now = new Date();
       const joinDate = new Date(user.teamJoinedAt);
+      joinDate.setHours(0, 0, 0, 0); // Set to start of day
 
       // Find the first Monday after join date
       const joinDayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
@@ -1282,62 +1283,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
       firstMonday.setHours(0, 0, 0, 0);
 
-      // If we haven't reached the first Monday yet, return week 1 day 1
-      if (now < firstMonday) {
-        return res.json({
-          currentWeek: 1,
-          currentDay: 1,
-          daysSinceStart: 0,
-          debug: {
-            message: 'Not started yet',
-            dates: {
-              now: now.toISOString(),
-              joinDate: joinDate.toISOString(),
-              firstMonday: firstMonday.toISOString()
-            }
-          }
-        });
-      }
-
       // Get the start of today
       const startOfDay = new Date(now);
       startOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate complete weeks since first Monday
-      const completeWeeks = Math.floor((startOfDay.getTime() - firstMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      // Calculate elapsed milliseconds and days
+      const elapsedMs = startOfDay.getTime() - firstMonday.getTime();
+      const elapsedDays = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
 
-      // Current week is complete weeks + 1 (since we start from week 1)
-      const currentWeek = completeWeeks + 1;
+      // Calculate weeks (starting from 1)
+      const currentWeek = Math.floor(elapsedDays / 7) + 1;
 
       // Calculate current day (1-7, Monday=1, Sunday=7)
       let currentDay = now.getDay();
       currentDay = currentDay === 0 ? 7 : currentDay;
 
-      // Calculate total days since start for debugging
-      const daysSinceStart = Math.floor((startOfDay.getTime() - firstMonday.getTime()) / (24 * 60 * 60 * 1000));
-
-      logger.info('Week/Day calculations:', {
+      logger.info('Detailed week calculation:', {
+        teamJoinedAt: user.teamJoinedAt,
         joinDate: joinDate.toISOString(),
         firstMonday: firstMonday.toISOString(),
         now: now.toISOString(),
-        completeWeeks,
+        startOfDay: startOfDay.toISOString(),
+        elapsedDays,
+        weekCalculation: `${elapsedDays} days / 7 = ${elapsedDays/7} weeks, floor = ${Math.floor(elapsedDays/7)}, +1 = ${currentWeek}`,
         currentWeek,
-        currentDay,
-        daysSinceStart
+        currentDay
       });
 
       res.json({
         currentWeek,
         currentDay,
-        daysSinceStart,
+        daysSinceStart: elapsedDays,
         debug: {
           joinDate: joinDate.toISOString(),
           firstMonday: firstMonday.toISOString(),
           now: now.toISOString(),
           calculations: {
-            completeWeeks,
-            currentWeek: `${completeWeeks} + 1 = ${currentWeek}`,
-            daysSinceStart,
+            elapsedDays,
+            elapsedWeeks: Math.floor(elapsedDays/7),
+            finalWeek: currentWeek,
             currentDay
           }
         }
