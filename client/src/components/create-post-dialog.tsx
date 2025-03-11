@@ -339,7 +339,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 type="submit"
                 form="create-post-form"
                 variant="default"
-                className="w-full bg-violet-700 hover:bg-violet-800 fixed bottom-16 left-0 right-0 mx-4 sm:relative sm:bottom-auto sm:mx-0"
+                className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 fixed bottom-16 left-1/2 -translate-x-1/2 sm:w-full sm:relative sm:bottom-auto sm:translate-x-0 sm:left-0"
                 disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
               >
                 {createPostMutation.isPending && (
