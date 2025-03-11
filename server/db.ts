@@ -29,4 +29,4 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
 
-export const db = drizzle({ client: pool, schema });
+export const db = drizzle(pool, { schema });
