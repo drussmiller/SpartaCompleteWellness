@@ -66,16 +66,9 @@ export default function ActivityPage() {
     // Only allow navigating up to current day
     if (!currentProgress) return;
 
-    // Find the maximum day in the current week
-    const currentWeekDays = activities
-      ?.filter((a) => a.week === selectedWeek)
-      .map((a) => a.day) || [];
+    // Always assume each week has 7 days
+    const maxDayInCurrentWeek = 7;
     
-    // Default to 7 days per week if no activities found
-    const maxDayInCurrentWeek = currentWeekDays.length > 0 
-      ? Math.max(...currentWeekDays) 
-      : 7;
-
     // Check if we're at the end of the current week
     const isLastDayOfWeek = selectedDay >= maxDayInCurrentWeek;
     
