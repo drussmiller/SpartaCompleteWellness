@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, CalendarIcon, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -140,7 +140,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     },
     onError: (error, _, context) => {
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
-
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
@@ -168,7 +167,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto pb-25">
+      <DialogContent className="h-[95vh] overflow-y-auto pb-32 sm:pb-20">
         <Button 
           onClick={() => setOpen(false)} 
           variant="ghost" 
@@ -177,7 +176,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         >
           <span className="text-lg">×</span>
         </Button>
-        <div className="flex justify-center items-center mb-4">
+        <div className="flex justify-center items-center mb-4 pt-4">
           <DialogTitle className="text-center">Create Post</DialogTitle>
         </div>
         <DialogDescription className="text-center">
@@ -185,7 +184,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         </DialogDescription>
 
         <Form {...form}>
-          <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form id="create-post-form" onSubmit={form.handleSubmit((data) => createPostMutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
               name="postDate"
@@ -327,6 +326,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       {...field}
                       placeholder="Enter post content"
                       value={field.value || ''}
+                      className="min-h-[150px]"
                     />
                   </FormControl>
                   <FormMessage />
@@ -334,12 +334,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               )}
             />
 
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-6 pb-20">
               <Button
                 type="submit"
                 form="create-post-form"
                 variant="default"
-                className="w-full bg-violet-700 hover:bg-violet-800"
+                className="w-full bg-violet-700 hover:bg-violet-800 fixed bottom-16 left-0 right-0 mx-4 sm:relative sm:bottom-auto sm:mx-0"
                 disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
               >
                 {createPostMutation.isPending && (
