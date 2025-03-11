@@ -433,5 +433,14 @@ export const storage = {
       logger.error('Database error creating team:', error);
       throw error;
     }
+  },
+  
+  async deleteTeam(id: number): Promise<void> {
+    try {
+      await db.delete(teams).where(eq(teams.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete team ${id}:`, error);
+      throw error;
+    }
   }
 };
