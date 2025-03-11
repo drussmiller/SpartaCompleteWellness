@@ -322,8 +322,12 @@ export default function AdminPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 w-8 p-0 rounded-full absolute left-0" 
-                      onClick={() => document.querySelector('div[role="dialog"] button[data-state="closed"]')?.click()}
+                      className="h-8 w-8 p-0 rounded-full absolute right-2 top-2" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setResetPasswordOpen(false);
+                        document.querySelector('div[role="dialog"] button.DialogClose')?.click();
+                      }}
                     >
                       <span className="sr-only">Close</span>
                       <span className="text-lg font-semibold">×</span>
