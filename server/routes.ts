@@ -253,6 +253,34 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add team deletion endpoint
+  router.delete("/api/teams/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      logger.info(`Deleting team ${teamId} by user ${req.user.id}`);
+      
+      // Delete the team from the database
+      await db.delete(teams).where(eq(teams.id, teamId));
+      
+      // Return success response
+      res.status(200).json({ message: "Team deleted successfully" });
+    } catch (error) {
+      logger.error(`Error deleting team ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to delete team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Activities endpoints
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
