@@ -168,16 +168,16 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         </Button>
       </DialogTrigger>
       <DialogContent className="h-[95vh] overflow-y-auto pb-24 sm:pb-20">
-        <Button 
-          onClick={() => setOpen(false)} 
-          variant="ghost" 
-          className="absolute left-2 top-2 h-8 w-8 p-0"
-          aria-label="Close"
-        >
-          <span className="text-lg">×</span>
-        </Button>
-        <div className="flex justify-center items-center mb-4 pt-4">
-          <DialogTitle className="text-center">Create Post</DialogTitle>
+        <div className="flex justify-between items-center mb-4 pt-4 px-2">
+          <Button 
+            onClick={() => setOpen(false)} 
+            variant="ghost" 
+            className="h-8 w-8 p-0"
+            aria-label="Close"
+          >
+            <span className="text-lg">×</span>
+          </Button>
+          <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
         </div>
         <DialogDescription className="text-center">
           Share your wellness journey with your team
