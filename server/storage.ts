@@ -16,8 +16,7 @@ import {
   type Reaction,
   type Notification,
   type Measurement,
-  type WorkoutVideo,
-  type InsertTeam,
+  type WorkoutVideo
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
@@ -34,23 +33,6 @@ export const storage = {
       return await db.select().from(teams);
     } catch (error) {
       logger.error(`Failed to get teams: ${error}`);
-      throw error;
-    }
-  },
-
-  async createTeam(teamData: InsertTeam): Promise<Team> {
-    try {
-      const [newTeam] = await db
-        .insert(teams)
-        .values({
-          name: teamData.name,
-          description: teamData.description,
-          createdAt: new Date()
-        })
-        .returning();
-      return newTeam;
-    } catch (error) {
-      logger.error(`Failed to create team: ${error}`);
       throw error;
     }
   },
@@ -83,7 +65,6 @@ export const storage = {
       throw error;
     }
   },
-
   async getUser(id: number): Promise<User | null> {
     try {
       const result = await db
@@ -135,49 +116,21 @@ export const storage = {
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
-      logger.info('=== Storage: Creating Notification - Step 1 ===');
-      logger.info('Input:', {
-        userId: data.userId,
-        title: data.title,
-        message: data.message
-      });
-
-      // Build the insert query
-      const query = db
+      logger.debug("Creating notification:", data);
+      const [notification] = await db
         .insert(notifications)
         .values({
           userId: data.userId,
           title: data.title,
           message: data.message,
-          read: false,
+          read: data.read ?? false,
           createdAt: new Date()
         })
         .returning();
-
-      // Log the SQL query being executed
-      const sqlQuery = query.toSQL();
-      logger.info('SQL Query:', sqlQuery);
-
-      // Execute the query
-      logger.info('=== Storage: Executing Query ===');
-      const result = await query;
-      logger.info('Query Result:', result);
-
-      if (!result || result.length === 0) {
-        logger.error('No notification returned from insert');
-        throw new Error("Failed to create notification - no result returned");
-      }
-
-      const notification = result[0];
-      logger.info('=== Storage: Notification Created Successfully ===');
-      logger.info('New notification:', notification);
-
+      logger.debug("Notification created successfully:", notification.id);
       return notification;
     } catch (error) {
-      logger.error('=== Storage: Notification Creation Failed ===');
-      logger.error('Error type:', error?.constructor?.name);
-      logger.error('Error message:', error instanceof Error ? error.message : String(error));
-      logger.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      logger.error(`Failed to create notification: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
   },
@@ -220,31 +173,17 @@ export const storage = {
         query = query.where(eq(activities.day, day));
       }
 
-      const results = await query.orderBy(activities.week, activities.day);
-      return results.map(result => ({
-        ...result,
-        contentFields: result.contentFields as Activity['contentFields']
-      }));
+      return await query.orderBy(activities.week, activities.day);
     } catch (error) {
       logger.error(`Failed to get activities: ${error}`);
       throw error;
     }
   },
 
-  async createActivity(data: Omit<Activity, "id" | "createdAt">): Promise<Activity> {
+  async createActivity(data: Partial<Activity>): Promise<Activity> {
     try {
-      const [activity] = await db
-        .insert(activities)
-        .values({
-          ...data,
-          createdAt: new Date(),
-          contentFields: data.contentFields || []
-        })
-        .returning();
-      return {
-        ...activity,
-        contentFields: activity.contentFields as Activity['contentFields']
-      };
+      const [activity] = await db.insert(activities).values(data).returning();
+      return activity;
     } catch (error) {
       logger.error(`Failed to create activity: ${error}`);
       throw error;
@@ -264,11 +203,13 @@ export const storage = {
   async getAllPosts(): Promise<Post[]> {
     try {
       logger.debug("Getting all posts");
+      // Get all top-level posts (not comments) sorted by newest first
       const result = await db
         .select()
         .from(posts)
         .where(isNull(posts.parentId))
         .orderBy(desc(posts.createdAt));
+
       logger.debug(`Retrieved ${result.length} posts`);
       return result;
     } catch (error) {
@@ -297,23 +238,23 @@ export const storage = {
     }
   },
 
-  async createPost(data: Omit<Post, "id">): Promise<Post> {
+  async createPost(data: Partial<Post>): Promise<Post> {
     try {
       logger.debug("Creating post with data:", data);
       const [post] = await db
         .insert(posts)
         .values({
           userId: data.userId,
-          type: data.type,
+          type: data.type || "comment",
           content: data.content,
           imageUrl: data.imageUrl,
-          parentId: data.parentId,
+          parentId: data.parentId || null,
           depth: data.depth || 0,
           points: data.points || 1,
           createdAt: data.createdAt || new Date()
         })
         .returning();
-      logger.debug("Post created successfully:", post);
+      logger.debug("Post created successfully:", post.id);
       return post;
     } catch (error) {
       logger.error(`Failed to create post: ${error instanceof Error ? error.message : error}`);
@@ -331,14 +272,11 @@ export const storage = {
   },
 
   // Reactions
-  async createReaction(data: Omit<Reaction, "id" | "createdAt">): Promise<Reaction> {
+  async createReaction(data: { userId: number; postId: number; type: string }): Promise<Reaction> {
     try {
       const [reaction] = await db
         .insert(reactions)
-        .values({
-          ...data,
-          createdAt: new Date()
-        })
+        .values({ ...data, createdAt: new Date() })
         .returning();
       return reaction;
     } catch (error) {
@@ -375,7 +313,6 @@ export const storage = {
       throw error;
     }
   },
-
   // Add deleteUser method to storage adapter
   async deleteUser(userId: number): Promise<void> {
     try {
@@ -462,7 +399,7 @@ export const storage = {
     }
   },
 
-  async createComment(data: Omit<Post, "id">): Promise<Post> {
+  async createComment(data: Partial<Post>): Promise<Post> {
     try {
       logger.debug("Creating comment with data:", data);
       if (!data.userId || !data.content || !data.parentId) {
@@ -481,45 +418,11 @@ export const storage = {
           createdAt: new Date()
         })
         .returning();
-      logger.debug("Comment created successfully:", comment);
+      logger.debug("Comment created successfully:", comment.id);
       return comment;
     } catch (error) {
       logger.error(`Failed to create comment: ${error instanceof Error ? error.message : error}`);
       throw error;
     }
-  },
-  async createMissedPostsNotification(userId: number, missingPosts: {
-    food: number;
-    workout: number;
-    scripture: number;
-  }): Promise<Notification | null> {
-    // Skip if no posts are missing
-    if (missingPosts.food <= 0 && missingPosts.workout <= 0 && missingPosts.scripture <= 0) {
-      return null;
-    }
-
-    // Build notification message based on what's missing
-    let message = "Yesterday you missed: ";
-    const missing: string[] = [];
-
-    if (missingPosts.food > 0) {
-      missing.push(`${missingPosts.food} Food post${missingPosts.food > 1 ? 's' : ''}`);
-    }
-    if (missingPosts.workout > 0) {
-      missing.push(`${missingPosts.workout} Workout post`);
-    }
-    if (missingPosts.scripture > 0) {
-      missing.push(`${missingPosts.scripture} Scripture post`);
-    }
-
-    message += missing.join(", ");
-
-    return this.createNotification({
-      userId,
-      title: "Missing Daily Posts",
-      message,
-      read: false,
-      createdAt: new Date()
-    });
-  },
+  }
 };

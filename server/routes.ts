@@ -139,7 +139,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type)
         .toSQL();
-
+      
       logger.info('Post counts SQL query:', sqlQuery);
       logger.info('Post counts query result:', JSON.stringify(result));
       logger.info('Post counts for user:', req.user.id, 'date range:', startOfDay, 'to', endOfDay);
@@ -233,48 +233,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     } catch (error) {
       logger.error('Error fetching teams:', error);
       res.status(500).json({ message: "Failed to fetch teams" });
-    }
-  });
-
-  // Team creation endpoint
-  router.post("/api/teams", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized to create teams" });
-      }
-
-      logger.info('Team creation request data:', req.body);
-
-      // Validate team data using schema
-      const parseResult = insertTeamSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        logger.error('Team validation error:', parseResult.error);
-        return res.status(400).json({
-          message: "Invalid team data",
-          errors: parseResult.error.errors
-        });
-      }
-
-      // Create team in database
-      try {
-        const team = await storage.createTeam(parseResult.data);
-        logger.info('Team created successfully:', team);
-        return res.status(201).json(team);
-      } catch (dbError) {
-        logger.error('Database error creating team:', dbError);
-        return res.status(500).json({
-          message: "Database error creating team",
-          error: dbError instanceof Error ? dbError.message : "Unknown database error"
-        });
-      }
-    } catch (error) {
-      logger.error('Error creating team:', error);
-      // Ensure we always return JSON, not HTML error pages
-      res.setHeader('Content-Type', 'application/json');
-      return res.status(500).json({
-        message: "Failed to create team",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
     }
   });
 
@@ -955,8 +913,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });
-        }
+          return res.status(400).json({ error: "No content could be extracted" });        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -971,8 +928,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);
-        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({
@@ -1179,67 +1135,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error updating user:', error);
       res.status(500).json({
         message: "Failed to update user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add test notification endpoint
-  router.post("/api/notifications/test", authenticate, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      logger.info('=== Creating Test Notification ===');
-      logger.info('User:', req.user.id);
-
-      // Create a test notification with the minimum required fields
-      const notificationData = {
-        userId: req.user.id,
-        title: `Test Notification ${Date.now()}`,
-        message: "This is a test notification from the admin panel"
-      };
-
-      logger.info('Creating notification with data:', notificationData);
-
-      const notification = await storage.createNotification(notificationData);
-
-      logger.info('Notification created:', notification);
-
-      return res.status(201).json({
-        message: "Test notification created successfully",
-        notification
-      });
-    } catch (error) {
-      logger.error('=== Test Notification Creation Error ===');
-      logger.error('Error:', error instanceof Error ? error.message : String(error));
-      logger.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
-
-      return res.status(500).json({
-        message: "Failed to create test notification",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add check missed posts endpoint
-  router.post("/api/notifications/check-missed-posts", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      // Implementation of missed posts check logic here
-      res.setHeader('Content-Type', 'application/json');
-      return res.status(200).json({
-        message: "Missed posts check completed successfully"
-      });
-    } catch (error) {
-      logger.error('Error checking missed posts:', error);
-      res.setHeader('Content-Type', 'application/json');
-      return res.status(500).json({
-        message: "Failed to check missed posts",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
