@@ -1209,8 +1209,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Calculate current week (1-based) and day (Monday=1, Sunday=7)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
-      let currentDay = userLocalTime.getDay();
-      currentDay = currentDay === 0 ? 7 : currentDay; // Convert Sunday from 0 to 7
+      const currentDay = (daysSinceStart % 7) + 1;
 
       logger.info('Activity calculation (Local Time):', {
         userId: req.user.id,
