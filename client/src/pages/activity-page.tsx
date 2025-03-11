@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -6,22 +6,32 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 export default function ActivityPage() {
   const { user } = useAuth();
 
-  // Get the current day number based on Monday start
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const currentDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert Sunday (0) to 7
+  // Get timezone offset for the current user
+  const tzOffset = new Date().getTimezoneOffset();
 
-  // Calculate current week based on current day
-  const currentWeek = Math.ceil(currentDay / 7);
-  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
-  const [selectedDay, setSelectedDay] = useState(currentDay);
+  // Get current week and day from the server
+  const { data: currentProgress, isLoading: isProgressLoading } = useQuery({
+    queryKey: ["/api/activities/current", { tzOffset }],
+    enabled: !!user
+  });
 
-  const { data: activities } = useQuery({
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(1);
+
+  // Update selected week/day when we get the current progress
+  useEffect(() => {
+    if (currentProgress) {
+      setSelectedWeek(currentProgress.currentWeek);
+      setSelectedDay(currentProgress.currentDay);
+    }
+  }, [currentProgress]);
+
+  const { data: activities, isLoading: isActivitiesLoading } = useQuery({
     queryKey: ["/api/activities"],
   });
 
@@ -50,17 +60,30 @@ export default function ActivityPage() {
   };
 
   const navigateNextDay = () => {
-    const maxDayInCurrentWeek = Math.max(...(activities
-      ?.filter((a) => a.week === selectedWeek)
-      .map((a) => a.day) || [7]));
+    // Only allow navigating up to current day
+    if (!currentProgress) return;
+
+    const isCurrentWeek = selectedWeek === currentProgress.currentWeek;
+    const maxDayInCurrentWeek = isCurrentWeek ? 
+      currentProgress.currentDay : 
+      Math.max(...(activities?.filter((a) => a.week === selectedWeek).map((a) => a.day) || [7]));
 
     if (selectedDay < maxDayInCurrentWeek) {
       setSelectedDay(selectedDay + 1);
-    } else if (selectedWeek < Math.max(...weeks)) {
+    } else if (selectedWeek < currentProgress.currentWeek) {
       setSelectedWeek(selectedWeek + 1);
       setSelectedDay(1);
     }
   };
+
+  if (isProgressLoading || isActivitiesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading activities...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
@@ -87,7 +110,11 @@ export default function ActivityPage() {
             variant="outline"
             size="icon"
             onClick={navigateNextDay}
-            disabled={(selectedWeek * 7 + selectedDay) >= (currentWeek * 7 + currentDay)}
+            disabled={
+              !currentProgress ||
+              (selectedWeek === currentProgress.currentWeek && 
+               selectedDay >= currentProgress.currentDay)
+            }
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
