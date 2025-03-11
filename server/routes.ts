@@ -859,7 +859,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Post counts endpoint is now defined at the top of the file to avoid route conflicts
 
-  // Delete post endpoint
+  // Delete post endpoint - optimized version
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -869,41 +869,44 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      // Get the post and verify ownership in a single query
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId))
-        .limit(1);
-
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
-
-      // Check if user is admin or the post owner
-      if (!req.user.isAdmin && post.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to delete this post" });
-      }
-
-      // Delete post and its reactions in a single transaction
+      // Delete post and all related data in a single transaction with optimized queries
       await db.transaction(async (tx) => {
-        // Delete reactions first (foreign key constraint)
-        await tx.delete(reactions).where(eq(reactions.postId, postId));
+        // Delete reactions and comments in parallel using Promise.all
+        await Promise.all([
+          // Delete all reactions
+          tx.delete(reactions)
+            .where(eq(reactions.postId, postId)),
 
-        // Delete all comments for this post
-        await tx.delete(posts).where(eq(posts.parentId, postId));
+          // Delete all comments
+          tx.delete(posts)
+            .where(eq(posts.parentId, postId))
+        ]);
 
-        // Delete the post itself
-        await tx.delete(posts).where(eq(posts.id, postId));
+        // Then delete the post itself, checking permissions in the same query
+        const [deletedPost] = await tx
+          .delete(posts)
+          .where(
+            and(
+              eq(posts.id, postId),
+              or(
+                eq(posts.userId, req.user.id),
+                sql`${req.user.isAdmin} = true`
+              )
+            )
+          )
+          .returning();
+
+        if (!deletedPost) {
+          throw new Error("Not authorized or post not found");
+        }
       });
 
       res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      logger.error('Error deleting post:', error);
-      res.status(500).json({
-        message: "Failed to delete post",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
+      if (error.message === "Not authorized or post not found") {
+        return res.status(403).json({ message: "Not authorized to delete this post or post not found" });
+      }
+      res.status(500).json({ message: "Failed to delete post" });
     }
   });
 
