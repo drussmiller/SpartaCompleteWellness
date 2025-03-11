@@ -323,10 +323,16 @@ export default function AdminPage() {
                       variant="ghost" 
                       size="sm" 
                       className="h-8 w-8 p-0 rounded-full absolute right-2 top-2" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setResetPasswordOpen(false);
-                        document.querySelector('div[role="dialog"] button.DialogClose')?.click();
+                      onClick={() => {
+                        // Direct approach to close the dialog
+                        const closeButton = document.querySelector('[data-radix-dialog-close]');
+                        if (closeButton instanceof HTMLElement) {
+                          closeButton.click();
+                        } else {
+                          // Fallback to setting state directly
+                          form.reset();
+                          document.querySelector('body')?.click();
+                        }
                       }}
                     >
                       <span className="sr-only">Close</span>
