@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -318,9 +319,19 @@ export default function AdminPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Team</DialogTitle>
-                  </DialogHeader>
+                  <div className="flex items-center mb-2 relative">
+                    <DialogPrimitive.Close asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0 rounded-full absolute right-2 top-2" 
+                      >
+                        <span className="sr-only">Close</span>
+                        <span className="text-lg font-semibold">×</span>
+                      </Button>
+                    </DialogPrimitive.Close>
+                    <DialogTitle className="w-full text-center">Create New Team</DialogTitle>
+                  </div>
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
                       <FormField
@@ -425,18 +436,38 @@ export default function AdminPage() {
                             >
                               Edit
                             </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="bg-white hover:bg-red-50 text-red-600"
-                              onClick={() => {
-                                if (confirm("Are you sure you want to delete this team?")) {
-                                  deleteTeamMutation.mutate(team.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="bg-white hover:bg-red-50 text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogTitle>Delete Team?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete the team "{team.name}"? This action cannot be undone.
+                                  {sortedUsers?.filter((u) => u.teamId === team.id).length > 0 && (
+                                    <p className="mt-2 text-amber-600 font-medium">
+                                      Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members. 
+                                      Deleting it will remove these users from the team.
+                                    </p>
+                                  )}
+                                </AlertDialogDescription>
+                                <div className="flex items-start justify-end gap-2 mt-4">
+                                  <AlertDialogCancel className="h-10">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700 text-white h-10"
+                                    onClick={() => deleteTeamMutation.mutate(team.id)}
+                                  >
+                                    Delete Team
+                                  </AlertDialogAction>
+                                </div>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       </CardHeader>

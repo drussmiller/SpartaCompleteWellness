@@ -49,13 +49,16 @@ export default function ActivityPage() {
     if (selectedDay > 1) {
       setSelectedDay(selectedDay - 1);
     } else if (selectedWeek > 1) {
-      setSelectedWeek(selectedWeek - 1);
-      // Find the max day in the previous week
-      const prevWeekDays = activities
-        ?.filter((a) => a.week === selectedWeek - 1)
-        .map((a) => a.day)
-        .sort((a, b) => b - a) || [];
-      setSelectedDay(prevWeekDays[0] || 7);
+      // Move to previous week
+      const prevWeek = selectedWeek - 1;
+      setSelectedWeek(prevWeek);
+      
+      // Always use day 7 when moving to the previous week from day 1
+      // This ensures we go from Week 2 - Day 1 to Week 1 - Day 7
+      const maxDay = 7;
+      
+      console.log(`Navigating to Week ${prevWeek}, Day ${maxDay}`);
+      setSelectedDay(maxDay);
     }
   };
 
@@ -63,15 +66,21 @@ export default function ActivityPage() {
     // Only allow navigating up to current day
     if (!currentProgress) return;
 
-    const isCurrentWeek = selectedWeek === currentProgress.currentWeek;
-    const maxDayInCurrentWeek = isCurrentWeek ? 
-      currentProgress.currentDay : 
-      Math.max(...(activities?.filter((a) => a.week === selectedWeek).map((a) => a.day) || [7]));
-
-    if (selectedDay < maxDayInCurrentWeek) {
+    // Always assume each week has 7 days
+    const maxDayInCurrentWeek = 7;
+    
+    // Check if we're at the end of the current week
+    const isLastDayOfWeek = selectedDay >= maxDayInCurrentWeek;
+    
+    if (!isLastDayOfWeek) {
+      // Not the last day of the week, just increment the day
+      console.log(`Navigating from Day ${selectedDay} to Day ${selectedDay + 1}`);
       setSelectedDay(selectedDay + 1);
     } else if (selectedWeek < currentProgress.currentWeek) {
-      setSelectedWeek(selectedWeek + 1);
+      // Last day of week, move to next week day 1
+      const nextWeek = selectedWeek + 1;
+      console.log(`Navigating to Week ${nextWeek}, Day 1`);
+      setSelectedWeek(nextWeek);
       setSelectedDay(1);
     }
   };
