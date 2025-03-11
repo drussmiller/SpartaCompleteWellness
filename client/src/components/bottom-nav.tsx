@@ -15,7 +15,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
     { icon: HelpCircle, label: "Help", href: "/help" },
-    { icon: Bell, label: "Alert", href: "/notifications" },
+    { icon: Bell, label: "Notifications", href: "/notifications" },
   ];
 
   return (
