@@ -88,12 +88,11 @@ export function CommentList({ comments, postId }: CommentListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      toast({
-        description: "Reply posted successfully",
-      });
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
       setReplyingTo(null);
+      toast({
+        description: "Reply added successfully",
+      });
     },
     onError: (error: Error) => {
       console.error("Reply mutation error:", error);
