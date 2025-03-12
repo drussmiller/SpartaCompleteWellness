@@ -24,10 +24,15 @@ export default function ActivityPage() {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [selectedDay, setSelectedDay] = useState(1);
 
-  // Update selected week/day when we get the current progress
+  // Debug logging for timezone and date information
   useEffect(() => {
     if (currentProgress) {
-      console.log('Current progress:', currentProgress); // Debug log
+      console.log('Activity Debug:', {
+        serverResponse: currentProgress,
+        clientTimezone: -tzOffset/60,
+        clientDate: new Date().toISOString(),
+        clientLocalDate: new Date().toString()
+      });
       setSelectedWeek(currentProgress.currentWeek);
       setSelectedDay(currentProgress.currentDay);
     }

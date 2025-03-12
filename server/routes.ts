@@ -894,7 +894,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
           logger.info(`Deleting reactions andcomments for post ${postId}`);
 
-          // Delete reactions and comments in parallel using Promise.all
+          //          // Delete reactions and comments in parallel using Promise.all
           await Promise.all([
             // Delete all reactions
             tx.delete(reactions)
@@ -1262,7 +1262,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-      console.log('Timezone offset:', tzOffset, 'minutes'); // Debug log
+      console.log('Timezone offset:', tzOffset, 'minutes'); 
 
       // Get user's team join date
       const [user] = await db
@@ -1278,40 +1278,37 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Program start date (2/24/2025)
       const programStart = new Date('2025-02-24T00:00:00.000Z');
 
-      // Get current time in user's timezone
+      // Convert server time to user's local time
       const serverNow = new Date();
-      const userNow = new Date(serverNow.getTime() - (tzOffset * 60000));
+      // Adjust the time to user's timezone
+      const userTime = new Date(serverNow.getTime() - (tzOffset * 60000));
 
-      // Get start of day in user's timezone
-      const userStartOfDay = new Date(userNow);
+      // Get start of user's day in their timezone
+      const userStartOfDay = new Date(userTime);
       userStartOfDay.setHours(0, 0, 0, 0);
 
       // Calculate days since program start
       const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
       const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
 
-      // Calculate current week (starting from 1)
+      // Calculate week (add 1 since we start at week 1)
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
 
-      // Calculate current day (1-7, Monday=1)
-      // Create date in user's timezone
-      const userLocalDate = new Date(userNow.getTime());
-      let dayNumber = userLocalDate.getDay();
-      // Convert from Sunday=0 to Monday=1 format
-      dayNumber = dayNumber === 0 ? 7 : dayNumber;
+      // Get the day number in user's timezone (1-7, Monday=1)
+      // First create a date object for user's current time
+      const userLocalDate = new Date(userTime);
+      const rawDay = userLocalDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert Sunday from 0 to 7
 
-      // Debug logs
-      console.log('Activity calculation:', {
-        programStart: programStart.toISOString(),
-        serverNow: serverNow.toISOString(),
-        userNow: userNow.toISOString(),
-        userStartOfDay: userStartOfDay.toISOString(),
-        userLocalDay: userLocalDate.getDay(),
-        finalDayNumber: dayNumber,
-        daysSinceStart,
-        weekNumber,
+      // Detailed debug logging
+      console.log('Activity Debug:', {
+        serverTime: serverNow.toISOString(),
+        userTime: userTime.toISOString(),
+        userLocalDate: userLocalDate.toString(),
+        rawDay,
         dayNumber,
-        timezone: `${-tzOffset/60} hours from UTC`
+        tzOffset,
+        timezoneHours: -tzOffset/60
       });
 
       res.json({
@@ -1320,7 +1317,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         daysSinceStart,
         debug: {
           programStart: programStart.toISOString(),
-          userNow: userNow.toISOString(),
+          userNow: userTime.toISOString(),
           calculations: {
             daysSinceStart,
             weekCalculation: `${daysSinceStart} days = ${Math.floor(daysSinceStart / 7)} complete weeks + 1 = Week ${weekNumber}`,
