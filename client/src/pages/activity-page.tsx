@@ -17,7 +17,7 @@ export default function ActivityPage() {
 
   // Get current week and day from the server, always calculating from team join date
   const { data: currentProgress, isLoading: isProgressLoading } = useQuery({
-    queryKey: ["/api/activities/current", tzOffset],
+    queryKey: ["/api/activities/current", { tzOffset }],
     enabled: !!user,
   });
 
@@ -27,6 +27,7 @@ export default function ActivityPage() {
   // Update selected week/day when we get the current progress
   useEffect(() => {
     if (currentProgress) {
+      console.log('Current progress:', currentProgress); // Debug log
       setSelectedWeek(currentProgress.currentWeek);
       setSelectedDay(currentProgress.currentDay);
     }
