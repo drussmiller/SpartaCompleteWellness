@@ -74,8 +74,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     enabled: isOpen && Boolean(postId),
-    staleTime: 30000, // Increase stale time to 30 seconds
-    refetchOnWindowFocus: false, // Disable refetch on window focus
+    staleTime: 60000, // Increase to 60 seconds
+    refetchOnWindowFocus: false,
+    refetchInterval: false, // Disable automatic periodic refetching
+    refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);

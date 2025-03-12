@@ -24,6 +24,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
   const { count: commentCount } = useCommentCount(post.id);
 
+  // Prevent re-renders by using memo for stable references
+  const stablePost = useMemo(() => post, [post.id]);
+
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
