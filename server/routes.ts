@@ -889,8 +889,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
           if (!req.user.isAdmin && post.userId !== req.user.id) {
             logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
-            throw new Error("Not authorized to delete this post");
-          }
+            throw new Error("Not authorized to delete this post");          }
 
           logger.info(`Deleting reactions andcomments for post ${postId}`);
 
@@ -1270,78 +1269,60 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!user.teamJoinedAt) {
+      if (!user?.teamJoinedAt) {
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Get dates in user's timezone
+      // Convert dates to user's timezone
       const serverNow = new Date();
       const userNow = new Date(serverNow.getTime() - (tzOffset * 60000));
-      const joinDate = new Date(user.teamJoinedAt);
-      joinDate.setHours(0, 0, 0, 0);
 
-      // If join date is a Monday, use it directly; otherwise find next Monday
-      const startDate = new Date(joinDate);
-      const joinDayOfWeek = joinDate.getDay();
-
-      // Only adjust to next Monday if the join date wasn't already a Monday
-      if (joinDayOfWeek !== 1) {
-        const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek);
-        startDate.setDate(joinDate.getDate() + daysUntilMonday);
-      }
+      // Start date is team join date (already a Monday - 2/24/2025)
+      const startDate = new Date(user.teamJoinedAt);
       startDate.setHours(0, 0, 0, 0);
 
-      // Get the start of today in user's timezone
-      const startOfUserDay = new Date(userNow);
-      startOfUserDay.setHours(0, 0, 0, 0);
+      // Get start of user's current day
+      const userStartOfDay = new Date(userNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate elapsed milliseconds and days
-      const elapsedMs = startOfUserDay.getTime() - startDate.getTime();
-      const elapsedDays = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+      // Calculate days between start date and user's current day
+      const totalDays = Math.floor((userStartOfDay.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
 
-      // Calculate weeks (starting from 1)
-      const currentWeek = Math.floor(elapsedDays / 7) + 1;
+      // Calculate week (add 1 since we start at week 1)
+      const weekNumber = Math.floor(totalDays / 7) + 1;
 
-      // Calculate current day (1-7, Monday=1, Sunday=7) based on user's timezone
-      let currentDay = userNow.getDay();
-      currentDay = currentDay === 0 ? 7 : currentDay;
+      // Calculate day (1 = Monday, 7 = Sunday)
+      let dayNumber = userNow.getDay();
+      dayNumber = dayNumber === 0 ? 7 : dayNumber;
 
-      logger.info('Detailed week calculation:', {
-        teamJoinedAt: user.teamJoinedAt,
-        joinDate: joinDate.toISOString(),
+      logger.info('Activity calculation:', {
         startDate: startDate.toISOString(),
-        serverNow: serverNow.toISOString(),
         userNow: userNow.toISOString(),
-        startOfUserDay: startOfUserDay.toISOString(),
-        tzOffset,
-        elapsedDays,
-        weekCalculation: `${elapsedDays} days / 7 = ${elapsedDays/7} weeks, floor = ${Math.floor(elapsedDays/7)}, +1 = ${currentWeek}`,
-        currentWeek,
-        currentDay
+        totalDays,
+        weekNumber,
+        dayNumber,
+        userTimezone: -tzOffset/60 + ' hours'
       });
 
       res.json({
-        currentWeek,
-        currentDay,
-        daysSinceStart: elapsedDays,
+        currentWeek: weekNumber,
+        currentDay: dayNumber,
+        daysSinceStart: totalDays,
         debug: {
-          joinDate: joinDate.toISOString(),
           startDate: startDate.toISOString(),
-          serverNow: serverNow.toISOString(),
           userNow: userNow.toISOString(),
-          tzOffset,
           calculations: {
-            elapsedDays,
-            elapsedWeeks: Math.floor(elapsedDays/7),
-            finalWeek: currentWeek,
-            currentDay
+            totalDays,
+            weekCalc: `${totalDays} days / 7 = week ${weekNumber}`,
+            dayNumber,
+            timezone: -tzOffset/60 + ' hours'
           }
         }
       });
     } catch (error) {
-      logger.error('Error calculating current activity:', error);
+      logger.error('Error calculating activity dates:', error);
       res.status(500).json({
-        message: "Failed to calculate current activity",
+        message: "Failed to calculate activity dates",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
