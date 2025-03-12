@@ -29,11 +29,13 @@ export function useCommentCount(postId: number) {
     // Don't retry too aggressively
     retry: 1,
     // Cache results longer to reduce request frequency
-    staleTime: 60000,
+    staleTime: 120000, // 2 minutes
     // Use previous data if available
     keepPreviousData: true,
-    // Disable refetch on window focus to reduce server load
+    // Disable all automatic refetching
     refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchOnMount: "if-stale",
     // Disable request during SSR
     enabled: typeof window !== 'undefined' && !!postId
   });
