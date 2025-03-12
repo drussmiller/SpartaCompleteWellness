@@ -120,13 +120,65 @@ export default function HomePage() {
 
       <main className="p-4 max-w-2xl mx-auto w-full">
         <div className="space-y-4">
-          {posts?.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-          {!posts?.length && (
-            <p className="text-center text-muted-foreground py-8">
-              No posts yet. Be the first to share!
-            </p>
+          {posts ? (
+            posts.length > 0 ? (
+              <>
+                {/* Render only the first 10 posts directly */}
+                {posts.slice(0, 10).map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+                
+                {/* For remaining posts, use Intersection Observer to load them when they're about to enter viewport */}
+                {posts.length > 10 && (
+                  <div className="pt-4">
+                    <h3 className="text-lg font-medium">More posts</h3>
+                    {posts.slice(10).map((post) => (
+                      <div 
+                        key={post.id} 
+                        className="lazy-post-container"
+                        ref={(el) => {
+                          if (!el) return;
+                          const observer = new IntersectionObserver(
+                            (entries) => {
+                              entries.forEach((entry) => {
+                                if (entry.isIntersecting) {
+                                  // Replace placeholder with actual post
+                                  const container = entry.target;
+                                  container.innerHTML = '';
+                                  const postElement = document.createElement('div');
+                                  container.appendChild(postElement);
+                                  
+                                  // Render the post card in the element
+                                  const root = createRoot(postElement);
+                                  root.render(<PostCard post={post} />);
+                                  
+                                  // Disconnect observer after loading
+                                  observer.disconnect();
+                                }
+                              });
+                            },
+                            { rootMargin: '200px' }
+                          );
+                          observer.observe(el);
+                        }}
+                      >
+                        <div className="h-32 bg-gray-100 rounded-md animate-pulse my-4"></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No posts yet. Be the first to share!
+              </p>
+            )
+          ) : (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-40 bg-gray-100 rounded-md animate-pulse"></div>
+              ))}
+            </div>
           )}
         </div>
       </main>
