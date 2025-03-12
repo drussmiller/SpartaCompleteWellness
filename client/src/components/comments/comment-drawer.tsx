@@ -23,7 +23,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
-  
+
   // Focus on the comment input when the drawer opens
   useEffect(() => {
     if (isOpen) {
@@ -34,7 +34,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           commentInputRef.current.focus();
           console.log("Direct focus attempt");
         }
-        
+
         // Method 2: Find by query selector if ref didn't work
         setTimeout(() => {
           const textarea = document.querySelector('.comment-drawer textarea') as HTMLTextAreaElement;
@@ -44,7 +44,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           }
         }, 200);
       };
-      
+
       // Try focusing multiple times with increasing delays
       [50, 150, 300, 600, 1000].forEach(delay => {
         setTimeout(focusTextarea, delay);
@@ -110,6 +110,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
       toast({
         description: "Comment posted successfully",
       });
