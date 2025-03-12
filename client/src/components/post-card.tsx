@@ -29,6 +29,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
+      // Check if the post ID is a number (real post) or a timestamp (optimistic update)
+      const isOptimisticPost = typeof post.id === 'number' ? post.id > 1000000000000 : false;
+      
+      if (isOptimisticPost) {
+        // For optimistic posts that haven't been saved to the server yet,
+        // we just need to remove them from the local cache
+        return post.id;
+      }
+      
+      // For real posts, send delete request to the server
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
         throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
