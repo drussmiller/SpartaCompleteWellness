@@ -53,7 +53,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     const remainingPosts = remaining[typeKey];
 
     if (remainingPosts <= 0) {
-      return "(Daily limit reached)";
+      return "";
     }
 
     return `(${remainingPosts} remaining today)`;
@@ -256,7 +256,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               )}
             />
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout") && (
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous") && (
               <FormField
                 control={form.control}
                 name="imageUrl"
