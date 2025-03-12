@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 
-export function PostCard({ post }: { post: Post & { author: User } }) {
+export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -156,4 +156,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       />
     </Card>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if the post ID or content has changed
+  return prevProps.post.id === nextProps.post.id && prevProps.post.content === nextProps.post.content;
+});
