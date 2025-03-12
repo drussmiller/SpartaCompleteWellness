@@ -53,10 +53,13 @@ export default function HomePage() {
       }
     },
     enabled: !!user,
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 30000,
-    refetchOnWindowFocus: false
+    retry: 1,
+    retryDelay: 2000,
+    staleTime: 300000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false
   });
 
   if (isLoading) {

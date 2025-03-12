@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useState, useRef } from 'react';
 
 export function useCommentCount(postId: number) {
+  const [count, setCount] = useState(0);
+  const prevCountRef = useRef(0);
+
   const { data, isLoading, error } = useQuery({
     queryKey: [`/api/posts/comments/${postId}/count`],
     queryFn: async () => {
@@ -40,8 +44,16 @@ export function useCommentCount(postId: number) {
     enabled: typeof window !== 'undefined' && !!postId
   });
 
+  // Only update the count state if the count has changed
+  useEffect(() => {
+    if (data?.count !== prevCountRef.current) {
+      setCount(data?.count ?? 0);
+      prevCountRef.current = data?.count ?? 0;
+    }
+  }, [data]);
+
   return {
-    count: data?.count ?? 0,
+    count: count,
     isLoading,
     error
   };
