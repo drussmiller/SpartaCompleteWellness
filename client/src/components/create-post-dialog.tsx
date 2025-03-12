@@ -53,7 +53,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     const remainingPosts = remaining[typeKey];
 
     if (remainingPosts <= 0) {
-      return "";
+      return "(no more remaining for today)";
     }
 
     return `(${remainingPosts} remaining today)`;
