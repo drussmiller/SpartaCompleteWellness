@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export function useCommentCount(postId: number) {
   const [count, setCount] = useState(0);
