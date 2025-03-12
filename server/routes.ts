@@ -887,9 +887,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             throw new Error("Post not found");
           }
 
-          if (!requser.isAdmin && post.userId !== req.user.id) {
+          if (!req.user.isAdmin && post.userId !== req.user.id) {
             logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
-            throw new Error("Not authorized to delete this post");          }
+            throw new Error("Not authorized to delete this post");
+          }
 
           logger.info(`Deleting reactions andcomments for post ${postId}`);
 
@@ -1261,7 +1262,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-      console.log('Timezone offset:', tzOffset); // Debug log
+      console.log('Timezone offset:', tzOffset, 'minutes'); // Debug log
 
       // Get user's team join date
       const [user] = await db
@@ -1293,9 +1294,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
 
       // Calculate current day (1-7, Monday=1)
-      // Create a new Date object for UTC time matching user's local day
-      const userDate = new Date(userNow.toISOString());
-      let dayNumber = userDate.getUTCDay();
+      // Create date in user's timezone
+      const userLocalDate = new Date(userNow.getTime());
+      let dayNumber = userLocalDate.getDay();
       // Convert from Sunday=0 to Monday=1 format
       dayNumber = dayNumber === 0 ? 7 : dayNumber;
 
@@ -1305,6 +1306,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         serverNow: serverNow.toISOString(),
         userNow: userNow.toISOString(),
         userStartOfDay: userStartOfDay.toISOString(),
+        userLocalDay: userLocalDate.getDay(),
+        finalDayNumber: dayNumber,
         daysSinceStart,
         weekNumber,
         dayNumber,
