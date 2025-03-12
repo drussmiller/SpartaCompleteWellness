@@ -416,15 +416,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Allow empty content for food and workout posts with images
       if (!isEmptyContentAllowed && (!postData.content || !postData.content.trim())) {
-        logger.error("Missing required content:", { type: postData.type, content: postData.content, hasImage });
+        logger.error("Missing required content");
         return res.status(400).json({ message: "Content is required" });
       }
 
-
-      // For comments, validate additional required fields
+      // For comments, handle separately
       if (postData.type === "comment") {
         if (!postData.parentId) {
-          logger.error("Missing parentId for comment:", postData);
+          logger.error("Missing parentId for comment");
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
 
@@ -437,10 +436,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           });
           res.status(201).json(post);
         } catch (dbError) {
-          logger.error("Database error creating comment:", {
-            error: dbError,
-            stack: dbError instanceof Error ? dbError.stack : undefined
-          });
+          logger.error("Database error creating comment:", dbError);
           throw dbError;
         }
       } else {
@@ -451,24 +447,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const post = await storage.createPost({
             userId: req.user.id,
             type: postData.type,
-            content: postData.content.trim(),
+            content: postData.content?.trim() || '',
             imageUrl: imageUrl,
+            points: postData.points || null,
             createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
           });
           res.status(201).json(post);
         } catch (dbError) {
-          logger.error("Database error creating post:", {
-            error: dbError,
-            stack: dbError instanceof Error ? dbError.stack : undefined
-          });
+          logger.error("Database error creating post:", dbError);
           throw dbError;
         }
       }
     } catch (error) {
-      logger.error("Error in post/comment creation:", {
-        error: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      logger.error("Error in post/comment creation:", error);
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create post/comment",
         error: error instanceof Error ? error.stack : "Unknown error"
