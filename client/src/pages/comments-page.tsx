@@ -39,6 +39,10 @@ export default function CommentsPage() {
   const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
     queryKey: ["/api/posts/comments", postId],
     enabled: Boolean(postId),
+    staleTime: 60000, // Increase to 60 seconds
+    refetchOnWindowFocus: false,
+    refetchInterval: false, // Disable automatic periodic refetching
+    refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);

@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useState, useRef, useEffect } from 'react';
 
 export function useCommentCount(postId: number) {
+  const [count, setCount] = useState(0);
+  const prevCountRef = useRef(0);
+
   const { data, isLoading, error } = useQuery({
     queryKey: [`/api/posts/comments/${postId}/count`],
     queryFn: async () => {
@@ -29,17 +33,27 @@ export function useCommentCount(postId: number) {
     // Don't retry too aggressively
     retry: 1,
     // Cache results longer to reduce request frequency
-    staleTime: 60000,
+    staleTime: 120000, // 2 minutes
     // Use previous data if available
     keepPreviousData: true,
-    // Disable refetch on window focus to reduce server load
+    // Disable all automatic refetching
     refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchOnMount: "if-stale",
     // Disable request during SSR
     enabled: typeof window !== 'undefined' && !!postId
   });
 
+  // Only update the count state if the count has changed
+  useEffect(() => {
+    if (data?.count !== prevCountRef.current) {
+      setCount(data?.count ?? 0);
+      prevCountRef.current = data?.count ?? 0;
+    }
+  }, [data]);
+
   return {
-    count: data?.count ?? 0,
+    count: count,
     isLoading,
     error
   };

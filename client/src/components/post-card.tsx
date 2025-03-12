@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 
-export function PostCard({ post }: { post: Post & { author: User } }) {
+export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -23,6 +23,9 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
   const canDelete = isOwnPost;
 
   const { count: commentCount } = useCommentCount(post.id);
+
+  // Prevent re-renders by using memo for stable references
+  const stablePost = useMemo(() => post, [post.id]);
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
@@ -153,4 +156,7 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
       />
     </Card>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if the post ID or content has changed
+  return prevProps.post.id === nextProps.post.id && prevProps.post.content === nextProps.post.content;
+});

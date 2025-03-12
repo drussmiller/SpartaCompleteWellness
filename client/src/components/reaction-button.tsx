@@ -68,8 +68,21 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { data: reactions = [] } = useQuery<Reaction[]>({
+  const { data: reactions = [], isLoading } = useQuery({
     queryKey: [`/api/posts/${postId}/reactions`],
+    staleTime: 60000, // 60 seconds
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchOnMount: "if-stale",
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", `/api/posts/${postId}/reactions`);
+        return res.json();
+      } catch (error) {
+        console.error("Error fetching reactions:", error);
+        return []; // Return an empty array on error
+      }
+    },
   });
 
   const addReactionMutation = useMutation({

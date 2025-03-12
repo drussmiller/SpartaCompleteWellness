@@ -3,14 +3,17 @@ import { forwardRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // Added import
+
 
 interface CommentFormProps {
-  onSubmit: (content: string) => Promise<void>;
+  onSubmit: (content: string, postId: string) => Promise<void>; // Added postId
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
   onCancel?: () => void;
   inputRef?: RefObject<HTMLTextAreaElement>;
+  postId: string; // Added postId
 }
 
 export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
@@ -19,17 +22,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   placeholder = "Enter a comment...",
   defaultValue = "",
   onCancel,
-  inputRef
+  inputRef,
+  postId // Added postId
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const internalRef = useRef<HTMLTextAreaElement>(null);
-  
-  // Ensure container clicks don't take focus away from textarea
+  const queryClient = useQueryClient(); // Added useQueryClient hook
+
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // This will help us expose the textarea element to both refs
+
   const setRefs = (element: HTMLTextAreaElement | null) => {
-    // Update both refs
     if (ref) {
       if (typeof ref === 'function') {
         ref(element);
@@ -42,8 +44,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
     internalRef.current = element;
   };
-  
-  // Function to ensure textarea has focus
+
   const ensureTextareaFocus = () => {
     if (internalRef.current) {
       internalRef.current.focus();
@@ -51,7 +52,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   };
 
-  // Focus using the internal ref when component mounts
   useEffect(() => {
     if (internalRef.current) {
       setTimeout(() => {
@@ -63,7 +63,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const handleSubmit = async () => {
     if (!content.trim()) return;
-    await onSubmit(content);
+    await onSubmit(content, postId); // Pass postId to onSubmit
     setContent("");
   };
 
@@ -81,15 +81,13 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       className="flex flex-col gap-2" 
       ref={containerRef}
       onClick={(e) => {
-        // When clicking anywhere in the form container, focus the textarea
         ensureTextareaFocus();
-        // Don't propagate the click event to parent elements
         e.stopPropagation();
       }}
     >
       <div className="flex gap-2">
         <Textarea
-          ref={setRefs} // Use our custom ref setter
+          ref={setRefs} 
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -99,7 +97,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           id="comment-textarea"
           style={{ height: '38px', minHeight: '38px', maxHeight: '38px' }}
           disabled={isSubmitting}
-          autoFocus={true} // Keep autoFocus attribute
+          autoFocus={true} 
           onFocus={() => console.log("Textarea focused")}
           onClick={() => console.log("Textarea clicked")}
         />
