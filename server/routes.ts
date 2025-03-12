@@ -101,12 +101,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const queryStartTime = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const queryEndTime = new Date(endOfDay.getTime() + (tzOffset * 60000));
 
-      logger.info('Post count query parameters:', {
-        userId: req.user.id,
-        startTime: queryStartTime.toISOString(),
-        endTime: queryEndTime.toISOString(),
-        tzOffset
-      });
 
       // Query posts for the specified date by type
       const result = await db
@@ -126,8 +120,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         )
         .groupBy(posts.type);
 
-      logger.info('Post counts raw result:', result);
-
       // Initialize counts with zeros
       const counts = {
         food: 0,
@@ -142,8 +134,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           counts[row.type as keyof typeof counts] = Number(row.count);
         }
       });
-
-      logger.info('Calculated counts:', counts);
 
       // Define maximum posts allowed per type
       const maxPosts = {
@@ -161,8 +151,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse)
       };
 
-      logger.info('Remaining posts:', remaining);
-
       // Calculate if user can post for each type
       const isSaturday = userDate.getDay() === 6;
       const canPost = {
@@ -171,8 +159,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         scripture: counts.scripture < maxPosts.scripture,
         memory_verse: isSaturday && counts.memory_verse < maxPosts.memory_verse
       };
-
-      logger.info('Can post status:', canPost);
 
       res.json({ counts, canPost, remaining, maxPosts });
     } catch (error) {
@@ -405,15 +391,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-      logger.info("\n=== Comment/Post Creation Debug ===");
-      logger.info("Raw request body:", req.body);
-      logger.info("Current user:", req.user.id);
-
       let postData = req.body;
       if (typeof postData.data === 'string') {
         try {
           postData = JSON.parse(postData.data);
-          logger.info("Parsed form data:", postData);
         } catch (parseError) {
           logger.error("Error parsing post data:", parseError);
           return res.status(400).json({ message: "Invalid post data format" });
@@ -443,14 +424,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
 
-        logger.info("Creating comment with data:", {
-          userId: req.user.id,
-          type: postData.type,
-          content: postData.content,
-          parentId: postData.parentId,
-          depth: postData.depth || 0
-        });
-
         try {
           const post = await storage.createComment({
             userId: req.user.id,
@@ -458,7 +431,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             parentId: postData.parentId,
             depth: postData.depth || 0
           });
-          logger.info("Comment created successfully:", post);
           res.status(201).json(post);
         } catch (dbError) {
           logger.error("Database error creating comment:", {
@@ -469,16 +441,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       } else {
         // Handle regular post creation
-        logger.info("Creating post with data:", {
-          userId: req.user.id,
-          type: postData.type,
-          content: postData.content,
-          imageUrl: req.file ? `/uploads/${req.file.filename}` : null
-        });
-
         try {
           const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-          console.log("Image URL for new post:", imageUrl);
 
           const post = await storage.createPost({
             userId: req.user.id,
@@ -487,7 +451,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             imageUrl: imageUrl,
             createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
           });
-          logger.info("Post created successfully:", post);
           res.status(201).json(post);
         } catch (dbError) {
           logger.error("Database error creating post:", {
@@ -559,17 +522,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
-      logger.info("\n=== Comment Endpoint Debug ===");
-      logger.info("Request params:", req.params);
-      logger.info("User:", req.user?.id);
-
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
-        logger.info("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
-
-      logger.info("Fetching comments for post", postId);
 
       // First, get direct comments for this post
       const directCommentsQuery = db
@@ -594,12 +550,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(posts.createdAt);
 
-      logger.info("Executing direct comments query:", directCommentsQuery.toSQL());
       const directComments = await directCommentsQuery;
-      logger.info(`Found ${directComments.length} direct comments`);
 
       // Then, get all replies to any comment in this thread
-      // This includes replies to direct comments and replies to replies
       const commentIds = directComments.map(comment => comment.id);
       let allComments = [...directComments];
 
@@ -631,21 +584,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .innerJoin(users, eq(posts.userId, users.id))
           .orderBy(posts.createdAt);
 
-        logger.info("Executing replies query:", repliesQuery.toSQL());
         const replies = await repliesQuery;
-        logger.info(`Found ${replies.length} replies to comments`);
 
         // Add replies to the result
         allComments = [...directComments, ...replies];
       }
 
-      logger.info(`Returning ${allComments.length} total comments and replies`);
-      logger.info("Comments data:", JSON.stringify(allComments, null, 2));
-
       res.json(allComments);
     } catch (error) {
-      logger.error("=== Comment Endpoint Error ===");
-      logger.error("Error details:", error);
       res.status(500).json({
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -656,22 +602,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Get original post endpoint
   router.get("/api/posts/:postId", authenticate, async (req, res) => {
     try {
-      logger.info("\n=== Post Fetch Debug ===");
-      logger.info("Request params:", req.params);
-      logger.info("User:", req.user?.id);
-
       if (!req.params.postId || req.params.postId === 'undefined') {
-        logger.info("Missing post ID");
         return res.status(400).json({ message: "No post ID provided" });
       }
 
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
-        logger.info("Invalid post ID:", req.params.postId);
         return res.status(400).json({ message: "Invalid post ID" });
       }
-
-      logger.info("Fetching post", postId);
 
       // Get post with full SQL query logging
       const query = db
@@ -694,19 +632,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .limit(1);
 
-      logger.info("Executing query:", query.toSQL());
       const [post] = await query;
 
       if (!post) {
-        logger.info("No post found");
         return res.status(404).json({ message: "Post not found" });
       }
 
-      logger.info("Found post:", post);
       res.json(post);
     } catch (error) {
-      logger.error("=== Post Fetch Error ===");
-      logger.error("Error details:", error);
       res.status(500).json({
         message: "Failed to fetch post",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -891,29 +824,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
             throw new Error("Not authorized to delete this post");
           }
+          logger.info(`Deleting reactions and comments for post ${postId}`);
 
-          logger.info(`Deleting reactions andcomments for post ${postId}`);
+          // Delete all reactions
+          await tx.delete(reactions)
+            .where(eq(reactions.postId, postId));
 
-          //          // Delete reactions and comments in parallel using Promise.all
-          await Promise.all([
-            // Delete all reactions
-            tx.delete(reactions)
-              .where(eq(reactions.postId, postId))
-              .then(() => logger.info(`Reactions deleted for post ${postId}`))
-              .catch(error => {
-                logger.error(`Error deleting reactions for post ${postId}:`, error);
-                throw error;
-              }),
-
-            // Delete all comments
-            tx.delete(posts)
-              .where(eq(posts.parentId, postId))
-              .then(() => logger.info(`Comments deleted for post ${postId}`))
-              .catch(error => {
-                logger.error(`Error deleting comments for post ${postId}:`, error);
-                throw error;
-              })
-          ]);
+          // Delete all comments
+          await tx.delete(posts)
+            .where(eq(posts.parentId, postId));
 
           // Finally delete the post itself
           const [deletedPost] = await tx
@@ -981,8 +900,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       res.json(updatedUser);
-    } catch (error) {
-      logger.error('Error updating user role:', error);
+    } catch (error) {      logger.error('Error updating user role:', error);
       res.status(500).json({ message: "Failed to update user role" });
     }
   });
@@ -1262,7 +1180,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-      console.log('Timezone offset:', tzOffset, 'minutes'); 
 
       // Get user's team join date
       const [user] = await db
@@ -1278,37 +1195,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Program start date (2/24/2025)
       const programStart = new Date('2025-02-24T00:00:00.000Z');
 
-      // Convert server time to user's local time
-      const serverNow = new Date();
-      // Adjust the time to user's timezone
-      const userTime = new Date(serverNow.getTime() - (tzOffset * 60000));
+      // Get current UTC time and adjust for user's timezone
+      const utcNow = new Date();
+      // Create a new date object in user's timezone
+      const userLocal = new Date(utcNow.getTime());
+      // Adjust the date object by the timezone offset
+      userLocal.setMinutes(userLocal.getMinutes() - tzOffset);
 
-      // Get start of user's day in their timezone
-      const userStartOfDay = new Date(userTime);
-      userStartOfDay.setHours(0, 0, 0, 0);
+      // Get start of day in user's timezone for week calculation
+      const startOfDay = new Date(userLocal);
+      startOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate days since program start
-      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      // Calculate days since program start and current week
+      const msSinceStart = startOfDay.getTime() - programStart.getTime();
       const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
-
-      // Calculate week (add 1 since we start at week 1)
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
 
-      // Get the day number in user's timezone (1-7, Monday=1)
-      // First create a date object for user's current time
-      const userLocalDate = new Date(userTime);
-      const rawDay = userLocalDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert Sunday from 0 to 7
+      // Get local day of week (0-6, Sunday = 0)
+      const rawDay = userLocal.getDay();
+      // Convert to 1-7 format where Monday = 1, Sunday = 7
+      const dayNumber = rawDay === 0 ? 7 : rawDay;
 
-      // Detailed debug logging
-      console.log('Activity Debug:', {
-        serverTime: serverNow.toISOString(),
-        userTime: userTime.toISOString(),
-        userLocalDate: userLocalDate.toString(),
+      console.log('Activity Date Debug:', {
+        utcTime: utcNow.toISOString(),
+        userTime: userLocal.toLocaleString(),
         rawDay,
         dayNumber,
-        tzOffset,
-        timezoneHours: -tzOffset/60
+        tzOffset: `${-tzOffset/60} hours from UTC`
       });
 
       res.json({
@@ -1316,14 +1229,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         currentDay: dayNumber,
         daysSinceStart,
         debug: {
-          programStart: programStart.toISOString(),
-          userNow: userTime.toISOString(),
-          calculations: {
-            daysSinceStart,
-            weekCalculation: `${daysSinceStart} days = ${Math.floor(daysSinceStart / 7)} complete weeks + 1 = Week ${weekNumber}`,
-            dayNumber: `Day ${dayNumber}`,
-            timezone: `${-tzOffset/60} hours from UTC`
-          }
+          timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+          localTime: userLocal.toLocaleString()
         }
       });
 
