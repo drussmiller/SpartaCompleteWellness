@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
@@ -27,14 +27,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
+import {
+  AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent, 
+  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-  AlertDialogTrigger 
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 
 // Type definition for form data
@@ -49,6 +49,10 @@ export default function AdminPage() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [, setLocation] = useLocation();
+  const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
+
+  // Get timezone offset for current user (in minutes)
+  const tzOffset = new Date().getTimezoneOffset();
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -57,6 +61,29 @@ export default function AdminPage() {
   const { data: users, isLoading: usersLoading, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
+
+  useEffect(() => {
+    if (users) {
+      users.forEach(async (user) => {
+        try {
+          const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+          if (response.ok) {
+            const progress = await response.json();
+            setUserProgress(prev => ({
+              ...prev,
+              [user.id]: {
+                week: progress.currentWeek,
+                day: progress.currentDay
+              }
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching user progress:', error);
+        }
+      });
+    }
+  }, [users, tzOffset]);
+
 
   const form = useForm<TeamFormData>({
     resolver: zodResolver(insertTeamSchema),
@@ -295,7 +322,7 @@ export default function AdminPage() {
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
-  const isMobile = window.innerWidth <= 768; 
+  const isMobile = window.innerWidth <= 768;
 
   return (
     <AppLayout sidebarWidth="80">
@@ -321,10 +348,10 @@ export default function AdminPage() {
                 <DialogContent>
                   <div className="flex items-center mb-2 relative">
                     <DialogPrimitive.Close asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0 rounded-full absolute right-2 top-2" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
                       >
                         <span className="sr-only">Close</span>
                         <span className="text-lg font-semibold">×</span>
@@ -452,7 +479,7 @@ export default function AdminPage() {
                                   Are you sure you want to delete the team "{team.name}"? This action cannot be undone.
                                   {sortedUsers?.filter((u) => u.teamId === team.id).length > 0 && (
                                     <p className="mt-2 text-amber-600 font-medium">
-                                      Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members. 
+                                      Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members.
                                       Deleting it will remove these users from the team.
                                     </p>
                                   )}
@@ -460,7 +487,11 @@ export default function AdminPage() {
                                 <div className="flex items-center justify-end gap-2 mt-4">
                                   <AlertDialogCancel className="h-10 px-4 py-2 flex items-center justify-center">Cancel</AlertDialogCancel>
                                   <AlertDialogAction
-                                    className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center" onClick={() => deleteTeamMutation.mutate(team.id)} > Delete Team</AlertDialogAction>
+                                    className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center"
+                                    onClick={() => deleteTeamMutation.mutate(team.id)}
+                                  >
+                                    Delete Team
+                                  </AlertDialogAction>
                                 </div>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -569,7 +600,8 @@ export default function AdminPage() {
                                   Start Date: {new Date(user.createdAt!).toLocaleDateString()}
                                 </div>
                                 <div className="mt-1 text-sm text-muted-foreground">
-                                  Progress: Week {user.currentWeek}, Day {user.currentDay}
+                                  Progress: Week {userProgress[user.id]?.week ?? user.currentWeek},
+                                  Day {userProgress[user.id]?.day ?? user.currentDay}
                                 </div>
                               </>
                             )}
