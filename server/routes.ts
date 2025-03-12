@@ -805,68 +805,50 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Starting deletion process for post ${postId} by user ${req.user.id}`);
 
-      // Delete post and all related data in a single transaction with optimized queries
-      try {
-        await db.transaction(async (tx) => {
-          // First check if post exists and user has permission
-          const [post] = await tx
-            .select()
-            .from(posts)
-            .where(eq(posts.id, postId))
-            .limit(1);
+      // Delete post and all related data in a transaction
+      await db.transaction(async (tx) => {
+        // First check if post exists and user has permission
+        const [post] = await tx
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1);
 
-          if (!post) {
-            logger.warn(`Post ${postId} not found during deletion attempt`);
-            throw new Error("Post not found");
-          }
-
-          if (!req.user.isAdmin && post.userId !== req.user.id) {
-            logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
-            throw new Error("Not authorized to delete this post");
-          }
-          logger.info(`Deleting reactions and comments for post ${postId}`);
-
-          // Delete all reactions
-          await tx.delete(reactions)
-            .where(eq(reactions.postId, postId));
-
-          // Delete all comments
-          await tx.delete(posts)
-            .where(eq(posts.parentId, postId));
-
-          // Finally delete the post itself
-          const [deletedPost] = await tx
-            .delete(posts)
-            .where(eq(posts.id, postId))
-            .returning();
-
-          if (!deletedPost) {
-            logger.error(`Failed to delete main post ${postId}`);
-            throw new Error("Failed to delete post");
-          }
-
-          logger.info(`Successfully deleted post ${postId} and all related data`);
-        });
-
-        res.status(200).json({ message: "Post deleted successfully" });
-      } catch (txError) {
-        // Handle specific transaction errors
-        logger.error(`Transaction error during post ${postId} deletion:`, txError);
-
-        if (txError.message === "Post not found") {
-          return res.status(404).json({ message: "Post not found" });
-        }
-        if (txError.message === "Not authorized to delete this post") {
-          return res.status(403).json({ message: "Not authorized to delete this post" });
+        if (!post) {
+          logger.warn(`Post ${postId} not found during deletion attempt`);
+          throw new Error("Post not found");
         }
 
-        throw txError; // Re-throw for general error handling
-      }
+        if (!req.user.isAdmin && post.userId !== req.user.id) {
+          logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
+          throw new Error("Not authorized to delete this post");
+        }
+
+        // Delete all reactions first
+        await tx.delete(reactions)
+          .where(eq(reactions.postId, postId));
+
+        // Then delete all comments
+        await tx.delete(posts)
+          .where(eq(posts.parentId, postId));
+
+        // Finally delete the post itself
+        await tx.delete(posts)
+          .where(eq(posts.id, postId));
+      });
+
+      res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      logger.error('Unexpected error in delete post endpoint:', error);
+      logger.error('Error in delete post endpoint:', error);
+      if (error instanceof Error && error.message === "Post not found") {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      if (error instanceof Error && error.message === "Not authorized to delete this post") {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
       res.status(500).json({
         message: "Failed to delete post",
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : "Unknown error") : 'Internal server error'
       });
     }
   });
@@ -907,8 +889,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
-      if (!req.file) {
-        logger.info('🚫 [UPLOAD] No file received');
+      if (!req.file) {        logger.info('🚫 [UPLOAD] No file received');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
