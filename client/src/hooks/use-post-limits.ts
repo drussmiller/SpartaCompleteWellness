@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,6 +8,7 @@ export interface PostLimits {
   workout: number;
   scripture: number;
   memory_verse: number;
+  miscellaneous: number; // Added miscellaneous post type
 }
 
 interface PostLimitsResponse {
@@ -18,6 +18,7 @@ interface PostLimitsResponse {
     workout: boolean;
     scripture: boolean;
     memory_verse: boolean;
+    miscellaneous: boolean; // Added miscellaneous post type
   };
   remaining: PostLimits;
 }
@@ -61,12 +62,12 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
-      
+
       // Initial refetch when component mounts
       refetch();
-      
+
       console.log('Post limit event listeners attached');
-      
+
       return () => {
         window.removeEventListener('post-mutation', handlePostChange);
         window.removeEventListener('post-counts-changed', handlePostChange);
@@ -78,21 +79,24 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     food: 0,
     workout: 0,
     scripture: 0,
-    memory_verse: 0
+    memory_verse: 0,
+    miscellaneous: 0 // Added miscellaneous post type
   };
 
   const defaultCanPost = {
     food: true,
     workout: true,
     scripture: true,
-    memory_verse: selectedDate.getDay() === 6
+    memory_verse: selectedDate.getDay() === 6,
+    miscellaneous: true // Added miscellaneous post type
   };
 
   const defaultRemaining = {
     food: 3,
     workout: 1,
     scripture: 1,
-    memory_verse: selectedDate.getDay() === 6 ? 1 : 0
+    memory_verse: selectedDate.getDay() === 6 ? 1 : 0,
+    miscellaneous: Infinity // Added miscellaneous post type; unlimited
   };
 
   // Check if we have valid data from the API before using defaults
