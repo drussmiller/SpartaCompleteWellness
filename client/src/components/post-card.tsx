@@ -133,6 +133,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               e.currentTarget.style.display = "none";
             }}
           />
+            className="w-full h-auto object-contain rounded-md mb-4"
+            onError={(e) => {
+              console.error("Failed to load image:", post.imageUrl);
+              e.currentTarget.style.display = "none";
+            }}
+          />
         )}
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
