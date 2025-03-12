@@ -444,6 +444,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         try {
           const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
+          // If there's an image, resize it for thumbnails
+          if (req.file) {
+            import('./middleware/image-resize').then(({ resizeUploadedImage }) => {
+              resizeUploadedImage(req.file.path).catch(err => {
+                logger.error('Error during image resize:', err);
+              });
+            }).catch(err => {
+              logger.error('Error importing image resize module:', err);
+            });
+          }
+
           const post = await storage.createPost({
             userId: req.user.id,
             type: postData.type,
