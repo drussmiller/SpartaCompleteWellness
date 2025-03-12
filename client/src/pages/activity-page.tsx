@@ -12,31 +12,41 @@ export default function ActivityPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Get timezone offset for the current user
+  // Get timezone offset for the current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();
 
-  // Get current week and day from the server, always calculating from team join date
+  // Debug timezone information
+  useEffect(() => {
+    console.log('Timezone:', {
+      name: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      offset: -tzOffset/60
+    });
+  }, [tzOffset]);
+
+  // Get current week and day from the server
   const { data: currentProgress, isLoading: isProgressLoading } = useQuery({
     queryKey: ["/api/activities/current", { tzOffset }],
+    queryFn: async () => {
+      const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch current progress');
+      }
+      return response.json();
+    },
     enabled: !!user,
   });
 
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
-
-  // Debug logging for timezone and date information
   useEffect(() => {
     if (currentProgress) {
-      console.log('Activity Debug:', {
-        serverResponse: currentProgress,
-        clientTimezone: -tzOffset/60,
-        clientDate: new Date().toISOString(),
-        clientLocalDate: new Date().toString()
-      });
       setSelectedWeek(currentProgress.currentWeek);
       setSelectedDay(currentProgress.currentDay);
     }
   }, [currentProgress]);
+
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(1);
+
 
   const { data: activities, isLoading: isActivitiesLoading } = useQuery({
     queryKey: ["/api/activities"]
