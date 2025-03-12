@@ -1276,19 +1276,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const joinDate = new Date(user.teamJoinedAt);
       joinDate.setHours(0, 0, 0, 0); // Set to start of day
 
-      // Find the first Monday after join date
-      const joinDayOfWeek = joinDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek);
-      const firstMonday = new Date(joinDate);
-      firstMonday.setDate(joinDate.getDate() + daysUntilMonday);
-      firstMonday.setHours(0, 0, 0, 0);
+      // If join date is a Monday, use it directly; otherwise find next Monday
+      const startDate = new Date(joinDate);
+      const joinDayOfWeek = joinDate.getDay();
+
+      // Only adjust to next Monday if the join date wasn't already a Monday
+      if (joinDayOfWeek !== 1) {
+        const daysUntilMonday = joinDayOfWeek === 0 ? 1 : (8 - joinDayOfWeek);
+        startDate.setDate(joinDate.getDate() + daysUntilMonday);
+      }
+      startDate.setHours(0, 0, 0, 0);
 
       // Get the start of today
       const startOfDay = new Date(now);
       startOfDay.setHours(0, 0, 0, 0);
 
       // Calculate elapsed milliseconds and days
-      const elapsedMs = startOfDay.getTime() - firstMonday.getTime();
+      const elapsedMs = startOfDay.getTime() - startDate.getTime();
       const elapsedDays = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
 
       // Calculate weeks (starting from 1)
@@ -1301,7 +1305,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info('Detailed week calculation:', {
         teamJoinedAt: user.teamJoinedAt,
         joinDate: joinDate.toISOString(),
-        firstMonday: firstMonday.toISOString(),
+        startDate: startDate.toISOString(),
         now: now.toISOString(),
         startOfDay: startOfDay.toISOString(),
         elapsedDays,
@@ -1316,7 +1320,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         daysSinceStart: elapsedDays,
         debug: {
           joinDate: joinDate.toISOString(),
-          firstMonday: firstMonday.toISOString(),
+          startDate: startDate.toISOString(),
           now: now.toISOString(),
           calculations: {
             elapsedDays,
