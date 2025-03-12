@@ -48,6 +48,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       const isSaturday = selectedDate.getDay() === 6;
       return isSaturday ? "(Available today)" : "(Only available on Saturday)";
     }
+    
+    if (type === 'miscellaneous') {
+      return ""; // No limit text for miscellaneous
+    }
 
     const typeKey = type as keyof typeof remaining;
     const remainingPosts = remaining[typeKey];
