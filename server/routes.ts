@@ -1181,6 +1181,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
+      // Helper function to convert UTC date to user's local time
+      const toUserLocalTime = (utcDate: Date): Date => {
+        const localDate = new Date(utcDate.getTime());
+        localDate.setMinutes(localDate.getMinutes() - tzOffset);
+        return localDate;
+      };
+
       // Get user's team join date
       const [user] = await db
         .select()
@@ -1195,42 +1202,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Program start date (2/24/2025)
       const programStart = new Date('2025-02-24T00:00:00.000Z');
 
-      // Get current UTC time and adjust for user's timezone
+      // Get current time in user's timezone
       const utcNow = new Date();
-      // Create a new date object in user's timezone
-      const userLocal = new Date(utcNow.getTime());
-      // Adjust the date object by the timezone offset
-      userLocal.setMinutes(userLocal.getMinutes() - tzOffset);
+      const userLocalNow = toUserLocalTime(utcNow);
 
-      // Get start of day in user's timezone for week calculation
-      const startOfDay = new Date(userLocal);
-      startOfDay.setHours(0, 0, 0, 0);
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate days since program start and current week
-      const msSinceStart = startOfDay.getTime() - programStart.getTime();
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
       const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
 
-      // Get local day of week (0-6, Sunday = 0)
-      const rawDay = userLocal.getDay();
-      // Convert to 1-7 format where Monday = 1, Sunday = 7
-      const dayNumber = rawDay === 0 ? 7 : rawDay;
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
 
-      console.log('Activity Date Debug:', {
-        utcTime: utcNow.toISOString(),
-        userTime: userLocal.toLocaleString(),
-        rawDay,
+      // Debug info
+      console.log('Date Calculations:', {
+        timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+        utcNow: utcNow.toISOString(),
+        userLocalNow: userLocalNow.toLocaleString(),
+        daysSinceStart,
+        weekNumber,
         dayNumber,
-        tzOffset: `${-tzOffset/60} hours from UTC`
+        progressDays
       });
 
       res.json({
         currentWeek: weekNumber,
         currentDay: dayNumber,
         daysSinceStart,
+        progressDays,
         debug: {
           timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
-          localTime: userLocal.toLocaleString()
+          localTime: userLocalNow.toLocaleString()
         }
       });
 
