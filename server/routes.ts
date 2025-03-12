@@ -830,6 +830,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           throw new Error("Not authorized to delete this post");
         }
 
+        // Store image path before deleting post if it has an image
+        let imagePath = null;
+        if (post.imageUrl && post.imageUrl.startsWith('/uploads/')) {
+          imagePath = path.join(process.cwd(), post.imageUrl.substring(1));
+          logger.info(`Will delete image at path: ${imagePath}`);
+        }
+
         // Delete all reactions first
         await tx.delete(reactions)
           .where(eq(reactions.postId, postId));
@@ -841,6 +848,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Finally delete the post itself
         await tx.delete(posts)
           .where(eq(posts.id, postId));
+        
+        // After successful database transaction, delete the image file if it exists
+        if (imagePath) {
+          try {
+            if (fs.existsSync(imagePath)) {
+              fs.unlinkSync(imagePath);
+              logger.info(`Successfully deleted image file: ${imagePath}`);
+              
+              // Also delete thumbnail if it exists (thumbnails are created in the same directory)
+              const thumbPath = imagePath.replace(/(\.\w+)$/, '-thumb$1');
+              if (fs.existsSync(thumbPath)) {
+                fs.unlinkSync(thumbPath);
+                logger.info(`Successfully deleted thumbnail file: ${thumbPath}`);
+              }
+            } else {
+              logger.warn(`Image file not found: ${imagePath}`);
+            }
+          } catch (fileError) {
+            // Log error but don't fail the request if file deletion fails
+            logger.error(`Error deleting image file: ${fileError}`);
+          }
+        }
       });
 
       res.status(200).json({ message: "Post deleted successfully" });
