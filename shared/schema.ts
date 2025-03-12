@@ -42,7 +42,7 @@ export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment"] }).notNull(),
+  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"] }).notNull(),
   content: text("content"),
   imageUrl: text("image_url"),
   points: integer("points").notNull(),
@@ -139,7 +139,7 @@ export const insertPostSchema = createInsertSchema(posts)
   .extend({
     content: z.string().nullable(),
     imageUrl: z.string().nullable(),
-    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment"]),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),
