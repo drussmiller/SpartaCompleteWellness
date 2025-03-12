@@ -1261,6 +1261,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      console.log('Timezone offset:', tzOffset); // Debug log
 
       // Get user's team join date
       const [user] = await db
@@ -1273,32 +1274,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
+      // Program start date (2/24/2025)
+      const programStart = new Date('2025-02-24T00:00:00.000Z');
+
       // Get current time in user's timezone
       const serverNow = new Date();
       const userNow = new Date(serverNow.getTime() - (tzOffset * 60000));
 
-      // Program start date (2/24/2025 - a Monday)
-      const programStart = new Date(user.teamJoinedAt);
-      programStart.setHours(0, 0, 0, 0);
-
-      // Get start of current day in user's timezone
+      // Get start of day in user's timezone
       const userStartOfDay = new Date(userNow);
       userStartOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate weeks since program start
+      // Calculate days since program start
       const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
       const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
 
-      // Calculate current week (add 1 since we start at week 1)
-      // For 16 days (from 2/24 to 3/12), this should be floor(16/7) + 1 = 3
+      // Calculate current week (starting from 1)
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
 
-      // Get current day (1-7, Monday=1) in user's timezone
+      // Calculate current day (1-7, Monday=1)
       let dayNumber = userNow.getDay();
       dayNumber = dayNumber === 0 ? 7 : dayNumber;
 
-      logger.info('Activity calculation:', {
+      // Debug logs
+      console.log('Activity calculation:', {
         programStart: programStart.toISOString(),
+        serverNow: serverNow.toISOString(),
+        userNow: userNow.toISOString(),
         userStartOfDay: userStartOfDay.toISOString(),
         daysSinceStart,
         weekNumber,
