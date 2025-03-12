@@ -1273,50 +1273,50 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Convert dates to user's timezone
+      // Get current time in user's timezone
       const serverNow = new Date();
       const userNow = new Date(serverNow.getTime() - (tzOffset * 60000));
 
-      // Start date is team join date (already a Monday - 2/24/2025)
-      const startDate = new Date(user.teamJoinedAt);
-      startDate.setHours(0, 0, 0, 0);
+      // Program start date (2/24/2025 - a Monday)
+      const programStart = new Date(user.teamJoinedAt);
+      programStart.setHours(0, 0, 0, 0);
 
-      // Get start of user's current day
+      // Get start of current day in user's timezone
       const userStartOfDay = new Date(userNow);
       userStartOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate days between start date and user's current day
-      const totalDays = Math.floor((userStartOfDay.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+      // Calculate weeks since program start
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
 
-      // Calculate week (add 1 since we start at week 1)
-      const weekNumber = Math.floor(totalDays / 7) + 1;
+      // Calculate current week (add 1 since we start at week 1)
+      // For 16 days (from 2/24 to 3/12), this should be floor(16/7) + 1 = 3
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
 
-      // Calculate day (1 = Monday, 7 = Sunday)
+      // Get current day (1-7, Monday=1) in user's timezone
       let dayNumber = userNow.getDay();
       dayNumber = dayNumber === 0 ? 7 : dayNumber;
 
       logger.info('Activity calculation:', {
-        startDate: startDate.toISOString(),
-        userNow: userNow.toISOString(),
-        totalDays,
+        programStart: programStart.toISOString(),
+        userStartOfDay: userStartOfDay.toISOString(),
+        daysSinceStart,
         weekNumber,
         dayNumber,
-        userTimezone: -tzOffset/60 + ' hours'
+        timezone: `${-tzOffset/60} hours from UTC`
       });
 
       res.json({
         currentWeek: weekNumber,
         currentDay: dayNumber,
-        daysSinceStart: totalDays,
+        daysSinceStart,
         debug: {
-          startDate: startDate.toISOString(),
+          programStart: programStart.toISOString(),
           userNow: userNow.toISOString(),
-          calculations: {
-            totalDays,
-            weekCalc: `${totalDays} days / 7 = week ${weekNumber}`,
-            dayNumber,
-            timezone: -tzOffset/60 + ' hours'
-          }
+          daysSinceStart,
+          weekCalculation: `${daysSinceStart} days = ${Math.floor(daysSinceStart / 7)} complete weeks + 1 = Week ${weekNumber}`,
+          dayNumber: `Day ${dayNumber}`,
+          timezone: `${-tzOffset/60} hours from UTC`
         }
       });
     } catch (error) {
