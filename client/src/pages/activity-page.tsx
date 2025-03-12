@@ -15,10 +15,10 @@ export default function ActivityPage() {
   // Get timezone offset for the current user
   const tzOffset = new Date().getTimezoneOffset();
 
-  // Get current week and day from the server
+  // Get current week and day from the server, always calculating from team join date
   const { data: currentProgress, isLoading: isProgressLoading } = useQuery({
-    queryKey: ["/api/activities/current", { tzOffset }],
-    enabled: !!user
+    queryKey: ["/api/activities/current", tzOffset],
+    enabled: !!user,
   });
 
   const [selectedWeek, setSelectedWeek] = useState(1);
@@ -33,59 +33,34 @@ export default function ActivityPage() {
   }, [currentProgress]);
 
   const { data: activities, isLoading: isActivitiesLoading } = useQuery({
-    queryKey: ["/api/activities"],
-    // Add optimistic updates handling
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/activities"], data);
-    }
+    queryKey: ["/api/activities"]
   });
 
   const currentActivity = activities?.find(
     (a) => a.week === selectedWeek && a.day === selectedDay
   );
 
-  const weeks = Array.from(new Set(activities?.map((a) => a.week) || [])).sort();
-  const days = activities
-    ?.filter((a) => a.week === selectedWeek)
-    .map((a) => a.day)
-    .sort() || [];
-
   const navigatePrevDay = () => {
     if (selectedDay > 1) {
       setSelectedDay(selectedDay - 1);
     } else if (selectedWeek > 1) {
-      // Move to previous week
       const prevWeek = selectedWeek - 1;
       setSelectedWeek(prevWeek);
-
-      // Always use day 7 when moving to the previous week from day 1
-      // This ensures we go from Week 2 - Day 1 to Week 1 - Day 7
       const maxDay = 7;
-
-      console.log(`Navigating to Week ${prevWeek}, Day ${maxDay}`);
       setSelectedDay(maxDay);
     }
   };
 
   const navigateNextDay = () => {
-    // Only allow navigating up to current day
+    // Only allow navigating up to current calculated day
     if (!currentProgress) return;
 
-    // Always assume each week has 7 days
-    const maxDayInCurrentWeek = 7;
-
-    // Check if we're at the end of the current week
-    const isLastDayOfWeek = selectedDay >= maxDayInCurrentWeek;
+    const isLastDayOfWeek = selectedDay >= 7;
 
     if (!isLastDayOfWeek) {
-      // Not the last day of the week, just increment the day
-      console.log(`Navigating from Day ${selectedDay} to Day ${selectedDay + 1}`);
       setSelectedDay(selectedDay + 1);
     } else if (selectedWeek < currentProgress.currentWeek) {
-      // Last day of week, move to next week day 1
-      const nextWeek = selectedWeek + 1;
-      console.log(`Navigating to Week ${nextWeek}, Day 1`);
-      setSelectedWeek(nextWeek);
+      setSelectedWeek(selectedWeek + 1);
       setSelectedDay(1);
     }
   };
