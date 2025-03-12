@@ -1260,6 +1260,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
       // Get user's team join date
       const [user] = await db
         .select()
@@ -1271,10 +1274,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Get dates in UTC
-      const now = new Date();
+      // Get dates in user's timezone
+      const serverNow = new Date();
+      const userNow = new Date(serverNow.getTime() - (tzOffset * 60000));
       const joinDate = new Date(user.teamJoinedAt);
-      joinDate.setHours(0, 0, 0, 0); // Set to start of day
+      joinDate.setHours(0, 0, 0, 0);
 
       // If join date is a Monday, use it directly; otherwise find next Monday
       const startDate = new Date(joinDate);
@@ -1287,27 +1291,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       startDate.setHours(0, 0, 0, 0);
 
-      // Get the start of today
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
+      // Get the start of today in user's timezone
+      const startOfUserDay = new Date(userNow);
+      startOfUserDay.setHours(0, 0, 0, 0);
 
       // Calculate elapsed milliseconds and days
-      const elapsedMs = startOfDay.getTime() - startDate.getTime();
+      const elapsedMs = startOfUserDay.getTime() - startDate.getTime();
       const elapsedDays = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
 
       // Calculate weeks (starting from 1)
       const currentWeek = Math.floor(elapsedDays / 7) + 1;
 
-      // Calculate current day (1-7, Monday=1, Sunday=7)
-      let currentDay = now.getDay();
+      // Calculate current day (1-7, Monday=1, Sunday=7) based on user's timezone
+      let currentDay = userNow.getDay();
       currentDay = currentDay === 0 ? 7 : currentDay;
 
       logger.info('Detailed week calculation:', {
         teamJoinedAt: user.teamJoinedAt,
         joinDate: joinDate.toISOString(),
         startDate: startDate.toISOString(),
-        now: now.toISOString(),
-        startOfDay: startOfDay.toISOString(),
+        serverNow: serverNow.toISOString(),
+        userNow: userNow.toISOString(),
+        startOfUserDay: startOfUserDay.toISOString(),
+        tzOffset,
         elapsedDays,
         weekCalculation: `${elapsedDays} days / 7 = ${elapsedDays/7} weeks, floor = ${Math.floor(elapsedDays/7)}, +1 = ${currentWeek}`,
         currentWeek,
@@ -1321,7 +1327,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         debug: {
           joinDate: joinDate.toISOString(),
           startDate: startDate.toISOString(),
-          now: now.toISOString(),
+          serverNow: serverNow.toISOString(),
+          userNow: userNow.toISOString(),
+          tzOffset,
           calculations: {
             elapsedDays,
             elapsedWeeks: Math.floor(elapsedDays/7),
