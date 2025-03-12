@@ -81,7 +81,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         const postData = {
           type: data.type,
           content: data.content.trim(),
-          points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3,
+          points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
 
@@ -115,7 +115,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         imageUrl: imagePreview,
         createdAt: data.postDate || new Date(),
         author: user,
-        points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : 3
+        points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3
       };
 
       queryClient.setQueryData(["/api/posts"], (old: any[] = []) => [optimisticPost, ...old]);
@@ -245,6 +245,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       </option>
                       <option value="memory_verse" disabled={!canPost.memory_verse}>
                         Memory Verse {getRemainingMessage('memory_verse')}
+                      </option>
+                      <option value="miscellaneous" disabled={!canPost.miscellaneous}>
+                        Miscellaneous {getRemainingMessage('miscellaneous')}
                       </option>
                     </select>
                   </FormControl>
