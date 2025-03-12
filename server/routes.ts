@@ -887,7 +887,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             throw new Error("Post not found");
           }
 
-          if (!req.user.isAdmin && post.userId !== req.user.id) {
+          if (!requser.isAdmin && post.userId !== req.user.id) {
             logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
             throw new Error("Not authorized to delete this post");          }
 
@@ -1293,7 +1293,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
 
       // Calculate current day (1-7, Monday=1)
-      let dayNumber = userNow.getDay();
+      // Create a new Date object for UTC time matching user's local day
+      const userDate = new Date(userNow.toISOString());
+      let dayNumber = userDate.getUTCDay();
+      // Convert from Sunday=0 to Monday=1 format
       dayNumber = dayNumber === 0 ? 7 : dayNumber;
 
       // Debug logs
@@ -1315,12 +1318,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         debug: {
           programStart: programStart.toISOString(),
           userNow: userNow.toISOString(),
-          daysSinceStart,
-          weekCalculation: `${daysSinceStart} days = ${Math.floor(daysSinceStart / 7)} complete weeks + 1 = Week ${weekNumber}`,
-          dayNumber: `Day ${dayNumber}`,
-          timezone: `${-tzOffset/60} hours from UTC`
+          calculations: {
+            daysSinceStart,
+            weekCalculation: `${daysSinceStart} days = ${Math.floor(daysSinceStart / 7)} complete weeks + 1 = Week ${weekNumber}`,
+            dayNumber: `Day ${dayNumber}`,
+            timezone: `${-tzOffset/60} hours from UTC`
+          }
         }
       });
+
     } catch (error) {
       logger.error('Error calculating activity dates:', error);
       res.status(500).json({
