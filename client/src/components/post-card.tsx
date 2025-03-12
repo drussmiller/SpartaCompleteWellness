@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
+import { getThumbnailUrl } from "../lib/image-utils";
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
@@ -31,13 +32,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     mutationFn: async () => {
       // Check if the post ID is a number (real post) or a timestamp (optimistic update)
       const isOptimisticPost = typeof post.id === 'number' ? post.id > 1000000000000 : false;
-      
+
       if (isOptimisticPost) {
         // For optimistic posts that haven't been saved to the server yet,
         // we just need to remove them from the local cache
         return post.id;
       }
-      
+
       // For real posts, send delete request to the server
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
@@ -125,17 +126,29 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         )}
         {post.imageUrl && (
           <img
-            src={post.imageUrl}
-            alt={post.type}
-            className="w-full h-auto object-contain rounded-md mb-4"
-            onError={(e) => {
-              console.error("Failed to load image:", post.imageUrl);
-              e.currentTarget.style.display = "none";
+            src={getThumbnailUrl(post.imageUrl)}
+            data-full-src={post.imageUrl}
+            alt="Post content"
+            loading="lazy"
+            decoding="async"
+            className="w-full h-auto object-contain rounded-md mb-4 cursor-pointer"
+            onClick={(e) => {
+              // Show the full-sized image when clicking on the thumbnail
+              const fullSrc = e.currentTarget.getAttribute('data-full-src');
+              if (fullSrc) {
+                window.open(fullSrc, '_blank');
+              }
             }}
-            className="w-full h-auto object-contain rounded-md mb-4"
             onError={(e) => {
               console.error("Failed to load image:", post.imageUrl);
-              e.currentTarget.style.display = "none";
+              // If thumbnail fails, try the original image
+              const img = e.currentTarget;
+              const originalSrc = img.getAttribute('data-full-src');
+              if (originalSrc && originalSrc !== img.src) {
+                img.src = originalSrc;
+              } else {
+                img.style.display = "none";
+              }
             }}
           />
         )}
