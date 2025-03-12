@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { useEffect } from "react";
+import { createRoot } from 'react-dom/client';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -127,7 +128,7 @@ export default function HomePage() {
                 {posts.slice(0, 10).map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
-                
+
                 {/* For remaining posts, use Intersection Observer to load them when they're about to enter viewport */}
                 {posts.length > 10 && (
                   <div className="pt-4">
@@ -147,17 +148,21 @@ export default function HomePage() {
                                   container.innerHTML = '';
                                   const postElement = document.createElement('div');
                                   container.appendChild(postElement);
-                                  
+
                                   // Render the post card in the element
                                   const root = createRoot(postElement);
                                   root.render(<PostCard post={post} />);
-                                  
+
                                   // Disconnect observer after loading
                                   observer.disconnect();
                                 }
                               });
                             },
-                            { rootMargin: '200px' }
+                            {
+                              // Load images earlier, when they're 500px away from viewport
+                              rootMargin: "500px",
+                              threshold: 0.01
+                            }
                           );
                           observer.observe(el);
                         }}
