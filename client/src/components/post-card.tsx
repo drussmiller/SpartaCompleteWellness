@@ -88,7 +88,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card>
+    <Card className="rounded-none">
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
