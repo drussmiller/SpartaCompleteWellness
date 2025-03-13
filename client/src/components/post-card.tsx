@@ -131,7 +131,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-[100vw] h-auto object-cover mb-4 cursor-pointer relative left-[50%] right-[50%] -translate-x-1/2"
+            className="w-full h-auto object-cover mb-4 cursor-pointer"
+            style={{ width: '100vw', marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)' }}
             onClick={(e) => {
               // Show the full-sized image when clicking on the thumbnail
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
