@@ -313,9 +313,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-4 w-full">
         {threadedComments.map((comment) => (
-          <CommentCard key={comment.id} comment={comment} />
+          <CommentCard key={comment.id} comment={comment} className="w-full" />
         ))}
       </div>
 
