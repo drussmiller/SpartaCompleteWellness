@@ -130,21 +130,6 @@ export default function HomePage() {
         </div>
 
         {/* Team name */}
-        <div className="px-6 py-3 border-t border-border flex justify-between items-center">
-          <div>
-            <h2 className="text-sm text-muted-foreground">
-              {teamInfo?.name || ""}
-            </h2>
-            {!user?.teamId && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Join a team to start your journey
-              </p>
-            )}
-          </div>
-          <div className="scale-90">
-            <CreatePostDialog remaining={remaining} />
-          </div>
-        </div>
       </div>
 
       <main className="p-4 max-w-2xl mx-auto w-full">
