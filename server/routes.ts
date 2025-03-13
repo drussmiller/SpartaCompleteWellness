@@ -673,7 +673,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Posts endpoints
+  // Added here: the updated posts endpoint with logging
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -703,8 +703,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         whereConditions.push(eq(users.teamId, currentUser.teamId));
       }
 
-      // Query posts with team filtering
-      const posts = await db
+      // Query posts with full SQL query logging
+      const query = db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -726,13 +726,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(and(...whereConditions))
         .orderBy(desc(posts.createdAt));
 
+      // Log the generated SQL for debugging
+      const sqlQuery = query.toSQL();
+      logger.info('Generated SQL:', {
+        sql: sqlQuery.sql,
+        params: sqlQuery.params
+      });
+
+      // Execute query
+      const postResults = await query;
+
       logger.info('Posts response:', {
-        totalPosts: posts.length,
+        totalPosts: postResults.length,
         userTeam: currentUser.teamId,
         isAdmin: req.user.isAdmin
       });
 
-      res.json(posts);
+      res.json(postResults);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
