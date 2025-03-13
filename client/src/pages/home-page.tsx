@@ -116,19 +116,17 @@ export default function HomePage() {
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
         {/* Title bar with logo and title */}
-        <div className="px-6 py-4 flex items-center  rounded-md m-2">
-          <div className="flex items-center gap-2 max-w-[100%]">
-            <img
-              src="/Sparta_Logo.jpg"
-              alt="Sparta Logo"
-              className="h-14 w-auto flex-shrink-0"
-              onError={(e) => {
-                console.error('Error loading logo:', e);
-                e.currentTarget.src = '/fallback-logo.png';
-              }}
-            />
-            <h1 className="text-lg font-bold whitespace-nowrap overflow-hidden">Sparta Complete Wellness</h1>
-          </div>
+        <div className="px-6 py-4 flex flex-col items-center rounded-md m-2">
+          <img
+            src="/Sparta_Logo.jpg"
+            alt="Sparta Logo"
+            className="h-20 w-auto"
+            onError={(e) => {
+              console.error('Error loading logo:', e);
+              e.currentTarget.src = '/fallback-logo.png';
+            }}
+          />
+          <h1 className="text-lg font-bold mt-2">Sparta Complete Wellness</h1>
         </div>
 
         {/* Team name and Add Post button */}
