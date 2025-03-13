@@ -115,8 +115,8 @@ export default function HomePage() {
   return (
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        {/* Title bar with logo and title */}
-        <div className="px-6 pb-1 pt-2 flex flex-col items-center rounded-md m-2">
+        {/* Title bar with logo and post button */}
+        <div className="px-6 pb-1 pt-2 flex justify-between items-center rounded-md m-2">
           <img
             src="/Sparta_Logo.jpg"
             alt="Sparta Logo"
@@ -126,9 +126,10 @@ export default function HomePage() {
               e.currentTarget.src = '/fallback-logo.png';
             }}
           />
+          <CreatePostDialog />
         </div>
 
-        {/* Team name and Add Post button */}
+        {/* Team name */}
         <div className="px-6 py-3 border-t border-border flex justify-between items-center">
           <div>
             <h2 className="text-sm text-muted-foreground">
