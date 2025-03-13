@@ -115,7 +115,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           )}
-          <div className="text-xs text-muted-foreground pl-4">
+          <div className="text-xs text-muted-foreground pl-2">
             {(() => {
               const diff = Date.now() - new Date(post.createdAt!).getTime();
               const hours = Math.floor(diff / (1000 * 60 * 60));
