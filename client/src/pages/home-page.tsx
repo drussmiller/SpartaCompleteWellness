@@ -119,9 +119,9 @@ export default function HomePage() {
         <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
           <div className="flex-1 flex justify-center">
             <img
-              src="/Sparta_Circle_red.png"
-              alt="Sparta Logo"
-              className="w-2/3 h-auto mx-auto"
+              src="/Sparta_Complete_Wellness.jpg"
+              alt="Sparta Complete Wellness Logo"
+              className="w-5/6 h-auto mx-auto"
               onError={(e) => {
               console.error('Error loading logo:', e);
               e.currentTarget.src = '/fallback-logo.png';
