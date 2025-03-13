@@ -230,7 +230,7 @@ export default function ProfilePage() {
                 <h2 className="text-xl font-semibold">{user?.username}</h2>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {teamInfo ? `Team: ${teamInfo.name}` : 'No Team Assigned'}
+                  {user?.teamId ? (teamInfo ? `Team: ${teamInfo.name}` : 'Loading team info...') : 'No Team Assigned'}
                 </div>
               </div>
             </CardContent>
