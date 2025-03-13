@@ -121,7 +121,7 @@ export default function HomePage() {
             <img
               src="/sparta_circle_red.png"
               alt="Sparta Complete Wellness Logo"
-              className="w-4/5 h-auto mx-auto"
+              className="w-3/5 h-auto mx-auto"
               onError={(e) => {
               console.error('Error loading logo:', e);
               e.currentTarget.src = '/fallback-logo.png';
