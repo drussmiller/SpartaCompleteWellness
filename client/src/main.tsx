@@ -1,35 +1,22 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import App from "./App";
-import "./globals.css";
-import { Toaster } from "./components/ui/toaster";
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './contexts/theme-context';
-import { AuthProvider } from './contexts/auth-context';
+import "./index.css";
 
-// Create a client and make it globally accessible for lazy loading
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1
-    },
-  },
-});
+console.log('React entry point initializing...');
 
-// Make query client accessible globally
-window.__QUERY_CLIENT__ = queryClient;
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  console.error('Root element not found! Make sure index.html has a div with id="root"');
+  throw new Error('Root element not found');
+}
 
-const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
-root.render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <App />
-          <Toaster />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+try {
+  console.log('Creating React root...');
+  const root = createRoot(rootElement);
+  console.log('Rendering app...');
+  root.render(<App />);
+  console.log('App mounted successfully');
+} catch (error) {
+  console.error('Error initializing React app:', error);
+  throw error;
+}

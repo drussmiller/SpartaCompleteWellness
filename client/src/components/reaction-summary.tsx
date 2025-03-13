@@ -1,13 +1,7 @@
 
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Reaction } from '@/lib/types';
+import { Reaction } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReactionSummaryProps {
   postId: number;
@@ -48,7 +42,7 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
   if (reactions.length === 0) return null;
 
   // Get unique emoji reactions
-  const uniqueEmojis = sortedUniqueReactions.map(type => getEmojiForType(type));
+  const uniqueEmojis = [...new Set(sortedUniqueReactions.map(type => getEmojiForType(type)))];
 
   return (
     <div className="flex items-center justify-between text-sm h-full">
@@ -60,7 +54,7 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
                 <span className="text-base -mr-0.5">{emoji}</span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{sortedUniqueReactions[index]?.replace('_', ' ')}</p>
+                <p>{sortedUniqueReactions.find(type => getEmojiForType(type) === emoji)?.replace('_', ' ')}</p>
               </TooltipContent>
             </Tooltip>
           ))}

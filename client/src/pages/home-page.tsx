@@ -8,11 +8,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { useEffect } from "react";
-import { createRoot } from 'react-dom/client';
-import { AuthProvider } from "@/contexts/auth-context";
-import { ThemeProvider } from "@/contexts/theme-context";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { ErrorBoundary } from "@/components/error-boundary"; // Added import
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -132,7 +127,7 @@ export default function HomePage() {
                 {posts.slice(0, 10).map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
-
+                
                 {/* For remaining posts, use Intersection Observer to load them when they're about to enter viewport */}
                 {posts.length > 10 && (
                   <div className="pt-4">
@@ -152,40 +147,17 @@ export default function HomePage() {
                                   container.innerHTML = '';
                                   const postElement = document.createElement('div');
                                   container.appendChild(postElement);
-
-                                  // Import all necessary context providers from parent app
-                                  const appRoot = document.getElementById('root');
-                                  const contextProviders = appRoot?.getAttribute('data-providers') || '';
-
-                                  // Render the post card in the element with complete providers
+                                  
+                                  // Render the post card in the element
                                   const root = createRoot(postElement);
-
-                                  // Get the current QueryClient instance from the app
-                                  const queryClient = window.__QUERY_CLIENT__;
-
-                                  // Wrap with necessary providers
-                                  root.render(
-                                    <React.StrictMode>
-                                      <QueryClientProvider client={queryClient}>
-                                        <AuthProvider>
-                                          <ThemeProvider>
-                                            <PostCard post={post} />
-                                          </ThemeProvider>
-                                        </AuthProvider>
-                                      </QueryClientProvider>
-                                    </React.StrictMode>
-                                  );
-
+                                  root.render(<PostCard post={post} />);
+                                  
                                   // Disconnect observer after loading
                                   observer.disconnect();
                                 }
                               });
                             },
-                            {
-                              // Load images earlier, when they're 500px away from viewport
-                              rootMargin: "500px",
-                              threshold: 0.01
-                            }
+                            { rootMargin: '200px' }
                           );
                           observer.observe(el);
                         }}
