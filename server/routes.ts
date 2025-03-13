@@ -216,6 +216,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  router.get("/api/teams/:id", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+      
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.json(team);
+    } catch (error) {
+      logger.error('Error fetching team:', error);
+      res.status(500).json({ message: "Failed to fetch team" });
+    }
+  });
+
   // Add the missing POST endpoint for creating teams
   router.post("/api/teams", authenticate, async (req, res) => {
     try {
