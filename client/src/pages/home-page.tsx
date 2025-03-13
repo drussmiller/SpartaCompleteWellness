@@ -10,6 +10,8 @@ import { AppLayout } from "@/components/app-layout";
 import { useEffect } from "react";
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from "@/contexts/auth-context";
+import { ThemeProvider } from "@/contexts/theme-context";
+import { QueryClientProvider } from "@tanstack/react-query";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -153,19 +155,23 @@ export default function HomePage() {
                                   // Import all necessary context providers from parent app
                                   const appRoot = document.getElementById('root');
                                   const contextProviders = appRoot?.getAttribute('data-providers') || '';
-                                  
+
                                   // Render the post card in the element with complete providers
                                   const root = createRoot(postElement);
-                                  
+
                                   // Get the current QueryClient instance from the app
                                   const queryClient = window.__QUERY_CLIENT__;
-                                  
+
                                   // Wrap with necessary providers
                                   root.render(
                                     <React.StrictMode>
-                                      <AuthProvider>
-                                        <PostCard post={post} />
-                                      </AuthProvider>
+                                      <QueryClientProvider client={queryClient}>
+                                        <AuthProvider>
+                                          <ThemeProvider>
+                                            <PostCard post={post} />
+                                          </ThemeProvider>
+                                        </AuthProvider>
+                                      </QueryClientProvider>
                                     </React.StrictMode>
                                   );
 
