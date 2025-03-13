@@ -32,6 +32,17 @@ export default function ProfilePage() {
     enabled: !!authUser,
   });
 
+  const { data: teamInfo } = useQuery({
+    queryKey: ["/api/teams", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return null;
+      const response = await apiRequest("GET", `/api/teams/${user.teamId}`);
+      if (!response.ok) throw new Error("Failed to fetch team info");
+      return response.json();
+    },
+    enabled: !!user?.teamId
+  });
+
   // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements", user?.id],
@@ -90,23 +101,23 @@ export default function ProfilePage() {
       };
 
       console.log('Submitting measurement:', payload);
-      
+
       const res = await apiRequest("POST", "/api/measurements", payload);
-      
+
       if (!res.ok) {
         const text = await res.text();
         let errorMessage = "Failed to add measurement";
-        
+
         try {
           const errorData = JSON.parse(text);
           errorMessage = errorData.message || errorMessage;
         } catch (parseError) {
           console.error('Error parsing error response:', parseError, text);
         }
-        
+
         throw new Error(errorMessage);
       }
-      
+
       try {
         return await res.json();
       } catch (parseError) {
