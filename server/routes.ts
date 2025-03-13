@@ -216,6 +216,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  router.get("/api/teams/:id", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.json(team);
+    } catch (error) {
+      logger.error('Error fetching team:', error);
+      res.status(500).json({ message: "Failed to fetch team" });
+    }
+  });
+
   // Add the missing POST endpoint for creating teams
   router.post("/api/teams", authenticate, async (req, res) => {
     try {
@@ -525,16 +549,50 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Comments endpoints
+  // Comments endpoints (REPLACED with edited snippet)
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      // First, get direct comments for this post
-      const directCommentsQuery = db
+      // Get current user's team info
+      const [currentUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // First, verify if user can access this post
+      const [post] = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          authorTeamId: users.teamId
+        })
+        .from(posts)
+        .innerJoin(users, eq(posts.userId, users.id))
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user has access to this post
+      if (!req.user.isAdmin && post.authorTeamId !== currentUser.teamId) {
+        return res.status(403).json({ message: "Not authorized to view this post's comments" });
+      }
+
+      // Get all comments for this post
+      const comments = await db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -548,7 +606,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           author: {
             id: users.id,
             username: users.username,
-            imageUrl: users.imageUrl
+            imageUrl: users.imageUrl,
+            teamId: users.teamId
           }
         })
         .from(posts)
@@ -556,48 +615,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(posts.createdAt);
 
-      const directComments = await directCommentsQuery;
-
-      // Then, get all replies to any comment in this thread
-      const commentIds = directComments.map(comment => comment.id);
-      let allComments = [...directComments];
-
-      if (commentIds.length > 0) {
-        const repliesQuery = db
-          .select({
-            id: posts.id,
-            userId: posts.userId,
-            type: posts.type,
-            content: posts.content,
-            imageUrl: posts.imageUrl,
-            points: posts.points,
-            createdAt: posts.createdAt,
-            parentId: posts.parentId,
-            depth: posts.depth,
-            author: {
-              id: users.id,
-              username: users.username,
-              imageUrl: users.imageUrl
-            }
-          })
-          .from(posts)
-          .where(
-            and(
-              or(...commentIds.map(id => eq(posts.parentId, id))),
-              sql`${posts.id} <> ${postId}` // Ensure we don't get the original post
-            )
-          )
-          .innerJoin(users, eq(posts.userId, users.id))
-          .orderBy(posts.createdAt);
-
-        const replies = await repliesQuery;
-
-        // Add replies to the result
-        allComments = [...directComments, ...replies];
-      }
-
-      res.json(allComments);
+      res.json(comments);
     } catch (error) {
+      logger.error('Error fetching comments:', error);
       res.status(500).json({
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -656,56 +676,56 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Posts endpoints
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
-      logger.info('Fetching posts for user:', req.user?.id);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      // Get posts from database with error handling
-      let posts = [];
-      try {
-        posts = await storage.getAllPosts();
-        logger.info('Raw posts count:', posts ? posts.length : 0);
-      } catch (err) {
-        logger.error('Error in storage.getAllPosts():', err);
-        return res.status(500).json({
-          message: "Failed to fetch posts from database",
-          error: err instanceof Error ? err.message : "Unknown database error"
-        });
+      logger.info('Fetching posts for user:', req.user.id);
+
+      // Get current user's team info
+      const [currentUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
       }
 
-      if (!posts || !Array.isArray(posts)) {
-        logger.error('Posts is not an array:', posts);
-        return res.status(500).json({
-          message: "Invalid posts data from database",
-          error: "Expected array of posts but got " + typeof posts
-        });
-      }
+      // Query posts with team filtering
+      const postsQuery = db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          author: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+            teamId: users.teamId
+          }
+        })
+        .from(posts)
+        .innerJoin(users, eq(posts.userId, users.id))
+        .where(
+          and(
+            isNull(posts.parentId), // Don't include comments
+            or(
+              req.user.isAdmin ? sql`1=1` : eq(users.teamId, currentUser.teamId)
+            )
+          )
+        )
+        .orderBy(desc(posts.createdAt));
 
-      // For each post, get its author information with separate error handling
-      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
-        if (!post || typeof post !== 'object') {
-          logger.error('Invalid post object:', post);
-          return null;
-        }
+      const posts = await postsQuery;
 
-        try {
-          const author = await storage.getUser(post.userId);
-          return {
-            ...post,
-            author: author || null
-          };
-        } catch (userErr) {
-          logger.error(`Error fetching author for post ${post.id}:`, userErr);
-          return {
-            ...post,
-            author: null
-          };
-        }
-      }));
+      logger.info(`Retrieved ${posts.length} posts for user ${req.user.id} ${req.user.isAdmin ? '(admin)' : `in team ${currentUser.teamId}`}`);
 
-      // Filter out any null entries
-      const validPosts = postsWithAuthors.filter(post => post !== null);
-
-      logger.info('Successfully fetched posts with authors:', validPosts.length);
-      res.json(validPosts);
+      res.json(posts);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
@@ -899,7 +919,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add user role management endpoints
-  router.patch("/api/users/:userId/role",authenticate, async (req, res) => {
+  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
