@@ -120,7 +120,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               size="sm"
               onClick={handleDeletePost}
               disabled={deletePostMutation.isPending}
-              className="h-6 w-6 p-0 mr-2"
+              className="h-6 w-6 p-0 mr-4"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
