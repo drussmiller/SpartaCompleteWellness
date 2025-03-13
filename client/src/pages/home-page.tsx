@@ -7,16 +7,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ErrorBoundary } from "@/components/error-boundary"; // Added import
 
 export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
+  const [visibleLazyPosts, setVisibleLazyPosts] = useState([]);
+  const [olderPosts, setOlderPosts] = useState<Post[] | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Only refetch when actually needed, not on every mount
   useEffect(() => {
     if (user) {
-      // Only refetch if data is very stale (over 30 minutes old) or doesn't exist
       const lastRefetchTime = localStorage.getItem('lastPostLimitsRefetch');
       const now = Date.now();
       if (!lastRefetchTime || now - parseInt(lastRefetchTime) > 1800000) {
@@ -61,6 +64,34 @@ export default function HomePage() {
     refetchOnMount: false,
     refetchOnReconnect: false
   });
+
+  useEffect(() => {
+    if (posts && posts.length > 10) {
+      setOlderPosts(posts.slice(10));
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setVisibleLazyPosts(prev => [...prev, posts.slice(10)[prev.length]?.id.toString() || ""]);
+            observer?.unobserve(entry.target);
+          }
+        });
+      }, {rootMargin: '500px'});
+      observerRef.current = observer;
+    }
+  }, [posts]);
+
+  useEffect(() => {
+    const lazyPostsContainer = document.getElementById('older-posts-container');
+    if(olderPosts && lazyPostsContainer && observerRef.current) {
+       olderPosts.slice(0, visibleLazyPosts.length).map(post => {
+        const div = document.createElement('div')
+        div.className = "px-4";
+        div.id = `lazy-post-${post.id}`
+        lazyPostsContainer.appendChild(div);
+        observerRef.current.observe(div);
+       })
+    }
+  }, [visibleLazyPosts, olderPosts]);
 
   if (isLoading) {
     return (
@@ -127,46 +158,24 @@ export default function HomePage() {
                 {posts.slice(0, 10).map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
-                
-                {/* For remaining posts, use Intersection Observer to load them when they're about to enter viewport */}
-                {posts.length > 10 && (
-                  <div className="pt-4">
-                    <h3 className="text-lg font-medium">More posts</h3>
-                    {posts.slice(10).map((post) => (
-                      <div 
-                        key={post.id} 
-                        className="lazy-post-container"
-                        ref={(el) => {
-                          if (!el) return;
-                          const observer = new IntersectionObserver(
-                            (entries) => {
-                              entries.forEach((entry) => {
-                                if (entry.isIntersecting) {
-                                  // Replace placeholder with actual post
-                                  const container = entry.target;
-                                  container.innerHTML = '';
-                                  const postElement = document.createElement('div');
-                                  container.appendChild(postElement);
-                                  
-                                  // Render the post card in the element
-                                  const root = createRoot(postElement);
-                                  root.render(<PostCard post={post} />);
-                                  
-                                  // Disconnect observer after loading
-                                  observer.disconnect();
-                                }
-                              });
-                            },
-                            { rootMargin: '200px' }
-                          );
-                          observer.observe(el);
-                        }}
-                      >
-                        <div className="h-32 bg-gray-100 rounded-md animate-pulse my-4"></div>
-                      </div>
-                    ))}
+
+                {/* Older Posts */}
+                <div className="space-y-4 mt-8">
+                  <h2 className="text-lg font-semibold px-4">Older Posts</h2>
+                  <div id="older-posts-container" className="space-y-4">
+                    {visibleLazyPosts.map(postId => {
+                      const post = olderPosts?.find(p => p.id.toString() === postId);
+                      if (!post) return null;
+                      return (
+                        <div key={`lazy-post-${postId}`} className="px-4">
+                          <ErrorBoundary fallback={<div>Error loading post</div>}>
+                            <PostCard post={post} />
+                          </ErrorBoundary>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </>
             ) : (
               <p className="text-center text-muted-foreground py-8">
