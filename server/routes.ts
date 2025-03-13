@@ -798,7 +798,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Post counts endpoint is now defined at the top of the file to avoid route conflicts
 
-  // Delete post endpoint - optimized version with better error handling
+  // Delete post endpoint with fixed image and database deletion
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -817,8 +817,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         const [post] = await tx
           .select()
           .from(posts)
-          .where(eq(posts.id, postId))
-          .limit(1);
+          .where(eq(posts.id, postId));
 
         if (!post) {
           logger.warn(`Post ${postId} not found during deletion attempt`);
@@ -830,44 +829,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           throw new Error("Not authorized to delete this post");
         }
 
-        // Store image path before deleting post if it has an image
-        let imagePath = null;
+        // Store image paths before deletion if post has images
+        let imagesToDelete = [];
         if (post.imageUrl && post.imageUrl.startsWith('/uploads/')) {
-          imagePath = path.join(process.cwd(), post.imageUrl.substring(1));
-          logger.info(`Will delete image at path: ${imagePath}`);
+          const originalPath = path.join(process.cwd(), post.imageUrl.substring(1));
+          const thumbPath = originalPath.replace(/(\.\w+)$/, '-thumb$1');
+          imagesToDelete.push(originalPath, thumbPath);
         }
 
         // Delete all reactions first
         await tx.delete(reactions)
           .where(eq(reactions.postId, postId));
+        logger.info(`Deleted reactions for post ${postId}`);
 
-        // Then delete all comments
+        // Delete all comments
         await tx.delete(posts)
           .where(eq(posts.parentId, postId));
+        logger.info(`Deleted comments for post ${postId}`);
 
-        // Finally delete the post itself
+        // Delete the post itself
         await tx.delete(posts)
           .where(eq(posts.id, postId));
-        
-        // After successful database transaction, delete the image file if it exists
-        if (imagePath) {
+        logger.info(`Deleted post ${postId}`);
+
+        // After successful database deletion, delete image files
+        for (const imagePath of imagesToDelete) {
           try {
             if (fs.existsSync(imagePath)) {
               fs.unlinkSync(imagePath);
-              logger.info(`Successfully deleted image file: ${imagePath}`);
-              
-              // Also delete thumbnail if it exists (thumbnails are created in the same directory)
-              const thumbPath = imagePath.replace(/(\.\w+)$/, '-thumb$1');
-              if (fs.existsSync(thumbPath)) {
-                fs.unlinkSync(thumbPath);
-                logger.info(`Successfully deleted thumbnail file: ${thumbPath}`);
-              }
-            } else {
-              logger.warn(`Image file not found: ${imagePath}`);
+              logger.info(`Deleted image file: ${imagePath}`);
             }
           } catch (fileError) {
-            // Log error but don't fail the request if file deletion fails
-            logger.error(`Error deleting image file: ${fileError}`);
+            logger.error(`Error deleting image file ${imagePath}:`, fileError);
+            // Don't throw error for file deletion failures
           }
         }
       });
@@ -875,15 +869,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
       logger.error('Error in delete post endpoint:', error);
-      if (error instanceof Error && error.message === "Post not found") {
-        return res.status(404).json({ message: "Post not found" });
+
+      if (error instanceof Error) {
+        if (error.message === "Post not found") {
+          return res.status(404).json({ message: "Post not found" });
+        }
+        if (error.message === "Not authorized to delete this post") {
+          return res.status(403).json({ message: "Not authorized to delete this post" });
+        }
       }
-      if (error instanceof Error && error.message === "Not authorized to delete this post") {
-        return res.status(403).json({ message: "Not authorized to delete this post" });
-      }
+
       res.status(500).json({
         message: "Failed to delete post",
-        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : "Unknown error") : 'Internal server error'
+        error: process.env.NODE_ENV === 'development' ? 
+          (error instanceof Error ? error.message : "Unknown error") : 
+          'Internal server error'
       });
     }
   });
