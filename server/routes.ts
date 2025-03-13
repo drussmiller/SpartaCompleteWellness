@@ -674,12 +674,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Posts endpoints
-  //This section is replaced with the edited code.
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      logger.info('Fetching posts for user:', req.user.id);
 
       // Get current user's team info
       const [currentUser] = await db
@@ -691,6 +688,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      logger.info('Posts request:', {
+        userId: req.user.id,
+        userTeamId: currentUser.teamId,
+        isAdmin: req.user.isAdmin
+      });
 
       // Query posts with team filtering
       const teamPosts = await db
@@ -715,15 +718,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             isNull(posts.parentId), // Don't include comments
-            // If user is admin, no team filter, otherwise filter by team
+            // Team filtering condition
             req.user.isAdmin ? undefined : eq(users.teamId, currentUser.teamId)
           )
         )
         .orderBy(desc(posts.createdAt));
 
-      logger.info(`Retrieved ${teamPosts.length} posts for user ${req.user.id} ${req.user.isAdmin ? '(admin)' : `in team ${currentUser.teamId}`}`);
+      // Double check team access for non-admin users
+      const filteredPosts = req.user.isAdmin ?
+        teamPosts :
+        teamPosts.filter(post => post.author.teamId === currentUser.teamId);
 
-      res.json(teamPosts);
+      logger.info('Posts response:', {
+        totalPosts: teamPosts.length,
+        filteredPosts: filteredPosts.length,
+        userTeam: currentUser.teamId,
+        isAdmin: req.user.isAdmin
+      });
+
+      res.json(filteredPosts);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
@@ -817,7 +830,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Post counts endpoint is now defined at the top of the file to avoid route conflicts
 
   // Delete post endpoint with fixed image and database deletion
-  //This section is replaced with the edited code.
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
