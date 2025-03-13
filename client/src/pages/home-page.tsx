@@ -121,7 +121,7 @@ export default function HomePage() {
             <img
               src="/Sparta_Logo.jpg"
               alt="Sparta Logo"
-              className="w-full h-auto"
+              className="w-2/3 h-auto mx-auto"
               onError={(e) => {
               console.error('Error loading logo:', e);
               e.currentTarget.src = '/fallback-logo.png';
