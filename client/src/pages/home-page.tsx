@@ -134,7 +134,7 @@ export default function HomePage() {
         {/* Team name */}
       </div>
 
-      <main className="p-4 max-w-2xl mx-auto w-full">
+      <main className="w-full">
         <div className="space-y-4">
           {posts ? (
             posts.length > 0 ? (
