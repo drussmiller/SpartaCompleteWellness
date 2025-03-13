@@ -126,7 +126,6 @@ export default function HomePage() {
               e.currentTarget.src = '/fallback-logo.png';
             }}
           />
-          <h1 className="text-lg font-bold mt-2">Sparta Complete Wellness</h1>
         </div>
 
         {/* Team name and Add Post button */}
