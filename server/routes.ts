@@ -695,14 +695,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         isAdmin: req.user.isAdmin
       });
 
-      // Build where conditions
-      const whereConditions = [
-        isNull(posts.parentId), // Don't include comments
-        // Add team filter for non-admin users
-        ...(req.user.isAdmin ? [] : [eq(users.teamId, currentUser.teamId)])
-      ];
-
-      // Query posts with full SQL query logging
+      // Query posts with team filtering
       const query = db
         .select({
           id: posts.id,
@@ -722,7 +715,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
         .from(posts)
         .innerJoin(users, eq(posts.userId, users.id))
-        .where(and(...whereConditions))
+        .where(
+          and(
+            isNull(posts.parentId), // Don't include comments
+            // Add team filter for non-admin users
+            req.user.isAdmin ? sql`1=1` : eq(users.teamId, currentUser.teamId)
+          )
+        )
         .orderBy(desc(posts.createdAt));
 
       // Log the generated SQL for debugging
@@ -896,13 +895,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             if (fs.existsSync(imagePath)) {
               fs.unlinkSync(imagePath);
               logger.info(`Deleted image file: ${imagePath}`);
-            } else {
-              logger.warn(`Image file not found: ${imagePath}`);
+            } else {              logger.warn(`Image file not found: ${imagePath}`);
             }
           } catch (fileError) {
             logger.error(`Error deleting image file ${imagePath}:`, fileError);
             // Don't throw error for file deletion failures
-                    }
+          }
         }
       });
 
