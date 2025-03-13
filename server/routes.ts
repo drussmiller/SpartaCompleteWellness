@@ -715,14 +715,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
         .from(posts)
         .innerJoin(users, eq(posts.userId, users.id))
-        .where(
-          and(
-            isNull(posts.parentId), // Don't include comments
-            // Add team filter for non-admin users
-            req.user.isAdmin ? sql`1=1` : eq(users.teamId, currentUser.teamId)
-          )
-        )
+        .where(isNull(posts.parentId)) // Don't include comments
         .orderBy(desc(posts.createdAt));
+
+      // Add team filter only for non-admin users
+      if (!req.user.isAdmin) {
+        query.where(eq(users.teamId, currentUser.teamId));
+      }
 
       // Log the generated SQL for debugging
       const sqlQuery = query.toSQL();
@@ -895,7 +894,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             if (fs.existsSync(imagePath)) {
               fs.unlinkSync(imagePath);
               logger.info(`Deleted image file: ${imagePath}`);
-            } else {              logger.warn(`Image file not found: ${imagePath}`);
+            } else {
+              logger.warn(`Image file not found: ${imagePath}`);
             }
           } catch (fileError) {
             logger.error(`Error deleting image file ${imagePath}:`, fileError);
@@ -955,14 +955,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       res.json(updatedUser);
-    } catch (error) {      logger.error('Error updating user role:', error);
+    } catch (error) {
+      logger.error('Error updating user role:', error);
       res.status(500).json({ message: "Failed to update user role" });
     }
   });
 
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
-      if (!req.file) {        logger.info('🚫 [UPLOAD] No file received');
+      if (!req.file) {
+        logger.info('🚫 [UPLOAD] No file received');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
@@ -974,7 +976,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Type: ${req.file.mimetype}`);
       logger.info('------------------------');
 
-      try {        // Step 2: Extract text
+      try {
+        // Step 2: Extract text
         logger.info('📝 [UPLOAD] Starting text extraction...');
         const { value } = await mammoth.extractRawText({
           buffer: req.file.buffer
@@ -983,7 +986,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });        }
+          return res.status(400).json({ error: "No content could be extracted" });
+        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -998,7 +1002,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);
+        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({
