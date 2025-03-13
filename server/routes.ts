@@ -673,7 +673,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Added here: the updated posts endpoint with logging
+  // Posts endpoints
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -696,12 +696,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
 
       // Build where conditions
-      const whereConditions = [isNull(posts.parentId)]; // Don't include comments
-
-      // Add team filter for non-admin users
-      if (!req.user.isAdmin) {
-        whereConditions.push(eq(users.teamId, currentUser.teamId));
-      }
+      const whereConditions = [
+        isNull(posts.parentId), // Don't include comments
+        // Add team filter for non-admin users
+        ...(req.user.isAdmin ? [] : [eq(users.teamId, currentUser.teamId)])
+      ];
 
       // Query posts with full SQL query logging
       const query = db
@@ -728,10 +727,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Log the generated SQL for debugging
       const sqlQuery = query.toSQL();
-      logger.info('Generated SQL:', {
-        sql: sqlQuery.sql,
-        params: sqlQuery.params
-      });
+      logger.info('Generated SQL:', sqlQuery.sql);
+      logger.info('SQL Parameters:', sqlQuery.params);
 
       // Execute query
       const postResults = await query;
@@ -905,7 +902,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           } catch (fileError) {
             logger.error(`Error deleting image file ${imagePath}:`, fileError);
             // Don't throw error for file deletion failures
-          }
+                    }
         }
       });
 
