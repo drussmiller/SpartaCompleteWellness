@@ -116,7 +116,7 @@ export default function HomePage() {
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
         {/* Title bar with logo and title */}
-        <div className="px-6 py-4 flex flex-col items-center rounded-md m-2">
+        <div className="px-6 pb-1 pt-2 flex flex-col items-center rounded-md m-2">
           <img
             src="/Sparta_Logo.jpg"
             alt="Sparta Logo"
