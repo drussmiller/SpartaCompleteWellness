@@ -815,7 +815,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       await db.transaction(async (tx) => {
         // First check if post exists and user has permission
         const [post] = await tx
-          .select()
+          .select({
+            id: posts.id,
+            userId: posts.userId,
+            imageUrl: posts.imageUrl
+          })
           .from(posts)
           .where(eq(posts.id, postId));
 
@@ -835,22 +839,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const originalPath = path.join(process.cwd(), post.imageUrl.substring(1));
           const thumbPath = originalPath.replace(/(\.\w+)$/, '-thumb$1');
           imagesToDelete.push(originalPath, thumbPath);
+          logger.info(`Will delete images:`, imagesToDelete);
         }
 
         // Delete all reactions first
         await tx.delete(reactions)
-          .where(eq(reactions.postId, postId));
+          .where(eq(reactions.postId, postId))
+          .execute();
         logger.info(`Deleted reactions for post ${postId}`);
 
         // Delete all comments
         await tx.delete(posts)
-          .where(eq(posts.parentId, postId));
+          .where(eq(posts.parentId, postId))
+          .execute();
         logger.info(`Deleted comments for post ${postId}`);
 
         // Delete the post itself
         await tx.delete(posts)
-          .where(eq(posts.id, postId));
-        logger.info(`Deleted post ${postId}`);
+          .where(eq(posts.id, postId))
+          .execute();
+        logger.info(`Deleted post ${postId} from database`);
 
         // After successful database deletion, delete image files
         for (const imagePath of imagesToDelete) {
@@ -858,6 +866,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             if (fs.existsSync(imagePath)) {
               fs.unlinkSync(imagePath);
               logger.info(`Deleted image file: ${imagePath}`);
+            } else {
+              logger.warn(`Image file not found: ${imagePath}`);
             }
           } catch (fileError) {
             logger.error(`Error deleting image file ${imagePath}:`, fileError);
@@ -881,15 +891,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       res.status(500).json({
         message: "Failed to delete post",
-        error: process.env.NODE_ENV === 'development' ? 
-          (error instanceof Error ? error.message : "Unknown error") : 
+        error: process.env.NODE_ENV === 'development' ?
+          (error instanceof Error ? error.message : "Unknown error") :
           'Internal server error'
       });
     }
   });
 
   // Add user role management endpoints
-  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
+  router.patch("/api/users/:userId/role",authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
