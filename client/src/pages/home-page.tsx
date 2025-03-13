@@ -119,7 +119,7 @@ export default function HomePage() {
         <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
           <div className="flex-1 flex justify-center">
             <img
-              src="/Sparta_Complete_Wellness.jpg"
+              src="/sparta_circle_red.png"
               alt="Sparta Complete Wellness Logo"
               className="w-4/5 h-auto mx-auto"
               onError={(e) => {
