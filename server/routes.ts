@@ -29,6 +29,8 @@ import bcrypt from "bcryptjs";
 import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
+import fs from 'fs';
+import path from 'path';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -42,8 +44,6 @@ const multerStorage = multer.diskStorage({
 });
 
 // Make sure upload directory exists
-import fs from 'fs';
-import path from 'path';
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -549,7 +549,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Comments endpoints (REPLACED with edited snippet)
+  // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -674,6 +674,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Posts endpoints
+  //This section is replaced with the edited code.
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -692,7 +693,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Query posts with team filtering
-      const postsQuery = db
+      const teamPosts = await db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -714,18 +715,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             isNull(posts.parentId), // Don't include comments
-            or(
-              req.user.isAdmin ? sql`1=1` : eq(users.teamId, currentUser.teamId)
-            )
+            // If user is admin, no team filter, otherwise filter by team
+            req.user.isAdmin ? undefined : eq(users.teamId, currentUser.teamId)
           )
         )
         .orderBy(desc(posts.createdAt));
 
-      const posts = await postsQuery;
+      logger.info(`Retrieved ${teamPosts.length} posts for user ${req.user.id} ${req.user.isAdmin ? '(admin)' : `in team ${currentUser.teamId}`}`);
 
-      logger.info(`Retrieved ${posts.length} posts for user ${req.user.id} ${req.user.isAdmin ? '(admin)' : `in team ${currentUser.teamId}`}`);
-
-      res.json(posts);
+      res.json(teamPosts);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
@@ -819,19 +817,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Post counts endpoint is now defined at the top of the file to avoid route conflicts
 
   // Delete post endpoint with fixed image and database deletion
+  //This section is replaced with the edited code.
   router.delete("/api/posts/:postId", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
-        logger.error(`Invalid post ID format: ${req.params.postId}`);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
       logger.info(`Starting deletion process for post ${postId} by user ${req.user.id}`);
 
-      // Delete post and all related data in a transaction
       await db.transaction(async (tx) => {
         // First check if post exists and user has permission
         const [post] = await tx
@@ -844,12 +841,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .where(eq(posts.id, postId));
 
         if (!post) {
-          logger.warn(`Post ${postId} not found during deletion attempt`);
           throw new Error("Post not found");
         }
 
         if (!req.user.isAdmin && post.userId !== req.user.id) {
-          logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
           throw new Error("Not authorized to delete this post");
         }
 
@@ -859,7 +854,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const originalPath = path.join(process.cwd(), post.imageUrl.substring(1));
           const thumbPath = originalPath.replace(/(\.\w+)$/, '-thumb$1');
           imagesToDelete.push(originalPath, thumbPath);
-          logger.info(`Will delete images:`, imagesToDelete);
+          logger.info('Will delete images:', imagesToDelete);
         }
 
         // Delete all reactions first
