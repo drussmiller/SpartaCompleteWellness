@@ -101,16 +101,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <div>
             <p className="font-semibold">{post.author.username}</p>
             <p className="text-sm text-muted-foreground">{post.author.points} points</p>
-            {(() => {
-                  const diff = Date.now() - new Date(post.createdAt!).getTime();
-                  const hours = Math.floor(diff / (1000 * 60 * 60));
-                  if (hours < 24) return `${hours}h`;
-                  return `${Math.floor(hours / 24)}d`;
-                })()}
-              </p>
-            </div>
-            
           </div>
+        </div>
         <div className="flex items-center gap-2">
           {canDelete && (
             <Button
@@ -123,6 +115,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           )}
+          <div className="text-xs text-muted-foreground pl-4">
+            {(() => {
+              const diff = Date.now() - new Date(post.createdAt!).getTime();
+              const hours = Math.floor(diff / (1000 * 60 * 60));
+              if (hours < 24) return `${hours}h`;
+              return `${Math.floor(hours / 24)}d`;
+            })()}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
