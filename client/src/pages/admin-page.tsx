@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label"; // Added import for Label component
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
