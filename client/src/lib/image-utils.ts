@@ -25,13 +25,13 @@ export function preloadImage(url: string): Promise<void> {
 
 /**
  * Optimize image loading for a list of posts
- * This will preload images for the visible posts
+ * This will preload images for the visible posts and additional ones for smoother scrolling
  */
-export function optimizeImageLoading(posts: any[], visibleCount: number = 5): void {
+export function optimizeImageLoading(posts: any[], visibleCount: number = 10): void {
   // Preload thumbnails for visible posts first
   const visiblePosts = posts.slice(0, visibleCount);
   
-  // Preload thumbnails immediately
+  // Preload thumbnails immediately for visible posts
   visiblePosts.forEach(post => {
     if (post.imageUrl) {
       preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
@@ -43,17 +43,34 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
     }
   });
   
-  // Then preload the rest with a delay to not block the UI
-  setTimeout(() => {
-    posts.slice(visibleCount).forEach((post, index) => {
-      if (post.imageUrl) {
-        // Stagger loading to prevent network congestion
-        setTimeout(() => {
-          preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
-            // Silent failure for non-visible posts
-          });
-        }, index * 100);
-      }
-    });
-  }, 1000);
+  // Preload more aggressively - load next batch of images quickly
+  const secondBatchCount = Math.min(posts.length - visibleCount, 15); // Load up to 15 more images quickly
+  if (secondBatchCount > 0) {
+    setTimeout(() => {
+      posts.slice(visibleCount, visibleCount + secondBatchCount).forEach((post, index) => {
+        if (post.imageUrl) {
+          // Shorter delay between images
+          setTimeout(() => {
+            preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
+              preloadImage(post.imageUrl).catch(() => {});
+            });
+          }, index * 50); // Faster staggering
+        }
+      });
+    }, 300); // Start sooner
+  }
+  
+  // Then preload the rest with a longer delay
+  const remainingPosts = posts.slice(visibleCount + secondBatchCount);
+  if (remainingPosts.length > 0) {
+    setTimeout(() => {
+      remainingPosts.forEach((post, index) => {
+        if (post.imageUrl) {
+          setTimeout(() => {
+            preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {});
+          }, index * 75); // Still staggered but faster
+        }
+      });
+    }, 800);
+  }
 }
