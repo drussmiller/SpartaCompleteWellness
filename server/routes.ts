@@ -695,8 +695,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         isAdmin: req.user.isAdmin
       });
 
-      // Query posts with team filtering
-      const teamPosts = await db
+      // Query posts with team filtering directly in SQL
+      const posts = await db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -718,25 +718,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             isNull(posts.parentId), // Don't include comments
-            // Team filtering condition
-            req.user.isAdmin ? undefined : eq(users.teamId, currentUser.teamId)
+            // Only show posts from the same team unless user is admin
+            or(
+              req.user.isAdmin ? sql`1=1` : eq(users.teamId, currentUser.teamId)
+            )
           )
         )
         .orderBy(desc(posts.createdAt));
 
-      // Double check team access for non-admin users
-      const filteredPosts = req.user.isAdmin ?
-        teamPosts :
-        teamPosts.filter(post => post.author.teamId === currentUser.teamId);
-
       logger.info('Posts response:', {
-        totalPosts: teamPosts.length,
-        filteredPosts: filteredPosts.length,
+        totalPosts: posts.length,
         userTeam: currentUser.teamId,
         isAdmin: req.user.isAdmin
       });
 
-      res.json(filteredPosts);
+      res.json(posts);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
