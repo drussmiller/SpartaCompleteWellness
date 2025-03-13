@@ -9,6 +9,7 @@ import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { useEffect } from "react";
 import { createRoot } from 'react-dom/client';
+import { AuthProvider } from "@/contexts/auth-context";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -149,9 +150,13 @@ export default function HomePage() {
                                   const postElement = document.createElement('div');
                                   container.appendChild(postElement);
 
-                                  // Render the post card in the element
+                                  // Render the post card in the element with AuthProvider
                                   const root = createRoot(postElement);
-                                  root.render(<PostCard post={post} />);
+                                  root.render(
+                                    <AuthProvider>
+                                      <PostCard post={post} />
+                                    </AuthProvider>
+                                  );
 
                                   // Disconnect observer after loading
                                   observer.disconnect();
