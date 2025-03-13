@@ -116,16 +116,18 @@ export default function HomePage() {
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
         {/* Title bar with logo and post button */}
-        <div className="px-6 pb-1 pt-2 flex justify-center rounded-md m-2">
-          <img
-            src="/Sparta_Logo.jpg"
-            alt="Sparta Logo"
-            className="h-20 w-auto mx-auto"
-            onError={(e) => {
+        <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
+          <div className="flex-1 flex justify-center">
+            <img
+              src="/Sparta_Logo.jpg"
+              alt="Sparta Logo"
+              className="h-20 w-auto"
+              onError={(e) => {
               console.error('Error loading logo:', e);
               e.currentTarget.src = '/fallback-logo.png';
-            }}
-          />
+              }}
+            />
+          </div>
           <CreatePostDialog />
         </div>
 
