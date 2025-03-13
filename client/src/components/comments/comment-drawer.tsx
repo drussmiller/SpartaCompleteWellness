@@ -10,8 +10,7 @@ import { Loader2, ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
-import { useRef, useEffect, createContext } from "react";
-import { AuthProvider } from "@/contexts/auth-context";
+import { useRef, useEffect } from "react";
 
 interface CommentDrawerProps {
   postId: number;
@@ -209,7 +208,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             {/* Post and comments section with scrolling */}
             {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
               <>
-                <div className="flex-1 overflow-y-auto h-[calc(100vh-12rem)] p-4 space-y-6 will-change-scroll">
+                <div className="flex-1 overflow-y-auto h-[calc(100vh-12rem)] p-4 space-y-6">
                   {originalPost && <PostView post={originalPost} />}
                   <CommentList comments={comments} postId={postId} />
                 </div>
