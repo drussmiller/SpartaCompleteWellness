@@ -12,6 +12,7 @@ import { createRoot } from 'react-dom/client';
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/error-boundary"; // Added import
 
 export default function HomePage() {
   const { user } = useAuth();
