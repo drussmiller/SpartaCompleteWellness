@@ -14,7 +14,7 @@ import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl } from "../lib/image-utils";
 
-export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
+export const PostCard = React.memo(function PostCard2({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

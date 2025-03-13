@@ -1,3 +1,4 @@
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
@@ -5,6 +6,7 @@ import { MessageCircle } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
+import { AuthProvider } from "@/contexts/auth-context";
 
 interface PostViewProps {
   post: Post & { author: User };
