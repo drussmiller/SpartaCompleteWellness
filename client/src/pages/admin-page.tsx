@@ -521,21 +521,34 @@ export default function AdminPage() {
                               <form onSubmit={(e) => {
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
+                                const updatedData = {
+                                  username: formData.get('username') as string,
+                                  email: formData.get('email') as string,
+                                  preferredName: formData.get('preferredName') as string || null,
+                                };
                                 updateUserMutation.mutate({
-                                  userId: user.id,
-                                  data: {
-                                    username: formData.get('username') as string,
-                                    email: formData.get('email') as string,
-                                  }
+                                  userId: editingUser.id,
+                                  data: updatedData
                                 });
                               }}>
                                 <div className="space-y-2">
+                                  <Label htmlFor="username">Username</Label>
                                   <Input
+                                    id="username"
                                     name="username"
                                     defaultValue={user.username}
-                                    className="font-semibold"
+                                    className="text-sm"
                                   />
+                                  <Label htmlFor="preferredName">Preferred Name</Label>
                                   <Input
+                                    id="preferredName"
+                                    name="preferredName"
+                                    defaultValue={user.preferredName || ''}
+                                    className="text-sm"
+                                  />
+                                  <Label htmlFor="email">Email</Label>
+                                  <Input
+                                    id="email"
                                     name="email"
                                     defaultValue={user.email}
                                     type="email"
