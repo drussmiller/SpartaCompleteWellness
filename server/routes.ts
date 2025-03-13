@@ -695,7 +695,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         isAdmin: req.user.isAdmin
       });
 
-      // Query posts with team filtering directly in SQL
+      // Build where conditions
+      const whereConditions = [isNull(posts.parentId)]; // Don't include comments
+
+      // Add team filter for non-admin users
+      if (!req.user.isAdmin) {
+        whereConditions.push(eq(users.teamId, currentUser.teamId));
+      }
+
+      // Query posts with team filtering
       const posts = await db
         .select({
           id: posts.id,
@@ -715,15 +723,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
         .from(posts)
         .innerJoin(users, eq(posts.userId, users.id))
-        .where(
-          and(
-            isNull(posts.parentId), // Don't include comments
-            // Only show posts from the same team unless user is admin
-            or(
-              req.user.isAdmin ? sql`1=1` : eq(users.teamId, currentUser.teamId)
-            )
-          )
-        )
+        .where(and(...whereConditions))
         .orderBy(desc(posts.createdAt));
 
       logger.info('Posts response:', {
