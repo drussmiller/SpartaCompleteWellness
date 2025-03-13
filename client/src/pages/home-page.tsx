@@ -150,12 +150,23 @@ export default function HomePage() {
                                   const postElement = document.createElement('div');
                                   container.appendChild(postElement);
 
-                                  // Render the post card in the element with AuthProvider
+                                  // Import all necessary context providers from parent app
+                                  const appRoot = document.getElementById('root');
+                                  const contextProviders = appRoot?.getAttribute('data-providers') || '';
+                                  
+                                  // Render the post card in the element with complete providers
                                   const root = createRoot(postElement);
+                                  
+                                  // Get the current QueryClient instance from the app
+                                  const queryClient = window.__QUERY_CLIENT__;
+                                  
+                                  // Wrap with necessary providers
                                   root.render(
-                                    <AuthProvider>
-                                      <PostCard post={post} />
-                                    </AuthProvider>
+                                    <React.StrictMode>
+                                      <AuthProvider>
+                                        <PostCard post={post} />
+                                      </AuthProvider>
+                                    </React.StrictMode>
                                   );
 
                                   // Disconnect observer after loading

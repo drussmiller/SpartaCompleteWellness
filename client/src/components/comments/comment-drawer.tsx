@@ -10,7 +10,8 @@ import { Loader2, ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, createContext } from "react";
+import { AuthProvider } from "@/contexts/auth-context";
 
 interface CommentDrawerProps {
   postId: number;
