@@ -82,8 +82,24 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     try {
       if (!content.trim()) return;
       await onSubmit(content, postId);
-      setContent(""); // Clear content first
-      resetTextarea(); // Then reset the textarea
+      
+      // Reset everything
+      if (internalRef.current) {
+        const textarea = internalRef.current;
+        const container = textarea.parentElement;
+        
+        // Force immediate style updates
+        textarea.value = '';
+        textarea.style.height = '38px';
+        if (container) {
+          container.style.marginTop = '0';
+        }
+        
+        // Update React state after DOM updates
+        setTimeout(() => {
+          setContent('');
+        }, 0);
+      }
     } catch (error) {
       console.error('Error submitting comment:', error);
     }
