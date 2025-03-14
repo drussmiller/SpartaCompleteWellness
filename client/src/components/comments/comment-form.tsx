@@ -62,9 +62,22 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   }, []);
 
   const handleSubmit = async () => {
-    if (!content.trim()) return;
-    await onSubmit(content, postId); // Pass postId to onSubmit
-    setContent("");
+    try {
+      if (!content.trim()) return;
+      await onSubmit(content, postId); // Pass postId to onSubmit
+      setContent("");
+
+      // Reset textarea height and margin
+      if (internalRef.current) {
+        internalRef.current.style.height = '38px';
+        const container = internalRef.current.parentElement;
+        if (container) {
+          container.style.marginTop = '0';
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -104,11 +117,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             const target = e.target as HTMLTextAreaElement;
             const container = target.parentElement;
             if (!container) return;
-            
+
             target.style.height = '38px';
             const scrollHeight = Math.min(target.scrollHeight, 200);
             target.style.height = `${scrollHeight}px`;
-            
+
             const heightDiff = scrollHeight - 38;
             container.style.marginTop = heightDiff > 0 ? `-${heightDiff}px` : '0';
           }}
