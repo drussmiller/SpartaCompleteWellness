@@ -523,6 +523,44 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Delete comment endpoint
+  router.delete("/api/posts/comments/:commentId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const commentId = parseInt(req.params.commentId);
+      if (isNaN(commentId)) {
+        return res.status(400).json({ message: "Invalid comment ID" });
+      }
+
+      // Get the comment to check ownership
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, commentId))
+        .limit(1);
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check if user is admin or the comment owner
+      if (!req.user.isAdmin && comment.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      }
+
+      // Delete the comment
+      await db.delete(posts).where(eq(posts.id, commentId));
+      res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      logger.error("Error deleting comment:", error);
+      res.status(500).json({
+        message: "Failed to delete comment",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
