@@ -132,24 +132,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               }
             }}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-y-auto min-h-[38px] max-h-[100px]"
+            className="resize-none bg-gray-100 overflow-y-auto"
             rows={1}
             id="comment-textarea"
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              const maxHeight = 100;
-              target.style.height = 'auto';
-              target.style.height = `${Math.min(target.scrollHeight, maxHeight)}px`;
-              if (target.scrollHeight > maxHeight) {
-                target.style.overflowY = 'auto';
-              } else {
-                target.style.overflowY = 'hidden';
-              }
-            }}
             style={{ 
               height: '38px',
-              maxHeight: '100px',
-              overflowY: 'hidden'
+              maxHeight: '38px'
             }}
           />
         </div>
