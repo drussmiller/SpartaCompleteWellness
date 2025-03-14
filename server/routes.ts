@@ -657,11 +657,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
       logger.info('Fetching posts for user:', req.user.id, 'team:', req.user.teamId);
 
       // Get posts from database with error handling
-      let posts = [];
       try {
         // First verify the team exists
         const [team] = await db
@@ -677,7 +679,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           });
         }
 
-        // Get posts only from users in the same team
+        // Get posts only from users in the same team with pagination
         const teamPosts = await db
           .select({
             id: posts.id,
@@ -704,10 +706,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               isNull(posts.parentId)
             )
           )
-          .orderBy(desc(posts.createdAt));
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset((page - 1) * limit);
 
-        posts = teamPosts;
-        logger.info(`Successfully fetched ${posts.length} posts for team ${req.user.teamId}`);
+        logger.info(`Successfully fetched ${teamPosts.length} posts for team ${req.user.teamId}`);
+        res.json(teamPosts);
       } catch (err) {
         logger.error('Error fetching team posts:', err);
         return res.status(500).json({
@@ -715,44 +719,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           error: err instanceof Error ? err.message : "Unknown database error"
         });
       }
-
-      if (!posts || !Array.isArray(posts)) {
-        logger.error('Posts is not an array:', posts);
-        return res.status(500).json({
-          message: "Invalid posts data from database",
-          error: "Expected array of posts but got " + typeof posts
-        });
-      }
-
-      // For each post, get its author information with separate error handling
-      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
-        if (!post || typeof post !== 'object') {
-          logger.error('Invalid post object:', post);
-          return null;
-        }
-
-        try {
-          const author = await storage.getUser(post.userId);
-          return {
-            ...post,
-            author: author || null
-          };
-        } catch (userErr) {
-          logger.error(`Error fetching author for post ${post.id}:`, userErr);
-          return {
-            ...post,
-            author: null
-          };
-        }
-      }));
-
-      // Filter out any null entries
-      const validPosts = postsWithAuthors.filter(post => post !== null);
-
-      logger.info('Successfully fetched posts with authors:', validPosts.length);
-      res.json(validPosts);
     } catch (error) {
-      logger.error('Error fetching posts:', error);
+      logger.error('Error in posts endpoint:', error);
       res.status(500).json({
         message: "Failed to fetch posts",
         error: error instanceof Error ? error.message : "Unknown error"
