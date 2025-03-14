@@ -1234,16 +1234,52 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
-      // Check if yesterday was Sunday (0)
-      if (yesterday.getDay() === 0) {
-        logger.info('Skipping score check for Sunday');
-        return res.json({ message: "Score check skipped (Sunday)" });
-      }
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Process each user
+      // Special handling for Sunday - check memory verse completion
+      if (today.getDay() === 0) {
+        logger.info('Checking memory verse completion for the week');
+
+        // Get start of week (previous Monday)
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        // Process each user
+        for (const user of users) {
+          // Check if user has posted a memory verse this week
+          const memoryVersePosts = await db
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, user.id),
+                eq(posts.type, 'memory_verse'),
+                gte(posts.createdAt, startOfWeek),
+                lt(posts.createdAt, today)
+              )
+            );
+
+          // If no memory verse posts found, send notification
+          if (memoryVersePosts.length === 0) {
+            await db.insert(notifications).values({
+              userId: user.id,
+              title: "Memory Verse Reminder",
+              message: "Don't forget to complete your memory verse for this week!",
+              read: false,
+              createdAt: new Date()
+            });
+
+            logger.info(`Sent memory verse reminder to user ${user.id}`);
+          }
+        }
+
+        return res.json({ message: "Memory verse check completed" });
+      }
+
+      // Regular weekday score check (Monday-Saturday)
+      // Process each user for daily score check
       for (const user of users) {
         // Get user's posts from yesterday
         const userPosts = await db
@@ -1261,7 +1297,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
         const totalPoints = userPosts[0]?.points || 0;
 
-        // If points are less than 15, send notification
+        // If points are less than 15, send notification (except for Sunday)
         if (totalPoints < 15) {
           await db.insert(notifications).values({
             userId: user.id,
@@ -1285,15 +1321,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  app.use(router);
-
-  // Create HTTP server
-  const httpServer = createServer(app);
-
-  // Log server startup
-  logger.info('Server routes registered successfully');
-
-  // Add the activity progress endpoint before the return httpServer statement
+  // Add activity progress endpoint before the return httpServer statement
   // Remove previous timezone adjustment as it was being applied incorrectly
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
@@ -1436,6 +1464,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
+
+  app.use(router);
+
+  // Create HTTP server
+  const httpServer = createServer(app);
+
+  // Log server startup
+  logger.info('Server routes registered successfully');
 
   return httpServer;
 };
