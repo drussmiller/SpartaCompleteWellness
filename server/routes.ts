@@ -661,7 +661,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      logger.info('Fetching posts for user:', req.user.id, 'team:', req.user.teamId);
+      logger.info('Posts request:', { 
+        userId: req.user.id, 
+        teamId: req.user.teamId,
+        page,
+        limit
+      });
 
       // Get posts from database with error handling
       try {
@@ -710,7 +715,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .limit(limit)
           .offset((page - 1) * limit);
 
-        logger.info(`Successfully fetched ${teamPosts.length} posts for team ${req.user.teamId}`);
+        logger.info('Posts query result:', {
+          postsFound: teamPosts.length,
+          teamId: req.user.teamId,
+          page,
+          limit
+        });
+
         res.json(teamPosts);
       } catch (err) {
         logger.error('Error fetching team posts:', err);
