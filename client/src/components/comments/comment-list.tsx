@@ -319,7 +319,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100]">
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
