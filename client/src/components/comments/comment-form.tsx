@@ -125,7 +125,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <Textarea
               ref={setRefs} 
               value={content}
-              className="resize-none overflow-hidden min-h-[38px]"
+              className="resize-none overflow-hidden min-h-[38px] transition-[height]"
               onChange={(e) => setContent(e.target.value)}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
