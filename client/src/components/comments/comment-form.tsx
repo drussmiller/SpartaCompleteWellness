@@ -128,9 +128,21 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               ref={setRefs} 
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              ref={(element) => {
+                setRefs(element);
+                if (element && defaultValue) {
+                  // Adjust height for existing content
+                  element.style.height = 'auto';
+                  element.style.height = `${element.scrollHeight}px`;
+                  const container = element.closest('.flex-1');
+                  if (container) {
+                    container.style.height = `${element.scrollHeight + 12}px`;
+                  }
+                }
+              }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
-                target.style.height = '38px';
+                target.style.height = 'auto';
                 target.style.height = `${target.scrollHeight}px`;
 
                 // Adjust container height
