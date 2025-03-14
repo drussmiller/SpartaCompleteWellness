@@ -152,7 +152,7 @@ export default function CommentsPage() {
     <AppLayout title="Comments">
       <div className="h-full w-full overflow-hidden">
         <ScrollArea className="h-[calc(100vh-4rem)] w-full">
-          <div className="w-full max-w-none px-4 space-y-2 pb-24">
+          <div className="w-full max-w-none px-4 space-y-4 pb-24">
             <PostView post={originalPost} />
             <CommentList comments={comments} postId={parseInt(postId)} />
             {!comments.some(comment => comment.id === comments.find(c => c.replies?.some(r => r.id === comment.id))?.id) && (
