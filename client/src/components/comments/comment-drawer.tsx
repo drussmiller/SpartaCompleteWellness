@@ -214,7 +214,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 </div>
 
                 {/* Fixed comment form at the bottom */}
-                <div className="p-4 border-t bg-background">
+                <div className="border-t bg-background">
                   <CommentForm
                     onSubmit={async (content) => {
                       await createCommentMutation.mutateAsync(content);
