@@ -113,7 +113,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-1 pb-8 fixed bottom-0 left-0 right-0 bg-background z-10" 
+      className="flex flex-col gap-1 pb-14 fixed bottom-0 left-0 right-0 bg-background z-10" 
       ref={containerRef}
       style={{ minHeight: 'fit-content' }}
       onClick={(e) => {
@@ -164,7 +164,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           variant="ghost"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="self-end mb-1 pr-4"
+          className="self-end b-2 pr-4"
         >
           {/* Assuming Send is a component or icon */}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
