@@ -200,10 +200,10 @@ export const storage = {
   },
 
   // Posts
-  async getAllPosts(): Promise<Post[]> {
+  async getAllPosts(page: number = 1, limit: number = 10): Promise<Post[]> {
     try {
-      logger.debug("Getting all posts");
-      // Get all top-level posts (not comments) with author information
+      logger.debug("Getting paginated posts");
+      // Get paginated posts with minimal author information
       const result = await db
         .select({
           id: posts.id,
@@ -218,27 +218,22 @@ export const storage = {
           author: {
             id: users.id,
             username: users.username,
-            preferredName: users.preferredName,
-            email: users.email,
-            password: users.password,
-            isAdmin: users.isAdmin,
-            isTeamLead: users.isTeamLead,
-            teamId: users.teamId,
-            points: users.points,
             imageUrl: users.imageUrl,
-            currentDay: users.currentDay,
-            createdAt: users.createdAt
+            preferredName: users.preferredName,
+            teamId: users.teamId
           }
         })
         .from(posts)
         .leftJoin(users, eq(posts.userId, users.id))
         .where(isNull(posts.parentId))
-        .orderBy(desc(posts.createdAt));
+        .orderBy(desc(posts.createdAt))
+        .limit(limit)
+        .offset((page - 1) * limit);
 
-      logger.debug(`Retrieved ${result.length} posts`);
+      logger.debug(`Retrieved ${result.length} posts for page ${page}`);
       return result;
     } catch (error) {
-      logger.error(`Failed to get all posts: ${error}`);
+      logger.error(`Failed to get posts: ${error}`);
       throw error;
     }
   },
