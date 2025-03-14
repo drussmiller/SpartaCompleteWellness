@@ -125,16 +125,17 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <Textarea
               ref={setRefs} 
               value={content}
-              className="resize-none min-h-[38px] w-full"
-              style={{
-                overflow: 'hidden',
-                height: 'auto'
-              }}
               onChange={(e) => setContent(e.target.value)}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = '38px';
                 target.style.height = `${target.scrollHeight}px`;
+
+                // Adjust container height
+                const container = target.closest('.flex-1');
+                if (container) {
+                  container.style.height = `${target.scrollHeight + 12}px`;
+                }
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.shiftKey) {
@@ -143,14 +144,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 }
               }}
               placeholder={placeholder}
-              className="resize-none bg-gray-100 overflow-y-auto"
+              className="resize-none bg-gray-100"
               rows={1}
               id="comment-textarea"
-              style={{ 
-                height: '38px',
-                minHeight: '38px',
-                maxHeight: '38px'
-              }}
             />
           </div>
         </div>
