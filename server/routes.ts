@@ -679,26 +679,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
         // Get posts only from users in the same team
         const teamPosts = await db
-          .select({
-            id: posts.id,
-            userId: posts.userId,
-            type: posts.type,
-            content: posts.content,
-            imageUrl: posts.imageUrl,
-            points: posts.points,
-            createdAt: posts.createdAt,
-            parentId: posts.parentId,
-            depth: posts.depth
-          })
+          .select()
           .from(posts)
           .where(
             and(
-              sql`${posts.userId} IN (
-                SELECT id FROM ${users} WHERE team_id = ${req.user.teamId}
-              )`,
-              isNull(posts.parentId) // Don't include comments in main feed
+              eq(users.teamId, req.user.teamId),
+              isNull(posts.parentId)
             )
           )
+          .innerJoin(users, eq(posts.userId, users.id))
           .orderBy(desc(posts.createdAt));
 
         posts = teamPosts;
