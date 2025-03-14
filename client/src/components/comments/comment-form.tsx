@@ -153,7 +153,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               placeholder={placeholder}
               className="resize-none bg-gray-100 overflow-hidden"
               rows={1}
-              style={{ height: '32px', minHeight: '32px' }}
+              style={{ height: '29px', minHeight: '29px' }}
               id="comment-textarea"
             />
           </div>
