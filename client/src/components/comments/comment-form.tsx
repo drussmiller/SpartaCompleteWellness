@@ -119,43 +119,41 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex flex-col gap-2">
-        <div className="flex-1 relative" style={{ marginBottom: '50px' }}>
-          <div className="absolute bottom-0 w-full">
-            <Textarea
-              ref={setRefs} 
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              placeholder={placeholder}
-              className="resize-none bg-gray-100"
-              rows={1}
-              id="comment-textarea"
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                const maxHeight = 150;
-                target.style.height = '38px';
-                const height = Math.min(target.scrollHeight, maxHeight);
-                target.style.height = `${height}px`;
-                
-                // Move the container up as content grows
-                const container = target.closest('.absolute');
-                if (container) {
-                  const offset = height - 38;
-                  container.style.transform = offset ? `translateY(-${offset}px)` : 'none';
-                }
-              }}
-              style={{ 
-                height: '38px',
-                transition: 'height 0.1s ease'
-              }}
-            />
-          </div>
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <Textarea
+            ref={setRefs} 
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            placeholder={placeholder}
+            className="resize-none bg-gray-100"
+            rows={1}
+            id="comment-textarea"
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              const maxHeight = 100;
+              target.style.height = '38px';
+              const height = Math.min(target.scrollHeight, maxHeight);
+              target.style.height = `${height}px`;
+              
+              // Move the textarea up as it grows
+              const container = target.parentElement;
+              if (container) {
+                const offset = height - 38;
+                container.style.marginTop = offset ? `-${offset}px` : '0';
+              }
+            }}
+            style={{ 
+              height: '38px',
+              transition: 'height 0.1s ease'
+            }}
+          />
         </div>
         <Button
           type="submit"
