@@ -133,10 +133,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 const height = Math.min(target.scrollHeight, maxHeight);
                 target.style.height = `${height}px`;
 
-                // Adjust container height
+                // Adjust container height and move content upward
                 const container = target.closest('.flex-1');
                 if (container) {
-                  container.style.height = `${height + 12}px`;
+                  container.style.height = `${height}px`;
+                  const offset = height - 38;
+                  target.style.transform = offset ? `translateY(-${offset}px)` : 'none';
                 }
               }}
               onKeyDown={(e) => {
