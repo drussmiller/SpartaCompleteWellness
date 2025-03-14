@@ -18,7 +18,7 @@ export default function MenuPage() {
   return (
     <AppLayout>
       <div className="flex flex-col p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Menu</h1>
+        <h1 className="text-xl font-bold">Menu</h1>
 
         {/* Navigation Section */}
         <div className="w-full space-y-2">
