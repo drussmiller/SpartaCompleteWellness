@@ -101,7 +101,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const queryStartTime = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const queryEndTime = new Date(endOfDay.getTime() + (tzOffset * 60000));
 
-
       // Query posts for the specified date by type
       const result = await db
         .select({
@@ -155,12 +154,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       };
 
       // Calculate if user can post for each type
-      const isSaturday = userDate.getDay() === 6;
       const canPost = {
         food: counts.food < maxPosts.food,
         workout: counts.workout < maxPosts.workout,
         scripture: counts.scripture < maxPosts.scripture,
-        memory_verse: isSaturday && counts.memory_verse < maxPosts.memory_verse,
+        memory_verse: counts.memory_verse < maxPosts.memory_verse, // Removed Saturday restriction
         miscellaneous: true // Always allow miscellaneous posts
       };
 
@@ -822,401 +820,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Post counts endpoint is now defined at the top of the file to avoid route conflicts
-
-  // Delete post endpoint with fixed image and database deletion
-  router.delete("/api/posts/:postId", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
-        logger.error(`Invalid post ID format: ${req.params.postId}`);
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-
-      logger.info(`Starting deletion process for post ${postId} by user ${req.user.id}`);
-
-      // Delete post and all related data in a transaction
-      await db.transaction(async (tx) => {
-        // First check if post exists and user has permission
-        const [post] = await tx
-          .select({
-            id: posts.id,
-            userId: posts.userId,
-            imageUrl: posts.imageUrl
-          })
-          .from(posts)
-          .where(eq(posts.id, postId));
-
-        if (!post) {
-          logger.warn(`Post ${postId} not found during deletion attempt`);
-          throw new Error("Post not found");
-        }
-
-        if (!req.user.isAdmin && post.userId !== req.user.id) {
-          logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
-          throw new Error("Not authorized to delete this post");
-        }
-
-        // Store image paths before deletion if post has images
-        let imagesToDelete = [];
-        if (post.imageUrl && post.imageUrl.startsWith('/uploads/')) {
-          const originalPath = path.join(process.cwd(), post.imageUrl.substring(1));
-          const thumbPath = originalPath.replace(/(\.\w+)$/, '-thumb$1');
-          imagesToDelete.push(originalPath, thumbPath);
-          logger.info(`Will delete images:`, imagesToDelete);
-        }
-
-        // Delete all reactions first
-        await tx.delete(reactions)
-          .where(eq(reactions.postId, postId))
-          .execute();
-        logger.info(`Deleted reactions for post ${postId}`);
-
-        // Delete all comments
-        await tx.delete(posts)
-          .where(eq(posts.parentId, postId))
-          .execute();
-        logger.info(`Deleted comments for post ${postId}`);
-
-        // Delete the post itself
-        await tx.delete(posts)
-          .where(eq(posts.id, postId))
-          .execute();
-        logger.info(`Deleted post ${postId} from database`);
-
-        // After successful database deletion, delete image files
-        for (const imagePath of imagesToDelete) {
-          try {
-            if (fs.existsSync(imagePath)) {
-              fs.unlinkSync(imagePath);
-              logger.info(`Deleted image file: ${imagePath}`);
-            } else {
-              logger.warn(`Image file not found: ${imagePath}`);
-            }
-          } catch (fileError) {
-            logger.error(`Error deleting image file ${imagePath}:`, fileError);
-            // Dont throw error for file deletion failures
-          }
-        }
-      });
-
-      res.status(200).json({ message: "Post deleted successfully" });
-    } catch (error) {
-      logger.error('Error in delete post endpoint:', error);
-
-      if (error instanceof Error) {
-        if (error.message === "Post not found") {
-          return res.status(404).json({ message: "Post not found" });
-        }
-        if (error.message === "Not authorized to delete this post") {
-          return res.status(403).json({ message: "Not authorized to delete this post" });
-        }
-      }
-
-      res.status(500).json({
-        message: "Failed to delete post",
-        error: process.env.NODE_ENV === 'development' ?
-          (error instanceof Error ? error.message : "Unknown error") :
-          'Internal server error'
-      });
-    }
-  });
-
-  // Add user role management endpoints
-  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      const { role, value } = req.body;
-      if (!role || typeof value !== 'boolean' || !['isAdmin', 'isTeamLead'].includes(role)) {
-        return res.status(400).json({ message: "Invalid role update data" });
-      }
-
-      // Update user role in database
-      const [updatedUser] = await db
-        .update(users)
-        .set({ [role]: value })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(updatedUser);
-    } catch (error) {      logger.error('Error updating user role:', error);
-      res.status(500).json({ message: "Failed to update user role" });
-    }
-  });
-
-  router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
-    try {
-      if (!req.file) {        logger.info('🚫 [UPLOAD] No file received');
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      // Step 1: Log file details
-      logger.info('📁 [UPLOAD] File received:');
-      logger.info('------------------------');
-      logger.info(`Name: ${req.file.originalname}`);
-      logger.info(`Size: ${req.file.size} bytes`);
-      logger.info(`Type: ${req.file.mimetype}`);
-      logger.info('------------------------');
-
-      try {        // Step 2: Extract text
-        logger.info('📝 [UPLOAD] Starting text extraction...');
-        const { value } = await mammoth.extractRawText({
-          buffer: req.file.buffer
-        });
-
-        // Step 3: Validate content
-        if (!value) {
-          logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });        }
-
-        logger.info('✅ [UPLOAD] Text extracted successfully');
-        logger.info(`Length: ${value.length} characters`);
-
-        // Step 4: Prepare response
-        const response = { success: true };
-
-        // Step 5: Send response
-        logger.info('📤 [UPLOAD] Sending response:', response);
-        return res.status(200).json(response);
-
-      } catch (processingError) {
-        logger.error('❌ [UPLOAD] Processing error:');
-        logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
-        logger.error('------------------------');
-
-        return res.status(500).json({
-          error: "Processing failed",
-          details: processingError.message
-        });
-      }
-    } catch (error) {
-      logger.error('💥 [UPLOAD] Fatal error:');
-      logger.info('------------------------');
-      logger.error('Error:', error.message);
-      logger.error('Stack:', error.stack);
-      logger.info('------------------------');
-
-      return res.status(500).json({
-        error: "Upload failed",
-        details: error.message
-      });
-    }
-  });
-
-  router.post("/api/register", async (req, res) => {
-    try {
-      logger.info('Registration request body:', {
-        username: req.body.username,
-        email: req.body.email
-      });
-
-      // Validate the input data
-      const parsed = insertUserSchema.safeParse(req.body);
-      if (!parsed.success) {
-        logger.error('Validation errors:', parsed.error);
-        return res.status(400).json({
-          message: "Invalid registration data",
-          errors: parsed.error.errors
-        });
-      }
-
-      // Check if username already exists
-      const existingUser = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, req.body.username))
-        .limit(1);
-
-      if (existingUser.length > 0) {
-        logger.info('Registration failed: Username already exists');
-        return res.status(400).json({
-          message: "Username already exists"
-        });
-      }
-
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(req.body.password, salt);
-
-      // Create new user
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          username: req.body.username,
-          email: req.body.email,
-          password: hashedPassword,
-          isAdmin: false,
-          isTeamLead: false,
-          points: 0,
-          preferredName: null,
-          currentWeek: 1,
-          currentDay: 1
-        })
-        .returning();
-
-      logger.info('User registered successfully:', newUser.id);
-
-      // Log the user in
-      req.login(newUser, (err) => {
-        if (err) {
-          logger.error('Login after registration failed:', err);
-          return res.status(500).json({
-            message: "Registration successful but login failed",
-            error: err.message
-          });
-        }
-        res.status(201).json(newUser);
-      });
-
-    } catch (error) {
-      logger.error('Registration error:', error);
-      res.status(500).json({
-        message: "Failed to create account",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Update the user delete route handler to clean up associated data
-  router.delete("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      // Check if trying to delete the main admin account
-      const userToDelete = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!userToDelete.length) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      if (userToDelete[0].username === "admin") {
-        return res.status(403).json({
-          message: "Cannot delete the main administrator account"
-        });
-      }
-
-      // Start a transaction to ensure all related data is cleaned up
-      await db.transaction(async (tx) => {
-        // First delete all reactions by this user
-        await tx
-          .delete(reactions)
-          .where(eq(reactions.userId, userId));
-
-        // Delete all comments (posts with parentId) by this user
-        await tx
-          .delete(posts)
-          .where(and(
-            eq(posts.userId, userId),
-            sql`${posts.parentId} IS NOT NULL`
-          ));
-
-        // Delete all posts by this user
-        await tx
-          .delete(posts)
-          .where(eq(posts.userId, userId));
-
-        // Delete all notifications for this user
-        await tx
-          .delete(notifications)
-          .where(eq(notifications.userId, userId));
-
-        // Finally delete the user
-        await tx
-          .delete(users)
-          .where(eq(users.id, userId));
-      });
-
-      logger.info('User and related data deleted successfully:', userId);
-      res.json({ message: "User and all related data deleted successfully" });
-    } catch (error) {
-      logger.error('Error deleting user:', error);
-      res.status(500).json({
-        message: "Failed to delete user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add a general update endpoint for users
-  router.patch("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      const updateData = req.body;
-      logger.info(`Updating user ${userId} with data:`, updateData);
-
-      // Validate required fields
-      if (updateData.username !== undefined && (!updateData.username || typeof updateData.username !== 'string')) {
-        return res.status(400).json({ message: "Username is required" });
-      }
-
-      if (updateData.email !== undefined && (!updateData.email || typeof updateData.email !== 'string')) {
-        return res.status(400).json({ message: "Valid email is required" });
-      }
-
-      // Update user in database
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json(updatedUser);
-    } catch (error) {
-      logger.error('Error updating user:', error);
-      res.status(500).json({
-        message: "Failed to update user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Error handling middleware
-  router.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    logger.error('API Error:', err);
-    res.status(err.status || 500).json({
-      message: err.message || "Internal server error"
-    });
-  });
-
-  // Add Score check route
+  // Update daily score check endpoint
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
       // Get all users
@@ -1281,7 +885,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Regular weekday score check (Monday-Saturday)
       // Process each user for daily score check
       for (const user of users) {
-        // Get user's posts from yesterday
+        // Get user's posts from yesterday, excluding memory verse posts
         const userPosts = await db
           .select({
             points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
@@ -1291,7 +895,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             and(
               eq(posts.userId, user.id),
               gte(posts.createdAt, yesterday),
-              lt(posts.createdAt, today)
+              lt(posts.createdAt, today),
+              not(eq(posts.type, 'memory_verse')) // Exclude memory verse posts from daily total
             )
           );
 
@@ -1302,7 +907,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           await db.insert(notifications).values({
             userId: user.id,
             title: "Daily Score Alert",
-            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily to stay on track! (Required Monday-Saturday)`,
+            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
             read: false,
             createdAt: new Date()
           });
