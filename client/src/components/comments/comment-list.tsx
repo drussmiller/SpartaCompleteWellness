@@ -247,9 +247,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
                       e.stopPropagation();
                       setEditingComment(comment.id);
                     }}>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07M4.5 15.75l7.875-7.875" />
-                      </svg>
+                      Edit
                     </Button>
                   )}
                 </div>
