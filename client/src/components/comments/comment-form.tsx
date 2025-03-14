@@ -113,9 +113,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-1 pb-4 fixed bottom-0 left-0 right-0 bg-background z-50" 
+      className="flex flex-col gap-1 pb-2 fixed bottom-0 left-0 right-0 bg-background z-50" 
       ref={containerRef}
-      style={{ minHeight: 'fit-content' }}
+      style={{ minHeight: 'fit-content', paddingTop: '4px' }}
       onClick={(e) => {
         ensureTextareaFocus();
         e.stopPropagation();
