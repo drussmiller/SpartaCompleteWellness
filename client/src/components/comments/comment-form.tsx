@@ -113,8 +113,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-2 pb-12 fixed bottom-0 left-0 right-0 bg-background" 
+      className="flex flex-col gap-1 pb-8 fixed bottom-0 left-0 right-0 bg-background z-10" 
       ref={containerRef}
+      style={{ minHeight: 'fit-content' }}
       onClick={(e) => {
         ensureTextareaFocus();
         e.stopPropagation();
@@ -122,7 +123,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     >
       <div className="flex items-end gap-0"> {/* Changed gap from 2 to 1 */}
         <div className="flex-1 relative">
-          <div className="absolute bottom-0 w-full pl-6 pr-0">
+          <div className="absolute bottom-0 w-full pl-8 pr-4">
             <Textarea
               ref={setRefs} 
               value={content}
@@ -137,6 +138,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 if (container) {
                   container.style.height = `${target.scrollHeight + 12}px`;
                 }
+                
+                // Update parent container height
+                if (containerRef.current) {
+                  containerRef.current.style.height = 'auto';
+                }
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.shiftKey) {
@@ -147,7 +153,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               placeholder={placeholder}
               className="resize-none bg-gray-100 overflow-hidden"
               rows={1}
-              style={{ height: '38px', minHeight: '38px' }}
+              style={{ height: '29px', minHeight: '29px' }}
               id="comment-textarea"
             />
           </div>
@@ -158,7 +164,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           variant="ghost"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="self-end mb-1"
+          className="self-end mb-1 pr-4"
         >
           {/* Assuming Send is a component or icon */}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
