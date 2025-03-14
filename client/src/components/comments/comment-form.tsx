@@ -113,7 +113,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-1 pb-14 fixed bottom-0 left-0 right-0 bg-background z-50" 
+      className="flex flex-col gap-1 pb-4 fixed bottom-0 left-0 right-0 bg-background z-50" 
       ref={containerRef}
       style={{ minHeight: 'fit-content' }}
       onClick={(e) => {
@@ -128,9 +128,21 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               ref={setRefs} 
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              ref={(element) => {
+                setRefs(element);
+                if (element && defaultValue) {
+                  // Adjust height for existing content
+                  element.style.height = 'auto';
+                  element.style.height = `${element.scrollHeight}px`;
+                  const container = element.closest('.flex-1');
+                  if (container) {
+                    container.style.height = `${element.scrollHeight + 12}px`;
+                  }
+                }
+              }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
-                target.style.height = '38px';
+                target.style.height = 'auto';
                 target.style.height = `${target.scrollHeight}px`;
 
                 // Adjust container height
