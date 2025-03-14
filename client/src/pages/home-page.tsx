@@ -42,8 +42,11 @@ export default function HomePage() {
   });
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
-    queryKey: ["/api/posts"],
+    queryKey: ["/api/posts", user?.teamId],
     queryFn: async () => {
+      if (!user?.teamId) {
+        return [];
+      }
       try {
         const response = await apiRequest("GET", "/api/posts");
         if (!response.ok) {

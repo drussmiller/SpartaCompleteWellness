@@ -656,15 +656,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Posts endpoints
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
-      logger.info('Fetching posts for user:', req.user?.id);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      logger.info('Fetching posts for user:', req.user.id, 'team:', req.user.teamId);
 
       // Get posts from database with error handling
       let posts = [];
       try {
-        posts = await storage.getAllPosts();
-        logger.info('Raw posts count:', posts ? posts.length : 0);
+        // Get posts only from users in the same team
+        const teamPosts = await db
+          .select({
+            id: posts.id,
+            userId: posts.userId,
+            type: posts.type,
+            content: posts.content,
+            imageUrl: posts.imageUrl,
+            points: posts.points,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            depth: posts.depth
+          })
+          .from(posts)
+          .where(
+            and(
+              sql`${posts.userId} IN (
+                SELECT id FROM ${users} WHERE team_id = ${req.user.teamId}
+              )`,
+              isNull(posts.parentId) // Don't include comments in main feed
+            )
+          )
+          .orderBy(desc(posts.createdAt));
+
+        posts = teamPosts;
+        logger.info('Team posts count:', posts.length);
       } catch (err) {
-        logger.error('Error in storage.getAllPosts():', err);
+        logger.error('Error fetching team posts:', err);
         return res.status(500).json({
           message: "Failed to fetch posts from database",
           error: err instanceof Error ? err.message : "Unknown database error"
