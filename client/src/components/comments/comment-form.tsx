@@ -115,7 +115,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     <div 
       className="flex flex-col gap-2 pb-12 fixed bottom-0 left-0 right-0 bg-background z-10" 
       ref={containerRef}
-      style={{ maxHeight: '50vh', overflow: 'hidden' }}
+      style={{ height: 'auto', maxHeight: '50vh' }}
       onClick={(e) => {
         ensureTextareaFocus();
         e.stopPropagation();
@@ -137,6 +137,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 const container = target.closest('.flex-1');
                 if (container) {
                   container.style.height = `${target.scrollHeight + 12}px`;
+                }
+                
+                // Update parent container height
+                if (containerRef.current) {
+                  containerRef.current.style.height = 'auto';
                 }
               }}
               onKeyDown={(e) => {
