@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, or, isNull, lt } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
 import {
   posts,
   notifications,
@@ -661,8 +661,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      logger.info('Posts request:', { 
-        userId: req.user.id, 
+      logger.info('Posts request:', {
+        userId: req.user.id,
         teamId: req.user.teamId,
         page,
         limit
@@ -1216,6 +1216,68 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     });
   });
 
+  // Add Score check route
+  router.post("/api/check-daily-scores", async (req, res) => {
+    try {
+      // Get all users
+      const users = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.isAdmin, false),
+            not(isNull(users.teamId))
+          )
+        );
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Process each user
+      for (const user of users) {
+        // Get user's posts from yesterday
+        const userPosts = await db
+          .select({
+            points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+          })
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, user.id),
+              gte(posts.createdAt, yesterday),
+              lt(posts.createdAt, today)
+            )
+          );
+
+        const totalPoints = userPosts[0]?.points || 0;
+
+        // If points are less than 15, send notification
+        if (totalPoints < 15) {
+          await db.insert(notifications).values({
+            userId: user.id,
+            title: "Daily Score Alert",
+            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily to stay on track!`,
+            read: false,
+            createdAt: new Date()
+          });
+
+          logger.info(`Sent score notification to user ${user.id} for score ${totalPoints}`);
+        }
+      }
+
+      res.json({ message: "Score check completed" });
+    } catch (error) {
+      logger.error('Error checking scores:', error);
+      res.status(500).json({
+        message: "Failed to check scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
   app.use(router);
 
   // Create HTTP server
