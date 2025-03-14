@@ -29,8 +29,6 @@ import bcrypt from "bcryptjs";
 import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
-import fs from 'fs';
-import path from 'path';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -44,6 +42,8 @@ const multerStorage = multer.diskStorage({
 });
 
 // Make sure upload directory exists
+import fs from 'fs';
+import path from 'path';
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -213,30 +213,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     } catch (error) {
       logger.error('Error fetching teams:', error);
       res.status(500).json({ message: "Failed to fetch teams" });
-    }
-  });
-
-  router.get("/api/teams/:id", authenticate, async (req, res) => {
-    try {
-      const teamId = parseInt(req.params.id);
-      if (isNaN(teamId)) {
-        return res.status(400).json({ message: "Invalid team ID" });
-      }
-
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, teamId))
-        .limit(1);
-
-      if (!team) {
-        return res.status(404).json({ message: "Team not found" });
-      }
-
-      res.json(team);
-    } catch (error) {
-      logger.error('Error fetching team:', error);
-      res.status(500).json({ message: "Failed to fetch team" });
     }
   });
 
@@ -552,47 +528,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Comments endpoints
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
-      // Get current user's team info
-      const [currentUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // First, verify if user can access this post
-      const [post] = await db
-        .select({
-          id: posts.id,
-          userId: posts.userId,
-          authorTeamId: users.teamId
-        })
-        .from(posts)
-        .innerJoin(users, eq(posts.userId, users.id))
-        .where(eq(posts.id, postId))
-        .limit(1);
-
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
-
-      // Check if user has access to this post
-      if (!req.user.isAdmin && post.authorTeamId !== currentUser.teamId) {
-        return res.status(403).json({ message: "Not authorized to view this post's comments" });
-      }
-
-      // Get all comments for this post
-      const comments = await db
+      // First, get direct comments for this post
+      const directCommentsQuery = db
         .select({
           id: posts.id,
           userId: posts.userId,
@@ -606,8 +548,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           author: {
             id: users.id,
             username: users.username,
-            imageUrl: users.imageUrl,
-            teamId: users.teamId
+            imageUrl: users.imageUrl
           }
         })
         .from(posts)
@@ -615,9 +556,48 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .innerJoin(users, eq(posts.userId, users.id))
         .orderBy(posts.createdAt);
 
-      res.json(comments);
+      const directComments = await directCommentsQuery;
+
+      // Then, get all replies to any comment in this thread
+      const commentIds = directComments.map(comment => comment.id);
+      let allComments = [...directComments];
+
+      if (commentIds.length > 0) {
+        const repliesQuery = db
+          .select({
+            id: posts.id,
+            userId: posts.userId,
+            type: posts.type,
+            content: posts.content,
+            imageUrl: posts.imageUrl,
+            points: posts.points,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            depth: posts.depth,
+            author: {
+              id: users.id,
+              username: users.username,
+              imageUrl: users.imageUrl
+            }
+          })
+          .from(posts)
+          .where(
+            and(
+              or(...commentIds.map(id => eq(posts.parentId, id))),
+              sql`${posts.id} <> ${postId}` // Ensure we don't get the original post
+            )
+          )
+          .innerJoin(users, eq(posts.userId, users.id))
+          .orderBy(posts.createdAt);
+
+        const replies = await repliesQuery;
+
+        // Add replies to the result
+        allComments = [...directComments, ...replies];
+      }
+
+      res.json(allComments);
     } catch (error) {
-      logger.error('Error fetching comments:', error);
       res.status(500).json({
         message: "Failed to fetch comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -677,67 +657,100 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      logger.info('Fetching posts for user:', req.user.id, 'team:', req.user.teamId);
 
-      // Get current user's team info
-      const [currentUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
+      // Get posts from database with error handling
+      let posts = [];
+      try {
+        // First verify the team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, req.user.teamId))
+          .limit(1);
 
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
+        if (!team) {
+          logger.error(`Team ${req.user.teamId} not found for user ${req.user.id}`);
+          return res.status(404).json({
+            message: "Team not found - please contact your administrator"
+          });
+        }
+
+        // Get posts only from users in the same team
+        const teamPosts = await db
+          .select({
+            id: posts.id,
+            userId: posts.userId,
+            type: posts.type,
+            content: posts.content,
+            imageUrl: posts.imageUrl,
+            points: posts.points,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            depth: posts.depth,
+            author: {
+              id: users.id,
+              username: users.username,
+              imageUrl: users.imageUrl,
+              teamId: users.teamId
+            }
+          })
+          .from(posts)
+          .innerJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              eq(users.teamId, req.user.teamId),
+              isNull(posts.parentId)
+            )
+          )
+          .orderBy(desc(posts.createdAt));
+
+        posts = teamPosts;
+        logger.info(`Successfully fetched ${posts.length} posts for team ${req.user.teamId}`);
+      } catch (err) {
+        logger.error('Error fetching team posts:', err);
+        return res.status(500).json({
+          message: "Failed to fetch posts - please try again later",
+          error: err instanceof Error ? err.message : "Unknown database error"
+        });
       }
 
-      logger.info('Posts request:', {
-        userId: req.user.id,
-        userTeamId: currentUser.teamId,
-        isAdmin: req.user.isAdmin
-      });
-
-      // Query posts with team filtering
-      const query = db
-        .select({
-          id: posts.id,
-          userId: posts.userId,
-          type: posts.type,
-          content: posts.content,
-          imageUrl: posts.imageUrl,
-          points: posts.points,
-          createdAt: posts.createdAt,
-          parentId: posts.parentId,
-          author: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl,
-            teamId: users.teamId
-          }
-        })
-        .from(posts)
-        .innerJoin(users, eq(posts.userId, users.id))
-        .where(isNull(posts.parentId)) // Don't include comments
-        .orderBy(desc(posts.createdAt));
-
-      // Add team filter only for non-admin users
-      if (!req.user.isAdmin) {
-        query.where(eq(users.teamId, currentUser.teamId));
+      if (!posts || !Array.isArray(posts)) {
+        logger.error('Posts is not an array:', posts);
+        return res.status(500).json({
+          message: "Invalid posts data from database",
+          error: "Expected array of posts but got " + typeof posts
+        });
       }
 
-      // Log the generated SQL for debugging
-      const sqlQuery = query.toSQL();
-      logger.info('Generated SQL:', sqlQuery.sql);
-      logger.info('SQL Parameters:', sqlQuery.params);
+      // For each post, get its author information with separate error handling
+      const postsWithAuthors = await Promise.all(posts.map(async (post) => {
+        if (!post || typeof post !== 'object') {
+          logger.error('Invalid post object:', post);
+          return null;
+        }
 
-      // Execute query
-      const postResults = await query;
+        try {
+          const author = await storage.getUser(post.userId);
+          return {
+            ...post,
+            author: author || null
+          };
+        } catch (userErr) {
+          logger.error(`Error fetching author for post ${post.id}:`, userErr);
+          return {
+            ...post,
+            author: null
+          };
+        }
+      }));
 
-      logger.info('Posts response:', {
-        totalPosts: postResults.length,
-        userTeam: currentUser.teamId,
-        isAdmin: req.user.isAdmin
-      });
+      // Filter out any null entries
+      const validPosts = postsWithAuthors.filter(post => post !== null);
 
-      res.json(postResults);
+      logger.info('Successfully fetched posts with authors:', validPosts.length);
+      res.json(validPosts);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
@@ -837,11 +850,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
+        logger.error(`Invalid post ID format: ${req.params.postId}`);
         return res.status(400).json({ message: "Invalid post ID" });
       }
 
       logger.info(`Starting deletion process for post ${postId} by user ${req.user.id}`);
 
+      // Delete post and all related data in a transaction
       await db.transaction(async (tx) => {
         // First check if post exists and user has permission
         const [post] = await tx
@@ -854,10 +869,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .where(eq(posts.id, postId));
 
         if (!post) {
+          logger.warn(`Post ${postId} not found during deletion attempt`);
           throw new Error("Post not found");
         }
 
         if (!req.user.isAdmin && post.userId !== req.user.id) {
+          logger.warn(`Unauthorized deletion attempt for post ${postId} by user ${req.user.id}`);
           throw new Error("Not authorized to delete this post");
         }
 
@@ -867,7 +884,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const originalPath = path.join(process.cwd(), post.imageUrl.substring(1));
           const thumbPath = originalPath.replace(/(\.\w+)$/, '-thumb$1');
           imagesToDelete.push(originalPath, thumbPath);
-          logger.info('Will delete images:', imagesToDelete);
+          logger.info(`Will delete images:`, imagesToDelete);
         }
 
         // Delete all reactions first
@@ -927,7 +944,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add user role management endpoints
-  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
+  router.patch("/api/users/:userId/role",authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
@@ -955,16 +972,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       res.json(updatedUser);
-    } catch (error) {
-      logger.error('Error updating user role:', error);
+    } catch (error) {      logger.error('Error updating user role:', error);
       res.status(500).json({ message: "Failed to update user role" });
     }
   });
 
   router.post("/api/activities/upload-doc", authenticate, upload.single('document'), async (req, res) => {
     try {
-      if (!req.file) {
-        logger.info('🚫 [UPLOAD] No file received');
+      if (!req.file) {        logger.info('🚫 [UPLOAD] No file received');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
@@ -976,8 +991,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Type: ${req.file.mimetype}`);
       logger.info('------------------------');
 
-      try {
-        // Step 2: Extract text
+      try {        // Step 2: Extract text
         logger.info('📝 [UPLOAD] Starting text extraction...');
         const { value } = await mammoth.extractRawText({
           buffer: req.file.buffer
@@ -986,8 +1000,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Step 3: Validate content
         if (!value) {
           logger.info('❌ [UPLOAD] No content extracted');
-          return res.status(400).json({ error: "No content could be extracted" });
-        }
+          return res.status(400).json({ error: "No content could be extracted" });        }
 
         logger.info('✅ [UPLOAD] Text extracted successfully');
         logger.info(`Length: ${value.length} characters`);
@@ -1002,8 +1015,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } catch (processingError) {
         logger.error('❌ [UPLOAD] Processing error:');
         logger.error('--------------------------------');
-        logger.error('Error:', processingError.message);
-        logger.error('Stack:', processingError.stack);
+        logger.error('Error:', processingError.message);        logger.error('Stack:', processingError.stack);
         logger.error('------------------------');
 
         return res.status(500).json({

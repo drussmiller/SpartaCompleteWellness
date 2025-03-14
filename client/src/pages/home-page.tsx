@@ -42,23 +42,31 @@ export default function HomePage() {
   });
 
   const { data: posts, isLoading, error } = useQuery<Post[]>({
-    queryKey: ["/api/posts"],
+    queryKey: ["/api/posts", user?.teamId],
     queryFn: async () => {
+      if (!user?.teamId) {
+        throw new Error("No team assigned - please contact your administrator");
+      }
       try {
         const response = await apiRequest("GET", "/api/posts");
         if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status} ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Failed to fetch posts: ${response.status} ${response.statusText}`);
         }
-        return response.json();
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid response format from server");
+        }
+        return data;
       } catch (err) {
         console.error("Error fetching posts:", err);
-        throw err;
+        throw err instanceof Error ? err : new Error("Failed to load posts");
       }
     },
     enabled: !!user,
-    retry: 1,
-    retryDelay: 2000,
-    staleTime: 300000, // 5 minutes
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 300000,
     refetchOnWindowFocus: false,
     refetchInterval: false,
     refetchOnMount: false,
