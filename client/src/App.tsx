@@ -15,6 +15,7 @@ import HelpPage from "@/pages/help-page";
 import NotificationsPage from "@/pages/notifications-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
+import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
 
@@ -61,7 +62,7 @@ function MainContent() {
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/notifications" component={NotificationsPage} />
-          <Route path="/profile" component={ProfilePage} />
+          <Route path="/menu" component={MenuPage} />
           {user.isAdmin && <Route path="/admin" component={AdminPage} />}
           <Route path="*">Not found</Route>
         </Switch>
