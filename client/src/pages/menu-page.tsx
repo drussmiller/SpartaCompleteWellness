@@ -36,11 +36,11 @@ export default function MenuPage() {
         </div>
 
         {/* Navigation Section */}
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-2">
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button variant="outline" className="w-full justify-start bg-violet-700 text-white hover:bg-violet-800" size="lg">
                 <User className="mr-2 h-5 w-5" />
                 Profile Settings
               </Button>
@@ -54,7 +54,7 @@ export default function MenuPage() {
           {user.isAdmin && (
             <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full justify-start" size="lg">
+                <Button variant="outline" className="w-full justify-start bg-violet-700 text-white hover:bg-violet-800" size="lg">
                   <Settings className="mr-2 h-5 w-5" />
                   Admin Dashboard
                 </Button>
