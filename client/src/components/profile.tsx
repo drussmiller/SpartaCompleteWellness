@@ -7,7 +7,7 @@ interface ProfileProps {
   user: User;
 }
 
-export const UserProfile = ({ user }: ProfileProps) => {
+function UserProfile({ user }: ProfileProps) {
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
   });
@@ -29,4 +29,6 @@ export const UserProfile = ({ user }: ProfileProps) => {
       </div>
     </div>
   );
-};
+}
+
+export default UserProfile;
