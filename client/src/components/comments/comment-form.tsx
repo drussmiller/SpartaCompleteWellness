@@ -173,7 +173,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         </Button>
       </div>
       {onCancel && (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end">
           <Button
             variant="ghost"
             onClick={onCancel}
@@ -182,14 +182,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             className="h-8"
           >
             Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!content.trim() || isSubmitting}
-            size="sm"
-            className="h-8"
-          >
-            Update
           </Button>
         </div>
       )}
