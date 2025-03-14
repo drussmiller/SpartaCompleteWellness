@@ -242,14 +242,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <CardContent className="pt-3 px-4 pb-3">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
-                  {isOwnComment && (
-                    <Button variant="ghost" size="icon" onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingComment(comment.id);
-                    }}>
-                      Edit
-                    </Button>
-                  )}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
                 <div className="mt-2 flex justify-end">
