@@ -278,7 +278,20 @@ export function CommentList({ comments, postId }: CommentListProps) {
         ))}
 
         {editingComment === comment.id && (
-          <div className="fixed bottom-24 left-0 right-0 p-4 bg-background border-t z-[100]">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100]">
+            <div className="flex items-center mb-2">
+              <p className="text-sm text-muted-foreground">
+                Edit comment
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-2"
+                onClick={() => setEditingComment(null)}
+              >
+                Cancel
+              </Button>
+            </div>
             <CommentForm
               onSubmit={async (content) => {
                 await editCommentMutation.mutateAsync({ id: comment.id, content });
