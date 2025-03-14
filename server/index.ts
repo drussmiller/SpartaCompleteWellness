@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 // Setup auth first (includes session middleware)
 setupAuth(app);
 
-// Add request logging middleware (modified from original)
+// Add request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -33,7 +33,6 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    // Skip logging for high-frequency endpoints to reduce noise
     if (path.includes('/api/posts/comments/') || 
         path.includes('/api/posts/counts') || 
         req.path === '/api/posts') {
@@ -55,11 +54,57 @@ app.use((req, res, next) => {
   next();
 });
 
+// Schedule daily score check at 00:01 AM
+const scheduleDailyScoreCheck = () => {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 1, 0, 0); // 00:01 AM tomorrow
+
+  const timeUntilCheck = tomorrow.getTime() - now.getTime();
+
+  // Schedule first check
+  setTimeout(async () => {
+    try {
+      // Run the score check
+      await fetch('http://localhost:5000/api/check-daily-scores', {
+        method: 'POST'
+      });
+      logger.info('Daily score check completed successfully');
+    } catch (error) {
+      logger.error('Error running daily score check:', error);
+    }
+
+    // Schedule subsequent checks every 24 hours
+    setInterval(async () => {
+      try {
+        await fetch('http://localhost:5000/api/check-daily-scores', {
+          method: 'POST'
+        });
+        logger.info('Daily score check completed successfully');
+      } catch (error) {
+        logger.error('Error running daily score check:', error);
+      }
+    }, 24 * 60 * 60 * 1000); // 24 hours
+  }, timeUntilCheck);
+};
+
 // Ensure API requests respond with JSON
 app.use('/api', (req, res, next) => {
   res.setHeader('Content-Type', 'application/json');
   next();
 });
+
+// Placeholder route for daily score check
+app.post('/api/check-daily-scores', async (req, res) => {
+  try {
+    // Implement your daily score check logic here
+    res.status(200).json({ message: 'Daily score check initiated' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check daily scores' });
+  }
+});
+
 
 (async () => {
   try {
@@ -114,7 +159,7 @@ app.use('/api', (req, res, next) => {
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
 
-    // Enhanced port cleanup function with detailed logging (from original)
+    // Enhanced port cleanup function with detailed logging
     const killPort = async (port: number): Promise<void> => {
       try {
         // Disabled console output
@@ -160,7 +205,7 @@ app.use('/api', (req, res, next) => {
       }
     };
 
-    // Enhanced server cleanup and startup mechanism (from original, adapted)
+    // Enhanced server cleanup and startup mechanism
     let currentServer: HttpServer | null = null;
     const cleanupAndStartServer = async (retries = 5, delay = 3000): Promise<HttpServer> => {
       try {
@@ -191,6 +236,7 @@ app.use('/api', (req, res, next) => {
           host: "0.0.0.0",
         }, () => {
           log(`[Server Startup] Server listening on port ${port}`);
+          scheduleDailyScoreCheck(); // Schedule the task after server starts
         });
 
         // Enhanced error handling
@@ -226,7 +272,7 @@ app.use('/api', (req, res, next) => {
       }
     };
 
-    // Handle graceful shutdown (from original)
+    // Handle graceful shutdown
     const gracefulShutdown = () => {
       console.log('[Server Shutdown] Received shutdown signal. Closing HTTP server...');
       if (currentServer) {
@@ -245,7 +291,7 @@ app.use('/api', (req, res, next) => {
       }
     };
 
-    // Handle various shutdown signals (from original)
+    // Handle various shutdown signals
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
 
