@@ -203,10 +203,35 @@ export const storage = {
   async getAllPosts(): Promise<Post[]> {
     try {
       logger.debug("Getting all posts");
-      // Get all top-level posts (not comments) sorted by newest first
+      // Get all top-level posts (not comments) with author information
       const result = await db
-        .select()
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          type: posts.type,
+          content: posts.content,
+          imageUrl: posts.imageUrl,
+          points: posts.points,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          depth: posts.depth,
+          author: {
+            id: users.id,
+            username: users.username,
+            preferredName: users.preferredName,
+            email: users.email,
+            password: users.password,
+            isAdmin: users.isAdmin,
+            isTeamLead: users.isTeamLead,
+            teamId: users.teamId,
+            points: users.points,
+            imageUrl: users.imageUrl,
+            currentDay: users.currentDay,
+            createdAt: users.createdAt
+          }
+        })
         .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
         .where(isNull(posts.parentId))
         .orderBy(desc(posts.createdAt));
 
