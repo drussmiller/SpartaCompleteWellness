@@ -156,8 +156,12 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: number) => {
-      const res = await apiRequest("DELETE", `/api/posts/${commentId}`);
-      if (!res.ok) throw new Error(await res.text());
+      if (!user?.id) throw new Error("You must be logged in to delete a comment");
+      const res = await apiRequest("DELETE", `/api/posts/comments/${commentId}`);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to delete comment");
+      }
       return res.json();
     },
     onSuccess: () => {
