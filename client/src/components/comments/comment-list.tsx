@@ -41,6 +41,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null); // Added ref for edit form
 
   // Find the comment we're replying to
   const replyingToComment = comments.find(c => c.id === replyingTo);
@@ -214,21 +215,6 @@ export function CommentList({ comments, postId }: CommentListProps) {
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
 
-    if (editingComment === comment.id) {
-      return (
-        <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-          <CommentForm
-            onSubmit={async (content) => {
-              await editCommentMutation.mutateAsync({ id: comment.id, content });
-            }}
-            isSubmitting={editCommentMutation.isPending}
-            defaultValue={comment.content || ""}
-            onCancel={() => setEditingComment(null)}
-          />
-        </div>
-      );
-    }
-
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
@@ -252,6 +238,16 @@ export function CommentList({ comments, postId }: CommentListProps) {
               <CardContent className="pt-3 px-4 pb-3">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
+                  {isOwnComment && (
+                    <Button variant="ghost" size="icon" onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingComment(comment.id);
+                    }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07M4.5 15.75l7.875-7.875" />
+                      </svg>
+                    </Button>
+                  )}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
                 <div className="mt-2 flex justify-end">
@@ -286,6 +282,20 @@ export function CommentList({ comments, postId }: CommentListProps) {
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
+
+        {editingComment === comment.id && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100]">
+            <CommentForm
+              onSubmit={async (content) => {
+                await editCommentMutation.mutateAsync({ id: comment.id, content });
+              }}
+              isSubmitting={editCommentMutation.isPending}
+              defaultValue={comment.content || ""}
+              onCancel={() => setEditingComment(null)}
+              inputRef={editInputRef}
+            />
+          </div>
+        )}
       </div>
     );
   };
@@ -308,7 +318,10 @@ export function CommentList({ comments, postId }: CommentListProps) {
     if (replyingTo && replyInputRef.current) {
       replyInputRef.current.focus();
     }
-  }, [replyingTo]);
+    if (editingComment && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [replyingTo, editingComment]);
 
   return (
     <>
@@ -319,7 +332,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100]">
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}

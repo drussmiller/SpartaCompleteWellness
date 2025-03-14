@@ -155,15 +155,18 @@ export default function CommentsPage() {
           <div className="w-full max-w-none p-4 space-y-6 pb-32">
             <PostView post={originalPost} />
             <CommentList comments={comments} postId={parseInt(postId)} />
-            <CommentForm
-              onSubmit={async (content) => {
-                await createCommentMutation.mutateAsync({
-                  content: content,
-                  postId: parseInt(postId)
-                });
-              }}
-              isSubmitting={createCommentMutation.isPending}
-            />
+            {/* Only show comment form when not replying */}
+            {!comments.some(comment => comment.id === comments.find(c => c.replies?.some(r => r.id === comment.id))?.id) && (
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync({
+                    content: content,
+                    postId: parseInt(postId)
+                  });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+              />
+            )}
           </div>
         </ScrollArea>
       </div>
