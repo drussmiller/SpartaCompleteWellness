@@ -17,8 +17,8 @@ export default function MenuPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col items-center p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Menu</h1>
+      <div className="flex flex-col p-6 space-y-6">
+        <h1 className="text-xl font-bold">Menu</h1>
 
         {/* Navigation Section */}
         <div className="w-full space-y-2">
@@ -38,7 +38,6 @@ export default function MenuPage() {
                   </Avatar>
                   <div className="text-left">
                     <div className="font-medium">{user.preferredName || user.username}</div>
-                    <div className="text-sm text-muted-foreground">Profile Settings</div>
                   </div>
                 </div>
               </Button>
