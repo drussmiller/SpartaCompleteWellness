@@ -4,7 +4,7 @@ import {
   Home, 
   Activity, 
   Bell, 
-  User, 
+  Menu,
   Settings, 
   HelpCircle,
   Shield
@@ -20,7 +20,7 @@ export const VerticalNav = () => {
     { icon: Home, label: "Home", path: "/" },
     { icon: Activity, label: "Activity", path: "/activity" },
     { icon: Bell, label: "Alerts", path: "/notifications" },
-    { icon: User, label: "Profile", path: "/profile" },
+    { icon: Menu, label: "Menu", path: "/menu" },
     ...(user?.isAdmin ? [{ icon: Shield, label: "Admin", path: "/admin" }] : []),
     { icon: HelpCircle, label: "Help", path: "/help" },
   ];
