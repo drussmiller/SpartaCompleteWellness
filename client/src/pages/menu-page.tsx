@@ -38,7 +38,6 @@ export default function MenuPage() {
                   </Avatar>
                   <div className="text-left">
                     <div className="font-medium">{user.preferredName || user.username}</div>
-                    <div className="text-sm text-muted-foreground">Profile Settings</div>
                   </div>
                 </div>
               </Button>
