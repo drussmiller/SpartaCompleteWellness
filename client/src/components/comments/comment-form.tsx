@@ -158,7 +158,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           variant="ghost"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="self-center"
+          className="self-end mb-1"
         >
           {/* Assuming Send is a component or icon */}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
