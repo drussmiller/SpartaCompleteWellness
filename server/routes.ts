@@ -897,7 +897,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             }
           } catch (fileError) {
             logger.error(`Error deleting image file ${imagePath}:`, fileError);
-            // Don't throw error for file deletion failures
+            // Dont throw error for file deletion failures
           }
         }
       });
@@ -925,7 +925,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add user role management endpoints
-  router.patch("/api/users/:userId/role",authenticate, async (req, res) => {
+  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
@@ -1234,6 +1234,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
+      // Check if yesterday was Sunday (0)
+      if (yesterday.getDay() === 0) {
+        logger.info('Skipping score check for Sunday');
+        return res.json({ message: "Score check skipped (Sunday)" });
+      }
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -1260,7 +1266,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           await db.insert(notifications).values({
             userId: user.id,
             title: "Daily Score Alert",
-            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily to stay on track!`,
+            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily to stay on track! (Required Monday-Saturday)`,
             read: false,
             createdAt: new Date()
           });
@@ -1278,6 +1284,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
+
   app.use(router);
 
   // Create HTTP server
