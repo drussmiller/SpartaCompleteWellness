@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Calendar, HelpCircle, Bell, Menu, Shield } from "lucide-react";
+import { Home, Calendar, HelpCircle, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -53,23 +53,6 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             <span className="text-xs">{label}</span>
           </div>
         ))}
-        {user?.isAdmin && (
-          <div
-            onClick={() => setLocation("/admin")}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer",
-              // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-              // Text styles
-              location === "/admin"
-                ? "text-primary"
-                : "text-muted-foreground hover:text-primary transition-colors"
-            )}
-          >
-            <Shield className="h-5 w-5" />
-            <span className="text-xs">Admin</span>
-          </div>
-        )}
         <div
           onClick={() => setLocation("/menu")}
           className={cn(
