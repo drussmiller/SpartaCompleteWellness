@@ -61,22 +61,29 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   }, []);
 
+  // Reset textarea height when content is cleared
+  useEffect(() => {
+    if (content === '') {
+      resetTextarea();
+    }
+  }, [content]);
+
+  const resetTextarea = () => {
+    if (internalRef.current) {
+      internalRef.current.style.height = '38px';
+      const container = internalRef.current.parentElement;
+      if (container) {
+        container.style.marginTop = '0';
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       if (!content.trim()) return;
       await onSubmit(content, postId);
-      
-      // Reset textarea first
-      if (internalRef.current) {
-        internalRef.current.style.height = '38px';
-        const container = internalRef.current.parentElement;
-        if (container) {
-          container.style.marginTop = '0';
-        }
-      }
-      
-      // Then clear content
-      setContent("");
+      setContent(""); // Clear content first
+      resetTextarea(); // Then reset the textarea
     } catch (error) {
       console.error('Error submitting comment:', error);
     }
