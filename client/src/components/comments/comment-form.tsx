@@ -86,13 +86,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       // Reset state first
       setContent('');
 
-      // Force a re-render to reset the textarea
+      // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
         if (internalRef.current) {
           internalRef.current.style.height = '38px';
-          const container = internalRef.current.parentElement;
+          // Reset both textarea parent and flex-1 container
+          const container = internalRef.current.closest('.flex-1');
           if (container) {
-            container.style.marginTop = '0';
+            container.style.height = '50px';
           }
         }
       });
