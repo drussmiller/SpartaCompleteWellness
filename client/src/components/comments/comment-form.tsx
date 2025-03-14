@@ -97,10 +97,15 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             }
           }}
           placeholder={placeholder}
-          className="resize-none bg-gray-100 pr-10"
+          className="resize-none bg-gray-100 pr-10 overflow-hidden"
           rows={1}
           id="comment-textarea"
-          style={{ height: '38px', minHeight: '38px', maxHeight: '38px' }}
+          onInput={(e) => {
+            const target = e.target as HTMLTextAreaElement;
+            target.style.height = 'auto';
+            target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
+          }}
+          style={{ height: '38px', minHeight: '38px' }}
           disabled={isSubmitting}
           autoFocus={true}
         />
