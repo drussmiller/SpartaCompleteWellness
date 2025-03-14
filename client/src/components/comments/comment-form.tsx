@@ -137,11 +137,20 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             id="comment-textarea"
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
-              target.style.height = '38px';
-              const scrollHeight = Math.min(target.scrollHeight, 100);
-              target.style.height = `${scrollHeight}px`;
+              const maxHeight = 100;
+              target.style.height = 'auto';
+              target.style.height = `${Math.min(target.scrollHeight, maxHeight)}px`;
+              if (target.scrollHeight > maxHeight) {
+                target.style.overflowY = 'auto';
+              } else {
+                target.style.overflowY = 'hidden';
+              }
             }}
-            style={{ height: '38px' }}
+            style={{ 
+              height: '38px',
+              maxHeight: '100px',
+              overflowY: 'hidden'
+            }}
           />
         </div>
         <Button
