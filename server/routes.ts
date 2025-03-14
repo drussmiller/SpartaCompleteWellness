@@ -684,8 +684,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           });
         }
 
-        // Get posts only from users in the same team with pagination
-        const teamPosts = await db
+        // For admins, show all posts. For regular users, show only team posts
+        const postsQuery = db
           .select({
             id: posts.id,
             userId: posts.userId,
@@ -705,12 +705,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           })
           .from(posts)
           .innerJoin(users, eq(posts.userId, users.id))
-          .where(
-            and(
-              eq(users.teamId, req.user.teamId),
-              isNull(posts.parentId)
-            )
-          )
+          .where(isNull(posts.parentId));
+
+        // Add team filter only for non-admin users
+        if (!req.user.isAdmin) {
+          postsQuery.where(eq(users.teamId, req.user.teamId));
+        }
+
+        const teamPosts = await postsQuery
           .orderBy(desc(posts.createdAt))
           .limit(limit)
           .offset((page - 1) * limit);
