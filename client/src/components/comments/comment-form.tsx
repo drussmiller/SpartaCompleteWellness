@@ -102,8 +102,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           id="comment-textarea"
           onInput={(e) => {
             const target = e.target as HTMLTextAreaElement;
-            target.style.height = 'auto';
-            target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
+            const container = target.parentElement;
+            if (!container) return;
+            
+            const currentScrollHeight = Math.min(target.scrollHeight, 200);
+            const heightDiff = currentScrollHeight - parseInt(target.style.height || '38');
+            
+            if (heightDiff > 0) {
+              target.style.height = `${currentScrollHeight}px`;
+              container.style.marginTop = `-${heightDiff}px`;
+            }
           }}
           style={{ height: '38px', minHeight: '38px' }}
           disabled={isSubmitting}
