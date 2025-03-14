@@ -133,10 +133,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 const height = Math.min(target.scrollHeight, maxHeight);
                 target.style.height = `${height}px`;
 
-                // Adjust container height
+                // Adjust container to grow upward from bottom
                 const container = target.closest('.flex-1');
                 if (container) {
-                  container.style.height = `${height + 12}px`;
+                  container.style.height = `${height}px`;
+                  container.style.marginBottom = '0';
+                  container.style.marginTop = `${-(height - 38)}px`;
                 }
               }}
               onKeyDown={(e) => {
