@@ -85,7 +85,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex gap-2 relative">
+      <div className="flex gap-2 relative" style={{ transition: 'margin 0.1s ease' }}>
         <Textarea
           ref={setRefs} 
           value={content}
@@ -105,15 +105,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             const container = target.parentElement;
             if (!container) return;
             
-            const currentScrollHeight = Math.min(target.scrollHeight, 200);
-            const heightDiff = currentScrollHeight - parseInt(target.style.height || '38');
+            target.style.height = '38px';
+            const scrollHeight = Math.min(target.scrollHeight, 200);
+            target.style.height = `${scrollHeight}px`;
             
-            if (heightDiff > 0) {
-              target.style.height = `${currentScrollHeight}px`;
-              container.style.marginTop = `-${heightDiff}px`;
-            }
+            const heightDiff = scrollHeight - 38;
+            container.style.marginTop = heightDiff > 0 ? `-${heightDiff}px` : '0';
           }}
-          style={{ height: '38px', minHeight: '38px' }}
+          style={{ height: '38px', minHeight: '38px', transition: 'height 0.1s ease' }}
           disabled={isSubmitting}
           autoFocus={true}
         />
