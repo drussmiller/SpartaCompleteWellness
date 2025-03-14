@@ -113,7 +113,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-1 pb-14 fixed bottom-0 left-0 right-0 bg-background z-10" 
+      className="flex flex-col gap-1 pb-14 fixed bottom-0 left-0 right-0 bg-background z-50" 
       ref={containerRef}
       style={{ minHeight: 'fit-content' }}
       onClick={(e) => {
@@ -138,7 +138,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 if (container) {
                   container.style.height = `${target.scrollHeight + 12}px`;
                 }
-                
+
                 // Update parent container height
                 if (containerRef.current) {
                   containerRef.current.style.height = 'auto';
