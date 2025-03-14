@@ -1,13 +1,17 @@
 
 import React from 'react';
 import { User, Team } from '@shared/schema';
+import { useQuery } from '@tanstack/react-query';
 
 interface ProfileProps {
   user: User;
-  teams?: Team[];
 }
 
-function UserProfile({ user, teams }: ProfileProps) {
+function UserProfile({ user }: ProfileProps) {
+  const { data: teams } = useQuery<Team[]>({
+    queryKey: ["/api/teams"],
+  });
+
   const userTeam = teams?.find(t => t.id === user.teamId);
   
   return (
@@ -20,7 +24,7 @@ function UserProfile({ user, teams }: ProfileProps) {
       <div className="flex flex-col space-y-2">
         <div className="text-sm text-muted-foreground">Team</div>
         <div className="text-sm font-medium">
-          {userTeam ? userTeam.name : 'No Team Assigned'}
+          {userTeam?.name || 'No Team Assigned'}
         </div>
       </div>
     </div>
