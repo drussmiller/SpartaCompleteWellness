@@ -119,7 +119,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex items-end gap-2" style={{ transition: 'margin 0.1s ease' }}>
+      <div className="flex items-end gap-2">
         <div className="flex-1">
           <Textarea
             ref={setRefs} 
@@ -132,7 +132,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               }
             }}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-hidden min-h-[38px] max-h-[100px]"
+            className="resize-none bg-gray-100 overflow-y-auto min-h-[38px] max-h-[100px]"
             rows={1}
             id="comment-textarea"
             onInput={(e) => {
@@ -140,12 +140,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               target.style.height = '38px';
               const scrollHeight = Math.min(target.scrollHeight, 100);
               target.style.height = `${scrollHeight}px`;
-              
-              // Keep cursor position
-              const cursorPosition = target.selectionStart;
-              target.setSelectionRange(cursorPosition, cursorPosition);
             }}
-            style={{ overflow: 'hidden', height: '38px' }}
+            style={{ height: '38px' }}
           />
         </div>
         <Button
