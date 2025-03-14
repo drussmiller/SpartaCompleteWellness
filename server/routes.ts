@@ -663,6 +663,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get posts from database with error handling
       let posts = [];
       try {
+        // First verify the team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, req.user.teamId))
+          .limit(1);
+
+        if (!team) {
+          logger.error(`Team ${req.user.teamId} not found for user ${req.user.id}`);
+          return res.status(404).json({
+            message: "Team not found - please contact your administrator"
+          });
+        }
+
         // Get posts only from users in the same team
         const teamPosts = await db
           .select({
@@ -688,11 +702,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           .orderBy(desc(posts.createdAt));
 
         posts = teamPosts;
-        logger.info('Team posts count:', posts.length);
+        logger.info(`Successfully fetched ${posts.length} posts for team ${req.user.teamId}`);
       } catch (err) {
         logger.error('Error fetching team posts:', err);
         return res.status(500).json({
-          message: "Failed to fetch posts from database",
+          message: "Failed to fetch posts - please try again later",
           error: err instanceof Error ? err.message : "Unknown database error"
         });
       }
