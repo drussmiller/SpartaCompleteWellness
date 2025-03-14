@@ -120,7 +120,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1"> {/* Changed gap from 2 to 1 */}
         <div className="flex-1 relative">
           <div className="absolute bottom-0 w-full px-4">
             <Textarea
@@ -145,7 +145,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 }
               }}
               placeholder={placeholder}
-              className="resize-none bg-gray-100 scrollbar-none"
+              className="resize-none bg-gray-100 overflow-hidden"
               rows={1}
               style={{ height: '38px', minHeight: '38px' }}
               id="comment-textarea"
@@ -158,7 +158,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           variant="ghost"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="self-center"
+          className="self-end mb-1"
         >
           {/* Assuming Send is a component or icon */}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
