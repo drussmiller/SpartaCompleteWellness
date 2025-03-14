@@ -121,6 +121,19 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
+      {onCancel && (
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            size="sm"
+            className="h-8 mb-2"
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
       <div className="flex items-end gap-0"> {/* Changed gap from 2 to 1 */}
         <div className="flex-1 relative">
           <div className="absolute bottom-0 w-full pl-8 pr-4">
@@ -172,19 +185,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           </svg>
         </Button>
       </div>
-      {onCancel && (
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            size="sm"
-            className="h-8"
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
     </div>
   );
 });
