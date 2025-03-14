@@ -6,9 +6,12 @@ import { Menu, User, Settings } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
+import { useState } from "react";
 
 export default function MenuPage() {
   const { user } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   if (!user) return null;
 
@@ -35,7 +38,7 @@ export default function MenuPage() {
         {/* Navigation Section */}
         <div className="w-full space-y-4">
           {/* Profile Sheet */}
-          <Sheet>
+          <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="w-full justify-start" size="lg">
                 <User className="mr-2 h-5 w-5" />
@@ -43,13 +46,13 @@ export default function MenuPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[540px] p-0">
-              <ProfilePage />
+              <ProfilePage onClose={() => setProfileOpen(false)} />
             </SheetContent>
           </Sheet>
 
           {/* Admin Sheet - Only shown for admin users */}
           {user.isAdmin && (
-            <Sheet>
+            <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" className="w-full justify-start" size="lg">
                   <Settings className="mr-2 h-5 w-5" />
@@ -57,7 +60,7 @@ export default function MenuPage() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[540px] p-0">
-                <AdminPage />
+                <AdminPage onClose={() => setAdminOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
