@@ -137,7 +137,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   });
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0">
+    <ScrollArea className="h-[calc(100vh-4rem)]">
+      <div className="min-h-screen pb-20 lg:pb-0">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4 flex items-center">
           {onClose && (
@@ -445,6 +446,6 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       <div className="fixed bottom-0 left-0 lg:left-16 right-0 z-50">
         <BottomNav />
       </div>
-    </div>
+    </ScrollArea>
   );
 }
