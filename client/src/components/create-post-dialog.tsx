@@ -45,10 +45,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
   function getRemainingMessage(type: string) {
     if (type === 'memory_verse') {
-      const isSaturday = selectedDate.getDay() === 6;
-      return isSaturday ? "(Available today)" : "(Only available on Saturday)";
+      return ""; // Removed Saturday availability text
     }
-    
+
     if (type === 'miscellaneous') {
       return ""; // No limit text for miscellaneous
     }
