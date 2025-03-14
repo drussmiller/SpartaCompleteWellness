@@ -689,7 +689,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             createdAt: posts.createdAt,
             parentId: posts.parentId,
             depth: posts.depth,
-            author: users
+            author: {
+              id: users.id,
+              username: users.username,
+              imageUrl: users.imageUrl,
+              teamId: users.teamId
+            }
           })
           .from(posts)
           .innerJoin(users, eq(posts.userId, users.id))
