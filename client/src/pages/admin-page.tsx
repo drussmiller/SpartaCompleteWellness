@@ -40,7 +40,11 @@ import {
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
 
-export default function AdminPage() {
+interface AdminPageProps {
+  onClose?: () => void;
+}
+
+export default function AdminPage({ onClose }: AdminPageProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
@@ -330,7 +334,17 @@ export default function AdminPage() {
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4 flex items-center">
-            <h1 className="text-xl font-bold pl-2">Admin Dashboard</h1>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="mr-2"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
+            <h1 className="text-xl font-bold">Admin Dashboard</h1>
           </div>
         </div>
 

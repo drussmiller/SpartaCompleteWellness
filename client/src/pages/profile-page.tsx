@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
@@ -20,7 +20,11 @@ import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { BottomNav } from "@/components/bottom-nav";
 
-export default function ProfilePage() {
+interface ProfilePageProps {
+  onClose?: () => void;
+}
+
+export default function ProfilePage({ onClose }: ProfilePageProps) {
   const { user: authUser, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -135,8 +139,18 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-4">
-          <h1 className="text-xl font-bold pl-2">Profile</h1>
+        <div className="p-4 flex items-center">
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="mr-2"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <h1 className="text-xl font-bold">Profile</h1>
         </div>
       </header>
 
