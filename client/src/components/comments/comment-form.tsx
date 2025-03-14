@@ -122,7 +122,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     >
       <div className="flex items-end gap-2">
         <div className="flex-1 relative">
-          <div className="absolute bottom-0 w-full">
+          <div className="absolute bottom-0 w-full px-4">
             <Textarea
               ref={setRefs} 
               value={content}
