@@ -61,10 +61,44 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   }, []);
 
+  // Reset textarea height when content is cleared
+  useEffect(() => {
+    if (content === '') {
+      resetTextarea();
+    }
+  }, [content]);
+
+  const resetTextarea = () => {
+    if (internalRef.current) {
+      internalRef.current.style.height = '38px';
+      const container = internalRef.current.parentElement;
+      if (container) {
+        container.style.marginTop = '0';
+      }
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!content.trim()) return;
-    await onSubmit(content, postId); // Pass postId to onSubmit
-    setContent("");
+    try {
+      if (!content.trim()) return;
+      await onSubmit(content, postId);
+
+      // Reset state first
+      setContent('');
+
+      // Force a re-render to reset the textarea
+      requestAnimationFrame(() => {
+        if (internalRef.current) {
+          internalRef.current.style.height = '38px';
+          const container = internalRef.current.parentElement;
+          if (container) {
+            container.style.marginTop = '0';
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -85,27 +119,55 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex gap-2">
-        <Textarea
-          ref={setRefs} 
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="resize-none bg-gray-100"
-          rows={1}
-          id="comment-textarea"
-          style={{ height: '38px', minHeight: '38px', maxHeight: '38px' }}
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <Textarea
+            ref={setRefs} 
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            placeholder={placeholder}
+            className="resize-none bg-gray-100"
+            rows={1}
+            id="comment-textarea"
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              const maxHeight = 100;
+              target.style.height = '38px';
+              const height = Math.min(target.scrollHeight, maxHeight);
+              target.style.height = `${height}px`;
+              
+              // Move the textarea up as it grows
+              const container = target.parentElement;
+              if (container) {
+                const offset = height - 38;
+                container.style.marginTop = offset ? `-${offset}px` : '0';
+              }
+            }}
+            style={{ 
+              height: '38px',
+              transition: 'height 0.1s ease'
+            }}
+          />
+        </div>
+        <Button
+          type="submit"
+          size="icon"
+          variant="ghost"
+          onClick={handleSubmit}
           disabled={isSubmitting}
-          autoFocus={true} 
-          onFocus={() => console.log("Textarea focused")}
-          onClick={() => console.log("Textarea clicked")}
-        />
-        {isSubmitting && (
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" />
-          </div>
-        )}
+          className="mb-1"
+        >
+          {/* Assuming Send is a component or icon */}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-primary">
+            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+          </svg>
+        </Button>
       </div>
       {onCancel && (
         <div className="flex justify-end gap-2">
