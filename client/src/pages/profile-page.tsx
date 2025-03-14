@@ -81,8 +81,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const addMeasurementMutation = useMutation({
     mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
       // Ensure we're sending at least one measurement
-      if ((data.weight === undefined || data.weight === null || data.weight === '') && 
-          (data.waist === undefined || data.waist === null || data.waist === '')) {
+      if ((data.weight === undefined || data.weight === null || data.weight === '') &&
+        (data.waist === undefined || data.waist === null || data.waist === '')) {
         throw new Error("Please enter at least one measurement");
       }
 
@@ -94,23 +94,23 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       };
 
       console.log('Submitting measurement:', payload);
-      
+
       const res = await apiRequest("POST", "/api/measurements", payload);
-      
+
       if (!res.ok) {
         const text = await res.text();
         let errorMessage = "Failed to add measurement";
-        
+
         try {
           const errorData = JSON.parse(text);
           errorMessage = errorData.message || errorMessage;
         } catch (parseError) {
           console.error('Error parsing error response:', parseError, text);
         }
-        
+
         throw new Error(errorMessage);
       }
-      
+
       try {
         return await res.json();
       } catch (parseError) {
@@ -137,8 +137,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   });
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
+    <div className="flex flex-col h-screen">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
         <div className="p-4 flex items-center">
           {onClose && (
             <Button
@@ -154,11 +154,11 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="p-4 space-y-6 max-w-3xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto pt-16 pb-20 px-4 space-y-6 max-w-3xl mx-auto w-full">
         <div className="hidden md:block lg:w-64">
           <BottomNav orientation="vertical" />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 space-y-4">
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
               <div className="relative">
@@ -330,8 +330,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       )}
                     />
                   </div>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={addMeasurementMutation.isPending}
                     className="bg-violet-700 text-white hover:bg-violet-800"
                   >
@@ -437,12 +437,12 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
           <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending}>
             {logoutMutation.isPending ? "Logging out..." : "Logout"}
-            <LogOut className="ml-2 h-4 w-4"/>
+            <LogOut className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 lg:left-16 right-0 z-50">
+      <div className="fixed bottom-0 left-0 lg:left-16 right-0 z-50 bg-background">
         <BottomNav />
       </div>
     </div>
