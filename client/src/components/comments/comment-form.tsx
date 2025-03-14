@@ -140,7 +140,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               target.style.height = '38px';
               const scrollHeight = Math.min(target.scrollHeight, 100);
               target.style.height = `${scrollHeight}px`;
+              
+              // Keep cursor position
+              const cursorPosition = target.selectionStart;
+              target.setSelectionRange(cursorPosition, cursorPosition);
             }}
+            style={{ overflow: 'hidden', height: '38px' }}
           />
         </div>
         <Button
