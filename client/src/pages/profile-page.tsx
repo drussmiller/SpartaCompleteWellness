@@ -32,17 +32,6 @@ export default function ProfilePage() {
     enabled: !!authUser,
   });
 
-  const { data: teamInfo } = useQuery({
-    queryKey: ["/api/teams", user?.teamId],
-    queryFn: async () => {
-      if (!user?.teamId) return null;
-      const response = await apiRequest("GET", `/api/teams/${user.teamId}`);
-      if (!response.ok) throw new Error("Failed to fetch team info");
-      return response.json();
-    },
-    enabled: !!user?.teamId
-  });
-
   // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements", user?.id],
@@ -101,23 +90,23 @@ export default function ProfilePage() {
       };
 
       console.log('Submitting measurement:', payload);
-
+      
       const res = await apiRequest("POST", "/api/measurements", payload);
-
+      
       if (!res.ok) {
         const text = await res.text();
         let errorMessage = "Failed to add measurement";
-
+        
         try {
           const errorData = JSON.parse(text);
           errorMessage = errorData.message || errorMessage;
         } catch (parseError) {
           console.error('Error parsing error response:', parseError, text);
         }
-
+        
         throw new Error(errorMessage);
       }
-
+      
       try {
         return await res.json();
       } catch (parseError) {
@@ -229,9 +218,6 @@ export default function ProfilePage() {
               <div className="flex-1">
                 <h2 className="text-xl font-semibold">{user?.username}</h2>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {user?.teamId ? (teamInfo ? `Team: ${teamInfo.name}` : 'Loading team info...') : 'No Team Assigned'}
-                </div>
               </div>
             </CardContent>
           </Card>
