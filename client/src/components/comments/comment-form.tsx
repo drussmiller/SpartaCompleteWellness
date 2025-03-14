@@ -86,13 +86,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       // Reset state first
       setContent('');
 
-      // Force a re-render to reset the textarea
+      // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
         if (internalRef.current) {
           internalRef.current.style.height = '38px';
-          const container = internalRef.current.parentElement;
+          // Reset both textarea parent and flex-1 container
+          const container = internalRef.current.closest('.flex-1');
           if (container) {
-            container.style.marginTop = '0';
+            container.style.height = '50px';
           }
         }
       });
@@ -112,7 +113,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-2" 
+      className="flex flex-col gap-2 pb-12 fixed bottom-0 left-0 right-0 bg-background" 
       ref={containerRef}
       onClick={(e) => {
         ensureTextareaFocus();
@@ -120,40 +121,36 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       }}
     >
       <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <Textarea
-            ref={setRefs} 
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            placeholder={placeholder}
-            className="resize-none bg-gray-100"
-            rows={1}
-            id="comment-textarea"
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              const maxHeight = 100;
-              target.style.height = '38px';
-              const height = Math.min(target.scrollHeight, maxHeight);
-              target.style.height = `${height}px`;
-              
-              // Move the textarea up as it grows
-              const container = target.parentElement;
-              if (container) {
-                const offset = height - 38;
-                container.style.marginTop = offset ? `-${offset}px` : '0';
-              }
-            }}
-            style={{ 
-              height: '38px',
-              transition: 'height 0.1s ease'
-            }}
-          />
+        <div className="flex-1 relative">
+          <div className="absolute bottom-0 w-full px-4">
+            <Textarea
+              ref={setRefs} 
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = '38px';
+                target.style.height = `${target.scrollHeight}px`;
+
+                // Adjust container height
+                const container = target.closest('.flex-1');
+                if (container) {
+                  container.style.height = `${target.scrollHeight + 12}px`;
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              placeholder={placeholder}
+              className="resize-none bg-gray-100 scrollbar-none"
+              rows={1}
+              style={{ height: '38px', minHeight: '38px' }}
+              id="comment-textarea"
+            />
+          </div>
         </div>
         <Button
           type="submit"
@@ -161,10 +158,10 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           variant="ghost"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="mb-1"
+          className="self-center"
         >
           {/* Assuming Send is a component or icon */}
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
             <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
           </svg>
         </Button>
