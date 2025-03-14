@@ -82,10 +82,10 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     try {
       if (!content.trim()) return;
       await onSubmit(content, postId);
-      
+
       // Reset state first
       setContent('');
-      
+
       // Force a re-render to reset the textarea
       requestAnimationFrame(() => {
         if (internalRef.current) {
@@ -119,51 +119,42 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex gap-2 relative" style={{ transition: 'margin 0.1s ease' }}>
-        <Textarea
-          ref={setRefs} 
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder={placeholder}
-          className="resize-none bg-gray-100 pr-10 overflow-hidden"
-          rows={1}
-          id="comment-textarea"
-          onInput={(e) => {
-            const target = e.target as HTMLTextAreaElement;
-            const container = target.parentElement;
-            if (!container) return;
-
-            target.style.height = '38px';
-            const scrollHeight = Math.min(target.scrollHeight, 200);
-            target.style.height = `${scrollHeight}px`;
-
-            const heightDiff = scrollHeight - 38;
-            container.style.marginTop = heightDiff > 0 ? `-${heightDiff}px` : '0';
-          }}
-          style={{ height: '38px', minHeight: '38px', transition: 'height 0.1s ease' }}
-          disabled={isSubmitting}
-          autoFocus={true}
-        />
+      <div className="flex items-end gap-2" style={{ transition: 'margin 0.1s ease' }}>
+        <div className="flex-1">
+          <Textarea
+            ref={setRefs} 
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            placeholder={placeholder}
+            className="resize-none bg-gray-100 overflow-hidden min-h-[38px] max-h-[100px]"
+            rows={1}
+            id="comment-textarea"
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = '38px';
+              const scrollHeight = Math.min(target.scrollHeight, 100);
+              target.style.height = `${scrollHeight}px`;
+            }}
+          />
+        </div>
         <Button
-          size="sm"
+          type="submit"
+          size="icon"
           variant="ghost"
-          className="absolute right-1 top-1 p-1 h-7"
-          onClick={() => !isSubmitting && content.trim() && onSubmit(content)}
-          disabled={!content.trim() || isSubmitting}
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="mb-1"
         >
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-primary">
-              <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-            </svg>
-          )}
+          {/* Assuming Send is a component or icon */}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-primary">
+            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+          </svg>
         </Button>
       </div>
       {onCancel && (
