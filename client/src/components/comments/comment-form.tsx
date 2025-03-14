@@ -64,17 +64,23 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const handleSubmit = async () => {
     try {
       if (!content.trim()) return;
-      await onSubmit(content, postId); // Pass postId to onSubmit
+      await onSubmit(content, postId);
       setContent("");
-
-      // Reset textarea height and margin
-      if (internalRef.current) {
-        internalRef.current.style.height = '38px';
-        const container = internalRef.current.parentElement;
-        if (container) {
-          container.style.marginTop = '0';
+      
+      // Reset textarea and container
+      requestAnimationFrame(() => {
+        if (internalRef.current) {
+          internalRef.current.style.height = '38px';
+          const container = internalRef.current.parentElement;
+          if (container) {
+            container.style.marginTop = '0';
+            container.style.transition = 'none';
+            requestAnimationFrame(() => {
+              container.style.transition = 'margin 0.1s ease';
+            });
+          }
         }
-      }
+      });
     } catch (error) {
       console.error('Error submitting comment:', error);
     }
