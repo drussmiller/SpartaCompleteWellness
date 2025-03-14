@@ -85,27 +85,39 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex gap-2">
+      <div className="flex gap-2 relative">
         <Textarea
           ref={setRefs} 
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+            }
+          }}
           placeholder={placeholder}
-          className="resize-none bg-gray-100"
+          className="resize-none bg-gray-100 pr-10"
           rows={1}
           id="comment-textarea"
           style={{ height: '38px', minHeight: '38px', maxHeight: '38px' }}
           disabled={isSubmitting}
-          autoFocus={true} 
-          onFocus={() => console.log("Textarea focused")}
-          onClick={() => console.log("Textarea clicked")}
+          autoFocus={true}
         />
-        {isSubmitting && (
-          <div className="flex items-center justify-center">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="absolute right-1 top-1 p-1 h-7"
+          onClick={() => !isSubmitting && content.trim() && onSubmit(content)}
+          disabled={!content.trim() || isSubmitting}
+        >
+          {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
-          </div>
-        )}
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-primary">
+              <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+            </svg>
+          )}
+        </Button>
       </div>
       {onCancel && (
         <div className="flex justify-end gap-2">
