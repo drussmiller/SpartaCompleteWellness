@@ -13,11 +13,13 @@ import { ErrorBoundary } from "@/components/error-boundary";
 export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
-  const [visiblePosts, setVisiblePosts] = useState<string[]>([]);
-  const [olderPosts, setOlderPosts] = useState<Post[] | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [posts, setPosts] = useState<Post[]>([]);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
 
-  // Only refetch when actually needed
+  // Only refetch post limits when needed
   useEffect(() => {
     if (user) {
       const lastRefetchTime = localStorage.getItem('lastPostLimitsRefetch');
@@ -29,101 +31,47 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
-  // Query for team information
-  const { data: teamInfo } = useQuery({
-    queryKey: ["/api/teams", user?.teamId],
+  // Fetch posts with pagination
+  const { isLoading, error } = useQuery({
+    queryKey: ["/api/posts", page],
     queryFn: async () => {
-      if (!user?.teamId) return null;
-      const response = await apiRequest("GET", `/api/teams/${user.teamId}`);
-      if (!response.ok) throw new Error("Failed to fetch team info");
-      return response.json();
-    },
-    enabled: !!user?.teamId
-  });
-
-  const { data: posts, isLoading, error } = useQuery<Post[]>({
-    queryKey: ["/api/posts", user?.teamId],
-    queryFn: async () => {
-      if (!user?.teamId) {
-        throw new Error("No team assigned - please contact your administrator");
-      }
       try {
-        const response = await apiRequest("GET", "/api/posts");
+        const response = await apiRequest("GET", `/api/posts?page=${page}&limit=10`);
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Failed to fetch posts: ${response.status} ${response.statusText}`);
+          throw new Error(`Failed to fetch posts: ${response.status}`);
         }
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-          throw new Error("Invalid response format from server");
-        }
-        return data;
-      } catch (err) {
-        console.error("Error fetching posts:", err);
-        throw err instanceof Error ? err : new Error("Failed to load posts");
+        const newPosts = await response.json();
+        setPosts(prev => [...prev, ...newPosts]);
+        setHasMore(newPosts.length === 10);
+        return newPosts;
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        throw error;
       }
     },
-    enabled: !!user,
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 300000,
+    enabled: !!user && hasMore,
     refetchOnWindowFocus: false,
     refetchInterval: false,
     refetchOnMount: false,
     refetchOnReconnect: false
   });
 
+  // Setup intersection observer for infinite scroll
   useEffect(() => {
-    if (posts && posts.length > 10) {
-      setOlderPosts(posts.slice(10));
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const postId = entry.target.getAttribute('data-post-id');
-            if (postId) {
-              setVisiblePosts(prev => [...prev, postId]);
-            }
-            observer.unobserve(entry.target);
+    if (loadingRef.current) {
+      const observer = new IntersectionObserver(
+        entries => {
+          if (entries[0].isIntersecting && hasMore && !isLoading) {
+            setPage(prev => prev + 1);
           }
-        });
-      }, { rootMargin: '500px' });
+        },
+        { rootMargin: '100px' }
+      );
 
-      observerRef.current = observer;
+      observer.observe(loadingRef.current);
+      return () => observer.disconnect();
     }
-  }, [posts]);
-
-  useEffect(() => {
-    const observer = observerRef.current;
-    if (olderPosts && observer) {
-      const container = document.getElementById('older-posts-container');
-      if (container) {
-        olderPosts.forEach(post => {
-          const existingElement = document.querySelector(`[data-post-id="${post.id}"]`);
-          if (!existingElement && !visiblePosts.includes(post.id.toString())) {
-            const element = document.createElement('div');
-            element.setAttribute('data-post-id', post.id.toString());
-            container.appendChild(element);
-            observer.observe(element);
-          }
-        });
-      }
-    }
-    return () => observer?.disconnect();
-  }, [olderPosts, visiblePosts]);
-
-  if (isLoading) {
-    return (
-      <AppLayout title="Home">
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </AppLayout>
-    );
-  }
+  }, [hasMore, isLoading]);
 
   if (error) {
     return (
@@ -159,44 +107,24 @@ export default function HomePage() {
 
       <main className="w-full">
         <div className="space-y-4">
-          {posts ? (
-            posts.length > 0 ? (
-              <>
-                {posts.slice(0, 10).map((post) => (
-                  <ErrorBoundary key={post.id}>
-                    <PostCard post={post} />
-                  </ErrorBoundary>
-                ))}
+          {posts.length > 0 ? (
+            posts.map((post) => (
+              <ErrorBoundary key={post.id}>
+                <PostCard post={post} />
+              </ErrorBoundary>
+            ))
+          ) : !isLoading ? (
+            <p className="text-center text-muted-foreground py-8">
+              No posts yet. Be the first to share!
+            </p>
+          ) : null}
 
-                <div className="space-y-4 mt-8">
-                  <h2 className="text-lg font-semibold px-4">Older Posts</h2>
-                  <div id="older-posts-container" className="space-y-4">
-                    {visiblePosts.map(postId => {
-                      const post = olderPosts?.find(p => p.id.toString() === postId);
-                      if (!post) return null;
-                      return (
-                        <ErrorBoundary key={`lazy-post-${postId}`}>
-                          <div className="px-4">
-                            <PostCard post={post} />
-                          </div>
-                        </ErrorBoundary>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">
-                No posts yet. Be the first to share!
-              </p>
-            )
-          ) : (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-40 bg-gray-100 rounded-md animate-pulse"></div>
-              ))}
-            </div>
-          )}
+          {/* Loading indicator */}
+          <div ref={loadingRef} className="flex justify-center py-4">
+            {isLoading && (
+              <Loader2 className="h-8 w-8 animate-spin" />
+            )}
+          </div>
         </div>
       </main>
     </AppLayout>
