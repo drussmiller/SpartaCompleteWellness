@@ -113,7 +113,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-1 pb-5 fixed bottom-0 left-0 right-0 bg-background z-50" 
+      className="flex flex-col gap-1 pb-16 fixed bottom-0 left-0 right-0 bg-background z-50" 
       ref={containerRef}
       style={{ minHeight: 'fit-content' }}
       onClick={(e) => {
