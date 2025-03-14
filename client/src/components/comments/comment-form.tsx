@@ -83,23 +83,19 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       if (!content.trim()) return;
       await onSubmit(content, postId);
       
-      // Reset everything
-      if (internalRef.current) {
-        const textarea = internalRef.current;
-        const container = textarea.parentElement;
-        
-        // Force immediate style updates
-        textarea.value = '';
-        textarea.style.height = '38px';
-        if (container) {
-          container.style.marginTop = '0';
+      // Reset state first
+      setContent('');
+      
+      // Force a re-render to reset the textarea
+      requestAnimationFrame(() => {
+        if (internalRef.current) {
+          internalRef.current.style.height = '38px';
+          const container = internalRef.current.parentElement;
+          if (container) {
+            container.style.marginTop = '0';
+          }
         }
-        
-        // Update React state after DOM updates
-        setTimeout(() => {
-          setContent('');
-        }, 0);
-      }
+      });
     } catch (error) {
       console.error('Error submitting comment:', error);
     }
