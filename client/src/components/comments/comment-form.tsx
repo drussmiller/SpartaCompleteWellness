@@ -129,17 +129,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 const maxHeight = 120;
-                const minHeight = 38;
-                target.style.height = `${minHeight}px`;
+                target.style.height = '38px';
                 const height = Math.min(target.scrollHeight, maxHeight);
                 target.style.height = `${height}px`;
 
-                // Adjust container to maintain top padding
+                // Adjust container height
                 const container = target.closest('.flex-1');
                 if (container) {
-                  const paddingOffset = height - minHeight;
-                  container.style.height = `${height}px`;
-                  container.style.marginTop = paddingOffset > 0 ? `-${paddingOffset}px` : '0';
+                  container.style.height = `${height + 12}px`;
                 }
               }}
               onKeyDown={(e) => {
