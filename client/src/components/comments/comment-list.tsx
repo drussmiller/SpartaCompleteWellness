@@ -360,6 +360,7 @@ export function CommentList({ comments, postId }: CommentListProps) {
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
+            onCancel={() => setReplyingTo(null)}
           />
         </div>
       )}
