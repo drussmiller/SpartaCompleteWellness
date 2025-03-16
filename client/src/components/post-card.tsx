@@ -71,8 +71,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   return (
     <Card className="rounded-none border-0 border-b">
-      <CardHeader className="p-3">
-        <div className="flex items-center justify-between">
+      <CardHeader className="py-2 px-0">
+        <div className="flex items-center justify-between px-3">
           <div className="flex items-center gap-4">
             <Avatar>
               <AvatarImage
@@ -109,57 +109,59 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-3">
-        {post.content && (
-          <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
-        )}
-        {post.imageUrl && (
-          <img
-            src={getThumbnailUrl(post.imageUrl)}
-            data-full-src={post.imageUrl}
-            alt="Post content"
-            loading="lazy"
-            decoding="async"
-            className="w-full h-auto object-cover mb-4 cursor-pointer"
-            onClick={(e) => {
-              const fullSrc = e.currentTarget.getAttribute('data-full-src');
-              if (fullSrc) {
-                window.open(fullSrc, '_blank');
-              }
-            }}
-            onError={(e) => {
-              console.error("Failed to load image:", post.imageUrl);
-              const img = e.currentTarget;
-              const originalSrc = img.getAttribute('data-full-src');
-              if (originalSrc && originalSrc !== img.src) {
-                img.src = originalSrc;
-              } else {
-                img.style.display = "none";
-              }
-            }}
-          />
-        )}
-        <div className="mt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
-            <span className="text-xs text-muted-foreground">•</span>
-            <div>
-              <ReactionSummary postId={post.id} />
+      <CardContent className="py-2 px-0">
+        <div className="px-3">
+          {post.content && (
+            <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
+          )}
+          {post.imageUrl && (
+            <img
+              src={getThumbnailUrl(post.imageUrl)}
+              data-full-src={post.imageUrl}
+              alt="Post content"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-auto object-cover mb-4 cursor-pointer"
+              onClick={(e) => {
+                const fullSrc = e.currentTarget.getAttribute('data-full-src');
+                if (fullSrc) {
+                  window.open(fullSrc, '_blank');
+                }
+              }}
+              onError={(e) => {
+                console.error("Failed to load image:", post.imageUrl);
+                const img = e.currentTarget;
+                const originalSrc = img.getAttribute('data-full-src');
+                if (originalSrc && originalSrc !== img.src) {
+                  img.src = originalSrc;
+                } else {
+                  img.style.display = "none";
+                }
+              }}
+            />
+          )}
+          <div className="mt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
+              <span className="text-xs text-muted-foreground">•</span>
+              <div>
+                <ReactionSummary postId={post.id} />
+              </div>
             </div>
-          </div>
-          <div className="border-t border-gray-200 my-2"></div>
+            <div className="border-t border-gray-200 my-2"></div>
 
-          <div className="flex items-center gap-2">
-            <ReactionButton postId={post.id} variant="icon" />
-            <Button
-              variant="ghost"
-              size="default"
-              className="gap-2"
-              onClick={() => setIsCommentsOpen(true)}
-            >
-              <MessageCircle className="h-5 w-5" />
-              {commentCount}
-            </Button>
+            <div className="flex items-center gap-2">
+              <ReactionButton postId={post.id} variant="icon" />
+              <Button
+                variant="ghost"
+                size="default"
+                className="gap-2"
+                onClick={() => setIsCommentsOpen(true)}
+              >
+                <MessageCircle className="h-5 w-5" />
+                {commentCount}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
