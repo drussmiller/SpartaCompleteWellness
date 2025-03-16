@@ -58,7 +58,7 @@ export default function HomePage() {
   return (
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center justify-between px-3 py-2">
+        <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex-1 flex justify-center">
             <img
               src="/sparta_circle_red.png"
@@ -74,7 +74,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div>
+      <div className="w-screen"> {/* Added w-screen class here */}
         {posts.length > 0 ? (
           posts.map((post) => (
             <ErrorBoundary key={post.id}>
