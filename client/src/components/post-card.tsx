@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { MessageCircle, Trash2 } from "lucide-react";
@@ -12,12 +12,12 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
+import { queryClient } from "@/lib/queryClient";
 import { getThumbnailUrl } from "../lib/image-utils";
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -30,11 +30,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       const isOptimisticPost = typeof post.id === 'number' ? post.id > 1000000000000 : false;
-
       if (isOptimisticPost) {
         return post.id;
       }
-
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
         throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
@@ -74,8 +72,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="w-full border-0 border-b">
-      <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
+    <Card className="w-full border-0 border-b rounded-none">
+      <CardHeader className="flex flex-row items-center justify-between px-3 py-2">
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage
@@ -99,7 +97,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             <p className="text-sm text-muted-foreground">{post.author.points} points</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           {canDelete && (
             <Button
               variant="ghost"
@@ -113,7 +111,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-4 pt-0 pb-2">
+      <CardContent className="px-3 pt-0 pb-2">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
