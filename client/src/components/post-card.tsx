@@ -88,7 +88,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="rounded-none mx-[-1px] border-x-0">
+    <Card className="w-full rounded-none border-0 border-y">
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
@@ -138,7 +138,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-full max-w-none h-auto object-cover mb-4 cursor-pointer"
+            className="w-full h-auto object-cover mb-4 cursor-pointer"
             onClick={(e) => {
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
               if (fullSrc) {
