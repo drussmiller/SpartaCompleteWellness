@@ -42,7 +42,7 @@ export default function MenuPage() {
                 </div>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[540px] p-0">
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
               <ProfilePage onClose={() => setProfileOpen(false)} />
             </SheetContent>
           </Sheet>
@@ -56,7 +56,7 @@ export default function MenuPage() {
                   Admin Dashboard
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-[540px] p-0">
+              <SheetContent side="right" className="w-full sm:w-[640px] p-0">
                 <AdminPage onClose={() => setAdminOpen(false)} />
               </SheetContent>
             </Sheet>
