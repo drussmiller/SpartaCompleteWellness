@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,21 +25,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const { count: commentCount } = useCommentCount(post.id);
 
-  // Prevent re-renders by using memo for stable references
   const stablePost = useMemo(() => post, [post.id]);
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
-      // Check if the post ID is a number (real post) or a timestamp (optimistic update)
       const isOptimisticPost = typeof post.id === 'number' ? post.id > 1000000000000 : false;
 
       if (isOptimisticPost) {
-        // For optimistic posts that haven't been saved to the server yet,
-        // we just need to remove them from the local cache
         return post.id;
       }
 
-      // For real posts, send delete request to the server
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
         throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
@@ -47,21 +42,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return post.id;
     },
     onMutate: async (postId) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
-
-      // Snapshot the previous value
       const previousPosts = queryClient.getQueryData(["/api/posts"]);
-
-      // Optimistically remove the post from the cache
       queryClient.setQueryData(["/api/posts"], (old: any[]) =>
         old?.filter((p) => p.id !== post.id) || []
       );
-
       return { previousPosts };
     },
     onError: (error, _, context) => {
-      // Revert the optimistic update on error
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
       console.error("Error deleting post:", error);
       toast({
@@ -75,8 +63,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         title: "Success",
         description: "Post deleted successfully",
       });
-
-      // Only invalidate the counts query after successful deletion
       queryClient.invalidateQueries({
         queryKey: ["/api/posts/counts"],
       });
@@ -88,8 +74,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="w-full rounded-none border-0 border-y">
-      <CardHeader className="flex flex-row items-center justify-between p-4">
+    <Card className="w-full border-0 border-b">
+      <CardHeader className="flex flex-row items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage
@@ -120,14 +106,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               size="sm"
               onClick={handleDeletePost}
               disabled={deletePostMutation.isPending}
-              className="h-6 w-6 p-0 mr-4"
+              className="h-6 w-6 p-0"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
+      <CardContent className="px-4 pt-0 pb-2">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
@@ -157,7 +143,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             }}
           />
         )}
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
             <span className="text-xs text-muted-foreground">•</span>
@@ -165,9 +151,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <ReactionSummary postId={post.id} />
             </div>
           </div>
-          <div className="border-t border-gray-200"></div>
+          <div className="border-t border-gray-200 my-2"></div>
 
-          <div className="flex items-center gap-2 py-1 h-10">
+          <div className="flex items-center gap-2">
             <ReactionButton postId={post.id} variant="icon" />
             <Button
               variant="ghost"
