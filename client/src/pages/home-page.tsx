@@ -74,7 +74,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="w-screen"> {/* Added w-screen class here */}
+      <div className="flex-1">
         {posts.length > 0 ? (
           posts.map((post) => (
             <ErrorBoundary key={post.id}>
