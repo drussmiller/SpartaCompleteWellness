@@ -12,24 +12,12 @@ import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { remaining, counts, refetch: refetchLimits } = usePostLimits();
+  const { remaining } = usePostLimits();
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
-
-  // Only refetch post limits when needed
-  useEffect(() => {
-    if (user) {
-      const lastRefetchTime = localStorage.getItem('lastPostLimitsRefetch');
-      const now = Date.now();
-      if (!lastRefetchTime || now - parseInt(lastRefetchTime) > 1800000) {
-        refetchLimits();
-        localStorage.setItem('lastPostLimitsRefetch', now.toString());
-      }
-    }
-  }, [user, refetchLimits]);
 
   // Fetch posts with pagination
   const { isLoading, error } = useQuery({
@@ -89,7 +77,7 @@ export default function HomePage() {
   return (
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between px-3 py-2">
           <div className="flex-1 flex justify-center">
             <img
               src="/sparta_circle_red.png"
@@ -105,26 +93,24 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="w-full">
-        <div className="space-y-0">
-          {posts.length > 0 ? (
-            posts.map((post) => (
-              <ErrorBoundary key={post.id}>
-                <PostCard post={post} />
-              </ErrorBoundary>
-            ))
-          ) : !isLoading ? (
-            <p className="text-center text-muted-foreground py-8">
-              No posts yet. Be the first to share!
-            </p>
-          ) : null}
+      <main className="flex-1">
+        {posts.length > 0 ? (
+          posts.map((post) => (
+            <ErrorBoundary key={post.id}>
+              <PostCard post={post} />
+            </ErrorBoundary>
+          ))
+        ) : !isLoading ? (
+          <p className="text-center text-muted-foreground py-8">
+            No posts yet. Be the first to share!
+          </p>
+        ) : null}
 
-          {/* Loading indicator */}
-          <div ref={loadingRef} className="flex justify-center py-4">
-            {isLoading && (
-              <Loader2 className="h-8 w-8 animate-spin" />
-            )}
-          </div>
+        {/* Loading indicator */}
+        <div ref={loadingRef} className="flex justify-center py-4">
+          {isLoading && (
+            <Loader2 className="h-8 w-8 animate-spin" />
+          )}
         </div>
       </main>
     </AppLayout>
