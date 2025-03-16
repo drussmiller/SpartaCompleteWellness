@@ -88,7 +88,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="rounded-none">
+    <Card className="rounded-none mx-[-1px] border-x-0">
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
@@ -138,10 +138,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: 'calc(100vw - 16px)', maxHeight: '80vh', marginLeft: '-16px' }}
+            className="w-full max-w-none h-auto object-cover mb-4 cursor-pointer"
             onClick={(e) => {
-              // Show the full-sized image when clicking on the thumbnail
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
               if (fullSrc) {
                 window.open(fullSrc, '_blank');
@@ -149,7 +147,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             }}
             onError={(e) => {
               console.error("Failed to load image:", post.imageUrl);
-              // If thumbnail fails, try the original image
               const img = e.currentTarget;
               const originalSrc = img.getAttribute('data-full-src');
               if (originalSrc && originalSrc !== img.src) {
@@ -192,7 +189,4 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       />
     </Card>
   );
-}, (prevProps, nextProps) => {
-  // Only re-render if the post ID or content has changed
-  return prevProps.post.id === nextProps.post.id && prevProps.post.content === nextProps.post.content;
 });
