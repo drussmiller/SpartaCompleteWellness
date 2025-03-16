@@ -105,8 +105,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="w-full">
-        <div className="space-y-4">
+      <main className="w-full max-w-none px-0">
+        <div className="space-y-4 mx-0">
           {posts.length > 0 ? (
             posts.map((post) => (
               <ErrorBoundary key={post.id}>
