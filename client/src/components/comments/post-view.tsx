@@ -13,8 +13,8 @@ interface PostViewProps {
 export function PostView({ post }: PostViewProps) {
   const { count: commentCount } = useCommentCount(post.id);
   return (
-    <Card className="relative w-full rounded-none mx-[-1rem]">
-      <CardContent className="pt-6 px-6">
+    <Card className="relative w-full lg:w-[80%] max-w-4xl mx-auto rounded-none lg:rounded-lg my-4 shadow-lg">
+      <CardContent className="pt-6 px-6 lg:px-8">
         <div className="flex flex-col">
           <div>
             <div className="flex justify-between">
