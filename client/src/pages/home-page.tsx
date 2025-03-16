@@ -5,7 +5,6 @@ import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -23,7 +22,7 @@ export default function HomePage() {
     queryKey: ["/api/posts", page],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", `/api/posts?page=${page}&limit=10`);
+        const response = await fetch(`/api/posts?page=${page}&limit=10`);
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
         }
@@ -76,7 +75,7 @@ export default function HomePage() {
       </div>
 
       {posts.length > 0 ? (
-        <div className="-mx-4">
+        <div>
           {posts.map((post) => (
             <ErrorBoundary key={post.id}>
               <PostCard post={post} />
