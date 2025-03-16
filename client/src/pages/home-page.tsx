@@ -89,7 +89,7 @@ export default function HomePage() {
   return (
     <AppLayout>
       <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="px-4 pb-1 pt-2 flex items-center justify-between">
+        <div className="flex items-center justify-between p-4">
           <div className="flex-1 flex justify-center">
             <img
               src="/sparta_circle_red.png"
@@ -106,7 +106,7 @@ export default function HomePage() {
       </div>
 
       <main className="w-full">
-        <div className="space-y-4">
+        <div className="space-y-0">
           {posts.length > 0 ? (
             posts.map((post) => (
               <ErrorBoundary key={post.id}>
