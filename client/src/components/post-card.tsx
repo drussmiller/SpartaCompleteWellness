@@ -70,7 +70,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="w-screen mx-[-1rem] rounded-none border-0 border-b">
+    <Card className="w-full border-0 border-b rounded-none">
       <CardHeader className="py-2">
         <div className="flex items-center justify-between px-4">
           <div className="flex items-center gap-4">
