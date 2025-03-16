@@ -71,7 +71,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   return (
     <Card className="w-full border-0 border-b rounded-none">
-      <CardHeader className="py-2">
+      <CardHeader className="pb-0">
         <div className="flex items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Avatar>
@@ -109,12 +109,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           )}
         </div>
       </CardHeader>
-      <CardContent className="pb-2">
-        <div className="px-4">
-          {post.content && (
-            <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
-          )}
-          {post.imageUrl && (
+      <CardContent className="pt-4">
+        {post.content && (
+          <p className="text-sm mb-4 px-4 whitespace-pre-wrap">{post.content}</p>
+        )}
+        {post.imageUrl && (
+          <div className="mx-[-1px]">
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
@@ -139,29 +139,29 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 }
               }}
             />
-          )}
-          <div className="mt-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <div>
-                <ReactionSummary postId={post.id} />
-              </div>
+          </div>
+        )}
+        <div className="px-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
+            <span className="text-xs text-muted-foreground">•</span>
+            <div>
+              <ReactionSummary postId={post.id} />
             </div>
-            <div className="border-t border-gray-200 my-2"></div>
+          </div>
+          <div className="border-t border-gray-200 my-2"></div>
 
-            <div className="flex items-center gap-2">
-              <ReactionButton postId={post.id} variant="icon" />
-              <Button
-                variant="ghost"
-                size="default"
-                className="gap-2"
-                onClick={() => setIsCommentsOpen(true)}
-              >
-                <MessageCircle className="h-5 w-5" />
-                {commentCount}
-              </Button>
-            </div>
+          <div className="flex items-center gap-2">
+            <ReactionButton postId={post.id} variant="icon" />
+            <Button
+              variant="ghost"
+              size="default"
+              className="gap-2"
+              onClick={() => setIsCommentsOpen(true)}
+            >
+              <MessageCircle className="h-5 w-5" />
+              {commentCount}
+            </Button>
           </div>
         </div>
       </CardContent>
