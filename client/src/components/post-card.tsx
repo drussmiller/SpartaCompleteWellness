@@ -25,8 +25,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const { count: commentCount } = useCommentCount(post.id);
 
-  const stablePost = useMemo(() => post, [post.id]);
-
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       const isOptimisticPost = typeof post.id === 'number' ? post.id > 1000000000000 : false;
@@ -51,8 +49,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
       console.error("Error deleting post:", error);
       toast({
-        title: "Error Deleting Post",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete post",
         variant: "destructive",
       });
     },
@@ -72,32 +70,32 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="w-full border-0 border-b rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-4">
-          <Avatar>
-            <AvatarImage
-              key={`avatar-${post.author?.id}-${avatarKey}`}
-              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`}
-            />
-            <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold">{post.author.username}</p>
-              <span className="text-xs text-muted-foreground">
-                {(() => {
-                  const diff = Date.now() - new Date(post.createdAt!).getTime();
-                  const hours = Math.floor(diff / (1000 * 60 * 60));
-                  if (hours < 24) return `${hours}h`;
-                  return `${Math.floor(hours / 24)}d`;
-                })()}
-              </span>
+    <Card className="rounded-none border-0 border-b">
+      <CardHeader className="px-3 py-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar>
+              <AvatarImage
+                key={`avatar-${post.author?.id}-${avatarKey}`}
+                src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`}
+              />
+              <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{post.author.username}</p>
+                <span className="text-xs text-muted-foreground">
+                  {(() => {
+                    const diff = Date.now() - new Date(post.createdAt!).getTime();
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    if (hours < 24) return `${hours}h`;
+                    return `${Math.floor(hours / 24)}d`;
+                  })()}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">{post.author.points} points</p>
             </div>
-            <p className="text-sm text-muted-foreground">{post.author.points} points</p>
           </div>
-        </div>
-        <div className="flex items-center">
           {canDelete && (
             <Button
               variant="ghost"
