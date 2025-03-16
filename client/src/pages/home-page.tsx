@@ -105,7 +105,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="w-full px-4 mx-auto max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
+      <main className="w-full">
         <div className="space-y-4">
           {posts.length > 0 ? (
             posts.map((post) => (

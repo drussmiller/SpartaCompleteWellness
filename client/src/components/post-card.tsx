@@ -14,10 +14,6 @@ import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl } from "../lib/image-utils";
 
-const cardStyle = {
-  width: '100%',
-};
-
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -92,7 +88,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card style={cardStyle} className="rounded-none">
+    <Card className="rounded-none">
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
@@ -142,8 +138,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-full h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: '100%', maxHeight: '80vh' }}
+            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
+            style={{ width: 'calc(100vw - 16px)', maxHeight: '80vh', marginLeft: '-16px' }}
             onClick={(e) => {
               // Show the full-sized image when clicking on the thumbnail
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
