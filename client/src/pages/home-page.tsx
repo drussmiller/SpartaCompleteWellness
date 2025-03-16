@@ -74,19 +74,19 @@ export default function HomePage() {
         </div>
       </div>
 
-      {posts.length > 0 ? (
-        <div>
-          {posts.map((post) => (
+      <div>
+        {posts.length > 0 ? (
+          posts.map((post) => (
             <ErrorBoundary key={post.id}>
               <PostCard post={post} />
             </ErrorBoundary>
-          ))}
-        </div>
-      ) : !isLoading ? (
-        <p className="text-center text-muted-foreground py-8">
-          No posts yet. Be the first to share!
-        </p>
-      ) : null}
+          ))
+        ) : !isLoading ? (
+          <p className="text-center text-muted-foreground py-8">
+            No posts yet. Be the first to share!
+          </p>
+        ) : null}
+      </div>
 
       <div ref={loadingRef} className="flex justify-center py-4">
         {isLoading && (
