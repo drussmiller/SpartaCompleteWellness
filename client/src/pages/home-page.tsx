@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
@@ -19,7 +19,6 @@ export default function HomePage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
 
-  // Fetch posts with pagination
   const { isLoading, error } = useQuery({
     queryKey: ["/api/posts", page],
     queryFn: async () => {
@@ -44,26 +43,9 @@ export default function HomePage() {
     refetchOnReconnect: false
   });
 
-  // Setup intersection observer for infinite scroll
-  useEffect(() => {
-    if (loadingRef.current) {
-      const observer = new IntersectionObserver(
-        entries => {
-          if (entries[0].isIntersecting && hasMore && !isLoading) {
-            setPage(prev => prev + 1);
-          }
-        },
-        { rootMargin: '100px' }
-      );
-
-      observer.observe(loadingRef.current);
-      return () => observer.disconnect();
-    }
-  }, [hasMore, isLoading]);
-
   if (error) {
     return (
-      <AppLayout title="Home">
+      <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center text-destructive">
             <h2 className="text-xl font-bold mb-2">Error loading posts</h2>
@@ -93,26 +75,25 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="flex-1">
-        {posts.length > 0 ? (
-          posts.map((post) => (
+      {posts.length > 0 ? (
+        <div className="-mx-4">
+          {posts.map((post) => (
             <ErrorBoundary key={post.id}>
               <PostCard post={post} />
             </ErrorBoundary>
-          ))
-        ) : !isLoading ? (
-          <p className="text-center text-muted-foreground py-8">
-            No posts yet. Be the first to share!
-          </p>
-        ) : null}
-
-        {/* Loading indicator */}
-        <div ref={loadingRef} className="flex justify-center py-4">
-          {isLoading && (
-            <Loader2 className="h-8 w-8 animate-spin" />
-          )}
+          ))}
         </div>
-      </main>
+      ) : !isLoading ? (
+        <p className="text-center text-muted-foreground py-8">
+          No posts yet. Be the first to share!
+        </p>
+      ) : null}
+
+      <div ref={loadingRef} className="flex justify-center py-4">
+        {isLoading && (
+          <Loader2 className="h-8 w-8 animate-spin" />
+        )}
+      </div>
     </AppLayout>
   );
 }
