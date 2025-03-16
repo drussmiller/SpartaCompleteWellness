@@ -71,7 +71,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   return (
     <Card className="rounded-none border-0 border-b">
-      <CardHeader className="px-3 py-2">
+      <CardHeader className="p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Avatar>
@@ -109,7 +109,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           )}
         </div>
       </CardHeader>
-      <CardContent className="px-3 pt-0 pb-2">
+      <CardContent className="p-3">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
