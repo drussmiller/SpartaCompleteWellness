@@ -71,8 +71,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   return (
     <Card className="w-full border-0 border-b rounded-none">
-      <CardHeader className="pb-0">
-        <div className="flex items-center justify-between px-4">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
           <div className="flex items-center gap-4">
             <Avatar>
               <AvatarImage
@@ -109,9 +109,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           )}
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent>
         {post.content && (
-          <p className="text-sm mb-4 px-4 whitespace-pre-wrap">{post.content}</p>
+          <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
         {post.imageUrl && (
           <div className="mx-[-1px]">
@@ -141,7 +141,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             />
           </div>
         )}
-        <div className="px-4">
+        <div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
             <span className="text-xs text-muted-foreground">•</span>

@@ -47,7 +47,7 @@ export default function HomePage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center text-destructive">
-            <h2 className="text-xl font-bold mb-2">Error loading posts</h2>
+            <h2 className="text-xl font-bold mb-2">Error Loading Data</h2>
             <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
           </div>
         </div>
