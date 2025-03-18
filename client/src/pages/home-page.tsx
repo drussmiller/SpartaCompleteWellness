@@ -77,8 +77,16 @@ export default function HomePage() {
 
         <main className="w-full mt-24">
         <div className="space-y-4">
-          {posts?.length > 0 ? (
-            posts.map((post) => (
+            {posts?.length > 0 ? (
+              posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                No posts yet
+              </div>
+            )}
+          </div>
               <ErrorBoundary key={post.id}>
                 <PostCard post={post} />
               </ErrorBoundary>
