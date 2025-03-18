@@ -45,16 +45,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
-      // Check if the post ID is a number (real post) or a timestamp (optimistic update)
-      const isOptimisticPost = typeof post.id === 'number' ? post.id > 1000000000000 : false;
-
-      if (isOptimisticPost) {
-        // For optimistic posts that haven't been saved to the server yet,
-        // we just need to remove them from the local cache
-        return post.id;
-      }
-
-      // For real posts, send delete request to the server
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
         throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
@@ -65,19 +55,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
 
-      // Snapshot the previous value
-      const previousPosts = queryClient.getQueryData(["/api/posts"]);
+      // Get the current posts from the cache
+      const previousPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]) || [];
 
       // Optimistically remove the post from the cache
-      queryClient.setQueryData(["/api/posts"], (old: any[]) =>
-        old?.filter((p) => p.id !== post.id) || []
+      queryClient.setQueryData<(Post & { author: User })[]>(
+        ["/api/posts"],
+        (old) => old?.filter((p) => p.id !== post.id) || []
       );
 
       return { previousPosts };
     },
     onError: (error, _, context) => {
       // Revert the optimistic update on error
-      queryClient.setQueryData(["/api/posts"], context?.previousPosts);
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["/api/posts"], context.previousPosts);
+      }
       console.error("Error deleting post:", error);
       toast({
         title: "Error Deleting Post",
@@ -91,10 +84,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         description: "Post deleted successfully",
       });
 
-      // Only invalidate the counts query after successful deletion
-      queryClient.invalidateQueries({
-        queryKey: ["/api/posts/counts"],
-      });
+      // Invalidate and refetch all affected queries
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/points/daily"] });
     },
   });
 
@@ -158,7 +151,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
             style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
             onClick={(e) => {
-              // Show the full-sized image when clicking on the thumbnail
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
               if (fullSrc) {
                 window.open(fullSrc, '_blank');
@@ -166,7 +158,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             }}
             onError={(e) => {
               console.error("Failed to load image:", post.imageUrl);
-              // If thumbnail fails, try the original image
               const img = e.currentTarget;
               const originalSrc = img.getAttribute('data-full-src');
               if (originalSrc && originalSrc !== img.src) {
@@ -209,7 +200,4 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       />
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Only re-render if the post ID or content has changed
-  return prevProps.post.id === nextProps.post.id && prevProps.post.content === nextProps.post.content;
 });
