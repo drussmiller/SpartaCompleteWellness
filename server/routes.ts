@@ -1108,6 +1108,52 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add points endpoints
+  router.get("/api/points/daily", authenticate, async (req, res) => {
+    try {
+      const { date, userId } = req.query;
+      if (!date || !userId) {
+        return res.status(400).json({ message: "Date and userId are required" });
+      }
+
+      // Convert query date to Date object
+      const queryDate = new Date(date as string);
+      if (isNaN(queryDate.getTime())) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
+      // Create start and end of the queried day
+      const startOfDay = new Date(queryDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      // Query posts for the specified date and calculate total points
+      const result = await db
+        .select({
+          totalPoints: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, parseInt(userId as string)),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId) // Don't count comments
+          )
+        );
+
+      const points = result[0]?.totalPoints || 0;
+      res.json({ points });
+    } catch (error) {
+      logger.error('Error getting daily points:', error);
+      res.status(500).json({
+        message: "Failed to get daily points",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.use(router);
 
   // Create HTTP server
