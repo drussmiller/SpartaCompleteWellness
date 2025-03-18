@@ -777,22 +777,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add this endpoint after the other post-related endpoints
-  router.patch("/api/posts/:id", authenticate, async (req, res) => {
+  // Add this endpoint before the return httpServer statement
+  router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const postId = parseInt(req.params.id);
       if (isNaN(postId)) {
-        logger.error('Invalid post ID:', req.params.id);
         return res.status(400).json({ message: "Invalid post ID" });
       }
-
-      logger.info('Update request for post:', {
-        postId,
-        userId: req.user.id,
-        content: req.body.content
-      });
 
       // Get the post to check ownership
       const [post] = await db
@@ -802,57 +795,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .limit(1);
 
       if (!post) {
-        logger.error('Post not found:', postId);
         return res.status(404).json({ message: "Post not found" });
       }
 
       // Check if user is admin or the post owner
       if (!req.user.isAdmin && post.userId !== req.user.id) {
-        logger.error('Unauthorized edit attempt:', {
-          userId: req.user.id,
-          postUserId: post.userId,
-          isAdmin: req.user.isAdmin
-        });
-        return res.status(403).json({ message: "Not authorized to edit this post" });
+        return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Validate content
-      if (!req.body.content || typeof req.body.content !== 'string' || !req.body.content.trim()) {
-        logger.error('Invalid content:', req.body.content);
-        return res.status(400).json({ message: "Content cannot be empty" });
-      }
+      // Delete the post
+      await db.delete(posts).where(eq(posts.id, postId));
 
-      logger.info("Updating post with data:", {
-        id: postId,
-        content: req.body.content.trim()
-      });
-
-      try {
-        // Update post in database
-        const [updatedPost] = await db
-          .update(posts)
-          .set({
-            content: req.body.content.trim()
-          })
-          .where(eq(posts.id, postId))
-          .returning();
-
-        logger.info("Post updated successfully:", updatedPost);
-        res.json(updatedPost);
-      } catch (dbError) {
-        logger.error("Database error during update:", {
-          error: dbError,
-          stack: dbError instanceof Error ? dbError.stack : undefined
-        });
-        throw dbError;
-      }
+      res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      logger.error("Error updating post:", {
-        error: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      logger.error("Error deleting post:", error);
       res.status(500).json({
-        message: "Failed to update post",
+        message: "Failed to delete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
