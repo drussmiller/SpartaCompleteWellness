@@ -57,24 +57,25 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
-          <div className="flex-1 flex justify-center">
-            <img
-              src="/sparta_circle_red.png"
-              alt="Sparta Complete Wellness Logo"
-              className="w-3/5 h-auto mx-auto"
-              onError={(e) => {
-                console.error('Error loading logo:', e);
-                e.currentTarget.src = '/fallback-logo.png';
-              }}
-            />
+      <div className="flex flex-col h-full">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+          <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
+            <div className="flex-1 flex justify-center">
+              <img
+                src="/sparta_circle_red.png"
+                alt="Sparta Complete Wellness Logo"
+                className="w-3/5 h-auto mx-auto"
+                onError={(e) => {
+                  console.error('Error loading logo:', e);
+                  e.currentTarget.src = '/fallback-logo.png';
+                }}
+              />
+            </div>
+            <CreatePostDialog remaining={remaining} />
           </div>
-          <CreatePostDialog remaining={remaining} />
         </div>
-      </div>
 
-      <main className="w-full">
+        <main className="w-full mt-24">
         <div className="space-y-4">
           {posts?.length > 0 ? (
             posts.map((post) => (
