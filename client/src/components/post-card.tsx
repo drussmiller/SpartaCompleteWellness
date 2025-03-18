@@ -88,8 +88,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between p-4">
+    <div className="border-y border-gray-200 bg-white">
+      <div className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage
@@ -183,7 +183,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </Button>
           </div>
         </div>
-      </CardContent>
+      </div>
 
       <CommentDrawer
         postId={post.id}
