@@ -21,7 +21,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
-  const canDelete = isOwnPost;
+  const canDelete = isOwnPost || currentUser?.isAdmin;
 
   // Query to get the day's points
   const { data: dayPoints } = useQuery({
@@ -44,8 +44,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     mutationFn: async () => {
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to delete post: ${errorText}`);
+        const text = await response.text();
+        throw new Error(text);
       }
       return post.id;
     },
@@ -55,17 +55,23 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         description: "Post deleted successfully"
       });
 
-      // Clear the entire cache and refetch everything
-      queryClient.clear();
+      // Get current posts and filter out the deleted one
+      const currentPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
+      if (currentPosts) {
+        queryClient.setQueryData(
+          ["/api/posts"],
+          currentPosts.filter(p => p.id !== post.id)
+        );
+      }
 
-      // Immediately refetch the posts list
-      queryClient.fetchQuery({ queryKey: ["/api/posts"] });
+      // Force immediate refetch to ensure data consistency
+      queryClient.refetchQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error) => {
       console.error("Error deleting post:", error);
       toast({
-        title: "Error Deleting Post",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete post",
         variant: "destructive",
       });
     },
