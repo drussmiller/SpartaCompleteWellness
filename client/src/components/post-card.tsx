@@ -49,23 +49,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       }
       return post.id;
     },
-    onMutate: async (postId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries();
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
+      const previousPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
 
-      // Get the current posts from the cache
-      const previousPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]) || [];
-
-      // Optimistically remove the post from the cache
-      queryClient.setQueryData<(Post & { author: User })[]>(
-        ["/api/posts"],
-        (old) => old?.filter((p) => p.id !== post.id) || []
-      );
+      if (previousPosts) {
+        queryClient.setQueryData<(Post & { author: User })[]>(
+          ["/api/posts"],
+          previousPosts.filter(p => p.id !== post.id)
+        );
+      }
 
       return { previousPosts };
     },
     onError: (error, _, context) => {
-      // Revert the optimistic update on error
       if (context?.previousPosts) {
         queryClient.setQueryData(["/api/posts"], context.previousPosts);
       }
@@ -79,23 +76,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Post deleted successfully",
+        description: "Post deleted successfully"
       });
 
-      // Clear the entire cache and refetch
-      queryClient.clear();
-
-      // Refetch critical queries
-      queryClient.refetchQueries({ queryKey: ["/api/posts"] });
-      queryClient.refetchQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.refetchQueries({ queryKey: ["/api/points/daily"] });
+      // Force refresh the queries
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
   });
 
   const handleDeletePost = () => {
-    if (window.confirm('Are you sure you want to delete this post?')) {
-      deletePostMutation.mutate();
-    }
+    deletePostMutation.mutate();
   };
 
   return (
