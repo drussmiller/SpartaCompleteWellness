@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -40,20 +40,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const { count: commentCount } = useCommentCount(post.id);
 
-  // Prevent re-renders by using memo for stable references
-  const stablePost = useMemo(() => post, [post.id]);
-
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
       if (!response.ok) {
-        throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to delete post: ${errorText}`);
       }
       return post.id;
     },
     onMutate: async (postId) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
+      await queryClient.cancelQueries();
 
       // Get the current posts from the cache
       const previousPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]) || [];
@@ -84,15 +82,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         description: "Post deleted successfully",
       });
 
-      // Invalidate and refetch all affected queries
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/points/daily"] });
+      // Clear the entire cache and refetch
+      queryClient.clear();
+
+      // Refetch critical queries
+      queryClient.refetchQueries({ queryKey: ["/api/posts"] });
+      queryClient.refetchQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.refetchQueries({ queryKey: ["/api/points/daily"] });
     },
   });
 
   const handleDeletePost = () => {
-    deletePostMutation.mutate();
+    if (window.confirm('Are you sure you want to delete this post?')) {
+      deletePostMutation.mutate();
+    }
   };
 
   return (
