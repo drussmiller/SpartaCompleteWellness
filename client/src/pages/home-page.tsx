@@ -57,7 +57,8 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col min-h-screen">
+        {/* Fixed Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
           <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
             <div className="flex-1 flex justify-center">
@@ -75,8 +76,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        <main className="w-full mt-24">
-          <div className="space-y-4">
+        {/* Main Content Area - Add padding for fixed header and bottom nav */}
+        <main className="flex-1 mt-24 mb-20 px-4">
+          <div className="space-y-4 max-w-4xl mx-auto">
             {posts?.length > 0 ? (
               posts.map((post) => (
                 <ErrorBoundary key={post.id}>
@@ -88,6 +90,13 @@ export default function HomePage() {
                 No posts yet. Be the first to share!
               </div>
             ) : null}
+
+            {/* Loading indicator */}
+            <div ref={loadingRef} className="flex justify-center py-4">
+              {isLoading && (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              )}
+            </div>
           </div>
         </main>
       </div>
