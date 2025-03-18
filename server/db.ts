@@ -29,4 +29,15 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
 
-export const db = drizzle({ client: pool, schema });
+// Configure neon
+neonConfig.fetchConnectionCache = true;
+neonConfig.webSocketConstructor = WebSocket;
+neonConfig.useSecureWebSocket = false;
+
+// Create connection with error handling
+const sql = neon(process.env.DATABASE_URL!);
+sql.on('error', (err) => {
+  console.error('Database connection error:', err);
+});
+
+export const db = drizzle(sql, { schema });
