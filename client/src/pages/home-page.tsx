@@ -1,4 +1,3 @@
-import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
@@ -9,15 +8,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { useRef, useEffect } from "react";
 
 export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef(1);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -31,38 +29,31 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
-  // Fetch posts with pagination
-  const { isLoading, error } = useQuery({
-    queryKey: ["/api/posts", page],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", `/api/posts?page=${page}&limit=10`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const newPosts = await response.json();
-        setPosts(prev => [...prev, ...newPosts]);
-        setHasMore(newPosts.length === 10);
-        return newPosts;
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-        throw error;
+  const { data: posts = [], isLoading, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useQuery({
+    queryKey: ["/api/posts"],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await apiRequest("GET", `/api/posts?page=${pageParam}&limit=10`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch posts: ${response.status}`);
       }
+      const newPosts = await response.json();
+      return {
+        posts: newPosts,
+        nextPage: newPosts.length === 10 ? pageParam + 1 : undefined
+      };
     },
-    enabled: !!user && hasMore,
+    enabled: !!user,
     refetchOnWindowFocus: false,
-    refetchInterval: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false
+    getNextPageParam: (lastPage) => lastPage.nextPage,
   });
 
   // Setup intersection observer for infinite scroll
   useEffect(() => {
-    if (loadingRef.current) {
+    if (loadingRef.current && hasNextPage && !isFetchingNextPage) {
       const observer = new IntersectionObserver(
         entries => {
-          if (entries[0].isIntersecting && hasMore && !isLoading) {
-            setPage(prev => prev + 1);
+          if (entries[0].isIntersecting) {
+            fetchNextPage();
           }
         },
         { rootMargin: '100px' }
@@ -71,7 +62,7 @@ export default function HomePage() {
       observer.observe(loadingRef.current);
       return () => observer.disconnect();
     }
-  }, [hasMore, isLoading]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (error) {
     return (
@@ -107,7 +98,7 @@ export default function HomePage() {
 
       <main className="w-full">
         <div className="space-y-4">
-          {posts.length > 0 ? (
+          {posts?.length > 0 ? (
             posts.map((post) => (
               <ErrorBoundary key={post.id}>
                 <PostCard post={post} />
@@ -121,7 +112,7 @@ export default function HomePage() {
 
           {/* Loading indicator */}
           <div ref={loadingRef} className="flex justify-center py-4">
-            {isLoading && (
+            {(isLoading || isFetchingNextPage) && (
               <Loader2 className="h-8 w-8 animate-spin" />
             )}
           </div>
