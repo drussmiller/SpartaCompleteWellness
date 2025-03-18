@@ -1,10 +1,8 @@
-
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
 
-// Configure neon
 neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
@@ -13,15 +11,22 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const pool = new Pool({
+const poolConfig = {
   connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10000,
+  max: 10,
+  idleTimeoutMillis: 60000,
+  retryInterval: 2000,
+  maxRetries: 5,
   ssl: {
     rejectUnauthorized: false
   }
-});
+};
+
+export const pool = new Pool(poolConfig);
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle({ client: pool, schema });
