@@ -12,28 +12,27 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutProps) {
   const isMobile = useIsMobile();
+  const sidebarWidthPx = `${sidebarWidth}px`;
 
   return (
     <div className="flex h-full">
       {!isMobile && (
-        <aside className="fixed inset-y-0 left-0 z-20 flex-shrink-0 border-r border-border bg-sidebar" style={{ width: `${sidebarWidth}px` }}>
+        <aside className={`w-[${sidebarWidth}px] fixed inset-y-0 z-20 flex-shrink-0 border-r border-border bg-sidebar`}>
           <VerticalNav />
         </aside>
       )}
       <div className={cn(
-        "flex flex-col min-h-screen w-full",
-        !isMobile && `ml-[${sidebarWidth}px]`
+        "flex flex-col flex-1 min-h-screen",
+        !isMobile ? `ml-[${sidebarWidth}px]` : ""
       )}>
         {title && (
           <header className="sticky top-0 z-40 border-b border-border bg-background">
-            <div className="py-3 px-4">
+            <div className="container py-3">
               <h1 className="text-lg font-semibold">{title}</h1>
             </div>
           </header>
         )}
-        <div className="flex-1 w-full">
-          {children}
-        </div>
+        {children}
         {isMobile && <BottomNav />}
       </div>
     </div>
