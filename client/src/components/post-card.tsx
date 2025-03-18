@@ -170,7 +170,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           </div>
           <div className="border-t border-gray-200"></div>
 
-          <div className="flex items-center gap-2 py-1 h-10">
+          <div className="flex items-center gap-2 py-1 h-10 w-screen -ml-4">
             <ReactionButton postId={post.id} variant="icon" />
             <Button
               variant="ghost"
