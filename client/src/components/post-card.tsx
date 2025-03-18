@@ -126,8 +126,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </Button>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
+      </div>
+      <div className="p-4 pt-0">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
