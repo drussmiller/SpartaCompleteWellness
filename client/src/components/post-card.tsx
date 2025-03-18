@@ -23,6 +23,21 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost;
 
+  // Query to get the day's points
+  const { data: dayPoints } = useQuery({
+    queryKey: ["/api/points/daily", post.createdAt],
+    queryFn: async () => {
+      const date = new Date(post.createdAt!);
+      const response = await fetch(`/api/points/daily?date=${date.toISOString()}&userId=${post.author.id}`);
+      if (!response.ok) {
+        return 0; // Default to 0 if request fails
+      }
+      const data = await response.json();
+      return data.points || 0;
+    },
+    staleTime: Infinity, // Points for a past date won't change
+  });
+
   const { count: commentCount } = useCommentCount(post.id);
 
   // Prevent re-renders by using memo for stable references
@@ -110,7 +125,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 })()}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">{post.author.points} points</p>
+            <p className="text-sm text-muted-foreground">
+              {dayPoints !== undefined ? `${dayPoints} points earned` : 'Loading points...'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
