@@ -190,7 +190,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         isOpen={isCommentsOpen}
         onClose={() => setIsCommentsOpen(false)}
       />
-    </Card>
+    </div>
   );
 }, (prevProps, nextProps) => {
   // Only re-render if the post ID or content has changed
