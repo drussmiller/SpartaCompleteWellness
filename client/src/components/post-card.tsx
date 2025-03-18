@@ -110,11 +110,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 })()}
               </span>
             </div>
-            <div className="flex gap-2">
-              <p className="text-sm font-medium">{post.points + post.author.points} total points</p>
-              <span className="text-sm text-muted-foreground">•</span>
-              <p className="text-sm text-muted-foreground">Daily: {post.points} pts</p>
-            </div>
+            <p className="text-sm text-muted-foreground">{post.author.points} points</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
