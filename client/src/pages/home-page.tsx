@@ -44,7 +44,7 @@ export default function HomePage() {
 
   if (error) {
     return (
-      <AppLayout title="Home">
+      <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center text-destructive">
             <h2 className="text-xl font-bold mb-2">Error loading posts</h2>
@@ -76,35 +76,21 @@ export default function HomePage() {
         </div>
 
         <main className="w-full mt-24">
-        <div className="space-y-4">
+          <div className="space-y-4">
             {posts?.length > 0 ? (
               posts.map((post) => (
-                <PostCard key={post.id} post={post} />
+                <ErrorBoundary key={post.id}>
+                  <PostCard post={post} />
+                </ErrorBoundary>
               ))
-            ) : (
+            ) : !isLoading ? (
               <div className="text-center text-muted-foreground py-8">
-                No posts yet
+                No posts yet. Be the first to share!
               </div>
-            )}
+            ) : null}
           </div>
-              <ErrorBoundary key={post.id}>
-                <PostCard post={post} />
-              </ErrorBoundary>
-            ))
-          ) : !isLoading ? (
-            <p className="text-center text-muted-foreground py-8">
-              No posts yet. Be the first to share!
-            </p>
-          ) : null}
-
-          {/* Loading indicator */}
-          <div ref={loadingRef} className="flex justify-center py-4">
-            {isLoading && (
-              <Loader2 className="h-8 w-8 animate-spin" />
-            )}
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </AppLayout>
   );
 }
