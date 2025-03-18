@@ -15,7 +15,6 @@ export default function HomePage() {
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -29,40 +28,19 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
-  const { data: posts = [], isLoading, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useQuery({
+  const { data: posts = [], isLoading, error } = useQuery({
     queryKey: ["/api/posts"],
-    queryFn: async ({ pageParam = 1 }) => {
-      const response = await apiRequest("GET", `/api/posts?page=${pageParam}&limit=10`);
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/posts?page=1&limit=50`);
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
-      const newPosts = await response.json();
-      return {
-        posts: newPosts,
-        nextPage: newPosts.length === 10 ? pageParam + 1 : undefined
-      };
+      return response.json();
     },
     enabled: !!user,
-    refetchOnWindowFocus: false,
-    getNextPageParam: (lastPage) => lastPage.nextPage,
+    refetchOnWindowFocus: true,
+    staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
-
-  // Setup intersection observer for infinite scroll
-  useEffect(() => {
-    if (loadingRef.current && hasNextPage && !isFetchingNextPage) {
-      const observer = new IntersectionObserver(
-        entries => {
-          if (entries[0].isIntersecting) {
-            fetchNextPage();
-          }
-        },
-        { rootMargin: '100px' }
-      );
-
-      observer.observe(loadingRef.current);
-      return () => observer.disconnect();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (error) {
     return (
@@ -112,7 +90,7 @@ export default function HomePage() {
 
           {/* Loading indicator */}
           <div ref={loadingRef} className="flex justify-center py-4">
-            {(isLoading || isFetchingNextPage) && (
+            {isLoading && (
               <Loader2 className="h-8 w-8 animate-spin" />
             )}
           </div>
