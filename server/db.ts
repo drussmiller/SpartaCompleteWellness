@@ -31,7 +31,6 @@ pool.on('error', (err) => {
 
 // Configure neon
 neonConfig.fetchConnectionCache = true;
-neonConfig.webSocketConstructor = WebSocket;
 neonConfig.useSecureWebSocket = false;
 
 // Create connection with error handling
