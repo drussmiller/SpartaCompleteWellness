@@ -88,8 +88,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <Card className="rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between p-4">
+    <div className="border-y border-gray-200 bg-white">
+      <div className="flex flex-row items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <Avatar>
             <AvatarImage
@@ -126,8 +126,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </Button>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
+      </div>
+      <div className="p-4 pt-0">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
@@ -139,7 +139,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             loading="lazy"
             decoding="async"
             className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: 'calc(100vw - 16px)', maxHeight: '80vh', marginLeft: '-16px' }}
+            style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
             onClick={(e) => {
               // Show the full-sized image when clicking on the thumbnail
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
@@ -183,14 +183,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </Button>
           </div>
         </div>
-      </CardContent>
+      </div>
 
       <CommentDrawer
         postId={post.id}
         isOpen={isCommentsOpen}
         onClose={() => setIsCommentsOpen(false)}
       />
-    </Card>
+    </div>
   );
 }, (prevProps, nextProps) => {
   // Only re-render if the post ID or content has changed
