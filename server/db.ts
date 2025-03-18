@@ -32,11 +32,14 @@ pool.on('error', (err) => {
 // Configure neon
 neonConfig.fetchConnectionCache = true;
 neonConfig.useSecureWebSocket = false;
+neonConfig.webSocketConstructor = ws;
 
 // Create connection with error handling
 const sql = neon(process.env.DATABASE_URL!);
-sql.on('error', (err) => {
-  console.error('Database connection error:', err);
-});
 
 export const db = drizzle(sql, { schema });
+
+// Log any pool errors
+pool.on('error', (err) => {
+  console.error('Database pool error:', err);
+});
