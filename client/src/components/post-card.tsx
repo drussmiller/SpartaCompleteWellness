@@ -49,38 +49,25 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       }
       return post.id;
     },
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
-      const previousPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
-
-      if (previousPosts) {
-        queryClient.setQueryData<(Post & { author: User })[]>(
-          ["/api/posts"],
-          previousPosts.filter(p => p.id !== post.id)
-        );
-      }
-
-      return { previousPosts };
-    },
-    onError: (error, _, context) => {
-      if (context?.previousPosts) {
-        queryClient.setQueryData(["/api/posts"], context.previousPosts);
-      }
-      console.error("Error deleting post:", error);
-      toast({
-        title: "Error Deleting Post",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Post deleted successfully"
       });
 
-      // Force refresh the queries
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      // Clear the entire cache and refetch everything
+      queryClient.clear();
+
+      // Immediately refetch the posts list
+      queryClient.fetchQuery({ queryKey: ["/api/posts"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting post:", error);
+      toast({
+        title: "Error Deleting Post",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     },
   });
 
