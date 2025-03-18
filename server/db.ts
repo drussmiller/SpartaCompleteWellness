@@ -1,4 +1,4 @@
-import { Pool, neonConfig, neon } from '@neondatabase/serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
@@ -29,17 +29,4 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
 
-// Configure neon
-neonConfig.fetchConnectionCache = true;
-neonConfig.useSecureWebSocket = false;
-neonConfig.webSocketConstructor = ws;
-
-// Create connection with error handling
-const sql = neon(process.env.DATABASE_URL!);
-
-export const db = drizzle(sql, { schema });
-
-// Log any pool errors
-pool.on('error', (err) => {
-  console.error('Database pool error:', err);
-});
+export const db = drizzle({ client: pool, schema });
