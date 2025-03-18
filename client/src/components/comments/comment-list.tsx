@@ -165,7 +165,9 @@ export function CommentList({ comments, postId }: CommentListProps) {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both comments list and comment count
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
       toast({
         description: "Comment deleted successfully",
       });
