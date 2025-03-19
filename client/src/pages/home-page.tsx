@@ -57,8 +57,9 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col min-h-screen">
-        {/* Fixed Header */}
+      {/* Outer container for full width background */}
+      <div className="flex flex-col min-h-screen bg-background">
+        {/* Fixed Header - spans full width */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-16">
           <div className="px-12 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
             <div className="flex-1 flex justify-center">
@@ -76,29 +77,31 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Main Content Area - Keep mobile width on larger screens */}
-        <main className="flex-1 mt-32 mb-20 w-full md:max-w-[768px] mx-auto" style={{overflowX: 'hidden'}}>
-          <div className="space-y-2">
-            {posts?.length > 0 ? (
-              posts.map((post) => (
-                <ErrorBoundary key={post.id}>
-                  <PostCard post={post} />
-                </ErrorBoundary>
-              ))
-            ) : !isLoading ? (
-              <div className="text-center text-muted-foreground py-8">
-                No posts yet. Be the first to share!
-              </div>
-            ) : null}
+        {/* Content wrapper - maintains mobile width and centers content */}
+        <div className="flex justify-center w-full">
+          <main className="flex-1 mt-32 mb-20 w-full max-w-[768px]" style={{overflowX: 'hidden'}}>
+            <div className="space-y-2">
+              {posts?.length > 0 ? (
+                posts.map((post) => (
+                  <ErrorBoundary key={post.id}>
+                    <PostCard post={post} />
+                  </ErrorBoundary>
+                ))
+              ) : !isLoading ? (
+                <div className="text-center text-muted-foreground py-8">
+                  No posts yet. Be the first to share!
+                </div>
+              ) : null}
 
-            {/* Loading indicator */}
-            <div ref={loadingRef} className="flex justify-center py-4">
-              {isLoading && (
-                <Loader2 className="h-8 w-8 animate-spin" />
-              )}
+              {/* Loading indicator */}
+              <div ref={loadingRef} className="flex justify-center py-4">
+                {isLoading && (
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                )}
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </AppLayout>
   );
