@@ -55,7 +55,7 @@ function MainContent() {
   return (
     <div className="min-h-screen">
       {user && <div className="fixed left-0 top-0 z-[51]"><VerticalNav /></div>}
-      <div className="md:pl-16" style={{overflowX: 'hidden'}}> {/* Add padding to content to account for vertical nav */}
+      <div className="md:pl-20" style={{overflowX: 'hidden'}}> {/* Adjusted padding to match new nav width */}
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/activity" component={ActivityPage} />
