@@ -18,7 +18,7 @@ export const VerticalNav = () => {
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
     { icon: Activity, label: "Activity", path: "/activity" },
-    { icon: Bell, label: "Alerts", path: "/notifications" },
+    { icon: Bell, label: "Notifications", path: "/notifications" }, // Changed "Alerts" to "Notifications"
     { icon: Menu, label: "Menu", path: "/menu" },
     { icon: HelpCircle, label: "Help", path: "/help" },
   ];
