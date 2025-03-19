@@ -85,10 +85,13 @@ export default function HomePage() {
           <main className="mt-32 mb-20">
             <div className="space-y-2">
               {posts?.length > 0 ? (
-                posts.map((post) => (
-                  <ErrorBoundary key={post.id}>
-                    <PostCard post={post} />
-                  </ErrorBoundary>
+                posts.map((post, index) => (
+                  <div key={post.id}>
+                    <ErrorBoundary>
+                      <PostCard post={post} />
+                    </ErrorBoundary>
+                    {index < posts.length - 1 && <div className="h-[6px] bg-border my-2" />}
+                  </div>
                 ))
               ) : !isLoading ? (
                 <div className="text-center text-muted-foreground py-8">
