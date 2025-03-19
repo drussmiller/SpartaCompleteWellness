@@ -903,7 +903,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           await db.insert(notifications).values({
             userId: user.id,
             title: "Daily Score Alert",
-            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
+            message: `Your score foryesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
             read: false,
             createdAt: new Date()
           });
@@ -1109,6 +1109,55 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         message: "Failed to get daily points",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // Add notifications endpoint
+  router.get("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notifications = await storage.getNotifications(req.user.id);
+      res.json(notifications);
+    } catch (error) {
+      logger.error('Error fetching notifications:', error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read endpoint
+  router.post("/api/notifications/:id/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.id);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      await storage.markNotificationAsRead(notificationId);
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      logger.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Delete notification endpoint
+  router.delete("/api/notifications/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.id);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      await db.delete(notifications).where(eq(notifications.id, notificationId));
+      res.json({ message: "Notification deleted" });
+    } catch (error) {
+      logger.error('Error deleting notification:', error);
+      res.status(500).json({ message: "Failed to delete notification" });
     }
   });
 
