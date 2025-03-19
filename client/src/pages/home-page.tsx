@@ -77,7 +77,7 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Area - Keep mobile width on larger screens */}
-        <main className="flex-1 mt-32 mb-20 w-full md:max-w-[390px] mx-auto">
+        <main className="flex-1 mt-32 mb-20 w-full md:max-w-[390px] mx-auto" style={{overflowX: 'hidden'}}>
           <div className="space-y-2">
             {posts?.length > 0 ? (
               posts.map((post) => (
