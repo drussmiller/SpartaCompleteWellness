@@ -83,8 +83,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   return (
     <div className="border-y border-gray-200 bg-white">
-      <div className="flex flex-row items-center justify-between px-4 pt-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-row items-center justify-between w-full p-4">
+        <div className="flex items-center gap-4 flex-1">
           <Avatar>
             <AvatarImage
               key={`avatar-${post.author?.id}-${avatarKey}`}
@@ -92,7 +92,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             />
             <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1">
             <div className="flex items-center gap-2">
               <p className="font-semibold">{post.author.username}</p>
               <span className="text-xs text-muted-foreground">
@@ -109,7 +109,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           {canDelete && (
             <Button
               variant="ghost"
@@ -123,7 +123,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           )}
         </div>
       </div>
-      <div className="px-4 pt-4">
+      <div className="p-4 pt-0">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
@@ -134,8 +134,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-screen h-auto object-cover mb-4 cursor-pointer"
-            style={{ marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))', marginRight: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
+            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
+            style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
             onClick={(e) => {
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
               if (fullSrc) {
