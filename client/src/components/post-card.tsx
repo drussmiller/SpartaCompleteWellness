@@ -82,8 +82,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <div className="border-y border-gray-200 bg-white">
-      <div className="flex flex-row items-center justify-between w-full p-4">
+    <div className="border-y border-gray-200 bg-white w-full">
+      <div className="flex flex-row items-center w-full p-4 bg-background">
         <div className="flex items-center gap-4 flex-1">
           <Avatar>
             <AvatarImage
@@ -109,21 +109,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </p>
           </div>
         </div>
-        <div className="flex items-center">
-          {canDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDeletePost}
-              disabled={deletePostMutation.isPending}
-              className="h-6 w-6 p-0"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          )}
-        </div>
+        {canDelete && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDeletePost}
+            disabled={deletePostMutation.isPending}
+            className="h-6 w-6 p-0"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        )}
       </div>
-      <div className="p-4 pt-0">
+
+      <div className="px-4 pt-4">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
@@ -134,8 +133,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
+            className="w-screen h-auto object-cover mb-4 cursor-pointer"
+            style={{ marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))', marginRight: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
             onClick={(e) => {
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
               if (fullSrc) {
