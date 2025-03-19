@@ -9,10 +9,12 @@ import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const MOBILE_BREAKPOINT = 768;
 
 export default function HomePage() {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
@@ -80,9 +82,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Content container - maintain max width for mobile */}
-        <div className="w-full max-w-[768px] mx-auto px-4">
-          <main className="mt-32 mb-20">
+        {/* Three column layout for non-mobile */}
+        <div className="w-full">
+          <div className="flex justify-between">
+            {/* Left panel - hidden on mobile */}
+            {!isMobile && (
+              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
+                <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
+                <img
+                  src="/sparta_circle_red.png"
+                  alt="Sparta Logo"
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+            )}
+
+            {/* Main content */}
+            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
+              <main className="mt-32 mb-20">
             <div className="space-y-2">
               {posts?.length > 0 ? (
                 posts.map((post, index) => (
@@ -107,6 +124,15 @@ export default function HomePage() {
               </div>
             </div>
           </main>
+            </div>
+
+            {/* Right panel - hidden on mobile */}
+            {!isMobile && (
+              <div className="w-1/4 min-h-screen border-l border-border p-4 bg-background">
+                <h2 className="text-lg font-semibold mb-4">Right Panel</h2>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </AppLayout>
