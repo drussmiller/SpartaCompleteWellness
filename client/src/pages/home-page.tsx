@@ -62,13 +62,13 @@ export default function HomePage() {
       <div className="flex flex-col min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-16">
-          <div className="container mx-auto max-w-[768px] px-4">
+          <div className="w-full max-w-[768px] mx-auto px-4">
             <div className="flex items-center justify-between py-2">
               <div className="flex-1 flex justify-center">
                 <img
                   src="/sparta_circle_red.png"
                   alt="Sparta Complete Wellness Logo"
-                  className="w-3/5 h-auto mx-auto"
+                  className="w-48 h-auto mx-auto"
                   onError={(e) => {
                     console.error('Error loading logo:', e);
                     e.currentTarget.src = '/fallback-logo.png';
@@ -80,8 +80,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Content container - maintains fixed width */}
-        <div className="container mx-auto max-w-[768px] px-4">
+        {/* Content container - maintain max width for mobile */}
+        <div className="w-full max-w-[768px] mx-auto px-4">
           <main className="mt-32 mb-20">
             <div className="space-y-2">
               {posts?.length > 0 ? (
