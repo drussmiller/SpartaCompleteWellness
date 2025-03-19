@@ -9,6 +9,7 @@ import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const MOBILE_BREAKPOINT = 768;
 
