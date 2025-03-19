@@ -6,8 +6,7 @@ import {
   Bell, 
   Menu,
   Settings, 
-  HelpCircle,
-  Shield
+  HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,7 +20,6 @@ export const VerticalNav = () => {
     { icon: Activity, label: "Activity", path: "/activity" },
     { icon: Bell, label: "Alerts", path: "/notifications" },
     { icon: Menu, label: "Menu", path: "/menu" },
-    ...(user?.isAdmin ? [{ icon: Shield, label: "Admin", path: "/admin" }] : []),
     { icon: HelpCircle, label: "Help", path: "/help" },
   ];
 
