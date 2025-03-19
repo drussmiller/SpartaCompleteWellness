@@ -54,7 +54,7 @@ function MainContent() {
   // If authenticated, show the app with routes
   return (
     <div className="min-h-screen">
-      {user && <VerticalNav />}
+      {user && <div className="pt-16"><VerticalNav /></div>}
       <div className="md:pl-16" style={{overflowX: 'hidden'}}> {/* Add padding to content to account for vertical nav */}
         <Switch>
           <Route path="/" component={HomePage} />
