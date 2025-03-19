@@ -32,7 +32,12 @@ export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutPr
             </div>
           </header>
         )}
-        {children}
+        {/* Wrap children in a max-width container for mobile-like width */}
+        <div className="flex-1 flex justify-center">
+          <div className="w-full max-w-md">
+            {children}
+          </div>
+        </div>
         {isMobile && <BottomNav />}
       </div>
     </div>
