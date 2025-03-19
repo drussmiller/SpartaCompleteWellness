@@ -59,7 +59,7 @@ export default function HomePage() {
     <AppLayout>
       <div className="flex flex-col min-h-screen">
         {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-16">
           <div className="px-12 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
             <div className="flex-1 flex justify-center">
               <img
@@ -76,9 +76,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Main Content Area - Keep mobile width on desktop */}
-        <main className="flex-1 mt-24 mb-20">
-          <div className="space-y-2 max-w-md mx-auto">
+        {/* Main Content Area - Keep mobile width on larger screens */}
+        <main className="flex-1 mt-32 mb-20 w-full md:max-w-[390px] mx-auto">
+          <div className="space-y-2">
             {posts?.length > 0 ? (
               posts.map((post) => (
                 <ErrorBoundary key={post.id}>
