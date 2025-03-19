@@ -14,6 +14,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const MOBILE_BREAKPOINT = 768;
 
 export default function HomePage() {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
@@ -90,7 +91,7 @@ export default function HomePage() {
                 <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
               </div>
             )}
-            
+
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-1/3'} px-4`}>
               <main className="mt-32 mb-20">
