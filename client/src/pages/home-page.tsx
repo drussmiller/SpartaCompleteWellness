@@ -61,11 +61,11 @@ export default function HomePage() {
         {/* Fixed Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
           <div className="px-6 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
-            <div className="w-full flex items-center justify-center">
+            <div className="flex-1 flex justify-center">
               <img
                 src="/sparta_circle_red.png"
                 alt="Sparta Complete Wellness Logo"
-                className="w-48 h-auto"
+                className="w-3/5 h-auto mx-auto"
                 onError={(e) => {
                   console.error('Error loading logo:', e);
                   e.currentTarget.src = '/fallback-logo.png';
@@ -76,9 +76,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Main Content Area - Add padding for fixed header and bottom nav */}
-        <main className="flex-1 mt-24 mb-20">
-          <div className="space-y-4">
+        {/* Main Content Area - Adjust padding for fixed header and bottom nav */}
+        <main className="flex-1 mt-36 mb-16 px-4">
+          <div className="space-y-4 max-w-4xl mx-auto">
             {posts?.length > 0 ? (
               posts.map((post) => (
                 <ErrorBoundary key={post.id}>
