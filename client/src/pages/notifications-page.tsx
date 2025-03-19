@@ -5,18 +5,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
-import { useNotifications } from "@/hooks/use-notifications";
 import { AppLayout } from "@/components/app-layout";
 
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { connectionStatus } = useNotifications();
 
-  const { data: notifications } = useQuery<Notification[]>({
+  const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/notifications");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch notifications");
+      }
+      return response.json();
+    },
+    enabled: !!user,
   });
 
   const markAsReadMutation = useMutation({
@@ -25,10 +31,21 @@ export default function NotificationsPage() {
         "POST",
         `/api/notifications/${notificationId}/read`
       );
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to mark notification as read");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -59,26 +76,41 @@ export default function NotificationsPage() {
     },
   });
 
+  if (isLoading) {
+    return (
+      <AppLayout title="Notifications">
+        <div className="flex justify-center items-center h-full">
+          <div className="animate-spin">Loading...</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout title="Notifications">
+        <div className="text-center py-8 text-destructive">
+          <p>Error loading notifications: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <AppLayout>
-      <div className="min-h-screen pb-20 lg:pb-0 relative">
-        <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="p-4">
-            <h1 className="text-xl font-bold pl-2">Notifications</h1>
+    <AppLayout title="Notifications">
+      <div className="container max-w-[768px] mx-auto p-4">
+        {!notifications?.length ? (
+          <div className="text-center py-8">
+            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
+            <p className="mt-4 text-lg font-medium">No new notifications</p>
           </div>
-        </header>
-        <main className="p-4 max-w-2xl mx-auto w-full">
-          {notifications?.length === 0 ? (
-            <div className="text-center py-8">
-              <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-lg font-medium">No new notifications</p>
-            </div>
-          ) : (
-            notifications?.map((notification) => (
-              <Card key={notification.id}>
+        ) : (
+          <div className="space-y-4">
+            {notifications.map((notification) => (
+              <Card key={notification.id} className="relative">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-medium">{notification.title}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
                         {notification.message}
@@ -111,9 +143,9 @@ export default function NotificationsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </main>
+            ))}
+          </div>
+        )}
       </div>
     </AppLayout>
   );
