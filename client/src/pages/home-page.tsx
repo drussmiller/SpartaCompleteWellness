@@ -77,8 +77,8 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Area - Add padding for fixed header and bottom nav */}
-        <main className="flex-1 mt-24 mb-20 px-4">
-          <div className="space-y-4 max-w-4xl mx-auto">
+        <main className="flex-1 mt-24 mb-20">
+          <div className="space-y-4">
             {posts?.length > 0 ? (
               posts.map((post) => (
                 <ErrorBoundary key={post.id}>
