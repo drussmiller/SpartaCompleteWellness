@@ -83,8 +83,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   return (
     <div className="border-y border-gray-200 bg-white">
-      <div className="flex flex-row items-center justify-between p-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-row items-center justify-between w-full p-4">
+        <div className="flex items-center gap-4 flex-1">
           <Avatar>
             <AvatarImage
               key={`avatar-${post.author?.id}-${avatarKey}`}
@@ -92,7 +92,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             />
             <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1">
             <div className="flex items-center gap-2">
               <p className="font-semibold">{post.author.username}</p>
               <span className="text-xs text-muted-foreground">
@@ -109,14 +109,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           {canDelete && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleDeletePost}
               disabled={deletePostMutation.isPending}
-              className="h-6 w-6 p-0 mr-4"
+              className="h-6 w-6 p-0"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
