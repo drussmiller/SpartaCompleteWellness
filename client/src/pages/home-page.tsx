@@ -90,7 +90,7 @@ export default function HomePage() {
                     <ErrorBoundary>
                       <PostCard post={post} />
                     </ErrorBoundary>
-                    {index < posts.length - 1 && <div className="h-[1px] bg-border my-2 -mx-4" />}
+                    {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
                   </div>
                 ))
               ) : !isLoading ? (
