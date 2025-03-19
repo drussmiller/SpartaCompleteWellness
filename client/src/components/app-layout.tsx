@@ -20,7 +20,7 @@ export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutPr
         "flex flex-col flex-1 min-h-screen"
       )}>
         {!isMobile && (
-          <aside className={`w-[${sidebarWidth}px] fixed left-0 top-[60px] z-20 flex-shrink-0 border-r border-border bg-sidebar h-[calc(100vh-60px)]`}>
+          <aside className={`w-[${sidebarWidth}px] fixed left-0 z-20 flex-shrink-0 border-r border-border bg-sidebar pt-16`}>
             <VerticalNav />
           </aside>
         )}
