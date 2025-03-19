@@ -16,15 +16,14 @@ export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutPr
 
   return (
     <div className="flex h-full">
-      {!isMobile && (
-        <aside className={`w-[${sidebarWidth}px] fixed inset-y-0 z-20 flex-shrink-0 border-r border-border bg-sidebar`}>
-          <VerticalNav />
-        </aside>
-      )}
       <div className={cn(
-        "flex flex-col flex-1 min-h-screen",
-        !isMobile ? `ml-[${sidebarWidth}px]` : ""
+        "flex flex-col flex-1 min-h-screen"
       )}>
+        {!isMobile && (
+          <aside className={`w-[${sidebarWidth}px] fixed left-0 z-20 flex-shrink-0 border-r border-border bg-sidebar mt-[60px]`}>
+            <VerticalNav />
+          </aside>
+        )}
         {title && (
           <header className="sticky top-0 z-40 border-b border-border bg-background">
             <div className="container py-3">
