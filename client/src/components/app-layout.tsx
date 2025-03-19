@@ -10,7 +10,7 @@ interface AppLayoutProps {
   sidebarWidth?: string;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "250" }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "280" }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
