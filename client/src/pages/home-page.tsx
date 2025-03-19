@@ -10,6 +10,8 @@ import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect } from "react";
 
+const MOBILE_BREAKPOINT = 768;
+
 export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
@@ -57,29 +59,30 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      {/* Outer container for full width background */}
       <div className="flex flex-col min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-16">
-          <div className="px-12 pb-1 pt-2 flex items-center justify-between rounded-md m-2">
-            <div className="flex-1 flex justify-center">
-              <img
-                src="/sparta_circle_red.png"
-                alt="Sparta Complete Wellness Logo"
-                className="w-3/5 h-auto mx-auto"
-                onError={(e) => {
-                  console.error('Error loading logo:', e);
-                  e.currentTarget.src = '/fallback-logo.png';
-                }}
-              />
+          <div className="container mx-auto max-w-[768px] px-4">
+            <div className="flex items-center justify-between py-2">
+              <div className="flex-1 flex justify-center">
+                <img
+                  src="/sparta_circle_red.png"
+                  alt="Sparta Complete Wellness Logo"
+                  className="w-3/5 h-auto mx-auto"
+                  onError={(e) => {
+                    console.error('Error loading logo:', e);
+                    e.currentTarget.src = '/fallback-logo.png';
+                  }}
+                />
+              </div>
+              <CreatePostDialog remaining={remaining} />
             </div>
-            <CreatePostDialog remaining={remaining} />
           </div>
         </div>
 
-        {/* Content wrapper - maintains mobile width and centers content */}
-        <div className="flex justify-center w-full">
-          <main className="flex-1 mt-32 mb-20 w-full max-w-[768px]" style={{overflowX: 'hidden'}}>
+        {/* Content container - maintains fixed width */}
+        <div className="container mx-auto max-w-[768px] px-4">
+          <main className="mt-32 mb-20">
             <div className="space-y-2">
               {posts?.length > 0 ? (
                 posts.map((post) => (
