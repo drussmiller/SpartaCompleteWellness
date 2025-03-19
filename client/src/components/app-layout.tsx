@@ -20,16 +20,11 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
         "flex flex-col flex-1 min-h-screen"
       )}>
         {title && (
-          <header className="sticky top-0 z-[60] border-b border-border bg-background md:pl-20">
+          <header className="sticky top-0 z-50 border-b border-border bg-background md:pl-20">
             <div className="container py-3">
               <h1 className="text-lg font-semibold">{title}</h1>
             </div>
           </header>
-        )}
-        {!isMobile && (
-          <aside className={`w-[${sidebarWidth}px] fixed left-0 z-20 flex-shrink-0 border-r border-border bg-sidebar pt-16`}>
-            <VerticalNav />
-          </aside>
         )}
         <div className="flex-1 md:pl-20">
           {children}
