@@ -146,17 +146,26 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       <div className="px-4 pt-4">
         {post.content && (
-          <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
-        )}
-        {post.imageUrl && (
-          <div className="relative w-full aspect-[4/3] mb-4 -mx-4 overflow-hidden">
+            <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
+          )}
+          {post.imageUrl && (
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
               alt="Post content"
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+              className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
+              style={{
+                width: '100vw',
+                maxHeight: '80vh',
+                marginLeft: 'calc(-50vw + 50%)',
+                marginRight: 'calc(-50vw + 50%)',
+                position: 'relative',
+                left: '50%',
+                right: '50%',
+                transform: 'translateX(-50%)'
+              }}
               onClick={(e) => {
                 const fullSrc = e.currentTarget.getAttribute('data-full-src');
                 if (fullSrc) {
@@ -174,8 +183,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 }
               }}
             />
-          </div>
-        )}
+          )}
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
