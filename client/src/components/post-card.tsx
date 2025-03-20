@@ -126,7 +126,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               ) : pointsError ? (
                 <span className="text-destructive">Error loading points</span>
               ) : (
-                `${dayPoints || 0} points earned`
+                `${dayPoints || 0} points (day's total)`
               )}
             </p>
           </div>
