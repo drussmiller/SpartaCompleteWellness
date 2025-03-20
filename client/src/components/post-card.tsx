@@ -142,19 +142,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         )}
       </div>
 
-      <div className="px-4 pt-4">
+      <div className="px-4">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
         {post.imageUrl && (
-          <div className="relative w-full overflow-hidden">
+          <div className="w-screen overflow-hidden">
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
               alt="Post content"
               loading="lazy"
               decoding="async"
-              className="w-full h-auto object-cover mb-4 cursor-pointer max-w-full"
+              className="w-full h-auto object-cover mb-4 cursor-pointer"
+              style={{ 
+                width: '100vw',
+                marginLeft: 'calc(-1 * (1rem))',
+                marginRight: 'calc(-1 * (1rem))'
+              }}
               onClick={(e) => {
                 const fullSrc = e.currentTarget.getAttribute('data-full-src');
                 if (fullSrc) {
