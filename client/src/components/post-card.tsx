@@ -23,14 +23,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
 
-  // Query to get the day's points
+  // Update the query to get the day's points
   const { data: dayPoints } = useQuery({
     queryKey: ["/api/points/daily", post.createdAt],
     queryFn: async () => {
       const date = new Date(post.createdAt!);
       const response = await fetch(`/api/points/daily?date=${date.toISOString()}&userId=${post.author.id}`);
       if (!response.ok) {
-        return 0; // Default to 0 if request fails
+        throw new Error("Failed to fetch daily points");
       }
       const data = await response.json();
       return data.points || 0;
