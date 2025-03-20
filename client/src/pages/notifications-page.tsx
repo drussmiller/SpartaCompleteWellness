@@ -78,7 +78,13 @@ export default function NotificationsPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="Notifications">
+      <AppLayout>
+        {/* Fixed title bar */}
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="px-6 py-4">
+            <h1 className="text-xl font-bold">Notifications</h1>
+          </div>
+        </div>
         <div className="flex justify-center items-center h-full">
           <div className="animate-spin">Loading...</div>
         </div>
@@ -88,7 +94,13 @@ export default function NotificationsPage() {
 
   if (error) {
     return (
-      <AppLayout title="Notifications">
+      <AppLayout>
+        {/* Fixed title bar */}
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="px-6 py-4">
+            <h1 className="text-xl font-bold">Notifications</h1>
+          </div>
+        </div>
         <div className="text-center py-8 text-destructive">
           <p>Error loading notifications: {error instanceof Error ? error.message : 'Unknown error'}</p>
         </div>
@@ -97,8 +109,15 @@ export default function NotificationsPage() {
   }
 
   return (
-    <AppLayout title="Notifications">
-      <div className="container max-w-[768px] mx-auto p-4">
+    <AppLayout>
+      {/* Fixed title bar */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="px-6 py-4">
+          <h1 className="text-xl font-bold">Notifications</h1>
+        </div>
+      </div>
+
+      <main className="p-4 space-y-4 max-w-3xl mx-auto w-full">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -146,7 +165,7 @@ export default function NotificationsPage() {
             ))}
           </div>
         )}
-      </div>
+      </main>
     </AppLayout>
   );
 }
