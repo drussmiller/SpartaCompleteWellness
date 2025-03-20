@@ -71,7 +71,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         description: "Post deleted successfully"
       });
 
-      // Get current posts and filter out the deleted one
       const currentPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
       if (currentPosts) {
         queryClient.setQueryData(
@@ -80,7 +79,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         );
       }
 
-      // Force immediate refetch to ensure data consistency
       queryClient.refetchQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error) => {
@@ -98,7 +96,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <div className="border-y border-gray-200 bg-white w-full">
+    <div className="border-y border-gray-200 bg-white w-full overflow-hidden">
       <div className="flex flex-row items-center w-full p-4 bg-background">
         <div className="flex items-center gap-4 flex-1">
           <Avatar>
@@ -149,31 +147,32 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
         {post.imageUrl && (
-          <img
-            src={getThumbnailUrl(post.imageUrl)}
-            data-full-src={post.imageUrl}
-            alt="Post content"
-            loading="lazy"
-            decoding="async"
-            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
-            onClick={(e) => {
-              const fullSrc = e.currentTarget.getAttribute('data-full-src');
-              if (fullSrc) {
-                window.open(fullSrc, '_blank');
-              }
-            }}
-            onError={(e) => {
-              console.error("Failed to load image:", post.imageUrl);
-              const img = e.currentTarget;
-              const originalSrc = img.getAttribute('data-full-src');
-              if (originalSrc && originalSrc !== img.src) {
-                img.src = originalSrc;
-              } else {
-                img.style.display = "none";
-              }
-            }}
-          />
+          <div className="relative w-full overflow-hidden">
+            <img
+              src={getThumbnailUrl(post.imageUrl)}
+              data-full-src={post.imageUrl}
+              alt="Post content"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-auto object-cover mb-4 cursor-pointer max-w-full"
+              onClick={(e) => {
+                const fullSrc = e.currentTarget.getAttribute('data-full-src');
+                if (fullSrc) {
+                  window.open(fullSrc, '_blank');
+                }
+              }}
+              onError={(e) => {
+                console.error("Failed to load image:", post.imageUrl);
+                const img = e.currentTarget;
+                const originalSrc = img.getAttribute('data-full-src');
+                if (originalSrc && originalSrc !== img.src) {
+                  img.src = originalSrc;
+                } else {
+                  img.style.display = "none";
+                }
+              }}
+            />
+          </div>
         )}
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
