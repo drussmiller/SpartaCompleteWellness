@@ -144,19 +144,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         )}
       </div>
 
-      <div className="px-4 pt-4">
+      <div className="px-4">
         {post.content && (
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
-        {post.imageUrl && (
-          <div className="relative aspect-video mb-4 overflow-hidden rounded-lg">
+      </div>
+
+      {post.imageUrl && (
+        <div className="w-screen bg-gray-100 -mx-4 relative">
+          <div className="aspect-video w-full relative">
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
               alt="Post content"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-contain cursor-pointer bg-gray-100"
+              className="w-full h-full object-contain cursor-pointer"
               onClick={(e) => {
                 const fullSrc = e.currentTarget.getAttribute('data-full-src');
                 if (fullSrc) {
@@ -175,8 +178,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               }}
             />
           </div>
-        )}
-        <div className="mt-4 flex flex-col gap-2">
+        </div>
+      )}
+
+      <div className="px-4 mt-4">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
             <span className="text-xs text-muted-foreground">•</span>
