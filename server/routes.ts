@@ -389,7 +389,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Post creation endpoint
+  // Update the post creation endpoint to assign correct points
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
@@ -403,19 +403,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       }
 
-      // Validate required fields
-      const hasImage = req.file !== undefined;
-      const isEmptyContentAllowed = hasImage && (postData.type === 'food' || postData.type === 'workout');
-
-      if (!postData.type) {
-        logger.error("Missing post type");
-        return res.status(400).json({ message: "Post type is required" });
-      }
-
-      // Allow empty content for food and workout posts with images
-      if (!isEmptyContentAllowed && (!postData.content || !postData.content.trim())) {
-        logger.error("Missing required content");
-        return res.status(400).json({ message: "Content is required" });
+      // Calculate points based on post type
+      let points = 0;
+      switch (postData.type) {
+        case 'food':
+          points = 3;
+          break;
+        case 'workout':
+          points = 3;
+          break;
+        case 'scripture':
+          points = 3;
+          break;
+        case 'memory_verse':
+          points = 10;
+          break;
+        default:
+          points = 0;
       }
 
       // For comments, handle separately
@@ -458,7 +462,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             type: postData.type,
             content: postData.content?.trim() || '',
             imageUrl: imageUrl,
-            points: postData.points || null,
+            points: points, // Use calculated points instead of postData.points
             createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
           });
           res.status(201).json(post);
@@ -816,6 +820,53 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add or update the daily points endpoint
+  router.get("/api/points/daily", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const date = new Date(req.query.date as string);
+      const userId = parseInt(req.query.userId as string);
+
+      if (isNaN(userId) || !date) {
+        return res.status(400).json({ message: "Invalid date or user ID" });
+      }
+
+      // Get start and end of the requested date
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Query posts for the specified date and calculate total points
+      const result = await db
+        .select({
+          totalPoints: sql<number>`sum(${posts.points})::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lte(posts.createdAt, endOfDay),
+            not(eq(posts.type, 'comment')), // Exclude comments from points calculation
+            not(isNull(posts.points)) // Ensure we only count posts with points
+          )
+        );
+
+      const points = result[0]?.totalPoints || 0;
+
+      res.json({ points });
+    } catch (error) {
+      logger.error('Error calculating daily points:', error);
+      res.status(500).json({
+        message: "Failed to calculate daily points",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Update daily score check endpoint
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
@@ -903,7 +954,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           await db.insert(notifications).values({
             userId: user.id,
             title: "Daily Score Alert",
-            message: `Your score foryesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
+            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
             read: false,
             createdAt: new Date()
           });
