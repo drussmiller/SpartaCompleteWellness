@@ -149,31 +149,32 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
         {post.imageUrl && (
-          <img
-            src={getThumbnailUrl(post.imageUrl)}
-            data-full-src={post.imageUrl}
-            alt="Post content"
-            loading="lazy"
-            decoding="async"
-            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
-            onClick={(e) => {
-              const fullSrc = e.currentTarget.getAttribute('data-full-src');
-              if (fullSrc) {
-                window.open(fullSrc, '_blank');
-              }
-            }}
-            onError={(e) => {
-              console.error("Failed to load image:", post.imageUrl);
-              const img = e.currentTarget;
-              const originalSrc = img.getAttribute('data-full-src');
-              if (originalSrc && originalSrc !== img.src) {
-                img.src = originalSrc;
-              } else {
-                img.style.display = "none";
-              }
-            }}
-          />
+          <div className="relative w-full aspect-[4/3] mb-4 -mx-4 overflow-hidden">
+            <img
+              src={getThumbnailUrl(post.imageUrl)}
+              data-full-src={post.imageUrl}
+              alt="Post content"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+              onClick={(e) => {
+                const fullSrc = e.currentTarget.getAttribute('data-full-src');
+                if (fullSrc) {
+                  window.open(fullSrc, '_blank');
+                }
+              }}
+              onError={(e) => {
+                console.error("Failed to load image:", post.imageUrl);
+                const img = e.currentTarget;
+                const originalSrc = img.getAttribute('data-full-src');
+                if (originalSrc && originalSrc !== img.src) {
+                  img.src = originalSrc;
+                } else {
+                  img.style.display = "none";
+                }
+              }}
+            />
+          </div>
         )}
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
