@@ -155,8 +155,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             alt="Post content"
             loading="lazy"
             decoding="async"
-            className="w-screen max-w-none h-auto object-cover mb-4 cursor-pointer"
-            style={{ width: '100vw', maxHeight: '80vh', marginLeft: 'calc(-1 * max(16px, calc((100vw - 100%) / 2)))' }}
+            className="w-full h-auto object-cover mb-4 cursor-pointer"
+            style={{
+              maxWidth: '100%',
+              width: '100%',
+              maxHeight: '80vh',
+            }}
             onClick={(e) => {
               const fullSrc = e.currentTarget.getAttribute('data-full-src');
               if (fullSrc) {
