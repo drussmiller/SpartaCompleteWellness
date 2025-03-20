@@ -418,8 +418,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         case 'memory_verse':
           points = 10;
           break;
+        case 'miscellaneous':
         default:
-          points = 0;
+          points = 0; // Explicitly set miscellaneous and unknown types to 0 points
       }
 
       // Log point calculation for verification
@@ -836,8 +837,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // First get individual posts to verify the calculation
-      const posts = await db
+      // Get individual posts to verify the calculation
+      const userPosts = await db
         .select({
           id: posts.id,
           type: posts.type,
@@ -851,6 +852,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             gte(posts.createdAt, startOfDay),
             lte(posts.createdAt, endOfDay),
             not(eq(posts.type, 'comment')), // Exclude comments
+            not(eq(posts.type, 'miscellaneous')), // Exclude miscellaneous posts from points
             not(isNull(posts.points)) // Ensure we only count posts with points
           )
         );
@@ -858,7 +860,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info('Posts for daily points calculation:', {
         userId,
         date: date.toISOString(),
-        posts: posts.map(p => ({
+        posts: userPosts.map(p => ({
           type: p.type,
           points: p.points,
           createdAt: p.createdAt
@@ -866,7 +868,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
 
       // Calculate total points manually to ensure accuracy
-      const totalPoints = posts.reduce((sum, post) => sum + (post.points || 0), 0);
+      const totalPoints = userPosts.reduce((sum, post) => sum + (post.points || 0), 0);
 
       res.json({ points: totalPoints });
     } catch (error) {
@@ -910,8 +912,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
         // Process each user
         for (const user of users) {
-          // Check if user has posted a memory verse this week
-          const memoryVersePosts = await db
+          // Check if user          const memoryVersePosts = await db
             .select()
             .from(posts)
             .where(
