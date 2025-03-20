@@ -152,14 +152,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       {post.imageUrl && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
-          <div className="min-h-[40vh] max-h-[80vh] w-full flex items-center justify-center py-4">
+          <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
               alt="Post content"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-contain cursor-pointer px-4"
+              className="w-full h-full object-contain cursor-pointer px-2"
               onClick={(e) => {
                 const fullSrc = e.currentTarget.getAttribute('data-full-src');
                 if (fullSrc) {
