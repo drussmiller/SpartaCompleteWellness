@@ -907,12 +907,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
         // Get start of week (previous Monday)
         const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
+        startOfWeek.setDate(today.getDate()- 6); // Go back 6 days to get to Monday
         startOfWeek.setHours(0, 0, 0, 0);
 
         // Process each user
         for (const user of users) {
-          // Check if user          const memoryVersePosts = await db
+          // Check if user has posted a memory verse this week
+          const memoryVersePosts = await db
             .select()
             .from(posts)
             .where(
@@ -986,7 +987,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add activity progress endpoint before the return httpServer statement
-  // Remove previous timezone adjustment as it was being applied incorrectly
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
