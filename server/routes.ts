@@ -389,7 +389,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Update the post creation endpoint to assign correct points
+  // Update the post creation endpoint to ensure correct point assignment
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
@@ -422,6 +422,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points = 0;
       }
 
+      // Log point calculation for verification
+      logger.info('Post points calculation:', {
+        type: postData.type,
+        assignedPoints: points
+      });
+
       // For comments, handle separately
       if (postData.type === "comment") {
         if (!postData.parentId) {
@@ -429,52 +435,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
 
-        try {
-          const post = await storage.createComment({
-            userId: req.user.id,
-            content: postData.content.trim(),
-            parentId: postData.parentId,
-            depth: postData.depth || 0
-          });
-          res.status(201).json(post);
-        } catch (dbError) {
-          logger.error("Database error creating comment:", dbError);
-          throw dbError;
-        }
-      } else {
-        // Handle regular post creation
-        try {
-          const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
-          // If there's an image, resize it for thumbnails
-          if (req.file) {
-            import('./middleware/image-resize').then(({ resizeUploadedImage }) => {
-              resizeUploadedImage(req.file.path).catch(err => {
-                logger.error('Error during image resize:', err);
-              });
-            }).catch(err => {
-              logger.error('Error importing image resize module:', err);
-            });
-          }
-
-          const post = await storage.createPost({
-            userId: req.user.id,
-            type: postData.type,
-            content: postData.content?.trim() || '',
-            imageUrl: imageUrl,
-            points: points, // Use calculated points instead of postData.points
-            createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
-          });
-          res.status(201).json(post);
-        } catch (dbError) {
-          logger.error("Database error creating post:", dbError);
-          throw dbError;
-        }
+        const post = await storage.createComment({
+          userId: req.user.id,
+          content: postData.content.trim(),
+          parentId: postData.parentId,
+          depth: postData.depth || 0
+        });
+        return res.status(201).json(post);
       }
+
+      // Handle regular post creation
+      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+      // If there's an image, resize it for thumbnails
+      if (req.file) {
+        import('./middleware/image-resize').then(({ resizeUploadedImage }) => {
+          resizeUploadedImage(req.file!.path).catch(err => {
+            logger.error('Error during image resize:', err);
+          });
+        }).catch(err => {
+          logger.error('Error importing image resize module:', err);
+        });
+      }
+
+      const post = await storage.createPost({
+        userId: req.user.id,
+        type: postData.type,
+        content: postData.content?.trim() || '',
+        imageUrl: imageUrl,
+        points: points, // Use calculated points
+        createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+      });
+
+      res.status(201).json(post);
     } catch (error) {
-      logger.error("Error in post/comment creation:", error);
+      logger.error("Error in post creation:", error);
       res.status(500).json({
-        message: error instanceof Error ? error.message : "Failed to create post/comment",
+        message: error instanceof Error ? error.message : "Failed to create post",
         error: error instanceof Error ? error.stack : "Unknown error"
       });
     }
@@ -839,10 +836,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // Query posts for the specified date and calculate total points
-      const result = await db
+      // First get individual posts to verify the calculation
+      const posts = await db
         .select({
-          totalPoints: sql<number>`sum(${posts.points})::integer`
+          id: posts.id,
+          type: posts.type,
+          points: posts.points,
+          createdAt: posts.createdAt
         })
         .from(posts)
         .where(
@@ -850,14 +850,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             eq(posts.userId, userId),
             gte(posts.createdAt, startOfDay),
             lte(posts.createdAt, endOfDay),
-            not(eq(posts.type, 'comment')), // Exclude comments from points calculation
+            not(eq(posts.type, 'comment')), // Exclude comments
             not(isNull(posts.points)) // Ensure we only count posts with points
           )
         );
 
-      const points = result[0]?.totalPoints || 0;
+      logger.info('Posts for daily points calculation:', {
+        userId,
+        date: date.toISOString(),
+        posts: posts.map(p => ({
+          type: p.type,
+          points: p.points,
+          createdAt: p.createdAt
+        }))
+      });
 
-      res.json({ points });
+      // Calculate total points manually to ensure accuracy
+      const totalPoints = posts.reduce((sum, post) => sum + (post.points || 0), 0);
+
+      res.json({ points: totalPoints });
     } catch (error) {
       logger.error('Error calculating daily points:', error);
       res.status(500).json({
