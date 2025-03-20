@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
@@ -23,19 +23,35 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
 
-  // Update the query to get the day's points
-  const { data: dayPoints } = useQuery({
+  const { data: dayPoints, isLoading: isLoadingPoints, error: pointsError } = useQuery({
     queryKey: ["/api/points/daily", post.createdAt],
     queryFn: async () => {
-      const date = new Date(post.createdAt!);
-      const response = await fetch(`/api/points/daily?date=${date.toISOString()}&userId=${post.author.id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch daily points");
+      try {
+        const date = new Date(post.createdAt!);
+        const response = await apiRequest(
+          "GET", 
+          `/api/points/daily?date=${date.toISOString()}&userId=${post.author.id}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch daily points");
+        }
+
+        const result = await response.json();
+        console.log('Points API response:', {
+          userId: post.author.id,
+          date: date.toISOString(),
+          points: result.points
+        });
+
+        return result.points;
+      } catch (error) {
+        console.error("Error fetching daily points:", error);
+        throw error;
       }
-      const data = await response.json();
-      return data.points || 0;
     },
-    staleTime: Infinity, // Points for a past date won't change
+    staleTime: 300000, // Cache for 5 minutes
+    retry: 2
   });
 
   const { count: commentCount } = useCommentCount(post.id);
@@ -105,7 +121,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              {dayPoints !== undefined ? `${dayPoints} points earned` : 'Loading points...'}
+              {isLoadingPoints ? (
+                <span className="animate-pulse">Calculating points...</span>
+              ) : pointsError ? (
+                <span className="text-destructive">Error loading points</span>
+              ) : (
+                `${dayPoints || 0} points earned`
+              )}
             </p>
           </div>
         </div>
