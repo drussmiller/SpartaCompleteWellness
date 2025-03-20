@@ -5,3 +5,6 @@ server/public
 vite.config.ts.*
 *.tar.gz
 logs/*
+uploads/*
+!uploads/thumbnails
+!uploads/.gitkeep
