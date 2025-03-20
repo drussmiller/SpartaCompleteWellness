@@ -87,18 +87,13 @@ export default function HomePage() {
           <div className="flex justify-between">
             {/* Left panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
+              <div className="w-1/3 min-h-screen border-r border-border p-4 bg-background">
                 <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
-                <img
-                  src="/sparta_circle_red.png"
-                  alt="Sparta Logo"
-                  className="w-full h-auto object-contain"
-                />
               </div>
             )}
 
             {/* Main content */}
-            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
+            <div className={`${isMobile ? 'w-full' : 'w-1/3'} px-4`}>
               <main className="mt-32 mb-20">
             <div className="space-y-2">
               {posts?.length > 0 ? (
@@ -128,7 +123,7 @@ export default function HomePage() {
 
             {/* Right panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 min-h-screen border-l border-border p-4 bg-background">
+              <div className="w-1/3 min-h-screen border-l border-border p-4 bg-background">
                 <h2 className="text-lg font-semibold mb-4">Right Panel</h2>
               </div>
             )}
