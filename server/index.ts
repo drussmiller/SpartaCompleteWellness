@@ -13,9 +13,37 @@ const execAsync = promisify(exec);
 
 const app = express();
 
-// Basic middleware setup
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+// Increase timeouts and add keep-alive
+const serverTimeout = 14400000; // 4 hours
+app.use((req, res, next) => {
+  // Set keep-alive header with increased timeout
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=14400');
+  
+  // Increase socket timeout and add connection handling
+  if (req.socket) {
+    req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
+    req.socket.setTimeout(serverTimeout);
+    req.socket.setNoDelay(true); // Disable Nagle's algorithm
+  }
+
+  // Set generous timeouts
+  req.setTimeout(serverTimeout);
+  
+  res.setTimeout(serverTimeout, () => {
+    res.status(408).send('Request timeout');
+  });
+  next();
+});
+
+// Increase body parser limits
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
+
+// Basic middleware setup with increased limits
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.raw({ limit: '100mb' }));
 
 // Setup auth first (includes session middleware)
 setupAuth(app);

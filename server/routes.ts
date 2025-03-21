@@ -51,7 +51,11 @@ if (!fs.existsSync(uploadDir)) {
 
 const upload = multer({
   storage: multerStorage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { 
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fieldSize: 25 * 1024 * 1024 // 25MB per field
+  },
+  highWaterMark: 2 * 1024 * 1024 // 2MB chunks
 });
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
