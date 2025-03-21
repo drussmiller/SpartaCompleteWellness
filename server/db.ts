@@ -13,15 +13,16 @@ if (!process.env.DATABASE_URL) {
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 3600000, // 1 hour
-  max: 5,
+  connectionTimeoutMillis: 7200000, // 2 hours
+  max: 3, // Reduce concurrent connections
   idleTimeoutMillis: 7200000, // 2 hours
-  retryInterval: 120000,
-  maxRetries: 150,
-  statement_timeout: 3600000, // 1 hour
-  query_timeout: 3600000, // 1 hour
+  retryInterval: 30000, // More frequent retries
+  maxRetries: 240, // More retries with shorter interval
+  statement_timeout: 7200000, // 2 hours
+  query_timeout: 7200000, // 2 hours
   keepAlive: true,
-  keepAliveInitialDelayMillis: 10000,
+  keepAliveInitialDelayMillis: 5000,
+  application_name: 'app', // Help identify connections
   ssl: {
     rejectUnauthorized: false
   }
