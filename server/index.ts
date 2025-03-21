@@ -14,11 +14,11 @@ const execAsync = promisify(exec);
 const app = express();
 
 // Increase timeouts and add keep-alive
-const serverTimeout = 1800000; // 30 minutes
+const serverTimeout = 7200000; // 2 hours
 app.use((req, res, next) => {
   // Set keep-alive header
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Keep-Alive', 'timeout=1800');
+  res.setHeader('Keep-Alive', 'timeout=7200');
   
   // Increase socket timeout
   if (req.socket) {
