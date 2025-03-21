@@ -13,11 +13,11 @@ if (!process.env.DATABASE_URL) {
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 30000,
-  max: 20,
-  idleTimeoutMillis: 120000,
-  retryInterval: 3000,
-  maxRetries: 10,
+  connectionTimeoutMillis: 60000, // 1 minute
+  max: 30,
+  idleTimeoutMillis: 300000, // 5 minutes
+  retryInterval: 5000,
+  maxRetries: 15,
   ssl: {
     rejectUnauthorized: false
   }
