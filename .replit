@@ -55,4 +55,8 @@ author = 39881282
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "killall -9 node || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm run dev"
