@@ -42,7 +42,8 @@ app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // Basic middleware setup with increased limits
 app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: false, limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.raw({ limit: '100mb' }));
 
 // Setup auth first (includes session middleware)
 setupAuth(app);
