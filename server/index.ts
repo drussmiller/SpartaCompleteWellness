@@ -13,14 +13,28 @@ const execAsync = promisify(exec);
 
 const app = express();
 
-// Increase timeouts
-const serverTimeout = 300000; // 5 minutes
+// Increase timeouts and add keep-alive
+const serverTimeout = 1800000; // 30 minutes
 app.use((req, res, next) => {
+  // Set keep-alive header
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=1800');
+  
+  // Increase socket timeout
+  if (req.socket) {
+    req.socket.setKeepAlive(true);
+    req.socket.setTimeout(serverTimeout);
+  }
+  
   res.setTimeout(serverTimeout, () => {
     res.status(408).send('Request timeout');
   });
   next();
 });
+
+// Increase body parser limits
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // Basic middleware setup with increased limits
 app.use(express.json({ limit: '100mb' }));
