@@ -14,17 +14,21 @@ const execAsync = promisify(exec);
 const app = express();
 
 // Increase timeouts and add keep-alive
-const serverTimeout = 7200000; // 2 hours
+const serverTimeout = 14400000; // 4 hours
 app.use((req, res, next) => {
-  // Set keep-alive header
+  // Set keep-alive header with increased timeout
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Keep-Alive', 'timeout=7200');
+  res.setHeader('Keep-Alive', 'timeout=14400');
   
-  // Increase socket timeout
+  // Increase socket timeout and add connection handling
   if (req.socket) {
-    req.socket.setKeepAlive(true);
+    req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
     req.socket.setTimeout(serverTimeout);
+    req.socket.setNoDelay(true); // Disable Nagle's algorithm
   }
+
+  // Set generous timeouts
+  req.setTimeout(serverTimeout);
   
   res.setTimeout(serverTimeout, () => {
     res.status(408).send('Request timeout');
