@@ -111,6 +111,29 @@ export function MessageSlideCard() {
     setUnreadCount(messageCount);
   }, [messageCount]);
 
+  // Mark messages as read when selecting a member
+  useEffect(() => {
+    if (selectedMember) {
+      const markMessagesAsRead = async () => {
+        try {
+          const response = await apiRequest("POST", "/api/messages/read", {
+            senderId: selectedMember.id
+          });
+
+          if (response.ok) {
+            // Invalidate both messages and unread count queries
+            queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+            queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
+          }
+        } catch (error) {
+          console.error("Error marking messages as read:", error);
+        }
+      };
+
+      markMessagesAsRead();
+    }
+  }, [selectedMember]);
+
   // Handle team error using useEffect
   useEffect(() => {
     if (teamError && isOpen) {
@@ -188,7 +211,9 @@ export function MessageSlideCard() {
       }
     },
     onSuccess: () => {
+      // Invalidate both messages and unread count queries
       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
       setMessageText("");
       setPastedImage(null);
       toast({
