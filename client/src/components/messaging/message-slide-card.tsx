@@ -33,18 +33,17 @@ export function MessageSlideCard() {
   const [messageText, setMessageText] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<TeamMember[]>({
-    queryKey: ["/api/teams/members", user?.teamId],
+    queryKey: ["/api/posts/teams", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
         throw new Error("No team assigned");
       }
       try {
         console.log('Fetching team members for team:', user.teamId);
-        const response = await apiRequest("GET", `/api/teams/${user.teamId}/members`);
+        const response = await apiRequest("GET", `/api/posts/teams/${user.teamId}/members`);
 
         if (!response.ok) {
           let errorMessage = "Failed to fetch team members";
@@ -82,14 +81,14 @@ export function MessageSlideCard() {
 
   // Query for messages with selected member
   const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/messages", selectedMember?.id],
+    queryKey: ["/api/posts/messages", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
       try {
         console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
           "GET",
-          `/api/messages/${selectedMember.id}`
+          `/api/posts/messages/${selectedMember.id}`
         );
 
         if (!response.ok) {
@@ -143,7 +142,7 @@ export function MessageSlideCard() {
         recipientId: selectedMember.id
       });
 
-      const res = await apiRequest("POST", "/api/messages", {
+      const res = await apiRequest("POST", "/api/posts/messages", {
         content: messageText.trim(),
         recipientId: selectedMember.id,
         type: "text"
@@ -164,8 +163,7 @@ export function MessageSlideCard() {
       const data = await res.json();
       console.log('Message created successfully:', data);
       setMessageText("");
-      // Refetch messages
-      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/messages", selectedMember.id] });
 
       toast({
         description: "Message sent successfully",
@@ -195,7 +193,7 @@ export function MessageSlideCard() {
       formData.append('type', type);
 
       try {
-        const response = await fetch('/api/messages/media', {
+        const response = await fetch('/api/posts/messages/media', {
           method: 'POST',
           body: formData,
           credentials: 'include'
@@ -213,8 +211,7 @@ export function MessageSlideCard() {
           throw new Error(errorMessage);
         }
 
-        // Refetch messages after successful upload
-        queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/messages", selectedMember.id] });
 
         toast({
           description: "Media uploaded successfully",
