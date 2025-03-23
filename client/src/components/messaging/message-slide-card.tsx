@@ -42,18 +42,35 @@ export function MessageSlideCard() {
       if (!user?.teamId) {
         throw new Error("No team assigned");
       }
-      const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => null);
-        throw new Error(errorText || "Failed to fetch team members");
+      try {
+        console.log('Fetching team members for team:', user.teamId);
+        const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => null);
+          throw new Error(errorText || `Failed to fetch team members. Status: ${response.status}`);
+        }
+
+        const responseText = await response.text();
+        console.log('Team members response:', responseText);
+
+        try {
+          const members = JSON.parse(responseText);
+          // Filter out admins and the current user
+          return members.filter((member: TeamMember) => 
+            !member.isAdmin && member.id !== user.id && member.teamId === user.teamId
+          );
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          throw new Error('Invalid response format from server');
+        }
+      } catch (error) {
+        console.error('Team members fetch error:', error);
+        throw error;
       }
-      const members = await response.json();
-      // Filter out admins and the current user
-      return members.filter((member: TeamMember) => 
-        !member.isAdmin && member.id !== user.id && member.teamId === user.teamId
-      );
     },
     enabled: isOpen && !!user?.teamId,
+    retry: 1
   });
 
   // Query for messages with selected member
@@ -61,14 +78,31 @@ export function MessageSlideCard() {
     queryKey: ["/api/messages", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
-      const response = await apiRequest(
-        "GET",
-        `/api/messages/${selectedMember.id}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch messages");
-      return response.json();
+      try {
+        const response = await apiRequest(
+          "GET",
+          `/api/messages/${selectedMember.id}`
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => null);
+          throw new Error(errorText || "Failed to fetch messages");
+        }
+
+        const responseText = await response.text();
+        try {
+          return JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Messages JSON parse error:', parseError);
+          throw new Error('Invalid message data format from server');
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        throw error;
+      }
     },
     enabled: !!selectedMember,
+    retry: 1
   });
 
   // Handle team error using useEffect
@@ -93,7 +127,7 @@ export function MessageSlideCard() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText = await response.text().catch(() => null);
         throw new Error(errorText || "Failed to send message");
       }
 
@@ -136,7 +170,7 @@ export function MessageSlideCard() {
         });
 
         if (!response.ok) {
-          const error = await response.text();
+          const error = await response.text().catch(() => null);
           throw new Error(error || "Failed to upload media");
         }
 
