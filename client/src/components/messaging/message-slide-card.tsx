@@ -90,16 +90,16 @@ export function MessageSlideCard() {
   });
 
   // Query for unread message count
-  const { data: notificationCount = 0 } = useQuery({
-    queryKey: ["/api/notifications/unread"],
+  const { data: messageCount = 0 } = useQuery({
+    queryKey: ["/api/posts/comments/unread"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/notifications/unread");
-        if (!response.ok) throw new Error("Failed to fetch notifications");
+        const response = await apiRequest("GET", "/api/posts/comments/unread");
+        if (!response.ok) throw new Error("Failed to fetch unread messages");
         const data = await response.json();
         return data.unreadCount || 0;
       } catch (error) {
-        console.error("Error fetching notification count:", error);
+        console.error("Error fetching unread message count:", error);
         return 0;
       }
     },
@@ -107,8 +107,8 @@ export function MessageSlideCard() {
   });
 
   useEffect(() => {
-    setUnreadCount(notificationCount);
-  }, [notificationCount]);
+    setUnreadCount(messageCount);
+  }, [messageCount]);
 
   // Handle team error using useEffect
   useEffect(() => {
