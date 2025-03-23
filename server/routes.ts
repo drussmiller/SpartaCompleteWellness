@@ -1179,52 +1179,80 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add notifications endpoint
+  // Add notifications count endpoint
+  router.get("/api/notifications/unread", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)::integer` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.read, false)
+          )
+        );
+
+      res.json({ unreadCount: unreadCount[0].count });
+    } catch (error) {
+      logger.error('Error fetching unread notifications:', error);
+      res.status(500).json({
+        message: "Failed to fetch notification count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark notifications as read
+  router.post("/api/notifications/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationIds } = req.body;
+
+      if (!Array.isArray(notificationIds)) {
+        return res.status(400).json({ message: "Invalid notification IDs" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            sql`${notifications.id} = ANY(${notificationIds})`
+          )
+        );
+
+      res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+      logger.error('Error marking notifications as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get user notifications
   router.get("/api/notifications", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      const notifications = await storage.getNotifications(req.user.id);
-      res.json(notifications);
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt));
+
+      res.json(userNotifications);
     } catch (error) {
       logger.error('Error fetching notifications:', error);
-      res.status(500).json({ message: "Failed to fetch notifications" });
-    }
-  });
-
-  // Mark notification as read endpoint
-  router.post("/api/notifications/:id/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const notificationId = parseInt(req.params.id);
-      if (isNaN(notificationId)) {
-        return res.status(400).json({ message: "Invalid notification ID" });
-      }
-
-      await storage.markNotificationAsRead(notificationId);
-      res.json({ message: "Notification marked as read" });
-    } catch (error) {
-      logger.error('Error marking notification as read:', error);
-      res.status(500).json({ message: "Failed to mark notification as read" });
-    }
-  });
-
-  // Delete notification endpoint
-  router.delete("/api/notifications/:id", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const notificationId = parseInt(req.params.id);
-      if (isNaN(notificationId)) {
-        return res.status(400).json({ message: "Invalid notification ID" });
-      }
-
-      await db.delete(notifications).where(eq(notifications.id, notificationId));
-      res.json({ message: "Notification deleted" });
-    } catch (error) {
-      logger.error('Error deleting notification:', error);
-      res.status(500).json({ message: "Failed to delete notification" });
+      res.status(500).json({
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
