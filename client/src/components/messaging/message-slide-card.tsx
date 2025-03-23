@@ -6,54 +6,74 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Post, User } from "@shared/schema";
+
+interface TeamMember {
+  id: number;
+  username: string;
+  imageUrl?: string;
+  isAdmin: boolean;
+  teamId: number | null;
+}
+
+interface Message {
+  id: number;
+  senderId: number;
+  recipientId: number;
+  content: string;
+  type: 'text' | 'image' | 'video';
+  createdAt: string;
+}
 
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<User | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [messageText, setMessageText] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Query for team members
-  const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+  const { data: teamMembers = [], error: teamError } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team/members", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
         throw new Error("No team assigned");
       }
       try {
-        console.log('Fetching users with user team ID:', user.teamId);
-        const response = await apiRequest("GET", "/api/users");
+        console.log('Fetching team members for team:', user.teamId);
+        const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch users");
+          let errorMessage = "Failed to fetch team members";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
-        const users = await response.json();
-        console.log('All users:', users);
+        const responseText = await response.text();
+        console.log('Team members response:', responseText);
 
-        // Filter users to only show team members (excluding current user)
-        const filteredUsers = users.filter((member: User) => {
-          console.log('Checking member:', {
-            id: member.id,
-            teamId: member.teamId,
-            isAdmin: member.isAdmin,
-            matchesTeam: member.teamId === user.teamId,
-            isCurrentUser: member.id === user.id
-          });
-
-          return member.teamId === user.teamId && member.id !== user.id;
-        });
-
-        console.log('Filtered team members:', filteredUsers);
-        return filteredUsers;
+        try {
+          const members = JSON.parse(responseText);
+          // Filter out admins and the current user
+          return members.filter((member: TeamMember) => 
+            !member.isAdmin && member.id !== user.id && member.teamId === user.teamId
+          );
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          throw new Error('Invalid response format from server');
+        }
       } catch (error) {
-        console.error("Error fetching users:", error);
-        throw error instanceof Error ? error : new Error("Failed to fetch users");
+        console.error('Team members fetch error:', error);
+        throw error instanceof Error ? error : new Error("Failed to fetch team members");
       }
     },
     enabled: isOpen && !!user?.teamId,
@@ -61,24 +81,37 @@ export function MessageSlideCard() {
   });
 
   // Query for messages with selected member
-  const { data: messages = [] } = useQuery<Post[]>({
-    queryKey: ["/api/posts/comments", selectedMember?.id],
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ["/api/messages", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
       try {
-        console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
           "GET",
-          `/api/posts/comments/${selectedMember.id}`
+          `/api/messages/${selectedMember.id}`
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch messages");
+          let errorMessage = "Failed to fetch messages";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
-        const data = await response.json();
-        console.log('Messages response:', data);
-        return data;
+        const responseText = await response.text();
+        console.log('Messages response:', responseText);
+
+        try {
+          return JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Messages JSON parse error:', parseError);
+          throw new Error('Invalid message data format from server');
+        }
       } catch (error) {
         console.error("Error fetching messages:", error);
         throw error instanceof Error ? error : new Error("Failed to fetch messages");
@@ -99,54 +132,104 @@ export function MessageSlideCard() {
     }
   }, [teamError, isOpen, toast]);
 
-  const createMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      if (!selectedMember) throw new Error("No recipient selected");
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedMember) return;
 
-      try {
-        console.log('Attempting to create message:', {
-          type: "message",
-          content: content.trim(),
-          recipientId: selectedMember.id
-        });
+    try {
+      console.log('Attempting to create message:', {
+        type: "text",
+        content: messageText.trim(),
+        recipientId: selectedMember.id
+      });
 
-        const res = await apiRequest("POST", "/api/posts", {
-          type: "message",
-          content: content.trim(),
-          recipientId: selectedMember.id
-        });
+      const res = await apiRequest("POST", "/api/messages", {
+        content: messageText.trim(),
+        recipientId: selectedMember.id,
+        type: "text"
+      });
 
-        if (!res.ok) {
-          throw new Error("Failed to send message");
+      if (!res.ok) {
+        let errorMessage = "Failed to send message";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          const errorText = await res.text().catch(() => null);
+          if (errorText) errorMessage = errorText;
         }
-
-        const data = await res.json();
-        console.log('Message created successfully:', data);
-        return data;
-      } catch (error) {
-        console.error("Error creating message:", error);
-        throw error instanceof Error ? error : new Error("Failed to send message");
+        throw new Error(errorMessage);
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", selectedMember?.id] });
+
+      const data = await res.json();
+      console.log('Message created successfully:', data);
+
       setMessageText("");
+      // Refetch messages
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+
       toast({
         description: "Message sent successfully",
       });
-    },
-    onError: (error: Error) => {
+    } catch (error) {
+      console.error("Error sending message:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to send message",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
 
-  const handleSendMessage = () => {
-    if (!messageText.trim() || !selectedMember) return;
-    createMessageMutation.mutate(messageText);
+  const handleFileUpload = async (type: 'image' | 'video') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = type === 'image' ? 'image/*' : 'video/*';
+
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file || !selectedMember) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('recipientId', selectedMember.id.toString());
+      formData.append('type', type);
+
+      try {
+        const response = await fetch('/api/messages/media', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          let errorMessage = `Failed to upload ${type}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
+        }
+
+        // Refetch messages after successful upload
+        queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+
+        toast({
+          description: "Media uploaded successfully",
+        });
+      } catch (error) {
+        console.error("Error uploading media:", error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to upload media",
+          variant: "destructive",
+        });
+      }
+    };
+
+    input.click();
   };
 
   return (
@@ -154,10 +237,7 @@ export function MessageSlideCard() {
       <Button
         size="icon"
         className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2"
-        onClick={() => {
-          console.log('Opening message slide card. User team ID:', user?.teamId);
-          setIsOpen(true);
-        }}
+        onClick={() => setIsOpen(true)}
       >
         <MessageCircle className="h-4 w-4 text-black font-extrabold" />
       </Button>
@@ -166,7 +246,7 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100]`}
+        } z-50`}
       >
         <Card className="h-full rounded-none">
           {/* Header */}
@@ -193,7 +273,7 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea className="h-[calc(100vh-5rem)] p-4 pb-16">
+            <ScrollArea className="h-[calc(100vh-5rem)] p-4">
               <div className="space-y-2">
                 {teamError ? (
                   <div className="text-center text-muted-foreground py-8">
@@ -237,18 +317,32 @@ export function MessageSlideCard() {
                     <div
                       key={message.id}
                       className={`flex ${
-                        message.userId === user?.id ? "justify-end" : "justify-start"
+                        message.senderId === user?.id ? "justify-end" : "justify-start"
                       }`}
                     >
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
-                          message.userId === user?.id
+                          message.senderId === user?.id
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}
                       >
-                        {message.content && (
+                        {message.type === 'text' && (
                           <p className="break-words">{message.content}</p>
+                        )}
+                        {message.type === 'image' && (
+                          <img
+                            src={message.content}
+                            alt="Message image"
+                            className="max-w-full rounded"
+                          />
+                        )}
+                        {message.type === 'video' && (
+                          <video
+                            src={message.content}
+                            controls
+                            className="max-w-full rounded"
+                          />
                         )}
                       </div>
                     </div>
@@ -259,6 +353,20 @@ export function MessageSlideCard() {
               {/* Message Input */}
               <div className="p-4 border-t bg-background">
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleFileUpload('image')}
+                  >
+                    <Image className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleFileUpload('video')}
+                  >
+                    <Video className="h-5 w-5" />
+                  </Button>
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
