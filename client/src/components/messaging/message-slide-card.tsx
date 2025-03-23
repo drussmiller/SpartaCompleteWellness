@@ -64,14 +64,14 @@ export function MessageSlideCard() {
 
   // Query for messages with selected member
   const { data: messages = [] } = useQuery<Post[]>({
-    queryKey: ["/api/posts/comments", selectedMember?.id],
+    queryKey: ["/api/messages", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
       try {
         console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
           "GET",
-          `/api/posts/comments/${selectedMember.id}`
+          `/api/messages/${selectedMember.id}`
         );
 
         if (!response.ok) {
@@ -92,10 +92,10 @@ export function MessageSlideCard() {
 
   // Query for unread message count
   const { data: messageCount = 0 } = useQuery({
-    queryKey: ["/api/posts/comments/unread"],
+    queryKey: ["/api/messages/unread/count"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/posts/comments/unread");
+        const response = await apiRequest("GET", "/api/messages/unread/count");
         if (!response.ok) throw new Error("Failed to fetch unread messages");
         const data = await response.json();
         return data.unreadCount || 0;
@@ -169,9 +169,8 @@ export function MessageSlideCard() {
         }
 
         formData.append('recipientId', selectedMember.id.toString());
-        formData.append('type', 'message');
 
-        const res = await fetch('/api/posts', {
+        const res = await fetch('/api/messages', {
           method: 'POST',
           body: formData,
           credentials: 'include'
@@ -189,7 +188,7 @@ export function MessageSlideCard() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", selectedMember?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember?.id] });
       setMessageText("");
       setPastedImage(null);
       toast({
