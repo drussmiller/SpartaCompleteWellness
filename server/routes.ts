@@ -1250,7 +1250,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       }
 
-      const [user] = await db
+      const [updatedUser] = await db
         .update(users)
         .set({
           ...updateData,
@@ -1259,7 +1259,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(eq(users.id, userId))
         .returning();
 
-      res.json(user);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Ensure we're sending a properly formatted JSON response
+      res.setHeader('Content-Type', 'application/json');
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        teamId: updatedUser.teamId,
+        isAdmin: updatedUser.isAdmin,
+        isTeamLead: updatedUser.isTeamLead,
+        imageUrl: updatedUser.imageUrl,
+        teamJoinedAt: updatedUser.teamJoinedAt
+      });
     } catch (error) {
       logger.error('Error updating user:', error);
       res.status(500).json({ message: "Failed to update user" });
