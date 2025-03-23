@@ -2,6 +2,8 @@ import { useLocation } from "wouter";
 import { Home, Calendar, HelpCircle, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -11,11 +13,33 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
+  // Query for unread notifications count
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["/api/notifications/unread"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/notifications/unread");
+        if (!response.ok) throw new Error("Failed to fetch notifications");
+        const data = await response.json();
+        return data.unreadCount || 0;
+      } catch (error) {
+        console.error("Error fetching notification count:", error);
+        return 0;
+      }
+    },
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
   const items = [
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
     { icon: HelpCircle, label: "Help", href: "/help" },
-    { icon: Bell, label: "Notifications", href: "/notifications" },
+    { 
+      icon: Bell, 
+      label: "Notifications", 
+      href: "/notifications",
+      count: unreadCount 
+    },
   ];
 
   return (
@@ -35,12 +59,12 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map(({ icon: Icon, label, href }) => (
+        {items.map(({ icon: Icon, label, href, count }) => (
           <div
             key={href}
             onClick={() => setLocation(href)}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer",
+              "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
               // Size styles
               orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Text styles
@@ -51,6 +75,11 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           >
             <Icon className="h-5 w-5" />
             <span className="text-xs">{label}</span>
+            {count > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {count}
+              </span>
+            )}
           </div>
         ))}
         <div
