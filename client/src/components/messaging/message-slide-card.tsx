@@ -6,17 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-interface TeamMember {
-  id: number;
-  username: string;
-  imageUrl?: string;
-  isAdmin: boolean;
-  teamId: number | null;
-}
+import { Post, User } from "@shared/schema";
 
 interface Message {
   id: number;
@@ -29,14 +22,14 @@ interface Message {
 
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
 
   // Query for team members
-  const { data: teamMembers = [], error: teamError } = useQuery<TeamMember[]>({
-    queryKey: ["/api/posts/teams", user?.teamId],
+  const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
+    queryKey: ["/api/posts", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
         throw new Error("No team assigned");
@@ -58,7 +51,7 @@ export function MessageSlideCard() {
         try {
           const members = JSON.parse(responseText);
           // Filter out admins and the current user
-          return members.filter((member: TeamMember) => 
+          return members.filter((member: User) => 
             !member.isAdmin && member.id !== user.id && member.teamId === user.teamId
           );
         } catch (parseError) {
@@ -75,7 +68,7 @@ export function MessageSlideCard() {
   });
 
   // Query for messages with selected member
-  const { data: messages = [] } = useQuery<Message[]>({
+  const { data: messages = [] } = useQuery<Post[]>({
     queryKey: ["/api/posts/comments", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
@@ -300,12 +293,12 @@ export function MessageSlideCard() {
                     <div
                       key={message.id}
                       className={`flex ${
-                        message.senderId === user?.id ? "justify-end" : "justify-start"
+                        message.authorId === user?.id ? "justify-end" : "justify-start"
                       }`}
                     >
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
-                          message.senderId === user?.id
+                          message.authorId === user?.id
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}
