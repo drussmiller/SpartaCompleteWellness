@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,7 +43,10 @@ export function MessageSlideCard() {
       }
       try {
         console.log('Fetching team members for team:', user.teamId);
-        const response = await apiRequest("GET", `/api/posts/teams/${user.teamId}/members`);
+        const response = await apiRequest(
+          "GET", 
+          `/api/posts/teams/${user.teamId}/members`
+        );
 
         if (!response.ok) {
           let errorMessage = "Failed to fetch team members";
@@ -87,7 +90,7 @@ export function MessageSlideCard() {
       try {
         console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
-          "GET",
+          "GET", 
           `/api/posts/messages/${selectedMember.id}`
         );
 
@@ -132,50 +135,62 @@ export function MessageSlideCard() {
     }
   }, [teamError, isOpen, toast]);
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedMember) return;
+  const createMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!selectedMember) throw new Error("No recipient selected");
 
-    try {
-      console.log('Attempting to create message:', {
-        type: "text",
-        content: messageText.trim(),
-        recipientId: selectedMember.id
-      });
+      try {
+        console.log('Attempting to create message:', {
+          type: "text",
+          content: content.trim(),
+          recipientId: selectedMember.id
+        });
 
-      const res = await apiRequest("POST", "/api/posts/messages", {
-        content: messageText.trim(),
-        recipientId: selectedMember.id,
-        type: "text"
-      });
+        const res = await apiRequest("POST", "/api/posts", {
+          type: "message",
+          content: content.trim(),
+          recipientId: selectedMember.id
+        });
 
-      if (!res.ok) {
-        let errorMessage = "Failed to send message";
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          const errorText = await res.text().catch(() => null);
-          if (errorText) errorMessage = errorText;
+        if (!res.ok) {
+          let errorMessage = "Failed to send message";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await res.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
-        throw new Error(errorMessage);
+
+        const data = await res.json();
+        console.log('Message created successfully:', data);
+        return data;
+      } catch (error) {
+        console.error("Error creating message:", error);
+        throw error instanceof Error ? error : new Error("Failed to send message");
       }
-
-      const data = await res.json();
-      console.log('Message created successfully:', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/messages", selectedMember?.id] });
       setMessageText("");
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/messages", selectedMember.id] });
-
       toast({
         description: "Message sent successfully",
       });
-    } catch (error) {
-      console.error("Error sending message:", error);
+    },
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send message",
+        description: error.message || "Failed to send message",
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  const handleSendMessage = () => {
+    if (!messageText.trim() || !selectedMember) return;
+    createMessageMutation.mutate(messageText);
   };
 
   const handleFileUpload = async (type: 'image' | 'video') => {
@@ -193,7 +208,7 @@ export function MessageSlideCard() {
       formData.append('type', type);
 
       try {
-        const response = await fetch('/api/posts/messages/media', {
+        const response = await fetch('/api/posts/upload', {
           method: 'POST',
           body: formData,
           credentials: 'include'
