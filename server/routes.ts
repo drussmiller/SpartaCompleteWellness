@@ -1228,6 +1228,44 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      const updateData = req.body;
+
+      if (updateData.teamId !== null && typeof updateData.teamId === 'number') {
+        // Verify team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, updateData.teamId))
+          .limit(1);
+
+        if (!team) {
+          return res.status(400).json({ message: "Invalid team ID" });
+        }
+      }
+
+      const [user] = await db
+        .update(users)
+        .set({
+          ...updateData,
+          teamJoinedAt: updateData.teamId ? new Date() : null
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      res.json(user);
+    } catch (error) {
+      logger.error('Error updating user:', error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   app.use(router);
 
   // Create HTTP server
