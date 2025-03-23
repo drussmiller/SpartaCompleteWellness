@@ -38,7 +38,9 @@ export default function NotificationsPage() {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both notifications and unread count queries
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
     },
     onError: (error: Error) => {
       toast({
