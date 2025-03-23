@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -77,7 +78,10 @@ export default function HomePage() {
                   }}
                 />
               </div>
-              <CreatePostDialog remaining={remaining} />
+              <div className="flex items-center">
+                <CreatePostDialog remaining={remaining} />
+                <MessageSlideCard />
+              </div>
             </div>
           </div>
         </div>
@@ -100,30 +104,30 @@ export default function HomePage() {
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
               <main className="mt-32 mb-20">
-            <div className="space-y-2">
-              {posts?.length > 0 ? (
-                posts.map((post, index) => (
-                  <div key={post.id}>
-                    <ErrorBoundary>
-                      <PostCard post={post} />
-                    </ErrorBoundary>
-                    {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
-                  </div>
-                ))
-              ) : !isLoading ? (
-                <div className="text-center text-muted-foreground py-8">
-                  No posts yet. Be the first to share!
-                </div>
-              ) : null}
+                <div className="space-y-2">
+                  {posts?.length > 0 ? (
+                    posts.map((post, index) => (
+                      <div key={post.id}>
+                        <ErrorBoundary>
+                          <PostCard post={post} />
+                        </ErrorBoundary>
+                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                      </div>
+                    ))
+                  ) : !isLoading ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No posts yet. Be the first to share!
+                    </div>
+                  ) : null}
 
-              {/* Loading indicator */}
-              <div ref={loadingRef} className="flex justify-center py-4">
-                {isLoading && (
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                )}
-              </div>
-            </div>
-          </main>
+                  {/* Loading indicator */}
+                  <div ref={loadingRef} className="flex justify-center py-4">
+                    {isLoading && (
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    )}
+                  </div>
+                </div>
+              </main>
             </div>
 
             {/* Right panel - hidden on mobile */}
