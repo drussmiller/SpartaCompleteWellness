@@ -37,14 +37,14 @@ export function MessageSlideCard() {
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<TeamMember[]>({
-    queryKey: ["/api/team/members", user?.teamId],
+    queryKey: ["/api/teams/members", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
         throw new Error("No team assigned");
       }
       try {
         console.log('Fetching team members for team:', user.teamId);
-        const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
+        const response = await apiRequest("GET", `/api/teams/${user.teamId}/members`);
 
         if (!response.ok) {
           let errorMessage = "Failed to fetch team members";
@@ -72,7 +72,7 @@ export function MessageSlideCard() {
           throw new Error('Invalid response format from server');
         }
       } catch (error) {
-        console.error('Team members fetch error:', error);
+        console.error("Error fetching team members:", error);
         throw error instanceof Error ? error : new Error("Failed to fetch team members");
       }
     },
@@ -86,6 +86,7 @@ export function MessageSlideCard() {
     queryFn: async () => {
       if (!selectedMember) return [];
       try {
+        console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
           "GET",
           `/api/messages/${selectedMember.id}`
