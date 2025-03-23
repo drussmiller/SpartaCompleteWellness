@@ -136,7 +136,7 @@ export function MessageSlideCard() {
     if (!messageText.trim() || !selectedMember) return;
 
     try {
-      console.log('Attempting to create reply:', {
+      console.log('Attempting to create message:', {
         type: "text",
         content: messageText.trim(),
         recipientId: selectedMember.id
@@ -159,6 +159,9 @@ export function MessageSlideCard() {
         }
         throw new Error(errorMessage);
       }
+
+      const data = await res.json();
+      console.log('Message created successfully:', data);
 
       setMessageText("");
       // Refetch messages
