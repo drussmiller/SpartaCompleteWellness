@@ -49,15 +49,7 @@ export function MessageSlideCard() {
         );
 
         if (!response.ok) {
-          let errorMessage = "Failed to fetch team members";
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await response.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
+          throw new Error(`Failed to fetch team members. Status: ${response.status}`);
         }
 
         const responseText = await response.text();
@@ -84,26 +76,18 @@ export function MessageSlideCard() {
 
   // Query for messages with selected member
   const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/posts/messages", selectedMember?.id],
+    queryKey: ["/api/posts/comments", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
       try {
         console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
           "GET", 
-          `/api/posts/messages/${selectedMember.id}`
+          `/api/posts/comments/${selectedMember.id}`
         );
 
         if (!response.ok) {
-          let errorMessage = "Failed to fetch messages";
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await response.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
+          throw new Error("Failed to fetch messages");
         }
 
         const responseText = await response.text();
@@ -141,7 +125,7 @@ export function MessageSlideCard() {
 
       try {
         console.log('Attempting to create message:', {
-          type: "text",
+          type: "message",
           content: content.trim(),
           recipientId: selectedMember.id
         });
@@ -153,15 +137,7 @@ export function MessageSlideCard() {
         });
 
         if (!res.ok) {
-          let errorMessage = "Failed to send message";
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await res.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
+          throw new Error("Failed to send message");
         }
 
         const data = await res.json();
@@ -173,7 +149,7 @@ export function MessageSlideCard() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/messages", selectedMember?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", selectedMember?.id] });
       setMessageText("");
       toast({
         description: "Message sent successfully",
@@ -215,18 +191,10 @@ export function MessageSlideCard() {
         });
 
         if (!response.ok) {
-          let errorMessage = `Failed to upload ${type}`;
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await response.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
+          throw new Error(`Failed to upload ${type}`);
         }
 
-        queryClient.invalidateQueries({ queryKey: ["/api/posts/messages", selectedMember.id] });
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", selectedMember.id] });
 
         toast({
           description: "Media uploaded successfully",
