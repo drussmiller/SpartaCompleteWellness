@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface TeamMember {
@@ -163,7 +163,6 @@ export function MessageSlideCard() {
 
       const data = await res.json();
       console.log('Message created successfully:', data);
-
       setMessageText("");
       // Refetch messages
       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
@@ -238,7 +237,10 @@ export function MessageSlideCard() {
       <Button
         size="icon"
         className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2"
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          console.log('Opening message slide card. User team ID:', user?.teamId);
+          setIsOpen(true);
+        }}
       >
         <MessageCircle className="h-4 w-4 text-black font-extrabold" />
       </Button>
