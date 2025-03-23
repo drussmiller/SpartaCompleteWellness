@@ -154,7 +154,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pt-16 pb-80 px-4 space-y-6 max-w-4xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto pt-16 pb-80 px-4 space-y-6 max-w-4xl mx-auto w-full z-[60]">
         <div className="hidden md:block lg:w-64">
           <BottomNav orientation="vertical" />
         </div>
@@ -442,7 +442,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 lg:left-16 right-0 z-50 bg-background">
+      <div className="fixed bottom-0 left-0 lg:left-16 right-0 z-40 bg-background">
         <BottomNav />
       </div>
     </div>
