@@ -632,7 +632,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Select
                             defaultValue={user.teamId?.toString() || "none"}
                             onValueChange={(value) => {
-                              const teamId = value === "none" ? null : parseInt(value);
+                              const teamId = value === "none" ? null : parseInt(value, 10);
+                              if (value !== "none" && isNaN(teamId)) {
+                                toast({
+                                  title: "Error",
+                                  description: "Invalid team ID",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                               updateUserTeamMutation.mutate({ userId: user.id, teamId });
                             }}
                           >
