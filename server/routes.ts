@@ -1322,6 +1322,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.notificationId);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      // Set content type before sending response
+      res.setHeader('Content-Type', 'application/json');
+
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.id, notificationId)
+          )
+        )
+        .returning();
+
+      if (!updatedNotification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      res.json({ message: "Notification marked as read", notification: updatedNotification });
+    } catch (error) {
+      logger.error('Error marking notification as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notification as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.use(router);
 
   // Create HTTP server
