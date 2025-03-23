@@ -134,17 +134,6 @@ export function MessageSlideCard() {
     }
   }, [selectedMember]);
 
-  // Handle team error using useEffect
-  useEffect(() => {
-    if (teamError && isOpen) {
-      toast({
-        title: "Error",
-        description: teamError instanceof Error ? teamError.message : "Failed to load team members",
-        variant: "destructive",
-      });
-    }
-  }, [teamError, isOpen, toast]);
-
   const handlePaste = useCallback((e: ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -330,15 +319,33 @@ export function MessageSlideCard() {
                         message.userId === user?.id ? "justify-end" : "justify-start"
                       }`}
                     >
+                      {message.userId !== user?.id && (
+                        <Avatar className="mr-2">
+                          <AvatarImage
+                            src={selectedMember?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${selectedMember?.username}`}
+                            alt={selectedMember?.username || "Unknown User"}
+                          />
+                          <AvatarFallback>
+                            {selectedMember?.username?.[0].toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
                           message.userId === user?.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                            ? "bg-primary text-primary-foreground ml-2"
+                            : "bg-muted mr-2"
                         }`}
                       >
                         {message.content && (
                           <p className="break-words">{message.content}</p>
+                        )}
+                        {message.imageUrl && (
+                          <img
+                            src={message.imageUrl}
+                            alt="Message image"
+                            className="max-w-full rounded mt-2"
+                          />
                         )}
                       </div>
                     </div>
