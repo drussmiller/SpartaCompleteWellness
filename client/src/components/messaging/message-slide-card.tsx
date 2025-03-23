@@ -11,15 +11,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
 
-interface Message {
-  id: number;
-  senderId: number;
-  recipientId: number;
-  content: string;
-  type: 'text' | 'image' | 'video';
-  createdAt: string;
-}
-
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
@@ -29,38 +20,31 @@ export function MessageSlideCard() {
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
-    queryKey: ["/api/posts", user?.teamId],
+    queryKey: ["/api/users"],
     queryFn: async () => {
       if (!user?.teamId) {
         throw new Error("No team assigned");
       }
       try {
-        console.log('Fetching team members for team:', user.teamId);
-        const response = await apiRequest(
-          "GET", 
-          `/api/posts/teams/${user.teamId}/members`
-        );
+        console.log('Fetching users for team:', user.teamId);
+        const response = await apiRequest("GET", "/api/users");
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch team members. Status: ${response.status}`);
+          throw new Error("Failed to fetch users");
         }
 
-        const responseText = await response.text();
-        console.log('Team members response:', responseText);
+        const users = await response.json();
+        console.log('Users response:', users);
 
-        try {
-          const members = JSON.parse(responseText);
-          // Filter out admins and the current user
-          return members.filter((member: User) => 
-            !member.isAdmin && member.id !== user.id && member.teamId === user.teamId
-          );
-        } catch (parseError) {
-          console.error('JSON parse error:', parseError);
-          throw new Error('Invalid response format from server');
-        }
+        // Filter users to only show team members (excluding admins and current user)
+        return users.filter((member: User) => 
+          member.teamId === user.teamId && 
+          !member.isAdmin && 
+          member.id !== user.id
+        );
       } catch (error) {
-        console.error("Error fetching team members:", error);
-        throw error instanceof Error ? error : new Error("Failed to fetch team members");
+        console.error("Error fetching users:", error);
+        throw error instanceof Error ? error : new Error("Failed to fetch users");
       }
     },
     enabled: isOpen && !!user?.teamId,
@@ -83,15 +67,9 @@ export function MessageSlideCard() {
           throw new Error("Failed to fetch messages");
         }
 
-        const responseText = await response.text();
-        console.log('Messages response:', responseText);
-
-        try {
-          return JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('Messages JSON parse error:', parseError);
-          throw new Error('Invalid message data format from server');
-        }
+        const data = await response.json();
+        console.log('Messages response:', data);
+        return data;
       } catch (error) {
         console.error("Error fetching messages:", error);
         throw error instanceof Error ? error : new Error("Failed to fetch messages");
@@ -293,12 +271,12 @@ export function MessageSlideCard() {
                     <div
                       key={message.id}
                       className={`flex ${
-                        message.authorId === user?.id ? "justify-end" : "justify-start"
+                        message.userId === user?.id ? "justify-end" : "justify-start"
                       }`}
                     >
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
-                          message.authorId === user?.id
+                          message.userId === user?.id
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}
@@ -308,14 +286,14 @@ export function MessageSlideCard() {
                         )}
                         {message.type === 'image' && (
                           <img
-                            src={message.content}
+                            src={message.imageUrl || ''}
                             alt="Message image"
                             className="max-w-full rounded"
                           />
                         )}
                         {message.type === 'video' && (
                           <video
-                            src={message.content}
+                            src={message.imageUrl || ''}
                             controls
                             className="max-w-full rounded"
                           />
