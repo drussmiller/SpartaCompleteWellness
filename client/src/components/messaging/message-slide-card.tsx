@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface TeamMember {
   id: number;
   username: string;
   imageUrl?: string;
+  isAdmin: boolean;
+  teamId: number | null;
 }
 
 interface Message {
@@ -29,16 +32,27 @@ export function MessageSlideCard() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [messageText, setMessageText] = useState("");
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Query for team members
-  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
-    queryKey: ["/api/team/members"],
+  const { data: teamMembers = [], error: teamError } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team/members", user?.teamId],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/team/members");
-      if (!response.ok) throw new Error("Failed to fetch team members");
-      return response.json();
+      if (!user?.teamId) {
+        throw new Error("No team assigned");
+      }
+      const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Failed to fetch team members");
+      }
+      const members = await response.json();
+      // Filter out admins and the current user
+      return members.filter((member: TeamMember) => 
+        !member.isAdmin && member.id !== user.id && member.teamId === user.teamId
+      );
     },
-    enabled: isOpen && !!user,
+    enabled: isOpen && !!user?.teamId,
   });
 
   // Query for messages with selected member
@@ -56,6 +70,15 @@ export function MessageSlideCard() {
     enabled: !!selectedMember,
   });
 
+  // Show error toast if team members fetch fails
+  if (teamError && isOpen) {
+    toast({
+      title: "Error",
+      description: teamError instanceof Error ? teamError.message : "Failed to load team members",
+      variant: "destructive",
+    });
+  }
+
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedMember) return;
 
@@ -71,6 +94,11 @@ export function MessageSlideCard() {
       setMessageText("");
     } catch (error) {
       console.error("Error sending message:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
+        variant: "destructive",
+      });
     }
   };
 
@@ -95,9 +123,17 @@ export function MessageSlideCard() {
           credentials: 'include'
         });
 
-        if (!response.ok) throw new Error("Failed to upload media");
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || "Failed to upload media");
+        }
       } catch (error) {
         console.error("Error uploading media:", error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to upload media",
+          variant: "destructive",
+        });
       }
     };
 
@@ -147,26 +183,36 @@ export function MessageSlideCard() {
             // Team Members List
             <ScrollArea className="h-[calc(100vh-5rem)] p-4">
               <div className="space-y-2">
-                {teamMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-3 p-2 hover:bg-accent rounded-lg cursor-pointer"
-                    onClick={() => setSelectedMember(member)}
-                  >
-                    <Avatar>
-                      <AvatarImage
-                        src={member.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${member.username}`}
-                        alt={member.username}
-                      />
-                      <AvatarFallback>
-                        {member.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{member.username}</p>
-                    </div>
+                {teamError ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    {teamError instanceof Error ? teamError.message : "Failed to load team members"}
                   </div>
-                ))}
+                ) : teamMembers.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    No team members available
+                  </div>
+                ) : (
+                  teamMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-3 p-2 hover:bg-accent rounded-lg cursor-pointer"
+                      onClick={() => setSelectedMember(member)}
+                    >
+                      <Avatar>
+                        <AvatarImage
+                          src={member.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${member.username}`}
+                          alt={member.username}
+                        />
+                        <AvatarFallback>
+                          {member.username[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium">{member.username}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </ScrollArea>
           ) : (
