@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageCircle, ChevronLeft, Send, Image, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,6 +33,7 @@ export function MessageSlideCard() {
   const [messageText, setMessageText] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<TeamMember[]>({
@@ -43,8 +44,8 @@ export function MessageSlideCard() {
       }
       const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || "Failed to fetch team members");
+        const errorText = await response.text().catch(() => null);
+        throw new Error(errorText || "Failed to fetch team members");
       }
       const members = await response.json();
       // Filter out admins and the current user
@@ -70,14 +71,16 @@ export function MessageSlideCard() {
     enabled: !!selectedMember,
   });
 
-  // Show error toast if team members fetch fails
-  if (teamError && isOpen) {
-    toast({
-      title: "Error",
-      description: teamError instanceof Error ? teamError.message : "Failed to load team members",
-      variant: "destructive",
-    });
-  }
+  // Handle team error using useEffect
+  useEffect(() => {
+    if (teamError && isOpen) {
+      toast({
+        title: "Error",
+        description: teamError instanceof Error ? teamError.message : "Failed to load team members",
+        variant: "destructive",
+      });
+    }
+  }, [teamError, isOpen, toast]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedMember) return;
@@ -85,13 +88,22 @@ export function MessageSlideCard() {
     try {
       const response = await apiRequest("POST", "/api/messages", {
         recipientId: selectedMember.id,
-        content: messageText,
+        content: messageText.trim(),
         type: "text"
       });
 
-      if (!response.ok) throw new Error("Failed to send message");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to send message");
+      }
 
       setMessageText("");
+      // Refetch messages
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+
+      toast({
+        description: "Message sent successfully",
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -127,6 +139,13 @@ export function MessageSlideCard() {
           const error = await response.text();
           throw new Error(error || "Failed to upload media");
         }
+
+        // Refetch messages after successful upload
+        queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+
+        toast({
+          description: "Media uploaded successfully",
+        });
       } catch (error) {
         console.error("Error uploading media:", error);
         toast({
