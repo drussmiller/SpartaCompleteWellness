@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageCircle, ChevronLeft, Send, Image, Video } from "lucide-react";
+import { MessageCircle, ChevronLeft, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +15,7 @@ export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -88,6 +89,27 @@ export function MessageSlideCard() {
     retry: 2
   });
 
+  // Query for unread message count
+  const { data: notificationCount = 0 } = useQuery({
+    queryKey: ["/api/notifications/unread"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/notifications/unread");
+        if (!response.ok) throw new Error("Failed to fetch notifications");
+        const data = await response.json();
+        return data.unreadCount || 0;
+      } catch (error) {
+        console.error("Error fetching notification count:", error);
+        return 0;
+      }
+    },
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
+  useEffect(() => {
+    setUnreadCount(notificationCount);
+  }, [notificationCount]);
+
   // Handle team error using useEffect
   useEffect(() => {
     if (teamError && isOpen) {
@@ -153,13 +175,18 @@ export function MessageSlideCard() {
     <>
       <Button
         size="icon"
-        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2"
+        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2 relative"
         onClick={() => {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
         }}
       >
         <MessageCircle className="h-4 w-4 text-black font-extrabold" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+            {unreadCount}
+          </span>
+        )}
       </Button>
 
       {/* Full screen slide-out panel */}
@@ -220,7 +247,7 @@ export function MessageSlideCard() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="font-medium">{member.username}</p>
+                        <p className="font-bold">{member.username}</p>
                       </div>
                     </div>
                   ))
@@ -257,7 +284,7 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-background">
+              <div className="p-4 pb-20 border-t bg-background">
                 <div className="flex items-center gap-2">
                   <Input
                     value={messageText}
