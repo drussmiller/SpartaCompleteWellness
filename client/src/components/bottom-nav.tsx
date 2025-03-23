@@ -76,7 +76,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             <Icon className="h-5 w-5" />
             <span className="text-xs">{label}</span>
             {count > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+              <span className="absolute top-1 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                 {count}
               </span>
             )}
