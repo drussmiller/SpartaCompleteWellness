@@ -1235,27 +1235,37 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       const userId = parseInt(req.params.userId);
-      const updateData = req.body;
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
 
-      if (updateData.teamId !== null && typeof updateData.teamId === 'number') {
+      // Validate teamId if present
+      if (req.body.teamId !== undefined && req.body.teamId !== null) {
+        if (typeof req.body.teamId !== 'number') {
+          return res.status(400).json({ message: "Team ID must be a number" });
+        }
         // Verify team exists
         const [team] = await db
           .select()
           .from(teams)
-          .where(eq(teams.id, updateData.teamId))
+          .where(eq(teams.id, req.body.teamId))
           .limit(1);
 
         if (!team) {
-          return res.status(400).json({ message: "Invalid team ID" });
+          return res.status(400).json({ message: "Team not found" });
         }
       }
 
+      // Prepare update data
+      const updateData = {
+        ...req.body,
+        teamJoinedAt: req.body.teamId ? new Date() : null
+      };
+
+      // Update user
       const [updatedUser] = await db
         .update(users)
-        .set({
-          ...updateData,
-          teamJoinedAt: updateData.teamId ? new Date() : null
-        })
+        .set(updateData)
         .where(eq(users.id, userId))
         .returning();
 
@@ -1263,7 +1273,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Ensure we're sending a properly formatted JSON response
+      // Return sanitized user data
       res.setHeader('Content-Type', 'application/json');
       res.json({
         id: updatedUser.id,
@@ -1277,7 +1287,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     } catch (error) {
       logger.error('Error updating user:', error);
-      res.status(500).json({ message: "Failed to update user" });
+      res.status(500).json({
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
