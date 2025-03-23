@@ -171,7 +171,7 @@ export function MessageSlideCard() {
         formData.append('recipientId', selectedMember.id.toString());
         formData.append('type', 'message');
 
-        const res = await fetch('/api/messages', {
+        const res = await fetch('/api/posts', {
           method: 'POST',
           body: formData,
           credentials: 'include'
