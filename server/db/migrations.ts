@@ -104,6 +104,18 @@ export async function runMigrations() {
       )
     `);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id),
+        recipient_id INTEGER NOT NULL REFERENCES users(id),
+        content TEXT,
+        image_url TEXT,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);
