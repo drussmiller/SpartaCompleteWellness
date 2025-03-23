@@ -257,7 +257,7 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-background sticky bottom-0 mb-16">
+              <div className="p-4 border-t bg-background">
                 <div className="flex items-center gap-2">
                   <Input
                     value={messageText}
