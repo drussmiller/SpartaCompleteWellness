@@ -19,7 +19,9 @@ import {
   insertNotificationSchema,
   insertVideoSchema,
   insertActivitySchema,
-  insertUserSchema
+  insertUserSchema,
+  messages,
+  insertMessageSchema
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import express, { Router } from "express";
@@ -1354,6 +1356,161 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error marking notification as read:', error);
       res.status(500).json({
         message: "Failed to mark notification as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints
+  router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { content, recipientId } = req.body;
+
+      // Validate recipient exists
+      const [recipient] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(recipientId)))
+        .limit(1);
+
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient not found" });
+      }
+
+      // Create message
+      const [message] = await db
+        .insert(messages)
+        .values({
+          senderId: req.user.id,
+          recipientId: parseInt(recipientId),
+          content: content || null,
+          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+          isRead: false,
+        })
+        .returning();
+
+      // Create notification for recipient
+      await db.insert(notifications).values({
+        userId: parseInt(recipientId),
+        title: "New Message",
+        message: `You have a new message from ${req.user.username}`,
+        read: false,
+      });
+
+      res.status(201).json(message);
+    } catch (error) {
+      logger.error('Error creating message:', error);
+      res.status(500).json({
+        message: "Failed to create message",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get messages between users
+  router.get("/api/messages/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const userMessages = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          imageUrl: messages.imageUrl,
+          createdAt: messages.createdAt,
+          isRead: messages.isRead,
+          sender: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+          },
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(messages.senderId, req.user.id),
+              eq(messages.recipientId, otherUserId)
+            ),
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.recipientId, req.user.id)
+            )
+          )
+        )
+        .orderBy(messages.createdAt);
+
+      res.json(userMessages);
+    } catch (error) {
+      logger.error('Error fetching messages:', error);
+      res.status(500).json({
+        message: "Failed to fetch messages",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get unread messages count
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const [result] = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ unreadCount: result.count });
+    } catch (error) {
+      logger.error('Error getting unread message count:', error);
+      res.status(500).json({
+        message: "Failed to get unread message count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark messages as read
+  router.post("/api/messages/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { senderId } = req.body;
+      if (!senderId) {
+        return res.status(400).json({ message: "Sender ID is required" });
+      }
+
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.senderId, parseInt(senderId)),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      logger.error('Error marking messages as read:', error);
+      res.status(500).json({
+        message: "Failed to mark messages as read",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }

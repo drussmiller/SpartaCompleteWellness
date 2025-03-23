@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { MessageCircle, ChevronLeft, Send } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { MessageCircle, ChevronLeft, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +16,7 @@ export function MessageSlideCard() {
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pastedImage, setPastedImage] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -121,21 +122,59 @@ export function MessageSlideCard() {
     }
   }, [teamError, isOpen, toast]);
 
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setPastedImage(e.target?.result as string);
+          };
+          reader.readAsDataURL(blob);
+        }
+        break;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [handlePaste]);
+
   const createMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async () => {
       if (!selectedMember) throw new Error("No recipient selected");
 
       try {
-        console.log('Attempting to create message:', {
-          type: "message",
-          content: content.trim(),
-          recipientId: selectedMember.id
-        });
+        const formData = new FormData();
 
-        const res = await apiRequest("POST", "/api/posts", {
-          type: "message",
-          content: content.trim(),
-          recipientId: selectedMember.id
+        // Add message content if present
+        if (messageText.trim()) {
+          formData.append('content', messageText.trim());
+        }
+
+        // Add image if present
+        if (pastedImage) {
+          // Convert base64 to blob
+          const response = await fetch(pastedImage);
+          const blob = await response.blob();
+          formData.append('image', blob, 'pasted-image.png');
+        }
+
+        formData.append('recipientId', selectedMember.id.toString());
+        formData.append('type', 'message');
+
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
         });
 
         if (!res.ok) {
@@ -143,7 +182,6 @@ export function MessageSlideCard() {
         }
 
         const data = await res.json();
-        console.log('Message created successfully:', data);
         return data;
       } catch (error) {
         console.error("Error creating message:", error);
@@ -153,6 +191,7 @@ export function MessageSlideCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", selectedMember?.id] });
       setMessageText("");
+      setPastedImage(null);
       toast({
         description: "Message sent successfully",
       });
@@ -167,8 +206,8 @@ export function MessageSlideCard() {
   });
 
   const handleSendMessage = () => {
-    if (!messageText.trim() || !selectedMember) return;
-    createMessageMutation.mutate(messageText);
+    if ((!messageText.trim() && !pastedImage) || !selectedMember) return;
+    createMessageMutation.mutate();
   };
 
   return (
@@ -285,11 +324,26 @@ export function MessageSlideCard() {
 
               {/* Message Input */}
               <div className="p-4 pb-20 border-t bg-background">
+                {pastedImage && (
+                  <div className="relative w-32 h-32 mb-4">
+                    <img
+                      src={pastedImage}
+                      alt="Pasted image"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => setPastedImage(null)}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Type a message..."
+                    placeholder="Type a message... (Paste an image with Ctrl+V)"
                     className="flex-1"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -300,7 +354,7 @@ export function MessageSlideCard() {
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!messageText.trim()}
+                    disabled={(!messageText.trim() && !pastedImage) || createMessageMutation.isPending}
                   >
                     <Send className="h-5 w-5" />
                   </Button>

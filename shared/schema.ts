@@ -129,6 +129,45 @@ export const reactions = pgTable("reactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").notNull(),
+  recipientId: integer("recipient_id").notNull(),
+  content: text("content"),
+  imageUrl: text("image_url"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Add relations for messages
+export const messageRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
+  recipient: one(users, {
+    fields: [messages.recipientId],
+    references: [users.id],
+  }),
+}));
+
+// Create insert schema for messages
+export const insertMessageSchema = createInsertSchema(messages)
+  .omit({
+    id: true,
+    createdAt: true,
+    isRead: true,
+  })
+  .extend({
+    content: z.string().optional(),
+    imageUrl: z.string().optional(),
+  });
+
+// Add types
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+
 // Update the post schema with proper validation
 export const insertPostSchema = createInsertSchema(posts)
   .omit({
