@@ -47,8 +47,15 @@ export function MessageSlideCard() {
         const response = await apiRequest("GET", `/api/team/${user.teamId}/members`);
 
         if (!response.ok) {
-          const errorText = await response.text().catch(() => null);
-          throw new Error(errorText || `Failed to fetch team members. Status: ${response.status}`);
+          let errorMessage = "Failed to fetch team members";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
         const responseText = await response.text();
@@ -66,11 +73,11 @@ export function MessageSlideCard() {
         }
       } catch (error) {
         console.error('Team members fetch error:', error);
-        throw error;
+        throw error instanceof Error ? error : new Error("Failed to fetch team members");
       }
     },
     enabled: isOpen && !!user?.teamId,
-    retry: 1
+    retry: 2
   });
 
   // Query for messages with selected member
@@ -85,11 +92,20 @@ export function MessageSlideCard() {
         );
 
         if (!response.ok) {
-          const errorText = await response.text().catch(() => null);
-          throw new Error(errorText || "Failed to fetch messages");
+          let errorMessage = "Failed to fetch messages";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
         const responseText = await response.text();
+        console.log('Messages response:', responseText);
+
         try {
           return JSON.parse(responseText);
         } catch (parseError) {
@@ -98,11 +114,11 @@ export function MessageSlideCard() {
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
-        throw error;
+        throw error instanceof Error ? error : new Error("Failed to fetch messages");
       }
     },
     enabled: !!selectedMember,
-    retry: 1
+    retry: 2
   });
 
   // Handle team error using useEffect
@@ -120,15 +136,28 @@ export function MessageSlideCard() {
     if (!messageText.trim() || !selectedMember) return;
 
     try {
-      const response = await apiRequest("POST", "/api/messages", {
-        recipientId: selectedMember.id,
+      console.log('Attempting to create reply:', {
+        type: "text",
         content: messageText.trim(),
+        recipientId: selectedMember.id
+      });
+
+      const res = await apiRequest("POST", "/api/messages", {
+        content: messageText.trim(),
+        recipientId: selectedMember.id,
         type: "text"
       });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => null);
-        throw new Error(errorText || "Failed to send message");
+      if (!res.ok) {
+        let errorMessage = "Failed to send message";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          const errorText = await res.text().catch(() => null);
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
       }
 
       setMessageText("");
@@ -170,8 +199,15 @@ export function MessageSlideCard() {
         });
 
         if (!response.ok) {
-          const error = await response.text().catch(() => null);
-          throw new Error(error || "Failed to upload media");
+          let errorMessage = `Failed to upload ${type}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            const errorText = await response.text().catch(() => null);
+            if (errorText) errorMessage = errorText;
+          }
+          throw new Error(errorMessage);
         }
 
         // Refetch messages after successful upload
@@ -200,7 +236,7 @@ export function MessageSlideCard() {
         className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2"
         onClick={() => setIsOpen(true)}
       >
-        <MessageCircle className="h-16 w-16 text-black font-extrabold" />
+        <MessageCircle className="h-4 w-4 text-black font-extrabold" />
       </Button>
 
       {/* Full screen slide-out panel */}
