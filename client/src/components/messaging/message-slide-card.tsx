@@ -26,7 +26,7 @@ export function MessageSlideCard() {
         throw new Error("No team assigned");
       }
       try {
-        console.log('Fetching users for team:', user.teamId);
+        console.log('Fetching users with user team ID:', user.teamId);
         const response = await apiRequest("GET", "/api/users");
 
         if (!response.ok) {
@@ -34,14 +34,23 @@ export function MessageSlideCard() {
         }
 
         const users = await response.json();
-        console.log('Users response:', users);
+        console.log('All users:', users);
 
-        // Filter users to only show team members (excluding admins and current user)
-        return users.filter((member: User) => 
-          member.teamId === user.teamId && 
-          !member.isAdmin && 
-          member.id !== user.id
-        );
+        // Filter users to only show team members (excluding current user)
+        const filteredUsers = users.filter((member: User) => {
+          console.log('Checking member:', {
+            id: member.id,
+            teamId: member.teamId,
+            isAdmin: member.isAdmin,
+            matchesTeam: member.teamId === user.teamId,
+            isCurrentUser: member.id === user.id
+          });
+
+          return member.teamId === user.teamId && member.id !== user.id;
+        });
+
+        console.log('Filtered team members:', filteredUsers);
+        return filteredUsers;
       } catch (error) {
         console.error("Error fetching users:", error);
         throw error instanceof Error ? error : new Error("Failed to fetch users");
@@ -138,49 +147,6 @@ export function MessageSlideCard() {
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedMember) return;
     createMessageMutation.mutate(messageText);
-  };
-
-  const handleFileUpload = async (type: 'image' | 'video') => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = type === 'image' ? 'image/*' : 'video/*';
-
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file || !selectedMember) return;
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('recipientId', selectedMember.id.toString());
-      formData.append('type', type);
-
-      try {
-        const response = await fetch('/api/posts/upload', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${type}`);
-        }
-
-        queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", selectedMember.id] });
-
-        toast({
-          description: "Media uploaded successfully",
-        });
-      } catch (error) {
-        console.error("Error uploading media:", error);
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to upload media",
-          variant: "destructive",
-        });
-      }
-    };
-
-    input.click();
   };
 
   return (
@@ -281,22 +247,8 @@ export function MessageSlideCard() {
                             : "bg-muted"
                         }`}
                       >
-                        {message.type === 'text' && (
+                        {message.content && (
                           <p className="break-words">{message.content}</p>
-                        )}
-                        {message.type === 'image' && (
-                          <img
-                            src={message.imageUrl || ''}
-                            alt="Message image"
-                            className="max-w-full rounded"
-                          />
-                        )}
-                        {message.type === 'video' && (
-                          <video
-                            src={message.imageUrl || ''}
-                            controls
-                            className="max-w-full rounded"
-                          />
                         )}
                       </div>
                     </div>
@@ -307,20 +259,6 @@ export function MessageSlideCard() {
               {/* Message Input */}
               <div className="p-4 border-t bg-background">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleFileUpload('image')}
-                  >
-                    <Image className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleFileUpload('video')}
-                  >
-                    <Video className="h-5 w-5" />
-                  </Button>
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
