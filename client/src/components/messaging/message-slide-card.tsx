@@ -68,7 +68,7 @@ export function MessageSlideCard() {
       try {
         console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
-          "GET", 
+          "GET",
           `/api/posts/comments/${selectedMember.id}`
         );
 
@@ -166,7 +166,7 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-50`}
+        } z-[100]`}
       >
         <Card className="h-full rounded-none">
           {/* Header */}
@@ -193,7 +193,7 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea className="h-[calc(100vh-5rem)] p-4">
+            <ScrollArea className="h-[calc(100vh-5rem)] p-4 pb-16">
               <div className="space-y-2">
                 {teamError ? (
                   <div className="text-center text-muted-foreground py-8">
