@@ -824,73 +824,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add or update the daily points endpoint
-  router.get("/api/points/daily", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const date = new Date(req.query.date as string);
-      const userId = parseInt(req.query.userId as string);
-
-      if (isNaN(userId) || !date) {
-        return res.status(400).json({ message: "Invalid date or user ID" });
-      }
-
-      // Get start and end of the requested date
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // Get individual posts to verify the calculation
-      const userPosts = await db
-        .select({
-          id: posts.id,
-          type: posts.type,
-          points: posts.points,
-          createdAt: posts.createdAt
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lte(posts.createdAt, endOfDay),
-            not(eq(posts.type, 'comment')), // Exclude comments
-            not(eq(posts.type, 'miscellaneous')), // Exclude miscellaneous posts from points
-            not(isNull(posts.points)) // Ensure we only count posts with points
-          )
-        );
-
-      logger.info('Posts for daily points calculation:', {
-        userId,
-        date: date.toISOString(),
-        posts: userPosts.map(p => ({
-          type: p.type,
-          points: p.points,
-          createdAt: p.createdAt
-        }))
-      });
-
-      // Calculate total points manually to ensure accuracy
-      const totalPoints = userPosts.reduce((sum, post) => sum + (post.points || 0), 0);
-
-      res.json({ points: totalPoints });
-    } catch (error) {
-      logger.error('Error calculating daily points:', error);
-      res.status(500).json({
-        message: "Failed to calculate daily points",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
   // Update daily score check endpoint
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
       // Get all users
-      const users = await db
+      const allUsers = await db
         .select()
         .from(users)
         .where(
@@ -906,18 +844,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
       // Special handling for Sunday - check memory verse completion
-      if (today.getDay() === 0) {
+      if (dayOfWeek === 0) {
         logger.info('Checking memory verse completion for the week');
 
         // Get start of week (previous Monday)
         const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate()- 6); // Go back 6 days to get to Monday
+        startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
         startOfWeek.setHours(0, 0, 0, 0);
 
         // Process each user
-        for (const user of users) {
+        for (const user of allUsers) {
           // Check if user has posted a memory verse this week
           const memoryVersePosts = await db
             .select()
@@ -948,41 +887,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.json({ message: "Memory verse check completed" });
       }
 
-      // Regular weekday score check (Monday-Saturday)
-      // Process each user for daily score check
-      for (const user of users) {
-        // Get user's posts from yesterday, excluding memory verse posts
-        const userPosts = await db
-          .select({
-            points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
-          })
-          .from(posts)
-          .where(
-            and(
-              eq(posts.userId, user.id),
-              gte(posts.createdAt, yesterday),
-              lt(posts.createdAt, today),
-              not(eq(posts.type, 'memory_verse')) // Exclude memory verse posts from daily total
-            )
-          );
+      // Regular weekday score check (Tuesday-Saturday)
+      // Skip Monday (dayOfWeek === 1)
+      if (dayOfWeek >= 2 && dayOfWeek <= 6) {
+        // Process each user for daily score check
+        for (const user of allUsers) {
+          // Get user's posts from yesterday, excluding memory verse posts
+          const userPosts = await db
+            .select({
+              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, user.id),
+                gte(posts.createdAt, yesterday),
+                lt(posts.createdAt, today),
+                not(eq(posts.type, 'memory_verse')) // Exclude memory verse posts from daily total
+              )
+            );
 
-        const totalPoints = userPosts[0]?.points || 0;
+          const totalPoints = userPosts[0]?.points || 0;
 
-        // If points are less than 15, send notification (except for Sunday)
-        if (totalPoints < 15) {
-          await db.insert(notifications).values({
-            userId: user.id,
-            title: "Daily Score Alert",
-            message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
-            read: false,
-            createdAt: new Date()
-          });
+          // If points are lessthan 15, send notification
+          if (totalPoints < 15) {
+            await db.insert(notifications).values({
+              userId: user.id,
+              title: "Daily Score Alert",
+              message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
+              read: false,
+              createdAt: new Date()
+            });
 
-          logger.info(`Sent score notification to user ${user.id} for score ${totalPoints}`);
+            logger.info(`Sent score notification to user ${user.id} for score ${totalPoints}`);
+          }
         }
-      }
 
-      res.json({ message: "Score check completed" });
+        res.json({ message: "Score check completed" });
+      } else {
+        res.json({ message: "No score check needed for today" });
+      }
     } catch (error) {
       logger.error('Error checking scores:', error);
       res.status(500).json({
