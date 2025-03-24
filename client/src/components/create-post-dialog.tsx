@@ -27,7 +27,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { canPost, counts, refetch, remaining } = usePostLimits(selectedDate);
+  const { canPost, counts, refetch, remaining, workoutWeekPoints, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -43,23 +43,39 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     }
   });
 
-  function getRemainingMessage(type: string) {
+function getRemainingMessage(type: string) {
+    if (type === 'food') {
+      if (counts.food >= 3) {
+        return "(already posted 3 meals today)";
+      }
+      return `(${remaining.food} meals remaining today)`;
+    }
+
+    if (type === 'workout') {
+      if (counts.workout > 0) {
+        return "(already posted workout today)";
+      }
+      if (workoutWeekPoints >= 15) {
+        return "(reached 15 points this week)";
+      }
+      return "(up to 5 workouts per week)";
+    }
+
+    if (type === 'scripture') {
+      if (counts.scripture > 0) {
+        return "(already posted today)";
+      }
+      return "(1 reading per day)";
+    }
+
     if (type === 'memory_verse') {
-      return ""; // Removed Saturday availability text
+      if (memoryVerseWeekCount > 0) {
+        return "(already posted this week)";
+      }
+      return "(1 verse per week)";
     }
 
-    if (type === 'miscellaneous') {
-      return ""; // No limit text for miscellaneous
-    }
-
-    const typeKey = type as keyof typeof remaining;
-    const remainingPosts = remaining[typeKey];
-
-    if (remainingPosts <= 0) {
-      return "(no more remaining for today)";
-    }
-
-    return `(${remainingPosts} remaining today)`;
+    return ""; // No limit text for miscellaneous
   }
 
   const createPostMutation = useMutation({
@@ -249,7 +265,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       <option value="memory_verse" disabled={!canPost.memory_verse}>
                         Memory Verse {getRemainingMessage('memory_verse')}
                       </option>
-                      <option value="miscellaneous" disabled={!canPost.miscellaneous}>
+                      <option value="miscellaneous">
                         Miscellaneous {getRemainingMessage('miscellaneous')}
                       </option>
                     </select>
