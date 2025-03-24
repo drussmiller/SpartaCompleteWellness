@@ -73,7 +73,7 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
           </p>
           <ul className="list-disc pl-6 space-y-2 text-sm text-muted-foreground">
             <li>Tuesday through Sunday: If you haven't posted all 3 meals the previous day</li>
-            <li>Tuesday through Saturday: If you haven't posted your workout for the previous day</li>
+            <li>Tuesday through Saturday: If you haven't posted your workout the previous day (up to 5 workouts per week)</li>
             <li>Monday through Sunday: If you haven't posted your scripture reading the previous day</li>
             <li>Sunday: If you haven't posted your memory verse on Saturday</li>
           </ul>
