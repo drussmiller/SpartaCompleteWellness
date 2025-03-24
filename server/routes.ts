@@ -1177,47 +1177,42 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add points endpoints
+  // Add daily points endpoint with corrected calculation
   router.get("/api/points/daily", authenticate, async (req, res) => {
     try {
-      const { date, userId } = req.query;
-      if (!date || !userId) {
-        return res.status(400).json({ message: "Date and userId are required" });
-      }
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      // Convert query date to Date object
-      const queryDate = new Date(date as string);
-      if (isNaN(queryDate.getTime())) {
-        return res.status(400).json({ message: "Invalid date format" });
-      }
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const userId = parseInt(req.query.userId as string);
 
-      // Create start and end of the queried day
-      const startOfDay = new Date(queryDate);
+      // Get start and end of the requested day
+      const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
 
-      // Query posts for the specified date and calculate total points
+      // Calculate total points for the day
       const result = await db
         .select({
-          totalPoints: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
         })
         .from(posts)
         .where(
           and(
-            eq(posts.userId, parseInt(userId as string)),
+            eq(posts.userId, userId),
             gte(posts.createdAt, startOfDay),
             lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId) // Don't count comments
+            isNull(posts.parentId) // Don't count comments in the total
           )
         );
 
-      const points = result[0]?.totalPoints || 0;
-      res.json({ points });
+      const totalPoints = result[0]?.points || 0;
+
+      res.json({ points: totalPoints });
     } catch (error) {
-      logger.error('Error getting daily points:', error);
+      logger.error('Error calculating daily points:', error);
       res.status(500).json({
-        message: "Failed to get daily points",
+        message: "Failed to calculate daily points",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
