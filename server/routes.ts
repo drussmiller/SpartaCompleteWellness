@@ -190,8 +190,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const canPost = {
         food: counts.food < maxPosts.food && dayOfWeek !== 0, // No food posts on Sunday
         workout: counts.workout < maxPosts.workout && 
-                dayOfWeek >= 1 && dayOfWeek <= 5 && // Workout posts Monday-Friday
-                workoutWeekCount < 5, // Limit to 5 workouts per week
+                workoutWeekCount < 5, // Limit to 5 workouts per week, any day
         scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
         memory_verse: counts.memory_verse < maxPosts.memory_verse && dayOfWeek === 6, // Memory verse only on Saturday
         miscellaneous: true // Always allow miscellaneous posts
@@ -513,6 +512,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add this endpoint before the return httpServer statement
+  router.delete("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user is admin or the post owner
+      if (!req.user.isAdmin && post.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Delete the post
+      await db.delete(posts).where(eq(posts.id, postId));
+
+      res.status(200).json({ message: "Post deleted successfully" });
+    } catch (error) {
+      logger.error("Error deleting post:", error);
+      res.status(500).json({
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add reactions endpoints
   router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -809,45 +847,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error in posts endpoint:', error);
       res.status(500).json({
         message: "Failed to fetch posts",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add this endpoint before the return httpServer statement
-  router.delete("/api/posts/:id", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-
-      // Get the post to check ownership
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId))
-        .limit(1);
-
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
-
-      // Check if user is admin or the post owner
-      if (!req.user.isAdmin && post.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to delete this post" });
-      }
-
-      // Delete the post
-      await db.delete(posts).where(eq(posts.id, postId));
-
-      res.status(200).json({ message: "Post deleted successfully" });
-    } catch (error) {
-      logger.error("Error deleting post:", error);
-      res.status(500).json({
-        message: "Failed to delete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -1376,7 +1375,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add messages endpoints
+  // Add messages endpoints before return statement
   router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
