@@ -2,6 +2,17 @@ import React, { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Post, User } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -19,6 +30,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
@@ -97,12 +109,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
-  const handleDeletePost = () => {
-    if (confirm("Are you sure you want to delete this post?")) {
-      deletePostMutation.mutate();
-    }
-  };
-
   return (
     <div className="border-y border-gray-200 bg-white w-full">
       <div className="flex flex-row items-center w-full p-4 bg-background">
@@ -138,15 +144,37 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           </div>
         </div>
         {canDelete && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDeletePost}
-            disabled={deletePostMutation.isPending}
-            className="h-6 w-6 p-0"
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Post</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this post? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    deletePostMutation.mutate();
+                    setIsDeleteDialogOpen(false);
+                  }}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
 
