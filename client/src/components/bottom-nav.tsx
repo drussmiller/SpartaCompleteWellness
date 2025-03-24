@@ -9,14 +9,6 @@ interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
 }
 
-interface NavItem {
-  icon: any;
-  label: string;
-  href: string;
-  count?: number;
-  badgeClassName?: string;
-}
-
 export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
@@ -38,7 +30,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
     refetchInterval: 30000 // Refetch every 30 seconds
   });
 
-  const items: NavItem[] = [
+  const items = [
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
     { icon: HelpCircle, label: "Help", href: "/help" },
@@ -46,8 +38,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       icon: Bell, 
       label: "Notifications", 
       href: "/notifications",
-      count: unreadCount,
-      badgeClassName: "-left-1" // Added badgeClassName
+      count: unreadCount 
     },
   ];
 
@@ -68,25 +59,25 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map((item) => (
+        {items.map(({ icon: Icon, label, href, count }) => (
           <div
-            key={item.href}
-            onClick={() => setLocation(item.href)}
+            key={href}
+            onClick={() => setLocation(href)}
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
               // Size styles
               orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Text styles
-              location === item.href
+              location === href
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
             )}
           >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs">{item.label}</span>
-            {item.count !== undefined && item.count > 0 && (
-              <span className={`absolute bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs ${item.badgeClassName || "-top-1 -right-1"}`}>
-                {item.count}
+            <Icon className="h-5 w-5" />
+            <span className="text-xs">{label}</span>
+            {count > 0 && (
+              <span className="absolute top-1 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {count}
               </span>
             )}
           </div>
