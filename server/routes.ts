@@ -827,7 +827,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Update daily score check endpoint
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
-      // Get all users
+      // Get all users with their notification preferences
       const allUsers = await db
         .select()
         .from(users)
@@ -838,6 +838,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         );
 
+      const now = new Date();
+      const currentHour = now.getHours().toString().padStart(2, '0');
+      const currentMinute = now.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${currentHour}:${currentMinute}`;
+
+      // Get yesterday's date for points calculation
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
@@ -846,17 +852,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       today.setHours(0, 0, 0, 0);
       const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
-      // Special handling for Sunday - check memory verse completion
-      if (dayOfWeek === 0) {
-        logger.info('Checking memory verse completion for the week');
+      // Process each user based on their notification time
+      for (const user of allUsers) {
+        // Skip if it's not the user's notification time
+        if (user.notificationTime !== currentTime) {
+          continue;
+        }
 
-        // Get start of week (previous Monday)
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
-        startOfWeek.setHours(0, 0, 0, 0);
+        // Special handling for Sunday - check memory verse completion
+        if (dayOfWeek === 0) {
+          // Get start of week (previous Monday)
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
+          startOfWeek.setHours(0, 0, 0, 0);
 
-        // Process each user
-        for (const user of allUsers) {
           // Check if user has posted a memory verse this week
           const memoryVersePosts = await db
             .select()
@@ -884,14 +893,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }
 
-        return res.json({ message: "Memory verse check completed" });
-      }
-
-      // Regular weekday score check (Tuesday-Saturday)
-      // Skip Monday (dayOfWeek === 1)
-      if (dayOfWeek >= 2 && dayOfWeek <= 6) {
-        // Process each user for daily score check
-        for (const user of allUsers) {
+        // Regular weekday score check (Tuesday-Saturday)
+        // Skip Monday (dayOfWeek === 1)
+        if (dayOfWeek >= 2 && dayOfWeek <= 6) {
           // Get user's posts from yesterday, excluding memory verse posts
           const userPosts = await db
             .select({
@@ -909,7 +913,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
           const totalPoints = userPosts[0]?.points || 0;
 
-          // If points are lessthan 15, send notification
+          // If points are less than 15, send notification
           if (totalPoints < 15) {
             await db.insert(notifications).values({
               userId: user.id,
@@ -922,11 +926,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             logger.info(`Sent score notification to user ${user.id} for score ${totalPoints}`);
           }
         }
-
-        res.json({ message: "Score check completed" });
-      } else {
-        res.json({ message: "No score check needed for today" });
       }
+
+      res.json({ message: "Notification check completed" });
     } catch (error) {
       logger.error('Error checking scores:', error);
       res.status(500).json({
