@@ -896,38 +896,55 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }
 
-        // Regular weekday score check (Tuesday-Saturday)
+        // Regular weekday check (Tuesday-Sunday)
         // Skip Monday (dayOfWeek === 1)
-        if (dayOfWeek >= 2 && dayOfWeek <= 6) {
-          // Get user's posts from yesterday, excluding memory verse posts
-          const userPosts = await db
-            .select({
-              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
-            })
+        if (dayOfWeek >= 2) {
+          // Check meals (Tuesday-Sunday)
+          const mealPosts = await db
+            .select()
             .from(posts)
             .where(
               and(
                 eq(posts.userId, user.id),
+                eq(posts.type, 'food'),
                 gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today),
-                not(eq(posts.type, 'memory_verse')) // Exclude memory verse posts from daily total
+                lt(posts.createdAt, today)
               )
             );
 
-          const totalPoints = userPosts[0]?.points || 0;
-          const expectedPoints = dayOfWeek <= 5 ? 15 : 12; // Days 1-5: 15 points (9 food + 3 workout + 3 scripture), Day 6: 12 points (9 food + 3 scripture)
-
-          // If points are less than expected, send notification
-          if (totalPoints < expectedPoints) {
+          if (mealPosts.length < 3) {
             await db.insert(notifications).values({
               userId: user.id,
-              title: "Daily Score Alert",
-              message: `Your score for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`,
+              title: "Meal Posts Reminder",
+              message: `You only posted ${mealPosts.length} meals yesterday. Remember to post all 3 meals daily!`,
               read: false,
               createdAt: new Date()
             });
+          }
 
-            logger.info(`Sent score notification to user ${user.id} for score ${totalPoints}`);
+          // Check workout (Tuesday-Saturday)
+          if (dayOfWeek <= 6) {
+            const workoutPosts = await db
+              .select()
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, user.id),
+                  eq(posts.type, 'workout'),
+                  gte(posts.createdAt, yesterday),
+                  lt(posts.createdAt, today)
+                )
+              );
+
+            if (workoutPosts.length === 0) {
+              await db.insert(notifications).values({
+                userId: user.id,
+                title: "Workout Reminder",
+                message: "Don't forget to post your daily workout!",
+                read: false,
+                createdAt: new Date()
+              });
+            }
           }
         }
       }
