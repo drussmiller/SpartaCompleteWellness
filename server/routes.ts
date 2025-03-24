@@ -909,7 +909,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Special handling for Sunday - check memory verse completion
       if (today.getDay() === 0) {
-        logger.info('Checking<previous_generation> memory verse completion for the week');
+        logger.info('Checking memory verse completion for the week');
 
         // Get start of week (previous Monday)
         const startOfWeek = new Date(today);
@@ -1546,6 +1546,35 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error getting unread messages by sender:', error);
       res.status(500).json({
         message: "Failed to get unread messages by sender",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add this endpoint before the app.use(router) line
+  router.post("/api/users/notification-schedule", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationTime } = req.body;
+
+      // Validate time format (HH:mm)
+      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationTime)) {
+        return res.status(400).json({ message: "Invalid time format. Use HH:mm format." });
+      }
+
+      // Update user's notification time preference
+      const [updatedUser] = await db
+        .update(users)
+        .set({ notificationTime })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Error updating notification schedule:', error);
+      res.status(500).json({
+        message: "Failed to update notification schedule",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
