@@ -143,10 +143,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Define maximum posts allowed per type
       const maxPosts = {
-        food: 3,
-        workout: 1,
-        scripture: 1,
-        memory_verse: 1,
+        food: 3, // 3 meals per day
+        workout: 1, // 1 workout per day
+        scripture: 1, // 1 scripture per day
+        memory_verse: 1, // 1 memory verse per week
         miscellaneous: Infinity // No limit for miscellaneous posts
       };
 
@@ -156,15 +156,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         workout: Math.max(0, maxPosts.workout - counts.workout),
         scripture: Math.max(0, maxPosts.scripture - counts.scripture),
         memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse),
-        miscellaneous: Infinity // Always unlimited remaining
+        miscellaneous: Infinity
       };
 
       // Calculate if user can post for each type
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
       const canPost = {
-        food: counts.food < maxPosts.food,
-        workout: counts.workout < maxPosts.workout,
-        scripture: counts.scripture < maxPosts.scripture,
-        memory_verse: counts.memory_verse < maxPosts.memory_verse, // Removed Saturday restriction
+        food: counts.food < maxPosts.food && dayOfWeek !== 0, // No food posts on Sunday
+        workout: counts.workout < maxPosts.workout && dayOfWeek >= 1 && dayOfWeek <= 5, // Workout posts Monday-Friday
+        scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
+        memory_verse: counts.memory_verse < maxPosts.memory_verse && dayOfWeek === 6, // Memory verse only on Saturday
         miscellaneous: true // Always allow miscellaneous posts
       };
 
@@ -413,20 +416,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let points = 0;
       switch (postData.type) {
         case 'food':
-          points = 3;
+          points = 3; // 3 points per meal
           break;
         case 'workout':
-          points = 3;
+          points = 3; // 3 points per workout
           break;
         case 'scripture':
-          points = 3;
+          points = 3; // 3 points per scripture
           break;
         case 'memory_verse':
-          points = 10;
+          points = 10; // 10 points for memory verse
           break;
         case 'miscellaneous':
         default:
-          points = 0; // Explicitly set miscellaneous and unknown types to 0 points
+          points = 0;
       }
 
       // Log point calculation for verification
@@ -912,13 +915,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             );
 
           const totalPoints = userPosts[0]?.points || 0;
+          const expectedPoints = dayOfWeek <= 5 ? 15 : 12; // Days 1-5: 15 points (9 food + 3 workout + 3 scripture), Day 6: 12 points (9 food + 3 scripture)
 
-          // If points are less than 15, send notification
-          if (totalPoints < 15) {
+          // If points are less than expected, send notification
+          if (totalPoints < expectedPoints) {
             await db.insert(notifications).values({
               userId: user.id,
               title: "Daily Score Alert",
-              message: `Your score for yesterday was ${totalPoints}. Aim for 15 points daily (excluding memory verse) to stay on track!`,
+              message: `Your score for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`,
               read: false,
               createdAt: new Date()
             });
