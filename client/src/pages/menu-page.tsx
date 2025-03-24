@@ -2,16 +2,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, User, Settings } from "lucide-react";
+import { Menu, Bell, Settings } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
+import { NotificationSchedule } from "@/components/notification-schedule";
 import { useState } from "react";
 
 export default function MenuPage() {
   const { user } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [notificationScheduleOpen, setNotificationScheduleOpen] = useState(false);
 
   if (!user) return null;
 
@@ -44,6 +46,19 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
               <ProfilePage onClose={() => setProfileOpen(false)} />
+            </SheetContent>
+          </Sheet>
+
+          {/* Notification Schedule Sheet */}
+          <Sheet open={notificationScheduleOpen} onOpenChange={setNotificationScheduleOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Bell className="mr-2 h-5 w-5" />
+                Notification Schedule
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              <NotificationSchedule onClose={() => setNotificationScheduleOpen(false)} />
             </SheetContent>
           </Sheet>
 

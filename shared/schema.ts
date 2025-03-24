@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   teamJoinedAt: timestamp("team_joined_at"),
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
+  notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
 });
 
 export const teams = pgTable("teams", {
