@@ -11,6 +11,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
 
+interface Message extends Post {
+  sender: User;
+}
+
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
@@ -63,7 +67,7 @@ export function MessageSlideCard() {
   });
 
   // Query for messages with selected member
-  const { data: messages = [] } = useQuery<Post[]>({
+  const { data: messages = [] } = useQuery<(Message & { sender: User })[]>({
     queryKey: ["/api/messages", selectedMember?.id],
     queryFn: async () => {
       if (!selectedMember) return [];
@@ -316,23 +320,23 @@ export function MessageSlideCard() {
                     <div
                       key={message.id}
                       className={`flex ${
-                        message.userId === user?.id ? "justify-end" : "justify-start"
+                        message.sender.id === user?.id ? "justify-end" : "justify-start"
                       }`}
                     >
-                      {message.userId !== user?.id && (
+                      {message.sender.id !== user?.id && (
                         <Avatar className="mr-2">
                           <AvatarImage
-                            src={selectedMember?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${selectedMember?.username}`}
-                            alt={selectedMember?.username || "Unknown User"}
+                            src={message.sender.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${message.sender.username}`}
+                            alt={message.sender.username || "Unknown User"}
                           />
                           <AvatarFallback>
-                            {selectedMember?.username?.[0].toUpperCase() || "?"}
+                            {message.sender.username?.[0].toUpperCase() || "?"}
                           </AvatarFallback>
                         </Avatar>
                       )}
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
-                          message.userId === user?.id
+                          message.sender.id === user?.id
                             ? "bg-primary text-primary-foreground ml-2"
                             : "bg-muted mr-2"
                         }`}
