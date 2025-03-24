@@ -337,7 +337,7 @@ export function MessageSlideCard() {
                       <div
                         className={`max-w-[70%] p-3 rounded-lg ${
                           message.sender.id === user?.id
-                            ? "bg-primary text-primary-foreground ml-2"
+                            ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
                         }`}
                       >
