@@ -103,7 +103,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
 
-      // For workout posts, we need to check the week's total
+      // For workout and memory verse posts, we need to check the week's total
       const startOfWeek = new Date(startOfDay);
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to Monday
       const endOfWeek = new Date(startOfWeek);
@@ -134,7 +134,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get workout posts for the entire week
       const workoutWeekResult = await db
         .select({
-          count: sql<number>`count(*)::integer`
+          count: sql<number>`count(*)::integer`,
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
         })
         .from(posts)
         .where(
@@ -148,6 +149,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         );
 
       const workoutWeekCount = workoutWeekResult[0]?.count || 0;
+      const workoutWeekPoints = workoutWeekResult[0]?.points || 0;
+
+      // Get memory verse posts for the week
+      const memoryVerseWeekResult = await db
+        .select({
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, 'memory_verse'),
+            gte(posts.createdAt, startOfWeek),
+            lt(posts.createdAt, endOfWeek),
+            isNull(posts.parentId)
+          )
+        );
+
+      const memoryVerseWeekCount = memoryVerseWeekResult[0]?.count || 0;
 
       // Initialize counts with zeros
       const counts = {
@@ -190,13 +210,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const canPost = {
         food: counts.food < maxPosts.food && dayOfWeek !== 0, // No food posts on Sunday
         workout: counts.workout < maxPosts.workout && 
-                workoutWeekCount < 5, // Limit to 5 workouts per week, any day
+                workoutWeekPoints < 15, // Limit to 15 points per week (5 workouts)
         scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
-        memory_verse: counts.memory_verse < maxPosts.memory_verse && dayOfWeek === 6, // Memory verse only on Saturday
+        memory_verse: memoryVerseWeekCount === 0, // One memory verse per week
         miscellaneous: true // Always allow miscellaneous posts
       };
 
-      res.json({ counts, canPost, remaining, maxPosts });
+      res.json({
+        counts,
+        canPost,
+        remaining,
+        maxPosts,
+        workoutWeekPoints,
+        workoutWeekCount,
+        memoryVerseWeekCount
+      });
     } catch (error) {
       logger.error('Error getting post counts:', error);
       res.status(500).json({
@@ -873,7 +901,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get yesterday's date for points calculation
       const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setDate(yesterday.getDate() -1);
       yesterday.setHours(0, 0, 0, 0);
 
       const today = new Date();
