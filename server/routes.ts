@@ -897,7 +897,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
 
         // Regular weekday check (Tuesday-Sunday)
-        // Skip Monday (dayOfWeek === 1)
+        // Skip Monday(dayOfWeek === 1)
         if (dayOfWeek >= 2) {
           // Check meals (Tuesday-Sunday)
           const mealPosts = await db
@@ -945,6 +945,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 createdAt: new Date()
               });
             }
+          }
+          // Check scripture reading (Monday through Sunday)
+          const scriptureReading = await db
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, user.id),
+                eq(posts.type, 'scripture'),
+                gte(posts.createdAt, yesterday),
+                lt(posts.createdAt, today)
+              )
+            );
+
+          if (scriptureReading.length === 0) {
+            await db.insert(notifications).values({
+              userId: user.id,
+              title: "Scripture Reading Reminder",
+              message: "Don't forget to post your daily scripture reading!",
+              read: false,
+              createdAt: new Date()
+            });
           }
         }
       }
