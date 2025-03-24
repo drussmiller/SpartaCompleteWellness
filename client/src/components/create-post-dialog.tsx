@@ -43,8 +43,13 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     }
   });
 
-function getRemainingMessage(type: string) {
+  function getRemainingMessage(type: string) {
+    const selectedDayOfWeek = selectedDate.getDay();
+
     if (type === 'food') {
+      if (selectedDayOfWeek === 0) {
+        return "(food posts not allowed on Sunday)";
+      }
       if (counts.food >= 3) {
         return "(already posted 3 meals today)";
       }
@@ -76,6 +81,26 @@ function getRemainingMessage(type: string) {
     }
 
     return ""; // No limit text for miscellaneous
+  }
+
+  // Add a function to check if a post type should be disabled
+  function isPostTypeDisabled(type: string) {
+    const selectedDayOfWeek = selectedDate.getDay();
+
+    switch (type) {
+      case 'food':
+        return selectedDayOfWeek === 0 || counts.food >= 3;
+      case 'workout':
+        return counts.workout > 0 || workoutWeekPoints >= 15;
+      case 'scripture':
+        return counts.scripture > 0;
+      case 'memory_verse':
+        return memoryVerseWeekCount > 0;
+      case 'miscellaneous':
+        return false;
+      default:
+        return false;
+    }
   }
 
   const createPostMutation = useMutation({
@@ -203,7 +228,7 @@ function getRemainingMessage(type: string) {
         </DialogDescription>
 
         <Form {...form}>
-          <form id="create-post-form" onSubmit={form.handleSubmit((data) => createPostMutation.mutate(data))} className="space-y-4 flex flex-col">
+          <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex flex-col">
             <FormField
               control={form.control}
               name="postDate"
@@ -253,16 +278,16 @@ function getRemainingMessage(type: string) {
                       {...field}
                       className="w-full rounded-md border border-input bg-background px-3 py-2"
                     >
-                      <option value="food" disabled={!canPost.food}>
+                      <option value="food" disabled={isPostTypeDisabled('food')}>
                         Food {getRemainingMessage('food')}
                       </option>
-                      <option value="workout" disabled={!canPost.workout}>
+                      <option value="workout" disabled={isPostTypeDisabled('workout')}>
                         Workout {getRemainingMessage('workout')}
                       </option>
-                      <option value="scripture" disabled={!canPost.scripture}>
+                      <option value="scripture" disabled={isPostTypeDisabled('scripture')}>
                         Scripture {getRemainingMessage('scripture')}
                       </option>
-                      <option value="memory_verse" disabled={!canPost.memory_verse}>
+                      <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
                         Memory Verse {getRemainingMessage('memory_verse')}
                       </option>
                       <option value="miscellaneous">
