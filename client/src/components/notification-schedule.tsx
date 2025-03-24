@@ -72,9 +72,9 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
             You will receive notifications at this time:
           </p>
           <ul className="list-disc pl-6 space-y-2 text-sm text-muted-foreground">
-            <li>Tuesday through Saturday: If you earned less than 15 points the previous day (9 for meals + 3 for workout + 3 for scripture)</li>
-            <li>Saturday: If you haven't posted your memory verse (10 points)</li>
-            <li>Note: Sunday only requires scripture reading (3 points)</li>
+            <li>Tuesday through Sunday: If you haven't posted all 3 meals the previous day</li>
+            <li>Tuesday through Saturday: If you haven't posted your workout for the previous day</li>
+            <li>Sunday: If you haven't posted your memory verse on Saturday</li>
           </ul>
         </div>
 
