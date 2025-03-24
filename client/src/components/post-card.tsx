@@ -58,14 +58,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text);
+      try {
+        const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
+        if (!response.ok) {
+          throw new Error("Failed to delete post");
+        }
+        return post.id;
+      } catch (error) {
+        console.error("Delete post error:", error);
+        throw error;
       }
-      return post.id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedPostId) => {
       toast({
         title: "Success",
         description: "Post deleted successfully"
@@ -76,7 +80,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       if (currentPosts) {
         queryClient.setQueryData(
           ["/api/posts"],
-          currentPosts.filter(p => p.id !== post.id)
+          currentPosts.filter(p => p.id !== deletedPostId)
         );
       }
 
@@ -94,7 +98,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   });
 
   const handleDeletePost = () => {
-    deletePostMutation.mutate();
+    if (confirm("Are you sure you want to delete this post?")) {
+      deletePostMutation.mutate();
+    }
   };
 
   return (
