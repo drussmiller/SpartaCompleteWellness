@@ -103,6 +103,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
 
+      // For workout posts, we need to check the week's total
+      const startOfWeek = new Date(startOfDay);
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to Monday
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 7); // Set to next Monday
+
       // Add timezone offset back to get UTC times for query
       const queryStartTime = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const queryEndTime = new Date(endOfDay.getTime() + (tzOffset * 60000));
@@ -124,6 +130,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         )
         .groupBy(posts.type);
+
+      // Get workout posts for the entire week
+      const workoutWeekResult = await db
+        .select({
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, 'workout'),
+            gte(posts.createdAt, startOfWeek),
+            lt(posts.createdAt, endOfWeek),
+            isNull(posts.parentId)
+          )
+        );
+
+      const workoutWeekCount = workoutWeekResult[0]?.count || 0;
 
       // Initialize counts with zeros
       const counts = {
@@ -165,7 +189,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       const canPost = {
         food: counts.food < maxPosts.food && dayOfWeek !== 0, // No food posts on Sunday
-        workout: counts.workout < maxPosts.workout && dayOfWeek >= 1 && dayOfWeek <= 5, // Workout posts Monday-Friday
+        workout: counts.workout < maxPosts.workout && 
+                dayOfWeek >= 1 && dayOfWeek <= 5 && // Workout posts Monday-Friday
+                workoutWeekCount < 5, // Limit to 5 workouts per week
         scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
         memory_verse: counts.memory_verse < maxPosts.memory_verse && dayOfWeek === 6, // Memory verse only on Saturday
         miscellaneous: true // Always allow miscellaneous posts
@@ -867,7 +893,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Get start of week (previous Monday)
           const startOfWeek = new Date(today);
           startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
-          startOfWeek.setHours(0, 0, 0, 0);
+          startOfWeek.setHours(0, 0,0, 0, 0);
 
           // Check if user has posted a memory verse this week
           const memoryVersePosts = await db
