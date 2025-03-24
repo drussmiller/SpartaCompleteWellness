@@ -303,7 +303,7 @@ export function MessageSlideCard() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={messages.some(msg => msg.sender.id === member.id && !msg.isRead) ? 'font-extrabold' : 'font-normal'}>{member.username}</p>
+                        <p className={messages.some(msg => msg.senderId === member.id && !msg.isRead && msg.recipientId === user?.id) ? 'font-extrabold' : 'font-normal'}>{member.username}</p>
                       </div>
                     </div>
                   ))
