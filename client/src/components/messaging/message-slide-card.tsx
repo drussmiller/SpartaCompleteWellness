@@ -303,7 +303,7 @@ export function MessageSlideCard() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`${!member.hasRead ? 'font-extrabold' : 'font-bold'}`}>{member.username}</p>
+                        <p className={member.hasRead === false ? 'font-extrabold' : 'font-normal'}>{member.username}</p>
                       </div>
                     </div>
                   ))
