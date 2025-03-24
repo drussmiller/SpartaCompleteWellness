@@ -909,7 +909,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Special handling for Sunday - check memory verse completion
       if (today.getDay() === 0) {
-        logger.info('Checking memory verse completion for the week');
+        logger.info('Checking<previous_generation> memory verse completion for the week');
 
         // Get start of week (previous Monday)
         const startOfWeek = new Date(today);
@@ -1511,6 +1511,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error marking messages as read:', error);
       res.status(500).json({
         message: "Failed to mark messages as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints before return statement
+  router.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get all senders who have sent unread messages to the current user
+      const unreadBySender = await db
+        .select({
+          senderId: messages.senderId,
+          hasUnread: sql<boolean>`true`
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        )
+        .groupBy(messages.senderId);
+
+      // Convert to a map of senderId -> hasUnread
+      const unreadMap = Object.fromEntries(
+        unreadBySender.map(({ senderId }) => [senderId, true])
+      );
+
+      res.json(unreadMap);
+    } catch (error) {
+      logger.error('Error getting unread messages by sender:', error);
+      res.status(500).json({
+        message: "Failed to get unread messages by sender",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
