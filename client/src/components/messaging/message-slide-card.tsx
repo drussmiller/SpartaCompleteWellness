@@ -13,6 +13,7 @@ import { Post, User } from "@shared/schema";
 
 interface Message extends Post {
   sender: User;
+  isRead: boolean;
 }
 
 export function MessageSlideCard() {
@@ -44,14 +45,6 @@ export function MessageSlideCard() {
 
         // Filter users to only show team members (excluding current user)
         const filteredUsers = users.filter((member: User) => {
-          console.log('Checking member:', {
-            id: member.id,
-            teamId: member.teamId,
-            isAdmin: member.isAdmin,
-            matchesTeam: member.teamId === user.teamId,
-            isCurrentUser: member.id === user.id
-          });
-
           return member.teamId === user.teamId && member.id !== user.id;
         });
 
@@ -115,6 +108,23 @@ export function MessageSlideCard() {
     setUnreadCount(messageCount);
   }, [messageCount]);
 
+  // Query for unread messages by sender
+  const { data: unreadMessages = {} } = useQuery<Record<number, boolean>>({
+    queryKey: ["/api/messages/unread/by-sender"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/messages/unread/by-sender");
+        if (!response.ok) throw new Error("Failed to fetch unread messages by sender");
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching unread messages by sender:", error);
+        return {};
+      }
+    },
+    enabled: isOpen,
+    refetchInterval: 30000
+  });
+
   // Mark messages as read when selecting a member
   useEffect(() => {
     if (selectedMember) {
@@ -128,6 +138,7 @@ export function MessageSlideCard() {
             // Invalidate both messages and unread count queries
             queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
             queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
           }
         } catch (error) {
           console.error("Error marking messages as read:", error);
@@ -303,7 +314,9 @@ export function MessageSlideCard() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="font-bold">{member.username}</p>
+                        <p className={unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'}>
+                          {member.username}
+                        </p>
                       </div>
                     </div>
                   ))
