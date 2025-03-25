@@ -880,7 +880,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Update daily score check endpoint
+  // Update daily score check endpoint to include Monday
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
       // Get all users with their notification preferences
@@ -901,7 +901,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get yesterday's date for points calculation
       const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() -1);
+      yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
       const today = new Date();
@@ -915,120 +915,49 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           continue;
         }
 
-        // Special handling for Sunday - check memory verse completion
-        if (dayOfWeek === 0) {
-          // Get start of week (previous Monday)
-          const startOfWeek = new Date(today);
-          startOfWeek.setDate(today.getDate() - 6); // Go back 6 days to get to Monday
-          startOfWeek.setHours(0, 0,0, 0, 0);
-
-          // Check if user has posted a memory verse this week
-          const memoryVersePosts = await db
-            .select()
+        // Skip Sunday (dayOfWeek === 0) since no points are required
+        if (dayOfWeek !== 0) {
+          // Get user's posts from yesterday
+          const userPosts = await db
+            .select({
+              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+            })
             .from(posts)
             .where(
               and(
                 eq(posts.userId, user.id),
-                eq(posts.type, 'memory_verse'),
-                gte(posts.createdAt, startOfWeek),
-                lt(posts.createdAt, today)
-              )
-            );
-
-          // If no memory verse posts found, send notification
-          if (memoryVersePosts.length === 0) {
-            await db.insert(notifications).values({
-              userId: user.id,
-              title: "Memory Verse Reminder",
-              message: "Don't forget to complete your memory verse for this week!",
-              read: false,
-              createdAt: new Date()
-            });
-
-            logger.info(`Sent memory verse reminder to user ${user.id}`);
-          }
-        }
-
-        // Regular weekday check (Tuesday-Sunday)
-        // Skip Monday(dayOfWeek === 1)
-        if (dayOfWeek >= 2) {
-          // Check meals (Tuesday-Sunday)
-          const mealPosts = await db
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.userId, user.id),
-                eq(posts.type, 'food'),
                 gte(posts.createdAt, yesterday),
                 lt(posts.createdAt, today)
               )
             );
 
-          if (mealPosts.length < 3) {
+          const totalPoints = userPosts[0]?.points || 0;
+          // Expected points vary by day:
+          // Monday-Friday: 15 points (9 food + 3 workout + 3 scripture)
+          // Saturday: 22 points (9 food + 3 scripture + 10 memory verse)
+          // Sunday: 3 points (just scripture)
+          const expectedPoints = dayOfWeek === 6 ? 22 : 15;
+
+          // If points are less than expected, send notification
+          if (totalPoints < expectedPoints) {
             await db.insert(notifications).values({
               userId: user.id,
-              title: "Meal Posts Reminder",
-              message: `You only posted ${mealPosts.length} meals yesterday. Remember to post all 3 meals daily!`,
+              title: "Daily Points Alert",
+              message: `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`,
               read: false,
               createdAt: new Date()
             });
-          }
 
-          // Check workout (Tuesday-Saturday)
-          if (dayOfWeek <= 6) {
-            const workoutPosts = await db
-              .select()
-              .from(posts)
-              .where(
-                and(
-                  eq(posts.userId, user.id),
-                  eq(posts.type, 'workout'),
-                  gte(posts.createdAt, yesterday),
-                  lt(posts.createdAt, today)
-                )
-              );
-
-            if (workoutPosts.length === 0) {
-              await db.insert(notifications).values({
-                userId: user.id,
-                title: "Workout Reminder",
-                message: "Don't forget to post your daily workout!",
-                read: false,
-                createdAt: new Date()
-              });
-            }
-          }
-          // Check scripture reading (Monday through Sunday)
-          const scriptureReading = await db
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.userId, user.id),
-                eq(posts.type, 'scripture'),
-                gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today)
-              )
-            );
-
-          if (scriptureReading.length === 0) {
-            await db.insert(notifications).values({
-              userId: user.id,
-              title: "Scripture Reading Reminder",
-              message: "Don't forget to post your daily scripture reading!",
-              read: false,
-              createdAt: new Date()
-            });
+            logger.info(`Sent points notification to user ${user.id} for score ${totalPoints}`);
           }
         }
       }
 
-      res.json({ message: "Notification check completed" });
+      res.json({ message: "Daily score check completed" });
     } catch (error) {
-      logger.error('Error checking scores:', error);
+      logger.error('Error in daily score check:', error);
       res.status(500).json({
-        message: "Failed to check scores",
+        message: "Failed to check daily scores",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
