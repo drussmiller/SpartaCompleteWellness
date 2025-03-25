@@ -373,7 +373,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       {...field}
                       placeholder="Enter post content"
                       value={field.value || ''}
-                      className="min-h-[150px]"
+                      className="min-h-[30px]"
                     />
                   </FormControl>
                   <FormMessage />
