@@ -82,7 +82,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Schedule daily score check at 00:01 AM
+// Update the scheduleDailyScoreCheck function
 const scheduleDailyScoreCheck = () => {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -91,14 +91,27 @@ const scheduleDailyScoreCheck = () => {
 
   const timeUntilCheck = tomorrow.getTime() - now.getTime();
 
+  logger.info('Scheduling next daily score check for:', tomorrow.toISOString());
+
   // Schedule first check
   setTimeout(async () => {
     try {
-      // Run the score check
-      await fetch('http://localhost:5000/api/check-daily-scores', {
-        method: 'POST'
+      // Run the score check directly
+      await db.transaction(async () => {
+        const response = await fetch('http://localhost:5000/api/check-daily-scores', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to run daily score check: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        logger.info('Daily score check completed:', result);
       });
-      logger.info('Daily score check completed successfully');
     } catch (error) {
       logger.error('Error running daily score check:', error);
     }
@@ -106,15 +119,28 @@ const scheduleDailyScoreCheck = () => {
     // Schedule subsequent checks every 24 hours
     setInterval(async () => {
       try {
-        await fetch('http://localhost:5000/api/check-daily-scores', {
-          method: 'POST'
+        logger.info('Running scheduled daily score check');
+        const response = await fetch('http://localhost:5000/api/check-daily-scores', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
-        logger.info('Daily score check completed successfully');
+
+        if (!response.ok) {
+          throw new Error(`Failed to run daily score check: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        logger.info('Daily score check completed:', result);
       } catch (error) {
         logger.error('Error running daily score check:', error);
       }
     }, 24 * 60 * 60 * 1000); // 24 hours
   }, timeUntilCheck);
+
+  // Log the schedule
+  logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes`);
 };
 
 // Ensure API requests respond with JSON
