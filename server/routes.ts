@@ -579,377 +579,98 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add reactions endpoints
-  router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const postId = parseInt(req.params.postId);
-      const { type } = req.body;
-
-      const reactionData = {
-        userId: req.user.id,
-        postId,
-        type
-      };
-
-      const reaction = await storage.createReaction(reactionData);
-      res.status(201).json(reaction);
-    } catch (error) {
-      logger.error('Error creating reaction:', error);
-      res.status(500).json({ error: "Failed to create reaction" });
-    }
-  });
-
-  router.delete("/api/posts/:postId/reactions/:type", authenticate, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const postId = parseInt(req.params.postId);
-      const { type } = req.params;
-
-      await storage.deleteReaction(req.user.id, postId, type);
-      res.sendStatus(200);
-    } catch (error) {
-      logger.error('Error deleting reaction:', error);
-      res.status(500).json({ error: "Failed to delete reaction" });
-    }
-  });
-
-  router.get("/api/posts/:postId/reactions", authenticate, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    try {
-      const postId = parseInt(req.params.postId);
-      const reactions = await storage.getReactionsByPost(postId);
-      res.json(reactions);
-    } catch (error) {
-      logger.error('Error fetching reactions:', error);
-      res.status(500).json({ error: "Failed to fetch reactions" });
-    }
-  });
-
-  // Delete comment endpoint
-  router.delete("/api/posts/comments/:commentId", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const commentId = parseInt(req.params.commentId);
-      if (isNaN(commentId)) {
-        return res.status(400).json({ message: "Invalid comment ID" });
-      }
-
-      // Get the comment to check ownership
-      const [comment] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, commentId))
-        .limit(1);
-
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
-      }
-
-      // Check if user is admin or the comment owner
-      if (!req.user.isAdmin && comment.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to delete this comment" });
-      }
-
-      // Delete the comment
-      await db.delete(posts).where(eq(posts.id, commentId));
-      res.status(200).json({ message: "Comment deleted successfully" });
-    } catch (error) {
-      logger.error("Error deleting comment:", error);
-      res.status(500).json({
-        message: "Failed to delete comment",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Comments endpoints
-  router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
-    try {
-      const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-
-      // First, get direct comments for this post
-      const directCommentsQuery = db
-        .select({
-          id: posts.id,
-          userId: posts.userId,
-          type: posts.type,
-          content: posts.content,
-          imageUrl: posts.imageUrl,
-          points: posts.points,
-          createdAt: posts.createdAt,
-          parentId: posts.parentId,
-          depth: posts.depth,
-          author: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl
-          }
-        })
-        .from(posts)
-        .where(eq(posts.parentId, postId))
-        .innerJoin(users, eq(posts.userId, users.id))
-        .orderBy(posts.createdAt);
-
-      const directComments = await directCommentsQuery;
-
-      // Then, get all replies to any comment in this thread
-      const commentIds = directComments.map(comment => comment.id);
-      let allComments = [...directComments];
-
-      if (commentIds.length > 0) {
-        const repliesQuery = db
-          .select({
-            id: posts.id,
-            userId: posts.userId,
-            type: posts.type,
-            content: posts.content,
-            imageUrl: posts.imageUrl,
-            points: posts.points,
-            createdAt: posts.createdAt,
-            parentId: posts.parentId,
-            depth: posts.depth,
-            author: {
-              id: users.id,
-              username: users.username,
-              imageUrl: users.imageUrl
-            }
-          })
-          .from(posts)
-          .where(
-            and(
-              or(...commentIds.map(id => eq(posts.parentId, id))),
-              sql`${posts.id} <> ${postId}` // Ensure we don't get the original post
-            )
-          )
-          .innerJoin(users, eq(posts.userId, users.id))
-          .orderBy(posts.createdAt);
-
-        const replies = await repliesQuery;
-
-        // Add replies to the result
-        allComments = [...directComments, ...replies];
-      }
-
-      res.json(allComments);
-    } catch (error) {
-      res.status(500).json({
-        message: "Failed to fetch comments",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get original post endpoint
-  router.get("/api/posts/:postId", authenticate, async (req, res) => {
-    try {
-      if (!req.params.postId || req.params.postId === 'undefined') {
-        return res.status(400).json({ message: "No post ID provided" });
-      }
-
-      const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-
-      // Get post with full SQL query logging
-      const query = db
-        .select({
-          id: posts.id,
-          userId: posts.userId,
-          type: posts.type,
-          content: posts.content,
-          imageUrl: posts.imageUrl,
-          points: posts.points,
-          createdAt: posts.createdAt,
-          author: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl
-          }
-        })
-        .from(posts)
-        .where(eq(posts.id, postId))
-        .innerJoin(users, eq(posts.userId, users.id))
-        .limit(1);
-
-      const [post] = await query;
-
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
-
-      res.json(post);
-    } catch (error) {
-      res.status(500).json({
-        message: "Failed to fetch post",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Posts endpoints
-  router.get("/api/posts", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-
-      logger.info('Posts request:', {
-        userId: req.user.id,
-        teamId: req.user.teamId,
-        page,
-        limit
-      });
-
-      // Get posts from database with error handling
-      try {
-        // First verify the team exists
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, req.user.teamId))
-          .limit(1);
-
-        if (!team) {
-          logger.error(`Team ${req.user.teamId} not found for user ${req.user.id}`);
-          return res.status(404).json({
-            message: "Team not found - please contact your administrator"
-          });
-        }
-
-        // For admins, show all posts. For regular users, show only team posts
-        const postsQuery = db
-          .select({
-            id: posts.id,
-            userId: posts.userId,
-            type: posts.type,
-            content: posts.content,
-            imageUrl: posts.imageUrl,
-            points: posts.points,
-            createdAt: posts.createdAt,
-            parentId: posts.parentId,
-            depth: posts.depth,
-            author: {
-              id: users.id,
-              username: users.username,
-              imageUrl: users.imageUrl,
-              teamId: users.teamId
-            }
-          })
-          .from(posts)
-          .innerJoin(users, eq(posts.userId, users.id))
-          .where(isNull(posts.parentId));
-
-        // Add team filter only for non-admin users
-        if (!req.user.isAdmin) {
-          postsQuery.where(eq(users.teamId, req.user.teamId));
-        }
-
-        const teamPosts = await postsQuery
-          .orderBy(desc(posts.createdAt))
-          .limit(limit)
-          .offset((page - 1) * limit);
-
-        logger.info('Posts query result:', {
-          postsFound: teamPosts.length,
-          teamId: req.user.teamId,
-          page,
-          limit
-        });
-
-        res.json(teamPosts);
-      } catch (err) {
-        logger.error('Error fetching team posts:', err);
-        return res.status(500).json({
-          message: "Failed to fetch posts - please try again later",
-          error: err instanceof Error ? err.message : "Unknown database error"
-        });
-      }
-    } catch (error) {
-      logger.error('Error in posts endpoint:', error);
-      res.status(500).json({
-        message: "Failed to fetch posts",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Update daily score check endpoint to include Monday
+  // Update daily score check endpoint
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
-      // Get all users with their notification preferences
-      const allUsers = await db
+      logger.info('Starting daily score check');
+
+      // Get all users - no filters
+      const users = await db
         .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.isAdmin, false),
-            not(isNull(users.teamId))
-          )
-        );
+        .from(users);
 
+      logger.info(`Found ${users.length} users to check`);
+
+      // Get yesterday's date with proper timezone handling
       const now = new Date();
-      const currentHour = now.getHours().toString().padStart(2, '0');
-      const currentMinute = now.getMinutes().toString().padStart(2, '0');
-      const currentTime = `${currentHour}:${currentMinute}`;
-
-      // Get yesterday's date for points calculation
-      const yesterday = new Date();
+      const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
-      const today = new Date();
+      const today = new Date(now);
       today.setHours(0, 0, 0, 0);
-      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayOfWeek = today.getDay();
 
-      // Process each user based on their notification time
-      for (const user of allUsers) {
-        // Skip if it's not the user's notification time
-        if (user.notificationTime !== currentTime) {
-          continue;
-        }
+      logger.info(`Checking points from ${yesterday.toISOString()} to ${today.toISOString()}`);
 
-        // Skip Sunday (dayOfWeek === 0) since no points are required
-        if (dayOfWeek !== 0) {
-          // Get user's posts from yesterday
-          const userPosts = await db
+      // Process each user
+      for (const user of users) {
+        try {
+          logger.info(`Processing user ${user.id} (${user.username})`);
+
+          // Get user's posts from yesterday with detailed logging
+          const userPostsResult = await db
             .select({
-              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
+              types: sql<string[]>`array_agg(distinct ${posts.type})`,
+              count: sql<number>`count(*)::integer`
             })
             .from(posts)
             .where(
               and(
                 eq(posts.userId, user.id),
                 gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today)
+                lt(posts.createdAt, today),
+                isNull(posts.parentId) // Don't count comments
               )
             );
 
-          const totalPoints = userPosts[0]?.points || 0;
+          const userPosts = userPostsResult[0];
+          const totalPoints = userPosts?.points || 0;
+          const postTypes = userPosts?.types || [];
+          const postCount = userPosts?.count || 0;
+
           // Expected points vary by day:
           // Monday-Friday: 15 points (9 food + 3 workout + 3 scripture)
           // Saturday: 22 points (9 food + 3 scripture + 10 memory verse)
           // Sunday: 3 points (just scripture)
-          const expectedPoints = dayOfWeek === 6 ? 22 : 15;
+          const expectedPoints = dayOfWeek === 6 ? 22 : (dayOfWeek === 0 ? 3 : 15);
+
+          logger.info(`User ${user.id} (${user.username}) activity:`, {
+            totalPoints,
+            expectedPoints,
+            postTypes,
+            postCount,
+            dayOfWeek,
+            date: yesterday.toISOString()
+          });
 
           // If points are less than expected, send notification
           if (totalPoints < expectedPoints) {
-            await db.insert(notifications).values({
+            const notification = {
               userId: user.id,
-              title: "Daily Points Alert",
-              message: `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`,
+              title: "Daily Score Alert",
+              message: `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress! Yesterday's activities: ${postTypes.join(', ') || 'none'}`,
               read: false,
               createdAt: new Date()
-            });
+            };
 
-            logger.info(`Sent points notification to user ${user.id} for score ${totalPoints}`);
+            const [insertedNotification] = await db
+              .insert(notifications)
+              .values(notification)
+              .returning();
+
+            logger.info(`Created notification for user ${user.id}:`, {
+              notificationId: insertedNotification.id,
+              userId: user.id,
+              message: notification.message
+            });
+          } else {
+            logger.info(`No notification needed for user ${user.id}, met daily goal`);
           }
+        } catch (userError) {
+          logger.error(`Error processing user ${user.id}:`, userError);
+          continue; // Continue with next user even if one fails
         }
       }
 
@@ -1148,8 +869,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add notifications count endpoint
-  router.get("/api/notifications/unread", authenticate, async (req, res) => {
-    try {
+  router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const unreadCount = await db
