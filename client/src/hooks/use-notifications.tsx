@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -24,13 +24,12 @@ export function useNotifications() {
     if (notifications?.length) {
       const unreadNotifications = notifications.filter(n => !n.read);
       unreadNotifications.forEach(notification => {
-        if (notification.title.includes("Daily Score Alert")) {
-          toast({
-            title: notification.title,
-            description: notification.message,
-            duration: 5000,
-          });
-        }
+        // Show toasts for both score alerts and messages
+        toast({
+          title: notification.title,
+          description: notification.message,
+          duration: 5000,
+        });
       });
     }
   }, [notifications, toast]);

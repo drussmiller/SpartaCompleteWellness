@@ -93,50 +93,38 @@ const scheduleDailyScoreCheck = () => {
 
   logger.info('Scheduling next daily score check for:', tomorrow.toISOString());
 
-  // Schedule first check
-  setTimeout(async () => {
+  // Run an immediate check if it hasn't been run today
+  const runDailyCheck = async () => {
     try {
-      // Run the score check directly
-      await db.transaction(async () => {
-        const response = await fetch('http://localhost:5000/api/check-daily-scores', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to run daily score check: ${response.statusText}`);
+      logger.info('Running daily score check');
+      const response = await fetch('http://0.0.0.0:5000/api/check-daily-scores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
-
-        const result = await response.json();
-        logger.info('Daily score check completed:', result);
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to run daily score check: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      logger.info('Daily score check completed:', result);
     } catch (error) {
       logger.error('Error running daily score check:', error);
+      // Schedule a retry in 5 minutes if there's an error
+      setTimeout(runDailyCheck, 5 * 60 * 1000);
     }
+  };
 
+  // Run an immediate check when the server starts
+  runDailyCheck();
+
+  // Schedule first check for tomorrow
+  setTimeout(() => {
+    runDailyCheck();
     // Schedule subsequent checks every 24 hours
-    setInterval(async () => {
-      try {
-        logger.info('Running scheduled daily score check');
-        const response = await fetch('http://localhost:5000/api/check-daily-scores', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to run daily score check: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        logger.info('Daily score check completed:', result);
-      } catch (error) {
-        logger.error('Error running daily score check:', error);
-      }
-    }, 24 * 60 * 60 * 1000); // 24 hours
+    setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
   }, timeUntilCheck);
 
   // Log the schedule
@@ -280,38 +268,14 @@ app.post('/api/check-daily-scores', async (req, res) => {
           currentServer = null;
         }
 
-        console.log('[Server Startup] Waiting before starting new server...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Try to start new server
-        console.log(`[Server Startup] Starting server on port ${port}...`);
+        console.log('[Server Startup] Starting new server...');
         currentServer = server.listen({
           port,
           host: "0.0.0.0",
         }, () => {
           log(`[Server Startup] Server listening on port ${port}`);
-          scheduleDailyScoreCheck(); // Schedule the task after server starts
-        });
-
-        // Enhanced error handling
-        currentServer.on('error', async (e: NodeJS.ErrnoException) => {
-          console.error('[Server Error] Full error details:', {
-            code: e.code,
-            message: e.message,
-            stack: e.stack,
-            syscall: e.syscall,
-            port: e.port
-          });
-
-          if (e.code === 'EADDRINUSE' && retries > 0) {
-            console.log(`[Server Error] Port ${port} is in use, retrying in ${delay}ms...`);
-            await killPort(port);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return cleanupAndStartServer(retries - 1, delay * 2);
-          } else {
-            console.error('[Server Error] Fatal error:', e);
-            process.exit(1);
-          }
+          // Schedule daily checks after server is ready
+          scheduleDailyScoreCheck();
         });
 
         return currentServer;
