@@ -130,7 +130,7 @@ export default function NotificationsPage() {
             {notifications.map((notification) => (
               <Card key={notification.id} className="relative">
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <h3 className="font-medium">{notification.title}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
