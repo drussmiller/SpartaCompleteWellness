@@ -264,6 +264,56 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
 
+  // Main GET endpoint for fetching posts
+  router.get("/api/posts", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+      
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+      
+      // Join with users table to get author info
+      const result = await db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          type: posts.type,
+          imageUrl: posts.imageUrl,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          points: posts.points,
+          author: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            imageUrl: users.imageUrl,
+            isAdmin: users.isAdmin
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(isNull(posts.parentId)) // Only get top-level posts, not comments
+        .orderBy(desc(posts.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      logger.info(`Fetched ${result.length} posts for page ${page}`);
+      res.json(result);
+    } catch (error) {
+      logger.error('Error fetching posts:', error);
+      res.status(500).json({
+        message: "Failed to fetch posts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
 
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
