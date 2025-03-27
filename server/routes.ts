@@ -585,11 +585,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info('Starting daily score check');
 
       // Get all users - no filters
-      const users = await db
+      const allUsers = await db
         .select()
         .from(users);
 
-      logger.info(`Found ${users.length} users to check`);
+      logger.info(`Found ${allUsers.length} users to check`);
 
       // Get yesterday's date with proper timezone handling
       const now = new Date();
@@ -604,7 +604,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Checking points from ${yesterday.toISOString()} to ${today.toISOString()}`);
 
       // Process each user
-      for (const user of users) {
+      for (const user of allUsers) {
         try {
           logger.info(`Processing user ${user.id} (${user.username})`);
 

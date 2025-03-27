@@ -36,7 +36,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const canDelete = isOwnPost || currentUser?.isAdmin;
 
   const { data: dayPoints, isLoading: isLoadingPoints, error: pointsError } = useQuery({
-    queryKey: ["/api/points/daily", post.createdAt],
+    queryKey: ["/api/points/daily", post.createdAt, post.author.id],
     queryFn: async () => {
       try {
         const date = new Date(post.createdAt!);
@@ -46,10 +46,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch daily points");
+          const errorText = await response.text().catch(() => "Unknown error");
+          throw new Error(`Failed to fetch daily points: ${errorText}`);
         }
 
-        const result = await response.json();
+        let result;
+        try {
+          result = await response.json();
+        } catch (jsonError) {
+          console.error("Error parsing points response:", jsonError);
+          throw new Error("Failed to parse points data");
+        }
+
         console.log('Points API response:', {
           userId: post.author.id,
           date: date.toISOString(),
@@ -73,8 +81,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       try {
         const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
         if (!response.ok) {
-          throw new Error("Failed to delete post");
+          const errorText = await response.text().catch(() => "Unknown error");
+          throw new Error(`Failed to delete post: ${errorText}`);
         }
+        // Don't try to read the body again, just return the ID
         return post.id;
       } catch (error) {
         console.error("Delete post error:", error);
