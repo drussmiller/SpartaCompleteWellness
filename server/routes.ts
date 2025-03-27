@@ -24,7 +24,7 @@ import {
   insertMessageSchema
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
-import express, { Router } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
@@ -241,12 +241,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add custom error handler for better JSON errors
-  router.use('/api', (err, req, res, next) => {
+  router.use('/api', (err: any, req: Request, res: Response, next: NextFunction) => {
     logger.error('API Error:', err);
     if (!res.headersSent) {
       res.status(err.status || 500).json({
         message: err.message || "Internal server error",
-        error: process.env.NODE_ENV === 'production' ? undefined : err.stack
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
       });
     } else {
       next(err);
