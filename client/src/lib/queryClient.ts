@@ -66,7 +66,36 @@ export const getQueryFn: <T>(options: {
       }
 
       await throwIfResNotOk(res);
-      return await res.json();
+      
+      // Check if the response is JSON before trying to parse it
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          return await res.json();
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError);
+          const text = await res.text();
+          console.error('Response text:', text);
+          throw new Error('Invalid JSON response from server');
+        }
+      } else {
+        // For non-JSON responses, try to get the text
+        const text = await res.text();
+        
+        // If it looks like HTML (probably an error page), throw an error
+        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+          console.error('Received HTML instead of JSON:', text.substring(0, 100) + '...');
+          throw new Error('Server returned HTML instead of JSON data. The server might be restarting or experiencing issues.');
+        }
+        
+        // Otherwise, try to parse it as JSON anyway
+        try {
+          return JSON.parse(text);
+        } catch (parseError) {
+          console.error('Response is neither valid JSON nor HTML:', text);
+          throw new Error('Unexpected response format from server');
+        }
+      }
     } catch (error) {
       console.error('Query error:', error);
       throw error;
