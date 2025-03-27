@@ -540,15 +540,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add this endpoint before the return httpServer statement
+  // Add this endpoint before the return httpServer statement with improved error handling
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+      
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
 
       const postId = parseInt(req.params.id);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
+
+      // Log deletion attempt for debugging
+      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
 
       // Get the post to check ownership
       const [post] = await db
@@ -558,21 +566,35 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .limit(1);
 
       if (!post) {
+        logger.info(`Post ${postId} not found during deletion attempt`);
         return res.status(404).json({ message: "Post not found" });
       }
 
       // Check if user is admin or the post owner
       if (!req.user.isAdmin && post.userId !== req.user.id) {
+        logger.info(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Delete the post
+      // First delete any reactions that reference this post
+      await db.delete(reactions).where(eq(reactions.postId, postId));
+      logger.info(`Deleted reactions for post ${postId}`);
+      
+      // Then delete any comments on the post
+      await db.delete(posts).where(eq(posts.parentId, postId));
+      logger.info(`Deleted comments for post ${postId}`);
+      
+      // Finally delete the post
       await db.delete(posts).where(eq(posts.id, postId));
+      logger.info(`Post ${postId} successfully deleted`);
 
-      res.status(200).json({ message: "Post deleted successfully" });
+      return res.status(200).json({ 
+        message: "Post deleted successfully",
+        id: postId 
+      });
     } catch (error) {
       logger.error("Error deleting post:", error);
-      res.status(500).json({
+      return res.status(500).json({
         message: "Failed to delete post",
         error: error instanceof Error ? error.message : "Unknown error"
       });
