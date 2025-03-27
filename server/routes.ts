@@ -584,12 +584,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       logger.info('Starting daily score check');
 
-      // Get all users - no filters
+      // Get all users using a more explicit query to avoid type issues
       const allUsers = await db
-        .select()
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId
+        })
         .from(users);
 
-      logger.info(`Found ${allUsers.length} users to check`);
+      logger.info(`Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`);
+      logger.info(`User details: ${JSON.stringify(allUsers, null, 2)}`);
 
       // Get yesterday's date with proper timezone handling
       const now = new Date();
@@ -827,13 +834,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add daily points endpoint with corrected calculation
+  // Add daily points endpoint with corrected calculation and improved logging
   router.get("/api/points/daily", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
       const userId = parseInt(req.query.userId as string);
+      
+      if (isNaN(userId)) {
+        logger.error(`Invalid userId: ${req.query.userId}`);
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Log request parameters for debugging
+      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`);
 
       // Get start and end of the requested day
       const startOfDay = new Date(date);
@@ -841,7 +856,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // Calculate total points for the day
+      // Calculate total points for the day with detailed logging
       const result = await db
         .select({
           points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
@@ -856,8 +871,37 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         );
 
+      // Get post details for debugging
+      const postDetails = await db
+        .select({
+          id: posts.id,
+          type: posts.type,
+          points: posts.points,
+          createdAt: posts.createdAt
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId)
+          )
+        );
+
       const totalPoints = result[0]?.points || 0;
 
+      // Log the response details
+      logger.info(`Daily points for user ${userId}: ${totalPoints}`, {
+        date: date.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+        postCount: postDetails.length,
+        posts: JSON.stringify(postDetails)
+      });
+
+      // Ensure content type is set
+      res.setHeader('Content-Type', 'application/json');
       res.json({ points: totalPoints });
     } catch (error) {
       logger.error('Error calculating daily points:', error);
