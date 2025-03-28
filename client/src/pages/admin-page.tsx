@@ -332,8 +332,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     <AppLayout sidebarWidth="80">
       <div className="flex flex-col h-screen pb-20">
         {/* Fixed title bar */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-          <div className="p-4 pt-12 md:pt-4 flex items-center">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
+          <div className="p-4 flex items-center">
             {onClose && (
               <Button
                 variant="ghost"
