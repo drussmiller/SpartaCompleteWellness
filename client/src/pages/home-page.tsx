@@ -103,7 +103,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="h-[calc(100vh-8rem)] mt-32 mb-20 overflow-y-auto">
+              <main className="mt-32 mb-20">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post, index) => (
