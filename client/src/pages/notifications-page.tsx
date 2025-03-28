@@ -15,11 +15,16 @@ export default function NotificationsPage() {
   const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     queryFn: async () => {
+      // Mark all as read when loading notifications page
+      await apiRequest("POST", "/api/notifications/read-all");
+      // Then fetch notifications
       const response = await apiRequest("GET", "/api/notifications");
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to fetch notifications");
       }
+      // Invalidate unread count
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
       return response.json();
     },
     enabled: !!user,
