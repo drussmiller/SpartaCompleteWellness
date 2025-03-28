@@ -1,43 +1,21 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+* {
+  scroll-behavior: smooth;
+}
+
 html {
-  height: 100%;
-  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
-  min-height: 100%;
-  -webkit-font-smoothing: antialiased;
-  overflow-y: scroll;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-}
-
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.scrollable {
-  overflow-y: scroll;
-  -webkit-overflow-scrolling: touch;
-  will-change: scroll-position;
-  overscroll-behavior-y: none;
-  touch-action: pan-y;
-}
-
-#root {
-  height: 100%;
-  overflow-y: scroll;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 ::-webkit-scrollbar {
