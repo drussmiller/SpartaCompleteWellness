@@ -1,40 +1,42 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* {
-  scroll-behavior: smooth;
-}
-
 html {
-  scroll-padding-top: 0;
-  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  scroll-behavior: auto;
+  height: 100%;
+  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  overflow-y: auto;
-  overscroll-behavior-y: none;
-  -webkit-transform: translateZ(0);
-  -webkit-perspective: 1000;
-  -webkit-backface-visibility: hidden;
-  will-change: scroll-position;
-  touch-action: manipulation;
-  scroll-snap-type: none;
-}
-
-* {
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-drag: none;
+  overscroll-behavior: auto;
+  scroll-behavior: auto;
+  touch-action: pan-y;
+  position: fixed;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .scrollable {
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  overscroll-behavior-y: auto;
-  touch-action: pan-y;
+  overflow-y: scroll;
+  overscroll-behavior: auto;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: auto;
+}
+
+#root {
+  height: 100%;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: auto;
 }
 
 ::-webkit-scrollbar {
