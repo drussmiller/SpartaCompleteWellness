@@ -18,7 +18,7 @@ export function TopNav() {
   });
 
   return (
-    <nav className="sticky top-0 z-50 bg-background border-b border-border">
+    <nav className="sticky top-0 z-50 bg-background border-b border-border pt-4">
       <div className="flex items-center justify-between p-2">
         <div className="flex items-center gap-4">
           <img
