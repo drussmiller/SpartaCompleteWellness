@@ -7,26 +7,15 @@
 }
 
 html {
-  height: 100%;
-  -webkit-text-size-adjust: 100%;
-  overflow: hidden;
+  scroll-padding-top: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
-  min-height: 100%;
-  -webkit-font-smoothing: antialiased;
-  overflow-y: scroll;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  -webkit-transform-style: preserve-3d;
-  -webkit-touch-callout: none;
-  overscroll-behavior: auto;
-  overflow-anchor: none;
-  touch-action: manipulation;
-  scroll-behavior: auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 ::-webkit-scrollbar {
@@ -44,16 +33,6 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
-}
-
-.scrollable {
-  -webkit-overflow-scrolling: touch;
-  overflow-y: auto;
-  overscroll-behavior: auto;
-  scroll-behavior: auto;
-  scroll-snap-type: none;
-  scroll-snap-stop: normal;
-  touch-action: pan-y;
 }
 
 @layer base {
