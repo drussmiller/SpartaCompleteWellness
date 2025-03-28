@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Post, User } from "@shared/schema";
+import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
@@ -11,6 +11,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
+
+const MOBILE_BREAKPOINT = 768;
 
 export default function HomePage() {
   const isMobile = useIsMobile();
@@ -60,8 +62,8 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-screen bg-background overflow-hidden">
-        {/* Fixed Header - exactly as in original design */}
+      <div className="flex flex-col min-h-screen bg-background">
+        {/* Fixed Header - spans full width */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20">
           <div className="w-full max-w-[768px] mx-auto px-4">
             <div className="flex items-center justify-between py-2">
@@ -77,19 +79,19 @@ export default function HomePage() {
                 />
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining as unknown as Record<string, number>} />
+                <CreatePostDialog remaining={remaining} />
                 <MessageSlideCard />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main content container with proper top and bottom margins */}
-        <div className="fixed top-[78px] bottom-[64px] left-0 right-0 w-full">
-          <div className="flex justify-between h-full">
+        {/* Three column layout for non-mobile */}
+        <div className="w-full">
+          <div className="flex justify-between">
             {/* Left panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 border-r border-border p-4 bg-background overflow-y-auto">
+              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
                 <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
                 <img
                   src="/sparta_circle_red.png"
@@ -99,36 +101,38 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Main content - scrollable area */}
-            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4 overflow-y-auto`}>
-              <div className="space-y-2 py-4">
-                {posts?.length > 0 ? (
-                  posts.map((post: Post & { author: User }, index: number) => (
-                    <div key={post.id}>
-                      <ErrorBoundary>
-                        <PostCard post={post} />
-                      </ErrorBoundary>
-                      {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+            {/* Main content */}
+            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
+              <main className="mt-42 mb-20">
+                <div className="space-y-2">
+                  {posts?.length > 0 ? (
+                    posts.map((post, index) => (
+                      <div key={post.id}>
+                        <ErrorBoundary>
+                          <PostCard post={post} />
+                        </ErrorBoundary>
+                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                      </div>
+                    ))
+                  ) : !isLoading ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No posts yet. Be the first to share!
                     </div>
-                  ))
-                ) : !isLoading ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    No posts yet. Be the first to share!
-                  </div>
-                ) : null}
+                  ) : null}
 
-                {/* Loading indicator */}
-                <div ref={loadingRef} className="flex justify-center py-4">
-                  {isLoading && (
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  )}
+                  {/* Loading indicator */}
+                  <div ref={loadingRef} className="flex justify-center py-4">
+                    {isLoading && (
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    )}
+                  </div>
                 </div>
-              </div>
+              </main>
             </div>
 
             {/* Right panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 border-l border-border p-4 bg-background overflow-y-auto">
+              <div className="w-1/4 min-h-screen border-l border-border p-4 bg-background">
                 <h2 className="text-lg font-semibold mb-4">Right Panel</h2>
               </div>
             )}
