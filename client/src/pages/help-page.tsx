@@ -6,7 +6,7 @@ export default function HelpPage() {
   return (
     <AppLayout>
       {/* Fixed title bar */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="sticky top-0 z-50 bg-background border-b border-border pt-12">
         <div className="px-6 py-4">
           <h1 className="text-xl font-bold">Help</h1>
         </div>
