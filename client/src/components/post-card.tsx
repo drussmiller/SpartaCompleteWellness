@@ -120,10 +120,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   });
 
   return (
-    <div className="border-y border-gray-200 bg-white w-full overflow-hidden">
-      <div className="flex flex-row items-center w-full p-2 sm:p-4 bg-background">
-        <div className="flex items-center gap-2 sm:gap-4 flex-1">
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+    <div className="border-y border-gray-200 bg-white w-full">
+      <div className="flex flex-row items-center w-full p-4 bg-background">
+        <div className="flex items-center gap-4 flex-1">
+          <Avatar>
             <AvatarImage
               key={`avatar-${post.author?.id}-${avatarKey}`}
               src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`}
@@ -142,7 +142,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 })()}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {isLoadingPoints ? (
                 <span className="animate-pulse">Calculating points...</span>
               ) : pointsError ? (
@@ -188,22 +188,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         )}
       </div>
 
-      <div className="px-2 sm:px-4">
+      <div className="px-4">
         {post.content && (
-          <p className="text-sm mb-2 sm:mb-4 whitespace-pre-wrap">{post.content}</p>
+          <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
       </div>
 
       {post.imageUrl && (
-        <div className="w-full bg-gray-100 relative">
-          <div className="max-h-[60vh] w-full flex items-center justify-center py-1 sm:py-2">
+        <div className="w-screen bg-gray-100 -mx-4 relative">
+          <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
               alt="Post content"
               loading="lazy"
               decoding="async"
-              className="w-full h-auto object-contain cursor-pointer max-h-[60vh]"
+              className="w-full h-full object-contain cursor-pointer"
               onClick={(e) => {
                 const fullSrc = e.currentTarget.getAttribute('data-full-src');
                 if (fullSrc) {
@@ -225,8 +225,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         </div>
       )}
 
-      <div className="px-2 sm:px-4 mt-2 sm:mt-4">
-        <div className="flex flex-col gap-1 sm:gap-2">
+      <div className="px-4 mt-4">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
             <span className="text-xs text-muted-foreground">•</span>
@@ -236,15 +236,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           </div>
           <div className="border-t border-gray-200"></div>
 
-          <div className="flex items-center gap-1 py-1 h-8 sm:h-10">
+          <div className="flex items-center gap-2 py-1 h-10">
             <ReactionButton postId={post.id} variant="icon" />
             <Button
               variant="ghost"
-              size="sm"
-              className="gap-1 sm:gap-2"
+              size="default"
+              className="gap-2"
               onClick={() => setIsCommentsOpen(true)}
             >
-              <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+              <MessageCircle className="h-5 w-5" />
               {commentCount}
             </Button>
           </div>
