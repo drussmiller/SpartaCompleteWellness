@@ -138,8 +138,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-        <div className="p-4 pt-12 md:pt-4 flex items-center">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
+        <div className="p-4 flex items-center">
           {onClose && (
             <Button
               variant="ghost"

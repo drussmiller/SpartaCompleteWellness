@@ -79,7 +79,7 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center p-4 pt-12 border-b">
+      <div className="flex items-center p-4 pt-16 border-b">
         <Button
           variant="ghost"
           size="icon"
