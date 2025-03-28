@@ -119,7 +119,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <main className="p-4 space-y-4 max-w-3xl mx-auto w-full">
+      <main className="p-4 pb-24 space-y-4 max-w-3xl mx-auto w-full">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
