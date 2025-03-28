@@ -18,8 +18,8 @@ export function TopNav() {
   });
 
   return (
-    <nav className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="flex items-center justify-between p-2">
+    <nav className="sticky top-0 z-50 bg-background border-b border-border pt-12">
+      <div className="flex items-center justify-between p-6">
         <div className="flex items-center gap-4">
           <img
             src="/Sparta_Logo.jpg"
