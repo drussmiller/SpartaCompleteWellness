@@ -26,7 +26,7 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
             </div>
           </header>
         )}
-        <div className="flex-1 md:pl-20">
+        <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-16' : ''}`}> {/* Added mobile padding here */}
           {children}
         </div>
         {isMobile && <BottomNav />}
