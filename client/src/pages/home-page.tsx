@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Post } from "@shared/schema";
+import { Post, User } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
@@ -62,7 +62,7 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-col bg-background">
         {/* Fixed Header - spans full width */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20">
           <div className="w-full max-w-[768px] mx-auto px-4">
@@ -79,7 +79,7 @@ export default function HomePage() {
                 />
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} />
+                <CreatePostDialog remaining={remaining as unknown as Record<string, number>} />
                 <MessageSlideCard />
               </div>
             </div>
@@ -87,11 +87,11 @@ export default function HomePage() {
         </div>
 
         {/* Three column layout for non-mobile */}
-        <div className="w-full">
-          <div className="flex justify-between">
+        <div className="w-full pb-20">
+          <div className="flex flex-row justify-between">
             {/* Left panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
+              <div className="w-1/4 border-r border-border p-4 bg-background">
                 <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
                 <img
                   src="/sparta_circle_red.png"
@@ -103,10 +103,10 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-32 mb-20">
+              <main className="mt-32 mb-20 overflow-visible">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
-                    posts.map((post, index) => (
+                    posts.map((post: Post & { author: User }, index: number) => (
                       <div key={post.id}>
                         <ErrorBoundary>
                           <PostCard post={post} />
@@ -132,7 +132,7 @@ export default function HomePage() {
 
             {/* Right panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 min-h-screen border-l border-border p-4 bg-background">
+              <div className="w-1/4 border-l border-border p-4 bg-background">
                 <h2 className="text-lg font-semibold mb-4">Right Panel</h2>
               </div>
             )}
