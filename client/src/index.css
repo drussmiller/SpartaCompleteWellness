@@ -15,7 +15,11 @@ body {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  -webkit-transform: translateZ(0);
+  -webkit-perspective: 1000;
+  -webkit-backface-visibility: hidden;
 }
 
 ::-webkit-scrollbar {
