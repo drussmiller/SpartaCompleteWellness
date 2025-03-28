@@ -61,21 +61,21 @@ export default function HomePage() {
   }
 
   // Define heights for calculations
-  const topNavHeight = 64; // in pixels
+  const topNavHeight = 48; // in pixels - actually measured from UI
   const bottomNavHeight = 64; // in pixels (h-16 class)
   
   return (
     <AppLayout>
       <div className="flex flex-col h-screen bg-background">
         {/* Fixed Header - spans full width */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20 h-[64px]">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20 h-[48px]">
           <div className="w-full max-w-[768px] mx-auto px-4">
-            <div className="flex items-center justify-between py-2 h-full">
+            <div className="flex items-center justify-between py-1 h-full">
               <div className="flex-1 flex justify-center">
                 <img
                   src="/sparta_circle_red.png"
                   alt="Sparta Complete Wellness Logo"
-                  className="w-48 h-auto mx-auto"
+                  className="w-36 h-auto mx-auto"
                   onError={(e) => {
                     console.error('Error loading logo:', e);
                     e.currentTarget.src = '/fallback-logo.png';
