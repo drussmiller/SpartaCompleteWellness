@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Post } from "@shared/schema";
+import { Post, User } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
@@ -60,13 +60,17 @@ export default function HomePage() {
     );
   }
 
+  // Define heights for calculations
+  const topNavHeight = 64; // in pixels
+  const bottomNavHeight = 64; // in pixels (h-16 class)
+  
   return (
     <AppLayout>
-      <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-col h-screen bg-background">
         {/* Fixed Header - spans full width */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20 h-[64px]">
           <div className="w-full max-w-[768px] mx-auto px-4">
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-2 h-full">
               <div className="flex-1 flex justify-center">
                 <img
                   src="/sparta_circle_red.png"
@@ -79,19 +83,25 @@ export default function HomePage() {
                 />
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} />
+                <CreatePostDialog remaining={remaining as unknown as Record<string, number>} />
                 <MessageSlideCard />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Three column layout for non-mobile */}
-        <div className="w-full">
-          <div className="flex justify-between">
+        {/* Three column layout - exact height calculation */}
+        <div 
+          className="w-full" 
+          style={{ 
+            height: `calc(100vh - ${topNavHeight}px - ${isMobile ? bottomNavHeight : 0}px)`,
+            marginTop: `${topNavHeight}px`
+          }}
+        >
+          <div className="flex justify-between h-full">
             {/* Left panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
+              <div className="w-1/4 border-r border-border p-4 bg-background overflow-y-auto">
                 <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
                 <img
                   src="/sparta_circle_red.png"
@@ -102,11 +112,11 @@ export default function HomePage() {
             )}
 
             {/* Main content */}
-            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-40 mb-20 overflow-y-auto">
+            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4 overflow-y-auto`}>
+              <main className="pb-4">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
-                    posts.map((post, index) => (
+                    posts.map((post: Post & { author: User }, index: number) => (
                       <div key={post.id}>
                         <ErrorBoundary>
                           <PostCard post={post} />
@@ -132,7 +142,7 @@ export default function HomePage() {
 
             {/* Right panel - hidden on mobile */}
             {!isMobile && (
-              <div className="w-1/4 min-h-screen border-l border-border p-4 bg-background">
+              <div className="w-1/4 border-l border-border p-4 bg-background overflow-y-auto">
                 <h2 className="text-lg font-semibold mb-4">Right Panel</h2>
               </div>
             )}
