@@ -17,9 +17,10 @@ const MOBILE_BREAKPOINT = 768;
 const mobileScrollStyles = {
   WebkitOverflowScrolling: 'touch',
   scrollBehavior: 'smooth' as const,
-  scrollSnapAlign: 'start',
   overflowY: 'auto',
   WebkitMomentum: 'true',
+  overscrollBehavior: 'auto' as const,
+  scrollDecelerationRate: '0.95' as const,
 };
 
 export default function HomePage() {
