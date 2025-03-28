@@ -325,9 +325,9 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-[calc(100vh-9rem)]">
               {/* Messages List */}
-              <ScrollArea className="h-[calc(100vh-10rem)] p-4">
+              <ScrollArea className="flex-1 p-4 pb-16">
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div
