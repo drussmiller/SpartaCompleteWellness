@@ -84,8 +84,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Main content area with proper spacing */}
-        <div className="pt-[78px] pb-16 h-screen overflow-hidden">
+        {/* Main content container with proper top and bottom margins */}
+        <div className="fixed top-[78px] bottom-[64px] left-0 right-0 w-full">
           <div className="flex justify-between h-full">
             {/* Left panel - hidden on mobile */}
             {!isMobile && (
@@ -101,7 +101,7 @@ export default function HomePage() {
 
             {/* Main content - scrollable area */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4 overflow-y-auto`}>
-              <div className="space-y-2">
+              <div className="space-y-2 py-4">
                 {posts?.length > 0 ? (
                   posts.map((post: Post & { author: User }, index: number) => (
                     <div key={post.id}>
