@@ -55,7 +55,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         // Container styles
         "flex items-center",
         // Mobile layout
-        orientation === "horizontal" && "h-16 justify-around",
+        orientation === "horizontal" && "h-20 justify-around",
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
