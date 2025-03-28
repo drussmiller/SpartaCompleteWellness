@@ -12,10 +12,14 @@ html {
 }
 
 body {
-  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
+  scroll-behavior: auto;
+  -webkit-momentum-scrolling: touch;
+  touch-action: pan-y;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 ::-webkit-scrollbar {
