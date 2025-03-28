@@ -27,7 +27,7 @@ export default function MenuPage() {
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start py-6" size="lg">
+              <Button variant="outline" className="w-full justify-start py-6 mt-12 md:mt-0" size="lg">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
@@ -52,7 +52,7 @@ export default function MenuPage() {
           {/* Notification Schedule Sheet */}
           <Sheet open={notificationScheduleOpen} onOpenChange={setNotificationScheduleOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button variant="outline" className="w-full justify-start mt-12 md:mt-4" size="lg">
                 <Bell className="mr-2 h-5 w-5" />
                 Notification Schedule
               </Button>
@@ -66,7 +66,7 @@ export default function MenuPage() {
           {user.isAdmin && (
             <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full justify-start" size="lg">
+                <Button variant="outline" className="w-full justify-start mt-12 md:mt-4" size="lg">
                   <Settings className="mr-2 h-5 w-5" />
                   Admin Dashboard
                 </Button>
