@@ -31,6 +31,7 @@ import bcrypt from "bcryptjs";
 import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
+import { WebSocketServer, WebSocket } from 'ws';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -1387,8 +1388,98 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Create HTTP server
   const httpServer = createServer(app);
 
+  // Create WebSocket server on a distinct path
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    clientTracking: true 
+  });
+
+  // Map to store active client connections by user ID
+  const clients = new Map<number, Set<WebSocket>>();
+
+  // Handle WebSocket connections
+  wss.on('connection', (ws: WebSocket) => {
+    logger.info('WebSocket client connected');
+    let userId: number | null = null;
+    
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        // Handle authentication message
+        if (data.type === 'auth') {
+          userId = parseInt(data.userId);
+          if (isNaN(userId)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
+            return;
+          }
+          
+          // Add client to the user's connections
+          if (!clients.has(userId)) {
+            clients.set(userId, new Set());
+          }
+          clients.get(userId)?.add(ws);
+          
+          logger.info(`WebSocket user ${userId} authenticated`);
+          ws.send(JSON.stringify({ type: 'auth_success', userId }));
+        }
+      } catch (error) {
+        logger.error('WebSocket message error:', error);
+        ws.send(JSON.stringify({ 
+          type: 'error', 
+          message: 'Invalid message format' 
+        }));
+      }
+    });
+    
+    // Handle client disconnection
+    ws.on('close', () => {
+      if (userId) {
+        const userClients = clients.get(userId);
+        if (userClients) {
+          userClients.delete(ws);
+          if (userClients.size === 0) {
+            clients.delete(userId);
+          }
+        }
+        logger.info(`WebSocket client ${userId} disconnected`);
+      } else {
+        logger.info('Unauthenticated WebSocket client disconnected');
+      }
+    });
+    
+    // Send initial connection message
+    ws.send(JSON.stringify({ 
+      type: 'connected', 
+      message: 'Connected to WebSocket server' 
+    }));
+  });
+
+  // Add a function to broadcast notifications to users
+  const broadcastNotification = (userId: number, notification: any) => {
+    const userClients = clients.get(userId);
+    if (userClients && userClients.size > 0) {
+      const message = JSON.stringify({
+        type: 'notification',
+        data: notification
+      });
+      
+      userClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
+      });
+      
+      logger.info(`Notification sent to user ${userId}`);
+    }
+  };
+
+  // Expose the broadcast function to the global scope
+  (app as any).broadcastNotification = broadcastNotification;
+
   // Log server startup
-  logger.info('Server routes registered successfully');
+  logger.info('Server routes and WebSocket registered successfully');
 
   return httpServer;
 };
