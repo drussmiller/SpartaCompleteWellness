@@ -138,7 +138,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
         <div className="p-4 flex items-center">
           {onClose && (
             <Button
@@ -154,7 +154,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pt-16 pb-80 px-4 space-y-6 max-w-4xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto pt-24 md:pt-16 pb-80 px-4 space-y-6 max-w-4xl mx-auto w-full">
         <div className="hidden md:block lg:w-64">
           <BottomNav orientation="vertical" />
         </div>
