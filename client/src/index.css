@@ -16,10 +16,29 @@ body {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
   overscroll-behavior-y: auto;
+  scroll-snap-type: y proximity;
   -webkit-overflow-scrolling: touch;
   -webkit-transform: translateZ(0);
   -webkit-perspective: 1000;
   -webkit-backface-visibility: hidden;
+  -webkit-overflow-scrolling: touch;
+  -webkit-momentum-scrolling: touch;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+  will-change: scroll-position;
+  touch-action: pan-y pinch-zoom;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
+.scrollable {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
 }
 
 ::-webkit-scrollbar {
