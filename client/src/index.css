@@ -6,30 +6,46 @@
 html {
   height: 100%;
   overflow: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   height: 100%;
-  overflow-y: scroll;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: auto;
-  scroll-behavior: auto;
-  touch-action: pan-y;
-  position: fixed;
   width: 100%;
+  position: fixed;
+  overflow: hidden;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+  overflow-y: scroll;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .scrollable {
-  -webkit-overflow-scrolling: touch;
+  height: 100%;
   overflow-y: scroll;
-  overscroll-behavior: auto;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: auto;
+  -webkit-overflow-scrolling: touch;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  scroll-behavior: smooth;
+  scroll-snap-type: none;
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
 }
 
 #root {
