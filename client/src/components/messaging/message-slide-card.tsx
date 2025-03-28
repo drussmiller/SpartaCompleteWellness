@@ -325,13 +325,9 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col h-screen">
-              {/* Title/Header Area */}
-              <div className="h-20 flex-shrink-0">
-                {/* Your title content */}
-              </div>
+            <div className="flex flex-col h-[calc(100vh-15rem)]">
               {/* Messages List */}
-              <ScrollArea className="flex-1 p-4 overflow-y-auto h-[calc(100vh-12rem)]">
+              <ScrollArea className="flex-1 p-4 overflow-y-auto">
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div
