@@ -60,17 +60,17 @@ export default function HomePage() {
     );
   }
 
-  // Define fixed heights for header and bottom nav
-  const HEADER_HEIGHT = 64; // 64px height for header
+  // Using exact measurements from original design
+  const HEADER_HEIGHT = 64; // 64px height for header with logo
   const BOTTOM_NAV_HEIGHT = 64; // 64px height for bottom nav
   
   return (
     <AppLayout>
       <div className="flex flex-col h-screen bg-background overflow-hidden">
-        {/* Fixed Header - spans full width - height preserved */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20 h-[64px]">
-          <div className="w-full max-w-[768px] mx-auto px-4 h-full">
-            <div className="flex items-center justify-between h-full">
+        {/* Fixed Header - spans full width - exactly as in original design */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border md:pl-20">
+          <div className="w-full max-w-[768px] mx-auto px-4">
+            <div className="flex items-center justify-between py-2">
               <div className="flex-1 flex justify-center">
                 <img
                   src="/sparta_circle_red.png"
