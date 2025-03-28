@@ -12,20 +12,16 @@ html {
 }
 
 body {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
-  overscroll-behavior-y: auto;
-  scroll-snap-type: y proximity;
-  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
   -webkit-transform: translateZ(0);
   -webkit-perspective: 1000;
   -webkit-backface-visibility: hidden;
-  -webkit-overflow-scrolling: touch;
-  -webkit-momentum-scrolling: touch;
-  -ms-overflow-style: -ms-autohiding-scrollbar;
   will-change: scroll-position;
-  touch-action: pan-y pinch-zoom;
+  touch-action: manipulation;
+  scroll-snap-type: none;
 }
 
 * {
