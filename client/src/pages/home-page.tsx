@@ -14,6 +14,14 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 
 const MOBILE_BREAKPOINT = 768;
 
+const mobileScrollStyles = {
+  WebkitOverflowScrolling: 'touch',
+  scrollBehavior: 'smooth' as const,
+  scrollSnapAlign: 'start',
+  overflowY: 'auto',
+  WebkitMomentum: 'true',
+};
+
 export default function HomePage() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
