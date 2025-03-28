@@ -66,7 +66,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
+              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
               // Text styles
               location === href
                 ? "text-primary"
@@ -87,7 +87,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
             // Size styles
-            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
+            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
             // Text styles
             location === "/menu"
               ? "text-primary"
