@@ -91,7 +91,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0">
+    <div className="min-h-screen pb-20 lg:pb-0 pt-16">
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="p-4">
           <h1 className="text-xl font-bold pl-2">Daily Activity</h1>
