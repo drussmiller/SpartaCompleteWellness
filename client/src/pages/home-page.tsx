@@ -103,7 +103,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-42 mb-20">
+              <main className="mt-32 mb-20">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post, index) => (
