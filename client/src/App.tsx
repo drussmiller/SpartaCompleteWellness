@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { Route, Switch } from "wouter";
+import { useEffect } from "react";
 import { ProtectedRoute } from "./lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
@@ -79,6 +80,23 @@ function MainContent() {
 
 function App() {
   console.log('App component rendering');
+  
+  // Check for notification permission when app loads
+  // This needs to be called from a user interaction (e.g., button click)
+  // but we can check if it's already been granted
+  useEffect(() => {
+    // Check if the browser supports notifications
+    if ('Notification' in window) {
+      console.log("Notification permission:", Notification.permission);
+      
+      // We'll let the notification code request permission when a notification 
+      // arrives rather than asking immediately on app load
+      if (Notification.permission === 'granted') {
+        console.log("Notification permission already granted");
+      }
+    }
+  }, []);
+  
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

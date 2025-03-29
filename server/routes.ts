@@ -931,7 +931,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Update daily score check endpoint
+  // Added a GET endpoint for testing as well as the main POST endpoint
+  router.get("/api/check-daily-scores", async (req, res) => {
+    try {
+      const userId = parseInt(req.query.userId as string);
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      
+      logger.info(`Manual check daily scores for user ${userId} with timezone offset ${tzOffset}`);
+      
+      // Forward to the post endpoint
+      // We're creating a fake request with the necessary properties
+      await checkDailyScores({ body: { userId, tzOffset } } as Request, res);
+    } catch (error) {
+      logger.error('Error in GET daily score check:', error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Add the actual POST endpoint for the daily scores check
   router.post("/api/check-daily-scores", async (req, res) => {
+    try {
+      // This is the proper handler for incoming scheduled requests
+      await checkDailyScores(req, res);
+    } catch (error) {
+      logger.error('Error in POST daily score check:', error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Main function to check daily scores
+  const checkDailyScores = async (req: Request, res: Response) => {
     try {
       logger.info('Starting daily score check');
 
@@ -1005,12 +1044,87 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
           // If points are less than expected, send notification
           if (totalPoints < expectedPoints) {
+            // Get a more detailed breakdown of what was posted yesterday
+            const postsByType = await db
+              .select({
+                type: posts.type,
+                count: sql<number>`count(*)::integer`
+              })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, user.id),
+                  gte(posts.createdAt, yesterday),
+                  lt(posts.createdAt, today),
+                  isNull(posts.parentId) // Don't count comments
+                )
+              )
+              .groupBy(posts.type);
+              
+            // Create maps to track what's posted
+            const counts: Record<string, number> = {
+              food: 0,
+              workout: 0,
+              scripture: 0,
+              memory_verse: 0
+            };
+            
+            // Fill in actual counts
+            postsByType.forEach(post => {
+              if (post.type in counts) {
+                counts[post.type] = post.count;
+              }
+            });
+            
+            // Determine what should have been posted yesterday
+            const missedItems = [];
+            const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Yesterday's day
+            
+            // For food, we need 3 posts every day except Sunday
+            if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
+              missedItems.push(`${3 - counts.food} meals`);
+            }
+            
+            // For workout, we need 1 per day, max 5 per week
+            if (yesterdayDayOfWeek !== 0 && counts.workout < 1) {
+              missedItems.push("your workout");
+            }
+            
+            // For scripture, we need 1 every day
+            if (counts.scripture < 1) {
+              missedItems.push("your scripture reading");
+            }
+            
+            // For memory verse, we need 1 on Saturday
+            if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
+              missedItems.push("your memory verse");
+            }
+            
+            // Create the notification message
+            let message = "";
+            if (missedItems.length > 0) {
+              message = "Yesterday you missed posting ";
+              
+              if (missedItems.length === 1) {
+                message += missedItems[0] + ".";
+              } else if (missedItems.length === 2) {
+                message += missedItems[0] + " and " + missedItems[1] + ".";
+              } else {
+                const lastItem = missedItems.pop();
+                message += missedItems.join(", ") + ", and " + lastItem + ".";
+              }
+            } else {
+              message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
+            }
+            
             const notification = {
               userId: user.id,
-              title: "Daily Score Alert",
-              message: `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress! Yesterday's activities: ${postTypes.join(', ') || 'none'}`,
+              title: "Daily Reminder",
+              message,
               read: false,
-              createdAt: new Date()
+              createdAt: new Date(),
+              type: "reminder",
+              sound: "default" // Add sound property for mobile notifications
             };
 
             const [insertedNotification] = await db
@@ -1023,6 +1137,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               userId: user.id,
               message: notification.message
             });
+            
+            // Send via WebSocket if user is connected
+            const userClients = clients.get(user.id);
+            if (userClients && userClients.size > 0) {
+              const notificationData = {
+                id: insertedNotification.id,
+                title: notification.title,
+                message: notification.message,
+                sound: notification.sound,
+                type: notification.type
+              };
+              
+              broadcastNotification(user.id, notificationData);
+            }
           } else {
             logger.info(`No notification needed for user ${user.id}, met daily goal`);
           }
