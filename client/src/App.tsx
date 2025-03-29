@@ -64,6 +64,7 @@ function MainContent() {
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/notification-schedule" component={NotificationSchedulePage} />
           <Route path="/notifications" component={NotificationsPage} />
+          <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
           {user.isAdmin && <Route path="/admin" component={AdminPage} />}
           <Route path="*">Not found</Route>
