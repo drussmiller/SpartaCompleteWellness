@@ -84,11 +84,34 @@ export function useNotifications(suppressToasts = false) {
 
       socket.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          // Log raw data for debugging purposes
+          console.log(`WebSocket raw message received at ${new Date().toISOString()}, typeof:`, typeof event.data);
+          
+          // Handle different message data types
+          let data;
+          if (typeof event.data === 'string') {
+            try {
+              data = JSON.parse(event.data);
+            } catch (jsonError) {
+              console.error("Failed to parse WebSocket JSON message:", jsonError);
+              console.log("Raw WebSocket message content:", event.data.length > 200 
+                ? event.data.substring(0, 200) + "..." 
+                : event.data);
+              return; // Exit early, can't process non-JSON data
+            }
+          } else if (event.data instanceof Blob) {
+            console.log("Received binary WebSocket data, length:", event.data.size);
+            // We could add blob handling here if needed
+            return; // Exit early
+          } else {
+            console.error("Unsupported WebSocket data type:", typeof event.data);
+            return; // Exit early
+          }
           
           // Handle different message types
           switch (data.type) {
             case "notification":
+              console.log("Received notification message:", data);
               // Show notification toast only if should show toasts
               if (data.data) {
                 // Check if notification has a sound property
@@ -183,6 +206,8 @@ export function useNotifications(suppressToasts = false) {
                     console.error("Error showing browser notification:", notificationError);
                   }
                 }
+              } else {
+                console.warn("Received notification message without data payload");
               }
               break;
             
@@ -191,14 +216,29 @@ export function useNotifications(suppressToasts = false) {
               break;
               
             case "error":
-              console.error("WebSocket error:", data.message);
+              console.error("WebSocket error message received:", data.message);
+              break;
+            
+            case "connected":
+              console.log("WebSocket connection confirmed by server");
               break;
               
             default:
-              console.log("Received WebSocket message:", data);
+              console.log("Received unknown WebSocket message type:", data.type, data);
           }
         } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
+          console.error("Error handling WebSocket message:", error);
+          try {
+            // Try to log some raw data for debugging
+            if (typeof event.data === 'string') {
+              const preview = event.data.length > 100 
+                ? event.data.substring(0, 100) + "..." 
+                : event.data;
+              console.error("Raw message data preview:", preview);
+            }
+          } catch (logError) {
+            console.error("Could not log raw message data:", logError);
+          }
         }
       };
 
@@ -264,11 +304,36 @@ export function useNotifications(suppressToasts = false) {
           
           // Perform a simple check to see if the server is reachable
           fetch('/api/ping')
-            .then(response => {
+            .then(async response => {
               console.log("Server ping response:", response.status, response.statusText);
+              
+              // Handle both success and error status codes
+              if (response.ok) {
+                try {
+                  // Try to parse the response as JSON, but handle text responses too
+                  const contentType = response.headers.get('content-type');
+                  if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    console.log("Server ping JSON data:", data);
+                  } else {
+                    const text = await response.text();
+                    console.log("Server ping text response:", text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+                  }
+                } catch (parseError) {
+                  console.error("Error parsing ping response:", parseError);
+                }
+              } else {
+                // For non-200 responses, try to get the text content
+                try {
+                  const errorText = await response.text();
+                  console.error("Server ping error response:", errorText.substring(0, 100) + (errorText.length > 100 ? '...' : ''));
+                } catch (textError) {
+                  console.error("Could not read error text:", textError);
+                }
+              }
             })
             .catch(err => {
-              console.error("Server ping failed:", err.message);
+              console.error("Server ping network failed:", err.message);
             });
         } catch (diagnosticError) {
           console.error("Error getting additional diagnostics:", diagnosticError);
