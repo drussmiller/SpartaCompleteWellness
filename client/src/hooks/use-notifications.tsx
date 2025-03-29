@@ -4,17 +4,25 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { Notification } from "@shared/schema";
+import { useLocation } from "wouter";
 
 type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
-export function useNotifications() {
+export function useNotifications(suppressToasts = false) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+  
+  // Determine if we should show notification toasts
+  // Don't show if explicitly suppressed or if we're on the notification-related pages
+  const shouldShowToasts = !suppressToasts && 
+    !location.includes("notification-schedule") && 
+    !location.includes("notifications");
 
   // Query for notifications
   const { data: notifications } = useQuery<Notification[]>({
@@ -62,13 +70,15 @@ export function useNotifications() {
           // Handle different message types
           switch (data.type) {
             case "notification":
-              // Show notification toast
+              // Show notification toast only if should show toasts
               if (data.data) {
-                toast({
-                  title: data.data.title,
-                  description: data.data.message,
-                  duration: 5000,
-                });
+                if (shouldShowToasts) {
+                  toast({
+                    title: data.data.title,
+                    description: data.data.message,
+                    duration: 5000,
+                  });
+                }
                 
                 // Update notifications in the cache
                 queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -122,7 +132,7 @@ export function useNotifications() {
       console.error("Error setting up WebSocket:", error);
       setConnectionStatus("disconnected");
     }
-  }, [user, toast]);
+  }, [user, toast, shouldShowToasts]);
 
   // Connect to WebSocket when user is available
   useEffect(() => {
@@ -152,7 +162,8 @@ export function useNotifications() {
 
   // Show toast for new notifications from the REST API
   useEffect(() => {
-    if (notifications?.length) {
+    // Only show toasts when appropriate
+    if (shouldShowToasts && notifications?.length) {
       const unreadNotifications = notifications.filter(n => !n.read);
       unreadNotifications.forEach(notification => {
         // Show toasts for both score alerts and messages
@@ -163,7 +174,7 @@ export function useNotifications() {
         });
       });
     }
-  }, [notifications, toast]);
+  }, [notifications, toast, shouldShowToasts]);
 
   return { 
     connectionStatus,
