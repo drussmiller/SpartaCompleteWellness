@@ -296,9 +296,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         isArray: Array.isArray(validComments)
       });
       
+      // Make sure only JSON data is sent
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json'
+      });
+      
+      // Send JSON response
       return res.json(validComments);
     } catch (error) {
       logger.error('Error getting comments:', error);
+      
+      // Set JSON content type on error as well
+      res.set('Content-Type', 'application/json');
+      
       return res.status(500).json({ 
         message: "Failed to get comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -327,12 +339,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
       
       if (!content || !parentId) {
+        // Set JSON content type on error
+        res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Missing required fields" });
       }
       
       // Make sure parentId is a valid number
       const parentIdNum = parseInt(parentId);
       if (isNaN(parentIdNum)) {
+        // Set JSON content type on error
+        res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Invalid parent post ID" });
       }
       
@@ -354,9 +370,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       };
       
+      // Make sure only JSON data is sent for the response
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json'
+      });
+      
       return res.status(201).json(commentWithAuthor);
     } catch (error) {
       logger.error('Error creating comment:', error);
+      
+      // Set JSON content type on error
+      res.set('Content-Type', 'application/json');
+      
       return res.status(500).json({ 
         message: "Failed to create comment",
         error: error instanceof Error ? error.message : "Unknown error"
