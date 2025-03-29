@@ -2475,6 +2475,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Handle WebSocket connections
   wss.on('connection', (ws: WebSocket) => {
+    console.log('WebSocket client connected');
     logger.info('WebSocket client connected');
     let userId: number | null = null;
 
@@ -2525,10 +2526,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     });
 
     // Send initial connection message
-    ws.send(JSON.stringify({ 
-      type: 'connected', 
-      message: 'Connected to WebSocket server' 
-    }));
+    try {
+      console.log('Sending initial connection message');
+      ws.send(JSON.stringify({ 
+        type: 'connected', 
+        message: 'Connected to WebSocket server' 
+      }));
+      console.log('Initial connection message sent successfully');
+    } catch (error) {
+      console.error('Error sending initial WebSocket message:', error);
+    }
   });
 
   // Add a function to broadcast notifications to users
