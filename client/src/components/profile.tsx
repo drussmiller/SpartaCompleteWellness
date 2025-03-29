@@ -444,57 +444,35 @@ function UserProfile({ user }: ProfileProps) {
       </div>
 
       {/* Points Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+      <div className="pt-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Current Week</CardTitle>
-            <CardDescription>Total points earned this week</CardDescription>
+          <CardHeader>
+            <CardTitle className="text-lg">My Stats</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{currentWeekPoints}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Weekly Average</CardTitle>
-            <CardDescription>Average points per week</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{averageWeeklyPoints}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Post Types</CardTitle>
-            <CardDescription>Distribution by category</CardDescription>
-          </CardHeader>
-          <CardContent className="h-32">
-            {postTypeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={postTypeData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={50}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({name}: {name: string}) => name}
-                  >
-                    {postTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                No posts this week
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex flex-col items-center">
+                <div className="text-sm text-muted-foreground">Daily Total</div>
+                <div className="text-3xl font-bold">
+                  {dailyData.reduce((sum, day) => {
+                    // Find today's data
+                    const today = new Date();
+                    const todayStr = format(today, 'yyyy-MM-dd');
+                    return day.date === todayStr ? day.totalPoints : sum;
+                  }, 0)}
+                </div>
               </div>
-            )}
+              
+              <div className="flex flex-col items-center">
+                <div className="text-sm text-muted-foreground">Week Total</div>
+                <div className="text-3xl font-bold">{currentWeekPoints}</div>
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <div className="text-sm text-muted-foreground">Monthly Avg</div>
+                <div className="text-3xl font-bold">{averageWeeklyPoints * 4}</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
