@@ -2061,243 +2061,243 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add notifications count endpoint
-  router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const unreadCount = await db
-        .select({ count: sql<number>`count(*)::integer` })
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            eq(notifications.read, false)
-          )
-        );
-
-      res.json({ unreadCount: unreadCount[0].count });
-    } catch (error) {
-      logger.error('Error fetching unread notifications:', error);
-      res.status(500).json({
-        message: "Failed to fetch notification count",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Mark notifications as read
-  router.post("/api/notifications/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { notificationIds } = req.body;
-
-      if (!Array.isArray(notificationIds)) {
-        return res.status(400).json({ message: "Invalid notification IDs" });
-      }
-
-      await db
-        .update(notifications)
-        .set({ read: true })
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            sql`${notifications.id} = ANY(${notificationIds})`
-          )
-        );
-
-      res.json({ message: "Notifications marked as read" });
-    } catch (error) {
-      logger.error('Error marking notifications as read:', error);
-      res.status(500).json({
-        message: "Failed to mark notifications as read",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get user notifications
-  router.get("/api/notifications", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const userNotifications = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, req.user.id))
-        .orderBy(desc(notifications.createdAt));
-
-      res.json(userNotifications);
-    } catch (error) {
-      logger.error('Error fetching notifications:', error);
-      res.status(500).json({
-        message: "Failed to fetch notifications",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  router.patch("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID format" });
-      }
-
-      // Validate teamId if present
-      if (req.body.teamId !== undefined && req.body.teamId !== null) {
-        if (typeof req.body.teamId !== 'number') {
-          return res.status(400).json({ message: "Team ID must be a number" });
-        }
-        // Verify team exists
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, req.body.teamId))
-          .limit(1);
-
-        if (!team) {
-          return res.status(400).json({ message: "Team not found" });
-        }
-      }
-
-      // Prepare update data
-      const updateData = {
-        ...req.body,
-        teamJoinedAt: req.body.teamId ? new Date() : null
-      };
-
-      // Update user
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Return sanitized user data
-      res.setHeader('Content-Type', 'application/json');
-      res.json({
-        id: updatedUser.id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        teamId: updatedUser.teamId,
-        isAdmin: updatedUser.isAdmin,
-        isTeamLead: updatedUser.isTeamLead,
-        imageUrl: updatedUser.imageUrl,
-        teamJoinedAt: updatedUser.teamJoinedAt
-      });
-    } catch (error) {
-      logger.error('Error updating user:', error);
-      res.status(500).json({
-        message: "Failed to update user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const notificationId = parseInt(req.params.notificationId);
-      if (isNaN(notificationId)) {
-        return res.status(400).json({ message: "Invalid notification ID" });
-      }
-
-      // Set content type before sending response
-      res.setHeader('Content-Type', 'application/json');
-
-      const [updatedNotification] = await db
-        .update(notifications)
-        .set({ read: true })
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            eq(notifications.id, notificationId)
-          )
-        )
-        .returning();
-
-      if (!updatedNotification) {
-        return res.status(404).json({ message: "Notification not found" });
-      }
-
-      res.json({ message: "Notification marked as read", notification: updatedNotification });
-    } catch (error) {
-      logger.error('Error marking notification as read:', error);
-      res.status(500).json({
-        message: "Failed to mark notification as read",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add messages endpoints before return statement
-  router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { content, recipientId } = req.body;
-
-      // Validate recipient exists
-      const [recipient] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, parseInt(recipientId)))
-        .limit(1);
-
-      if (!recipient) {
-        return res.status(404).json({ message: "Recipient not found" });
-      }
-
-      // Create message
-      const [message] = await db
-        .insert(messages)
-        .values({
-          senderId: req.user.id,
-          recipientId: parseInt(recipientId),
-          content: content || null,
-          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
-          isRead: false,
-        })
-        .returning();
-
-      // Create notification for recipient
-      await db.insert(notifications).values({
-        userId: parseInt(recipientId),
-        title: "New Message",
-        message: `You have a new message from ${req.user.username}`,
-        read: false,
-      });
-
-      res.status(201).json(message);
-    } catch (error) {
-      logger.error('Error creating message:', error);
-      res.status(500).json({
-        message: "Failed to create message",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get messages between users
-  router.get("/api/messages/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const otherUserId = parseInt(req.params.userId);
-      if (isNaN(otherUserId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
+// COMMENTED OUT:   // Add notifications count endpoint
+// COMMENTED OUT:   router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const unreadCount = await db
+// COMMENTED OUT:         .select({ count: sql<number>`count(*)::integer` })
+// COMMENTED OUT:         .from(notifications)
+// COMMENTED OUT:         .where(
+// COMMENTED OUT:           and(
+// COMMENTED OUT:             eq(notifications.userId, req.user.id),
+// COMMENTED OUT:             eq(notifications.read, false)
+// COMMENTED OUT:           )
+// COMMENTED OUT:         );
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json({ unreadCount: unreadCount[0].count });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error fetching unread notifications:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to fetch notification count",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Mark notifications as read
+// COMMENTED OUT:   router.post("/api/notifications/read", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const { notificationIds } = req.body;
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!Array.isArray(notificationIds)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid notification IDs" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       await db
+// COMMENTED OUT:         .update(notifications)
+// COMMENTED OUT:         .set({ read: true })
+// COMMENTED OUT:         .where(
+// COMMENTED OUT:           and(
+// COMMENTED OUT:             eq(notifications.userId, req.user.id),
+// COMMENTED OUT:             sql`${notifications.id} = ANY(${notificationIds})`
+// COMMENTED OUT:           )
+// COMMENTED OUT:         );
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json({ message: "Notifications marked as read" });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error marking notifications as read:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to mark notifications as read",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Get user notifications
+// COMMENTED OUT:   router.get("/api/notifications", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const userNotifications = await db
+// COMMENTED OUT:         .select()
+// COMMENTED OUT:         .from(notifications)
+// COMMENTED OUT:         .where(eq(notifications.userId, req.user.id))
+// COMMENTED OUT:         .orderBy(desc(notifications.createdAt));
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json(userNotifications);
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error fetching notifications:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to fetch notifications",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   router.patch("/api/users/:userId", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user?.isAdmin) {
+// COMMENTED OUT:         return res.status(403).json({ message: "Not authorized" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       const userId = parseInt(req.params.userId);
+// COMMENTED OUT:       if (isNaN(userId)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid user ID format" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Validate teamId if present
+// COMMENTED OUT:       if (req.body.teamId !== undefined && req.body.teamId !== null) {
+// COMMENTED OUT:         if (typeof req.body.teamId !== 'number') {
+// COMMENTED OUT:           return res.status(400).json({ message: "Team ID must be a number" });
+// COMMENTED OUT:         }
+// COMMENTED OUT:         // Verify team exists
+// COMMENTED OUT:         const [team] = await db
+// COMMENTED OUT:           .select()
+// COMMENTED OUT:           .from(teams)
+// COMMENTED OUT:           .where(eq(teams.id, req.body.teamId))
+// COMMENTED OUT:           .limit(1);
+// COMMENTED OUT: 
+// COMMENTED OUT:         if (!team) {
+// COMMENTED OUT:           return res.status(400).json({ message: "Team not found" });
+// COMMENTED OUT:         }
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Prepare update data
+// COMMENTED OUT:       const updateData = {
+// COMMENTED OUT:         ...req.body,
+// COMMENTED OUT:         teamJoinedAt: req.body.teamId ? new Date() : null
+// COMMENTED OUT:       };
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Update user
+// COMMENTED OUT:       const [updatedUser] = await db
+// COMMENTED OUT:         .update(users)
+// COMMENTED OUT:         .set(updateData)
+// COMMENTED OUT:         .where(eq(users.id, userId))
+// COMMENTED OUT:         .returning();
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!updatedUser) {
+// COMMENTED OUT:         return res.status(404).json({ message: "User not found" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Return sanitized user data
+// COMMENTED OUT:       res.setHeader('Content-Type', 'application/json');
+// COMMENTED OUT:       res.json({
+// COMMENTED OUT:         id: updatedUser.id,
+// COMMENTED OUT:         username: updatedUser.username,
+// COMMENTED OUT:         email: updatedUser.email,
+// COMMENTED OUT:         teamId: updatedUser.teamId,
+// COMMENTED OUT:         isAdmin: updatedUser.isAdmin,
+// COMMENTED OUT:         isTeamLead: updatedUser.isTeamLead,
+// COMMENTED OUT:         imageUrl: updatedUser.imageUrl,
+// COMMENTED OUT:         teamJoinedAt: updatedUser.teamJoinedAt
+// COMMENTED OUT:       });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error updating user:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to update user",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const notificationId = parseInt(req.params.notificationId);
+// COMMENTED OUT:       if (isNaN(notificationId)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid notification ID" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Set content type before sending response
+// COMMENTED OUT:       res.setHeader('Content-Type', 'application/json');
+// COMMENTED OUT: 
+// COMMENTED OUT:       const [updatedNotification] = await db
+// COMMENTED OUT:         .update(notifications)
+// COMMENTED OUT:         .set({ read: true })
+// COMMENTED OUT:         .where(
+// COMMENTED OUT:           and(
+// COMMENTED OUT:             eq(notifications.userId, req.user.id),
+// COMMENTED OUT:             eq(notifications.id, notificationId)
+// COMMENTED OUT:           )
+// COMMENTED OUT:         )
+// COMMENTED OUT:         .returning();
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!updatedNotification) {
+// COMMENTED OUT:         return res.status(404).json({ message: "Notification not found" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json({ message: "Notification marked as read", notification: updatedNotification });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error marking notification as read:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to mark notification as read",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Add messages endpoints before return statement
+// COMMENTED OUT:   router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const { content, recipientId } = req.body;
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Validate recipient exists
+// COMMENTED OUT:       const [recipient] = await db
+// COMMENTED OUT:         .select()
+// COMMENTED OUT:         .from(users)
+// COMMENTED OUT:         .where(eq(users.id, parseInt(recipientId)))
+// COMMENTED OUT:         .limit(1);
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!recipient) {
+// COMMENTED OUT:         return res.status(404).json({ message: "Recipient not found" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Create message
+// COMMENTED OUT:       const [message] = await db
+// COMMENTED OUT:         .insert(messages)
+// COMMENTED OUT:         .values({
+// COMMENTED OUT:           senderId: req.user.id,
+// COMMENTED OUT:           recipientId: parseInt(recipientId),
+// COMMENTED OUT:           content: content || null,
+// COMMENTED OUT:           imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+// COMMENTED OUT:           isRead: false,
+// COMMENTED OUT:         })
+// COMMENTED OUT:         .returning();
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Create notification for recipient
+// COMMENTED OUT:       await db.insert(notifications).values({
+// COMMENTED OUT:         userId: parseInt(recipientId),
+// COMMENTED OUT:         title: "New Message",
+// COMMENTED OUT:         message: `You have a new message from ${req.user.username}`,
+// COMMENTED OUT:         read: false,
+// COMMENTED OUT:       });
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.status(201).json(message);
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error creating message:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to create message",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Get messages between users
+// COMMENTED OUT:   router.get("/api/messages/:userId", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const otherUserId = parseInt(req.params.userId);
+// COMMENTED OUT:       if (isNaN(otherUserId)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid user ID" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
       const userMessages = await db
         .select({
           id: messages.id,
