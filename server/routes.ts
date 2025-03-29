@@ -287,13 +287,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get the comments
       const comments = await storage.getPostComments(postId);
       
-      // Explicitly check if we have a valid array to return
-      if (!Array.isArray(comments)) {
-        logger.warn(`Comments for post ${postId} is not an array: ${typeof comments}`);
-        return res.json([]); // Return empty array instead of potentially invalid data
-      }
+      // Explicitly validate the response
+      const validComments = Array.isArray(comments) ? comments : [];
       
-      return res.json(comments);
+      // Log the response for debugging
+      logger.info(`Sending comments for post ${postId}:`, {
+        commentCount: validComments.length,
+        isArray: Array.isArray(validComments)
+      });
+      
+      return res.json(validComments);
     } catch (error) {
       logger.error('Error getting comments:', error);
       return res.status(500).json({ 
