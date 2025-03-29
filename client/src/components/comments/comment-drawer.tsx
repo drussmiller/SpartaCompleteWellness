@@ -80,11 +80,38 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+        // Add explicit request headers to ensure expected response format
+        const requestOptions = {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        };
+        
+        console.log(`Fetching comments for post ${postId}...`);
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`, undefined, requestOptions);
+        
         if (!res.ok) {
-          throw new Error(await res.text());
+          const errorText = await res.text();
+          console.error(`Comments API error (${res.status}):`, errorText);
+          throw new Error(errorText || `Failed to load comments (${res.status})`);
         }
-        return res.json();
+        
+        try {
+          const data = await res.json();
+          
+          // Validate response structure
+          if (!Array.isArray(data)) {
+            console.error("Comments API returned non-array data:", data);
+            return []; // Return empty array as fallback
+          }
+          
+          console.log(`Successfully loaded ${data.length} comments`);
+          return data;
+        } catch (jsonError) {
+          console.error("JSON parsing error in comments response:", jsonError);
+          throw new Error("Invalid comment data format");
+        }
       } catch (error) {
         console.error("Error fetching comments:", error);
         throw error;
@@ -100,13 +127,31 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         parentId: postId,
         points: 1
       };
-      const res = await apiRequest("POST", "/api/posts", {
+      
+      // Add proper headers for better error handling
+      const requestOptions = {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
         data: JSON.stringify(data)
-      });
+      };
+      
+      console.log(`Creating comment for post ${postId}...`);
+      const res = await apiRequest("POST", "/api/posts", requestOptions);
+      
       if (!res.ok) {
-        throw new Error(await res.text());
+        const errorText = await res.text();
+        console.error(`Comment creation error (${res.status}):`, errorText);
+        throw new Error(errorText || "Failed to create comment");
       }
-      return res.json();
+      
+      try {
+        return res.json();
+      } catch (jsonError) {
+        console.error("JSON parsing error in comment creation response:", jsonError);
+        throw new Error("Invalid response format when creating comment");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
