@@ -1,0 +1,2711 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import multer from "multer";
+import { db } from "./db";
+import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
+import {
+  posts,
+  notifications,
+  users,
+  teams,
+  activities,
+  workoutVideos,
+  measurements,
+  reactions,
+  insertTeamSchema,
+  insertPostSchema,
+  insertMeasurementSchema,
+  insertNotificationSchema,
+  insertVideoSchema,
+  insertActivitySchema,
+  insertUserSchema,
+  messages,
+  insertMessageSchema
+} from "@shared/schema";
+import { setupAuth, authenticate } from "./auth";
+import express, { Request, Response, NextFunction } from "express";
+import { Server as HttpServer } from "http";
+import mammoth from "mammoth";
+import bcrypt from "bcryptjs";
+import { requestLogger } from './middleware/request-logger';
+import { errorHandler } from './middleware/error-handler';
+import { logger } from './logger';
+import { WebSocketServer, WebSocket } from 'ws';
+
+// Configure multer for file uploads
+const multerStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+// Make sure upload directory exists
+import fs from 'fs';
+import path from 'path';
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const upload = multer({
+  storage: multerStorage,
+  limits: { 
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fieldSize: 25 * 1024 * 1024 // 25MB per field
+  }
+});
+
+export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
+  const router = express.Router();
+
+  // Add request logging middleware
+  router.use(requestLogger);
+
+  // Add CORS headers for all requests
+  router.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+    } else {
+      next();
+    }
+  });
+
+  // Modify the post counts endpoint to correctly handle timezones and counts
+  router.get("/api/posts/counts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      const dateParam = req.query.date ? new Date(req.query.date as string) : new Date();
+
+      // Convert server UTC time to user's local time
+      const userDate = new Date(dateParam.getTime() - (tzOffset * 60000));
+
+      // Create start and end of day in user's timezone
+      const startOfDay = new Date(
+        userDate.getFullYear(),
+        userDate.getMonth(),
+        userDate.getDate()
+      );
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      // For workout and memory verse posts, we need to check the week's total
+      const startOfWeek = new Date(startOfDay);
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to Monday
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 7); // Set to next Monday
+
+      // Add timezone offset back to get UTC times for query
+      const queryStartTime = new Date(startOfDay.getTime() + (tzOffset * 60000));
+      const queryEndTime = new Date(endOfDay.getTime() + (tzOffset * 60000));
+
+      // Query posts for the specified date by type
+      const result = await db
+        .select({
+          type: posts.type,
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, queryStartTime),
+            lt(posts.createdAt, queryEndTime),
+            isNull(posts.parentId), // Don't count comments
+            sql`${posts.type} IN ('food', 'workout', 'scripture', 'memory_verse')` // Explicitly filter only these types
+          )
+        )
+        .groupBy(posts.type);
+
+      // Get workout posts for the entire week
+      const workoutWeekResult = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, 'workout'),
+            gte(posts.createdAt, startOfWeek),
+            lt(posts.createdAt, endOfWeek),
+            isNull(posts.parentId)
+          )
+        );
+
+      const workoutWeekCount = workoutWeekResult[0]?.count || 0;
+      const workoutWeekPoints = workoutWeekResult[0]?.points || 0;
+
+      // Get memory verse posts for the week
+      const memoryVerseWeekResult = await db
+        .select({
+          count: sql<number>`count(*)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, 'memory_verse'),
+            gte(posts.createdAt, startOfWeek),
+            lt(posts.createdAt, endOfWeek),
+            isNull(posts.parentId)
+          )
+        );
+
+      const memoryVerseWeekCount = memoryVerseWeekResult[0]?.count || 0;
+
+      // Initialize counts with zeros
+      const counts = {
+        food: 0,
+        workout: 0,
+        scripture: 0,
+        memory_verse: 0,
+        miscellaneous: 0
+      };
+
+      // Update counts from query results
+      result.forEach(row => {
+        if (row.type in counts) {
+          counts[row.type as keyof typeof counts] = Number(row.count);
+        }
+      });
+
+      // Define maximum posts allowed per type
+      const maxPosts = {
+        food: 3, // 3 meals per day
+        workout: 1, // 1 workout per day
+        scripture: 1, // 1 scripture per day
+        memory_verse: 1, // 1 memory verse per week
+        miscellaneous: Infinity // No limit for miscellaneous posts
+      };
+
+      // Calculate remaining posts for each type
+      const remaining = {
+        food: Math.max(0, maxPosts.food - counts.food),
+        workout: Math.max(0, maxPosts.workout - counts.workout),
+        scripture: Math.max(0, maxPosts.scripture - counts.scripture),
+        memory_verse: Math.max(0, maxPosts.memory_verse - counts.memory_verse),
+        miscellaneous: Infinity
+      };
+
+      // Calculate if user can post for each type
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+      const canPost = {
+        food: counts.food < maxPosts.food && dayOfWeek !== 0, // No food posts on Sunday
+        workout: counts.workout < maxPosts.workout && 
+                workoutWeekPoints < 15, // Limit to 15 points per week (5 workouts)
+        scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
+        memory_verse: memoryVerseWeekCount === 0, // One memory verse per week
+        miscellaneous: true // Always allow miscellaneous posts
+      };
+
+      res.json({
+        counts,
+        canPost,
+        remaining,
+        maxPosts,
+        workoutWeekPoints,
+        workoutWeekCount,
+        memoryVerseWeekCount
+      });
+    } catch (error) {
+      logger.error('Error getting post counts:', error);
+      res.status(500).json({
+        message: "Failed to get post counts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add JSON content type header for all API routes
+  router.use('/api', (req, res, next) => {
+    res.setHeader('Content-Type', 'application/json');
+    next();
+  });
+
+  // Add custom error handler for better JSON errors
+  router.use('/api', (err: any, req: Request, res: Response, next: NextFunction) => {
+    logger.error('API Error:', err);
+    if (!res.headersSent) {
+      res.status(err.status || 500).json({
+        message: err.message || "Internal server error",
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      });
+    } else {
+      next(err);
+    }
+  });
+
+  // Simple ping endpoint to verify API functionality
+  router.get("/api/ping", (req, res) => {
+    logger.info('Ping request received', { requestId: req.requestId });
+    res.json({ message: "pong" });
+  });
+
+  // Protected endpoint example
+  router.get("/api/protected", authenticate, (req, res) => {
+    res.json({ message: "This is a protected endpoint", user: req.user?.id });
+  });
+
+  // Debug endpoint for posts - unprotected for testing
+  router.get("/api/debug/posts", async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const postType = req.query.type as string;
+
+      logger.info(`Debug posts request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
+
+      // Build the query conditions
+      let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+
+      // Add user filter if specified
+      if (userId) {
+        conditions.push(eq(posts.userId, userId));
+      }
+
+      // Add date range filters if specified
+      if (startDate) {
+        conditions.push(gte(posts.createdAt, startDate));
+      }
+
+      if (endDate) {
+        // Add one day to include the entire end date
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        conditions.push(lt(posts.createdAt, nextDay));
+      }
+
+      // Add type filter if specified and not 'all'
+      if (postType && postType !== 'all') {
+        conditions.push(eq(posts.type, postType));
+      }
+
+      // Join with users table to get author info
+      const query = db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          type: posts.type,
+          imageUrl: posts.imageUrl,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          points: posts.points,
+          userId: posts.userId,
+          author: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            imageUrl: users.imageUrl,
+            isAdmin: users.isAdmin
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(and(...conditions))
+        .orderBy(desc(posts.createdAt));
+
+      const result = await query;
+
+      logger.info(`Debug: Fetched ${result.length} posts`);
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in debug posts endpoint:', error);
+      res.status(500).json({
+        message: "Failed to fetch posts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Endpoint to get aggregated weekly data
+  router.get("/api/debug/posts/weekly-stats", authenticate, async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+      logger.info(`Weekly stats request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
+
+      if (!userId || !startDate || !endDate) {
+        return res.status(400).json({ message: "Missing required parameters: userId, startDate, and endDate are required" });
+      }
+
+      // Convert dates to PostgreSQL date format strings
+      const pgStartDate = startDate.toISOString();
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const pgEndDate = nextDay.toISOString();
+
+      // Use SQL to calculate weekly stats directly in the database
+      const weeklyStats = await db.execute(
+        sql`
+        SELECT 
+          date_trunc('week', "createdAt") AS week_start,
+          to_char(date_trunc('week', "createdAt"), 'YYYY-MM-DD') as week_label,
+          SUM(points) AS total_points,
+          COUNT(*) AS post_count,
+          SUM(CASE WHEN type = 'food' THEN points ELSE 0 END) AS food_points,
+          SUM(CASE WHEN type = 'workout' THEN points ELSE 0 END) AS workout_points,
+          SUM(CASE WHEN type = 'scripture' THEN points ELSE 0 END) AS scripture_points,
+          SUM(CASE WHEN type = 'memory_verse' THEN points ELSE 0 END) AS memory_verse_points,
+          SUM(CASE WHEN type = 'miscellaneous' THEN points ELSE 0 END) AS misc_points
+        FROM 
+          posts
+        WHERE 
+          "userId" = ${userId} 
+          AND "createdAt" >= ${pgStartDate}
+          AND "createdAt" < ${pgEndDate}
+          AND "parentId" IS NULL
+        GROUP BY 
+          date_trunc('week', "createdAt")
+        ORDER BY 
+          week_start DESC
+        `
+      );
+
+      // Calculate the average weekly points
+      let totalPoints = 0;
+      const weeks = weeklyStats.length;
+
+      if (weeks > 0) {
+        weeklyStats.forEach(week => {
+          totalPoints += parseInt(week.total_points);
+        });
+      }
+
+      const averageWeeklyPoints = weeks > 0 ? Math.round(totalPoints / weeks) : 0;
+
+      // Return both the weekly data and the average
+      res.json({
+        weeklyStats,
+        averageWeeklyPoints,
+        totalWeeks: weeks
+      });
+    } catch (error) {
+      logger.error('Error in weekly stats endpoint:', error);
+      res.status(500).json({
+        message: "Failed to fetch weekly stats",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Endpoint to get post type distribution
+  router.get("/api/debug/posts/type-distribution", authenticate, async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+      logger.info(`Type distribution request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
+
+      if (!userId || !startDate || !endDate) {
+        return res.status(400).json({ message: "Missing required parameters: userId, startDate, and endDate are required" });
+      }
+
+      // Convert dates to PostgreSQL date format strings
+      const pgStartDate = startDate.toISOString();
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const pgEndDate = nextDay.toISOString();
+
+      // Use SQL to calculate type distribution directly in the database
+      const typeDistribution = await db.execute(
+        sql`
+        SELECT 
+          type,
+          COUNT(*) AS count,
+          SUM(points) AS total_points
+        FROM 
+          posts
+        WHERE 
+          "userId" = ${userId} 
+          AND "createdAt" >= ${pgStartDate}
+          AND "createdAt" < ${pgEndDate}
+          AND "parentId" IS NULL
+        GROUP BY 
+          type
+        ORDER BY 
+          total_points DESC
+        `
+      );
+
+      // Transform the data for frontend pie chart
+      const chartData = typeDistribution.map(item => ({
+        name: item.type.charAt(0).toUpperCase() + item.type.slice(1).replace('_', ' '),
+        value: parseInt(item.count),
+        points: parseInt(item.total_points)
+      }));
+
+      res.json(chartData);
+    } catch (error) {
+      logger.error('Error in type distribution endpoint:', error);
+      res.status(500).json({
+        message: "Failed to fetch type distribution",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Main GET endpoint for fetching posts
+  router.get("/api/posts", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      // Get filter parameters
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const postType = req.query.type as string;
+
+      // Build the query conditions
+      let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+
+      // Add user filter if specified
+      if (userId) {
+        conditions.push(eq(posts.userId, userId));
+      }
+
+      // Add date range filters if specified
+      if (startDate) {
+        conditions.push(gte(posts.createdAt, startDate));
+      }
+
+      if (endDate) {
+        // Add one day to include the entire end date
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        conditions.push(lt(posts.createdAt, nextDay));
+      }
+
+      // Add type filter if specified and not 'all'
+      if (postType && postType !== 'all') {
+        conditions.push(eq(posts.type, postType));
+      }
+
+      // Join with users table to get author info
+      const query = db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          type: posts.type,
+          imageUrl: posts.imageUrl,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          points: posts.points,
+          userId: posts.userId,
+          author: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            imageUrl: users.imageUrl,
+            isAdmin: users.isAdmin
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(and(...conditions))
+        .orderBy(desc(posts.createdAt));
+
+      // Apply pagination only if not querying by date range (for analytics)
+      if (!startDate && !endDate) {
+        query.limit(limit).offset(offset);
+      }
+
+      const result = await query;
+
+      logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
+      res.json(result);
+    } catch (error) {
+      logger.error('Error fetching posts:', error);
+      res.status(500).json({
+        message: "Failed to fetch posts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+
+  // Teams endpoints
+  router.get("/api/teams", authenticate, async (req, res) => {
+    try {
+      const teams = await storage.getTeams();
+      res.json(teams);
+    } catch (error) {
+      logger.error('Error fetching teams:', error);
+      res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
+  // Add the missing POST endpoint for creating teams
+  router.post("/api/teams", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      logger.info('Creating team with data:', req.body);
+
+      const parsedData = insertTeamSchema.safeParse(req.body);
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid team data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const team = await storage.createTeam(parsedData.data);
+      res.status(201).json(team);
+    } catch (error) {
+      logger.error('Error creating team:', error);
+      res.status(500).json({
+        message: "Failed to create team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add team deletion endpoint
+  router.delete("/api/teams/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      logger.info(`Deleting team ${teamId} by user ${req.user.id}`);
+
+      // Delete the team from the database
+      await db.delete(teams).where(eq(teams.id, teamId));
+
+      // Return success response
+      res.status(200).json({ message: "Team deleted successfully" });
+    } catch (error) {
+      logger.error(`Error deleting team ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to delete team",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Activities endpoints
+  router.get("/api/activities", authenticate, async (req, res) => {
+    try {
+      const { week, day } = req.query;
+      const activities = await storage.getActivities(
+        week ? parseInt(week as string) : undefined,
+        day ? parseInt(day as string) : undefined
+      );
+      logger.info('Retrieved activities:', JSON.stringify(activities, null, 2));
+      res.json(activities);
+    } catch (error) {
+      logger.error('Error fetching activities:', error);
+      res.status(500).json({ message: "Failed to fetch activities" });
+    }
+  });
+
+  router.post("/api/activities", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      logger.info('Creating activity with data:', JSON.stringify(req.body, null, 2));
+
+      const parsedData = insertActivitySchema.safeParse(req.body);
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid activity data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      logger.info('Parsed activity data:', JSON.stringify(parsedData.data, null, 2));
+
+      try {
+        const activity = await storage.createActivity(parsedData.data);
+        res.status(201).json(activity);
+      } catch (dbError) {
+        logger.error('Database error:', dbError);
+        res.status(500).json({
+          message: "Failed to create activity in database",
+          error: dbError instanceof Error ? dbError.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      logger.error('Error creating activity:', error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to create activity",
+        error: error instanceof Error ? error.stack : undefined
+      });
+    }
+  });
+
+  router.put("/api/activities/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      logger.info('Updating activity with data:', JSON.stringify(req.body, null, 2));
+
+      const parsedData = insertActivitySchema.safeParse(req.body);
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid activity data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const [activity] = await db
+        .update(activities)
+        .set(parsedData.data)
+        .where(eq(activities.id, parseInt(req.params.id)))
+        .returning();
+      res.json(activity);
+    } catch (error) {
+      logger.error('Error updating activity:', error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update activity" });
+    }
+  });
+
+  router.delete("/api/activities/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const activityId = parseInt(req.params.id);
+      if (isNaN(activityId)) {
+        return res.status(400).json({ message: "Invalid activity ID" });
+      }
+
+      await storage.deleteActivity(activityId);
+      res.sendStatus(200);
+    } catch (error) {
+      logger.error('Error deleting activity:', error);
+      res.status(500).json({
+        message: "Failed to delete activity",
+        error: error instanceof Error ? error.message : undefined
+      });
+    }
+  });
+
+  router.get("/api/users", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      logger.error('Error fetching users:', error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Update the post creation endpoint to ensure correct point assignment
+  router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      let postData = req.body;
+      if (typeof postData.data === 'string') {
+        try {
+          postData = JSON.parse(postData.data);
+        } catch (parseError) {
+          logger.error("Error parsing post data:", parseError);
+          return res.status(400).json({ message: "Invalid post data format" });
+        }
+      }
+
+      // Calculate points based on post type
+      let points = 0;
+      const type = postData.type?.toLowerCase();
+      switch (type) {
+        case 'food':
+          points = 3; // 3 points per meal
+          break;
+        case 'workout':
+          points = 3; // 3 points per workout
+          break;
+        case 'scripture':
+          points = 3; // 3 points per scripture
+          break;
+        case 'memory_verse':
+          points = 10; // 10 points for memory verse
+          break;
+        case 'miscellaneous':
+        default:
+          points = 0;
+      }
+
+      // Log point assignment for verification
+      console.log('Assigning points:', { type, points });
+
+      // Log point calculation for verification
+      logger.info('Post points calculation:', {
+        type: postData.type,
+        assignedPoints: points
+      });
+
+      // For comments, handle separately
+      if (postData.type === "comment") {
+        if (!postData.parentId) {
+          logger.error("Missing parentId for comment");
+          return res.status(400).json({ message: "Parent post ID is required for comments" });
+        }
+
+        const post = await storage.createComment({
+          userId: req.user.id,
+          content: postData.content.trim(),
+          parentId: postData.parentId,
+          depth: postData.depth || 0
+        });
+        return res.status(201).json(post);
+      }
+
+      // Handle regular post creation
+      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+      // If there's an image, resize it for thumbnails
+      if (req.file) {
+        import('./middleware/image-resize').then(({ resizeUploadedImage }) => {
+          resizeUploadedImage(req.file!.path).catch(err => {
+            logger.error('Error during image resize:', err);
+          });
+        }).catch(err => {
+          logger.error('Error importing image resize module:', err);
+        });
+      }
+
+      const post = await db
+        .insert(posts)
+        .values({
+          userId: req.user.id,
+          type: postData.type,
+          content: postData.content?.trim() || '',
+          imageUrl: imageUrl,
+          points: points,
+          createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+        })
+        .returning()
+        .then(posts => posts[0]);
+
+      // Log the created post for verification
+      logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
+
+      res.status(201).json(post);
+    } catch (error) {
+      logger.error("Error in post creation:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to create post",
+        error: error instanceof Error ? error.stack : "Unknown error"
+      });
+    }
+  });
+
+  // Add this endpoint before the return httpServer statement with improved error handling
+  router.delete("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Get the post ID as a string to handle timestamp-based IDs
+      const postIdStr = req.params.id;
+
+      // Log the raw post ID for debugging
+      logger.info(`Raw post ID from request: ${postIdStr}`);
+
+      // Validate it's a valid number
+      if (!/^\d+$/.test(postIdStr)) {
+        return res.status(400).json({ message: "Invalid post ID format" });
+      }
+
+      // Convert to numeric ID for database operations
+      const postId = parseInt(postIdStr);
+
+      // Use Drizzle's built-in query methods which handle parameter binding correctly
+      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
+
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId));
+
+      if (!post) {
+        logger.info(`Post ${postId} not found during deletion attempt`);
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user is admin or the post owner
+      if (!req.user.isAdmin && post.userId !== req.user.id) {
+        logger.info(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Use a transaction to ensure all deletes succeed or none do
+      await db.transaction(async (tx) => {
+        try {
+          // First delete any reactions that reference this post
+          await tx
+            .delete(reactions)
+            .where(eq(reactions.postId, postId));
+          logger.info(`Deleted reactions for post ${postId}`);
+
+          // Then delete any comments on the post
+          await tx
+            .delete(posts)
+            .where(eq(posts.parentId, postId));
+          logger.info(`Deleted comments for post ${postId}`);
+
+          // Finally delete the post itself
+          await tx
+            .delete(posts)
+            .where(eq(posts.id, postId));
+          logger.info(`Post ${postId} successfully deleted`);
+        } catch (txError) {
+          logger.error(`Transaction error while deleting post ${postId}:`, txError);
+          throw txError; // Re-throw to roll back the transaction
+        }
+      });
+
+      return res.status(200).json({ 
+        message: "Post deleted successfully",
+        id: postId 
+      });
+    } catch (error) {
+      logger.error("Error deleting post:", error);
+      return res.status(500).json({
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Update daily score check endpoint
+  // Added a GET endpoint for testing as well as the main POST endpoint
+  router.get("/api/check-daily-scores", async (req, res) => {
+    try {
+      const userId = parseInt(req.query.userId as string);
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      logger.info(`Manual check daily scores for user ${userId} with timezone offset ${tzOffset}`);
+
+      // Forward to the post endpoint
+      // We're creating a fake request with the necessary properties
+      await checkDailyScores({ body: { userId, tzOffset } } as Request, res);
+    } catch (error) {
+      logger.error('Error in GET daily score check:', error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add the actual POST endpoint for the daily scores check
+  router.post("/api/check-daily-scores", async (req, res) => {
+    try {
+      // This is the proper handler for incoming scheduled requests
+      await checkDailyScores(req, res);
+    } catch (error) {
+      logger.error('Error in POST daily score check:', error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Main function to check daily scores
+  const checkDailyScores = async (req: Request, res: Response) => {
+    try {
+      logger.info('Starting daily score check');
+
+      // Get all users using a more explicit query to avoid type issues
+      const allUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId
+        })
+        .from(users);
+
+      logger.info(`Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`);
+      logger.info(`User details: ${JSON.stringify(allUsers, null, 2)}`);
+
+      // Get yesterday's date with proper timezone handling
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay();
+
+      logger.info(`Checking points from ${yesterday.toISOString()} to ${today.toISOString()}`);
+
+      // Process each user
+      for (const user of allUsers) {
+        try {
+          logger.info(`Processing user ${user.id} (${user.username})`);
+
+          // Get user's posts from yesterday with detailed logging
+          const userPostsResult = await db
+            .select({
+              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
+              types: sql<string[]>`array_agg(distinct ${posts.type})`,
+              count: sql<number>`count(*)::integer`
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, user.id),
+                gte(posts.createdAt, yesterday),
+                lt(posts.createdAt, today),
+                isNull(posts.parentId) // Don't count comments
+              )
+            );
+
+          const userPosts = userPostsResult[0];
+          const totalPoints = userPosts?.points || 0;
+          const postTypes = userPosts?.types || [];
+          const postCount = userPosts?.count || 0;
+
+          // Expected points vary by day:
+          // Monday-Friday: 15 points (9 food + 3 workout + 3 scripture)
+          // Saturday: 22 points (9 food + 3 scripture + 10 memory verse)
+          // Sunday: 3 points (just scripture)
+          const expectedPoints = dayOfWeek === 6 ? 22 : (dayOfWeek === 0 ? 3 : 15);
+
+          logger.info(`User ${user.id} (${user.username}) activity:`, {
+            totalPoints,
+            expectedPoints,
+            postTypes,
+            postCount,
+            dayOfWeek,
+            date: yesterday.toISOString()
+          });
+
+          // If points are less than expected, send notification
+          if (totalPoints < expectedPoints) {
+            // Get a more detailed breakdown of what was posted yesterday
+            const postsByType = await db
+              .select({
+                type: posts.type,
+                count: sql<number>`count(*)::integer`
+              })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, user.id),
+                  gte(posts.createdAt, yesterday),
+                  lt(posts.createdAt, today),
+                  isNull(posts.parentId) // Don't count comments
+                )
+              )
+              .groupBy(posts.type);
+
+            // Create maps to track what's posted
+            const counts: Record<string, number> = {
+              food: 0,
+              workout: 0,
+              scripture: 0,
+              memory_verse: 0
+            };
+
+            // Fill in actual counts
+            postsByType.forEach(post => {
+              if (post.type in counts) {
+                counts[post.type] = post.count;
+              }
+            });
+
+            // Determine what should have been posted yesterday
+            const missedItems = [];
+            const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Yesterday's day
+
+            // For food, we need 3 posts every day except Sunday
+            if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
+              missedItems.push(`${3 - counts.food} meals`);
+            }
+
+            // For workout, we need 1 per day, max 5 per week
+            if (yesterdayDayOfWeek !== 0 && counts.workout < 1) {
+              missedItems.push("your workout");
+            }
+
+            // For scripture, we need 1 every day
+            if (counts.scripture < 1) {
+              missedItems.push("your scripture reading");
+            }
+
+            // For memory verse, we need 1 on Saturday
+            if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
+              missedItems.push("your memory verse");
+            }
+
+            // Create the notification message
+            let message = "";
+            if (missedItems.length > 0) {
+              message = "Yesterday you missed posting ";
+
+              if (missedItems.length === 1) {
+                message += missedItems[0] + ".";
+              } else if (missedItems.length === 2) {
+                message += missedItems[0] + " and " + missedItems[1] + ".";
+              } else {
+                const lastItem = missedItems.pop();
+                message += missedItems.join(", ") + ", and " + lastItem + ".";
+              }
+            } else {
+              message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
+            }
+
+            const notification = {
+              userId: user.id,
+              title: "Daily Reminder",
+              message,
+              read: false,
+              createdAt: new Date(),
+              type: "reminder",
+              sound: "default" // Add sound property for mobile notifications
+            };
+
+            const [insertedNotification] = await db
+              .insert(notifications)
+              .values(notification)
+              .returning();
+
+            logger.info(`Created notification for user ${user.id}:`, {
+              notificationId: insertedNotification.id,
+              userId: user.id,
+              message: notification.message
+            });
+
+            // Send via WebSocket if user is connected
+            const userClients = clients.get(user.id);
+            if (userClients && userClients.size > 0) {
+              const notificationData = {
+                id: insertedNotification.id,
+                title: notification.title,
+                message: notification.message,
+                sound: notification.sound,
+                type: notification.type
+              };
+
+              broadcastNotification(user.id, notificationData);
+            }
+          } else {
+            logger.info(`No notification needed for user ${user.id}, met daily goal`);
+          }
+        } catch (userError) {
+          logger.error(`Error processing user ${user.id}:`, userError);
+          continue; // Continue with next user even if one fails
+        }
+      }
+
+      res.json({ message: "Daily score check completed" });
+    } catch (error) {
+      logger.error('Error in daily score check:', error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
+
+  // Add activity progress endpoint before the return httpServer statement
+  router.get("/api/activities/current", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      // Helper function to convert UTC date to user's local time
+      const toUserLocalTime = (utcDate: Date): Date => {
+        const localDate = new Date(utcDate.getTime());
+        localDate.setMinutes(localDate.getMinutes() - tzOffset);
+        return localDate;
+      };
+
+      // Get user's team join date
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user?.teamJoinedAt) {
+        return res.status(400).json({ message: "User has no team join date" });
+      }
+
+      // Program start date (2/24/2025)
+      const programStart = new Date('2025-02-24T00:00:00.000Z');
+
+      // Get current time in user's timezone
+      const utcNow = new Date();
+      const userLocalNow = toUserLocalTime(utcNow);
+
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Debug info
+      console.log('Date Calculations:', {
+        timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+        utcNow: utcNow.toISOString(),
+        userLocalNow: userLocalNow.toLocaleString(),
+        daysSinceStart,
+        weekNumber,
+        dayNumber,
+        progressDays
+      });
+
+      res.json({
+        currentWeek: weekNumber,
+        currentDay: dayNumber,
+        daysSinceStart,
+        progressDays,
+        debug: {
+          timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+          localTime: userLocalNow.toLocaleString()
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error calculating activity dates:', error);
+      res.status(500).json({
+        message: "Failed to calculate activity dates",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Measurements endpoints
+  router.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      logger.info('Creating measurement with data:', req.body);
+
+      const parsedData = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+        date: new Date()
+      });
+
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const measurement = await db
+        .insert(measurements)
+        .values(parsedData.data)
+        .returning();
+
+      res.status(201).json(measurement[0]);
+    } catch (error) {
+      logger.error('Error creating measurement:', error);
+      res.status(500).json({
+        message: "Failed to create measurement",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.get("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+      if (req.user.id !== userId && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to view these measurements" });
+      }
+
+      const userMeasurements = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(desc(measurements.date));
+
+      res.json(userMeasurements);
+    } catch (error) {
+      logger.error('Error fetching measurements:', error);
+      res.status(500).json({
+        message: "Failed to fetch measurements",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add daily points endpoint with corrected calculation and improved logging
+  router.get("/api/points/daily", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Parse the date more carefully to handle timezone issues
+      let dateStr = (req.query.date as string) || new Date().toISOString();
+
+      // If the date doesn't include time, add a default time
+      if (dateStr.indexOf('T') === -1) {
+        dateStr = `${dateStr}T00:00:00.000Z`;
+      }
+
+      const date = new Date(dateStr);
+      const userId = parseInt(req.query.userId as string);
+
+      if (isNaN(userId)) {
+        logger.error(`Invalid userId: ${req.query.userId}`);
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Normalize to beginning of day in UTC to ensure consistent date handling
+      const startOfDay = new Date(date);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      // Log request parameters for debugging
+      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`, {
+        requestedDate: dateStr,
+        normalizedStartDate: startOfDay.toISOString(),
+        normalizedEndDate: endOfDay.toISOString()
+      });
+
+      // Calculate total points for the day with detailed logging
+      const result = await db
+        .select({
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId) // Don't count comments in the total
+          )
+        );
+
+      // Get post details for debugging
+      const postDetails = await db
+        .select({
+          id: posts.id,
+          type: posts.type,
+          points: posts.points,
+          createdAt: posts.createdAt
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId)
+          )
+        );
+
+      const totalPoints = result[0]?.points || 0;
+
+      // Log the response details
+      logger.info(`Daily points for user ${userId}: ${totalPoints}`, {
+        date: date.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+        postCount: postDetails.length,
+        posts: JSON.stringify(postDetails)
+      });
+
+      // Ensure content type is set
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ points: totalPoints });
+    } catch (error) {
+      logger.error('Error calculating daily points:', error);
+      res.status(500).json({
+        message: "Failed to calculate daily points",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add notifications count endpoint
+  router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)::integer` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.read, false)
+          )
+        );
+
+      res.json({ unreadCount: unreadCount[0].count });
+    } catch (error) {
+      logger.error('Error fetching unread notifications:', error);
+      res.status(500).json({
+        message: "Failed to fetch notification count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark notifications as read
+  router.post("/api/notifications/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationIds } = req.body;
+
+      if (!Array.isArray(notificationIds)) {
+        return res.status(400).json({ message: "Invalid notification IDs" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            sql`${notifications.id} = ANY(${notificationIds})`
+          )
+        );
+
+      res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+      logger.error('Error marking notifications as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get user notifications
+  router.get("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt));
+
+      res.json(userNotifications);
+    } catch (error) {
+      logger.error('Error fetching notifications:', error);
+      res.status(500).json({
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      // Validate teamId if present
+      if (req.body.teamId !== undefined && req.body.teamId !== null) {
+        if (typeof req.body.teamId !== 'number') {
+          return res.status(400).json({ message: "Team ID must be a number" });
+        }
+        // Verify team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, req.body.teamId))
+          .limit(1);
+
+        if (!team) {
+          return res.status(400).json({ message: "Team not found" });
+        }
+      }
+
+      // Prepare update data
+      const updateData = {
+        ...req.body,
+        teamJoinedAt: req.body.teamId ? new Date() : null
+      };
+
+      // Update user
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Return sanitized user data
+      res.setHeader('Content-Type', 'application/json');
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        teamId: updatedUser.teamId,
+        isAdmin: updatedUser.isAdmin,
+        isTeamLead: updatedUser.isTeamLead,
+        imageUrl: updatedUser.imageUrl,
+        teamJoinedAt: updatedUser.teamJoinedAt
+      });
+    } catch (error) {
+      logger.error('Error updating user:', error);
+      res.status(500).json({
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.notificationId);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      // Set content type before sending response
+      res.setHeader('Content-Type', 'application/json');
+
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.id, notificationId)
+          )
+        )
+        .returning();
+
+      if (!updatedNotification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      res.json({ message: "Notification marked as read", notification: updatedNotification });
+    } catch (error) {
+      logger.error('Error marking notification as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notification as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints before return statement
+  router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { content, recipientId } = req.body;
+
+      // Validate recipient exists
+      const [recipient] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(recipientId)))
+        .limit(1);
+
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient not found" });
+      }
+
+      // Create message
+      const [message] = await db
+        .insert(messages)
+        .values({
+          senderId: req.user.id,
+          recipientId: parseInt(recipientId),
+          content: content || null,
+          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+          isRead: false,
+        })
+        .returning();
+
+      // Create notification for recipient
+      await db.insert(notifications).values({
+        userId: parseInt(recipientId),
+        title: "New Message",
+        message: `You have a new message from ${req.user.username}`,
+        read: false,
+      });
+
+      res.status(201).json(message);
+    } catch (error) {
+      logger.error('Error creating message:', error);
+      res.status(500).json({
+        message: "Failed to create message",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get messages between users
+  router.get("/api/messages/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const userMessages = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          imageUrl: messages.imageUrl,
+          createdAt: messages.createdAt,
+          isRead: messages.isRead,
+          sender: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+          },
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(messages.senderId, req.user.id),
+              eq(messages.recipientId, otherUserId)
+            ),
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.recipientId, req.user.id)
+            )
+          )
+        )
+        .orderBy(messages.createdAt);
+
+      res.json(userMessages);
+    } catch (error) {
+      logger.error('Error fetching messages:', error);
+      res.status(500).json({
+        message: "Failed to fetch messages",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get unread messages count
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const [result] = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ unreadCount: result.count });
+    } catch (error) {
+      logger.error('Error getting unread message count:', error);
+      res.status(500).json({
+        message: "Failed to get unread message count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark messages as read
+  router.post("/api/messages/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { senderId } = req.body;
+      if (!senderId) {
+        return res.status(400).json({ message: "Sender ID is required" });
+      }
+
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.senderId, parseInt(senderId)),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      logger.error('Error marking messages as read:', error);
+      res.status(500).json({
+        message: "Failed to mark messages as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints before return statement
+  router.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get all senders who have sent unread messages to the current user
+      const unreadBySender = await db
+        .select({
+          senderId: messages.senderId,
+          hasUnread: sql<boolean>`true`
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        )
+        .groupBy(messages.senderId);
+
+      // Convert to a map of senderId -> hasUnread
+      const unreadMap = Object.fromEntries(
+        unreadBySender.map(({ senderId }) => [senderId, true])
+      );
+
+      res.json(unreadMap);
+    } catch (error) {
+      logger.error('Error getting unread messages by sender:', error);
+      res.status(500).json({
+        message: "Failed to get unread messages by sender",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add this endpoint before the app.use(router) line
+  router.post("/api/users/notification-schedule", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationTime } = req.body;
+
+      // Validate time format (HH:mm)
+      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationTime)) {
+        return res.status(400).json({ message: "Invalid time format. Use HH:mm format." });
+      }
+
+      // Update user's notification time preference
+      const [updatedUser] = await db
+        .update(users)
+        .set({ notificationTime })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Error updating notification schedule:', error);
+      res.status(500).json({
+        message: "Failed to update notification schedule",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.post("/api/notifications/read-all", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const result = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, req.user.id))
+        .returning();
+
+      logger.info(`Marked ${result.length} notifications as read for user ${req.user.id}`);
+
+      // Set content type and ensure proper JSON response
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ 
+        message: "All notifications marked as read",
+        count: result.length
+      });
+    } catch (error) {
+      logger.error('Error marking all notifications as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add activity progress endpoint before the return httpServer statement
+  router.get("/api/activities/current", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      // Helper function to convert UTC date to user's local time
+      const toUserLocalTime = (utcDate: Date): Date => {
+        const localDate = new Date(utcDate.getTime());
+        localDate.setMinutes(localDate.getMinutes() - tzOffset);
+        return localDate;
+      };
+
+      // Get user's team join date
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user?.teamJoinedAt) {
+        return res.status(400).json({ message: "User has no team join date" });
+      }
+
+      // Program start date (2/24/2025)
+      const programStart = new Date('2025-02-24T00:00:00.000Z');
+
+      // Get current time in user's timezone
+      const utcNow = new Date();
+      const userLocalNow = toUserLocalTime(utcNow);
+
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Debug info
+      console.log('Date Calculations:', {
+        timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+        utcNow: utcNow.toISOString(),
+        userLocalNow: userLocalNow.toLocaleString(),
+        daysSinceStart,
+        weekNumber,
+        dayNumber,
+        progressDays
+      });
+
+      res.json({
+        currentWeek: weekNumber,
+        currentDay: dayNumber,
+        daysSinceStart,
+        progressDays,
+        debug: {
+          timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+          localTime: userLocalNow.toLocaleString()
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error calculating activity dates:', error);
+      res.status(500).json({
+        message: "Failed to calculate activity dates",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Measurements endpoints
+  router.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      logger.info('Creating measurement with data:', req.body);
+
+      const parsedData = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+        date: new Date()
+      });
+
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const measurement = await db
+        .insert(measurements)
+        .values(parsedData.data)
+        .returning();
+
+      res.status(201).json(measurement[0]);
+    } catch (error) {
+      logger.error('Error creating measurement:', error);
+      res.status(500).json({
+        message: "Failed to create measurement",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.get("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+      if (req.user.id !== userId && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to view these measurements" });
+      }
+
+      const userMeasurements = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(desc(measurements.date));
+
+      res.json(userMeasurements);
+    } catch (error) {
+      logger.error('Error fetching measurements:', error);
+      res.status(500).json({
+        message: "Failed to fetch measurements",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add daily points endpoint with corrected calculation and improved logging
+  router.get("/api/points/daily", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Parse the date more carefully to handle timezone issues
+      let dateStr = (req.query.date as string) || new Date().toISOString();
+
+      // If the date doesn't include time, add a default time
+      if (dateStr.indexOf('T') === -1) {
+        dateStr = `${dateStr}T00:00:00.000Z`;
+      }
+
+      const date = new Date(dateStr);
+      const userId = parseInt(req.query.userId as string);
+
+      if (isNaN(userId)) {
+        logger.error(`Invalid userId: ${req.query.userId}`);
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Normalize to beginning of day in UTC to ensure consistent date handling
+      const startOfDay = new Date(date);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      // Log request parameters for debugging
+      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`, {
+        requestedDate: dateStr,
+        normalizedStartDate: startOfDay.toISOString(),
+        normalizedEndDate: endOfDay.toISOString()
+      });
+
+      // Calculate total points for the day with detailed logging
+      const result = await db
+        .select({
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId) // Don't count comments in the total
+          )
+        );
+
+      // Get post details for debugging
+      const postDetails = await db
+        .select({
+          id: posts.id,
+          type: posts.type,
+          points: posts.points,
+          createdAt: posts.createdAt
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId)
+          )
+        );
+
+      const totalPoints = result[0]?.points || 0;
+
+      // Log the response details
+      logger.info(`Daily points for user ${userId}: ${totalPoints}`, {
+        date: date.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+        postCount: postDetails.length,
+        posts: JSON.stringify(postDetails)
+      });
+
+      // Ensure content type is set
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ points: totalPoints });
+    } catch (error) {
+      logger.error('Error calculating daily points:', error);
+      res.status(500).json({
+        message: "Failed to calculate daily points",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+// COMMENTED OUT:   // Add notifications count endpoint
+// COMMENTED OUT:   router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const unreadCount = await db
+// COMMENTED OUT:         .select({ count: sql<number>`count(*)::integer` })
+// COMMENTED OUT:         .from(notifications)
+// COMMENTED OUT:         .where(
+// COMMENTED OUT:           and(
+// COMMENTED OUT:             eq(notifications.userId, req.user.id),
+// COMMENTED OUT:             eq(notifications.read, false)
+// COMMENTED OUT:           )
+// COMMENTED OUT:         );
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json({ unreadCount: unreadCount[0].count });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error fetching unread notifications:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to fetch notification count",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Mark notifications as read
+// COMMENTED OUT:   router.post("/api/notifications/read", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const { notificationIds } = req.body;
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!Array.isArray(notificationIds)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid notification IDs" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       await db
+// COMMENTED OUT:         .update(notifications)
+// COMMENTED OUT:         .set({ read: true })
+// COMMENTED OUT:         .where(
+// COMMENTED OUT:           and(
+// COMMENTED OUT:             eq(notifications.userId, req.user.id),
+// COMMENTED OUT:             sql`${notifications.id} = ANY(${notificationIds})`
+// COMMENTED OUT:           )
+// COMMENTED OUT:         );
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json({ message: "Notifications marked as read" });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error marking notifications as read:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to mark notifications as read",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Get user notifications
+// COMMENTED OUT:   router.get("/api/notifications", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const userNotifications = await db
+// COMMENTED OUT:         .select()
+// COMMENTED OUT:         .from(notifications)
+// COMMENTED OUT:         .where(eq(notifications.userId, req.user.id))
+// COMMENTED OUT:         .orderBy(desc(notifications.createdAt));
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json(userNotifications);
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error fetching notifications:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to fetch notifications",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   router.patch("/api/users/:userId", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user?.isAdmin) {
+// COMMENTED OUT:         return res.status(403).json({ message: "Not authorized" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       const userId = parseInt(req.params.userId);
+// COMMENTED OUT:       if (isNaN(userId)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid user ID format" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Validate teamId if present
+// COMMENTED OUT:       if (req.body.teamId !== undefined && req.body.teamId !== null) {
+// COMMENTED OUT:         if (typeof req.body.teamId !== 'number') {
+// COMMENTED OUT:           return res.status(400).json({ message: "Team ID must be a number" });
+// COMMENTED OUT:         }
+// COMMENTED OUT:         // Verify team exists
+// COMMENTED OUT:         const [team] = await db
+// COMMENTED OUT:           .select()
+// COMMENTED OUT:           .from(teams)
+// COMMENTED OUT:           .where(eq(teams.id, req.body.teamId))
+// COMMENTED OUT:           .limit(1);
+// COMMENTED OUT: 
+// COMMENTED OUT:         if (!team) {
+// COMMENTED OUT:           return res.status(400).json({ message: "Team not found" });
+// COMMENTED OUT:         }
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Prepare update data
+// COMMENTED OUT:       const updateData = {
+// COMMENTED OUT:         ...req.body,
+// COMMENTED OUT:         teamJoinedAt: req.body.teamId ? new Date() : null
+// COMMENTED OUT:       };
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Update user
+// COMMENTED OUT:       const [updatedUser] = await db
+// COMMENTED OUT:         .update(users)
+// COMMENTED OUT:         .set(updateData)
+// COMMENTED OUT:         .where(eq(users.id, userId))
+// COMMENTED OUT:         .returning();
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!updatedUser) {
+// COMMENTED OUT:         return res.status(404).json({ message: "User not found" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Return sanitized user data
+// COMMENTED OUT:       res.setHeader('Content-Type', 'application/json');
+// COMMENTED OUT:       res.json({
+// COMMENTED OUT:         id: updatedUser.id,
+// COMMENTED OUT:         username: updatedUser.username,
+// COMMENTED OUT:         email: updatedUser.email,
+// COMMENTED OUT:         teamId: updatedUser.teamId,
+// COMMENTED OUT:         isAdmin: updatedUser.isAdmin,
+// COMMENTED OUT:         isTeamLead: updatedUser.isTeamLead,
+// COMMENTED OUT:         imageUrl: updatedUser.imageUrl,
+// COMMENTED OUT:         teamJoinedAt: updatedUser.teamJoinedAt
+// COMMENTED OUT:       });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error updating user:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to update user",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const notificationId = parseInt(req.params.notificationId);
+// COMMENTED OUT:       if (isNaN(notificationId)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid notification ID" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Set content type before sending response
+// COMMENTED OUT:       res.setHeader('Content-Type', 'application/json');
+// COMMENTED OUT: 
+// COMMENTED OUT:       const [updatedNotification] = await db
+// COMMENTED OUT:         .update(notifications)
+// COMMENTED OUT:         .set({ read: true })
+// COMMENTED OUT:         .where(
+// COMMENTED OUT:           and(
+// COMMENTED OUT:             eq(notifications.userId, req.user.id),
+// COMMENTED OUT:             eq(notifications.id, notificationId)
+// COMMENTED OUT:           )
+// COMMENTED OUT:         )
+// COMMENTED OUT:         .returning();
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!updatedNotification) {
+// COMMENTED OUT:         return res.status(404).json({ message: "Notification not found" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.json({ message: "Notification marked as read", notification: updatedNotification });
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error marking notification as read:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to mark notification as read",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Add messages endpoints before return statement
+// COMMENTED OUT:   router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const { content, recipientId } = req.body;
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Validate recipient exists
+// COMMENTED OUT:       const [recipient] = await db
+// COMMENTED OUT:         .select()
+// COMMENTED OUT:         .from(users)
+// COMMENTED OUT:         .where(eq(users.id, parseInt(recipientId)))
+// COMMENTED OUT:         .limit(1);
+// COMMENTED OUT: 
+// COMMENTED OUT:       if (!recipient) {
+// COMMENTED OUT:         return res.status(404).json({ message: "Recipient not found" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Create message
+// COMMENTED OUT:       const [message] = await db
+// COMMENTED OUT:         .insert(messages)
+// COMMENTED OUT:         .values({
+// COMMENTED OUT:           senderId: req.user.id,
+// COMMENTED OUT:           recipientId: parseInt(recipientId),
+// COMMENTED OUT:           content: content || null,
+// COMMENTED OUT:           imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+// COMMENTED OUT:           isRead: false,
+// COMMENTED OUT:         })
+// COMMENTED OUT:         .returning();
+// COMMENTED OUT: 
+// COMMENTED OUT:       // Create notification for recipient
+// COMMENTED OUT:       await db.insert(notifications).values({
+// COMMENTED OUT:         userId: parseInt(recipientId),
+// COMMENTED OUT:         title: "New Message",
+// COMMENTED OUT:         message: `You have a new message from ${req.user.username}`,
+// COMMENTED OUT:         read: false,
+// COMMENTED OUT:       });
+// COMMENTED OUT: 
+// COMMENTED OUT:       res.status(201).json(message);
+// COMMENTED OUT:     } catch (error) {
+// COMMENTED OUT:       logger.error('Error creating message:', error);
+// COMMENTED OUT:       res.status(500).json({
+// COMMENTED OUT:         message: "Failed to create message",
+// COMMENTED OUT:         error: error instanceof Error ? error.message : "Unknown error"
+// COMMENTED OUT:       });
+// COMMENTED OUT:     }
+// COMMENTED OUT:   });
+// COMMENTED OUT: 
+// COMMENTED OUT:   // Get messages between users
+// COMMENTED OUT:   router.get("/api/messages/:userId", authenticate, async (req, res) => {
+// COMMENTED OUT:     try {
+// COMMENTED OUT:       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+// COMMENTED OUT: 
+// COMMENTED OUT:       const otherUserId = parseInt(req.params.userId);
+// COMMENTED OUT:       if (isNaN(otherUserId)) {
+// COMMENTED OUT:         return res.status(400).json({ message: "Invalid user ID" });
+// COMMENTED OUT:       }
+// COMMENTED OUT: 
+      const userMessages = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          imageUrl: messages.imageUrl,
+          createdAt: messages.createdAt,
+          isRead: messages.isRead,
+          sender: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+          },
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(messages.senderId, req.user.id),
+              eq(messages.recipientId, otherUserId)
+            ),
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.recipientId, req.user.id)
+            )
+          )
+        )
+        .orderBy(messages.createdAt);
+
+      res.json(userMessages);
+    } catch (error) {
+      logger.error('Error fetching messages:', error);
+      res.status(500).json({
+        message: "Failed to fetch messages",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get unread messages count
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const [result] = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ unreadCount: result.count });
+    } catch (error) {
+      logger.error('Error getting unread message count:', error);
+      res.status(500).json({
+        message: "Failed to get unread message count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark messages as read
+  router.post("/api/messages/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { senderId } = req.body;
+      if (!senderId) {
+        return res.status(400).json({ message: "Sender ID is required" });
+      }
+
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.senderId, parseInt(senderId)),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      logger.error('Error marking messages as read:', error);
+      res.status(500).json({
+        message: "Failed to mark messages as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints before return statement
+  router.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get all senders who have sent unread messages to the current user
+      const unreadBySender = await db
+        .select({
+          senderId: messages.senderId,
+          hasUnread: sql<boolean>`true`
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        )
+        .groupBy(messages.senderId);
+
+      // Convert to a map of senderId -> hasUnread
+      const unreadMap = Object.fromEntries(
+        unreadBySender.map(({ senderId }) => [senderId, true])
+      );
+
+      res.json(unreadMap);
+    } catch (error) {
+      logger.error('Error getting unread messages by sender:', error);
+      res.status(500).json({
+        message: "Failed to get unread messages by sender",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add this endpoint before the app.use(router) line
+  router.post("/api/users/notification-schedule", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationTime } = req.body;
+
+      // Validate time format (HH:mm)
+      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationTime)) {
+        return res.status(400).json({ message: "Invalid time format. Use HH:mm format." });
+      }
+
+      // Update user's notification time preference
+      const [updatedUser] = await db
+        .update(users)
+        .set({ notificationTime })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Error updating notification schedule:', error);
+      res.status(500).json({
+        message: "Failed to update notification schedule",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.use(router);
+
+  // Create HTTP server
+  const httpServer = createServer(app);
+
+  // Create WebSocket server on a distinct path
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws'
+  });
+
+  // Map to store active client connections by user ID
+  const clients = new Map<number, Set<WebSocket>>();
+
+  // Handle WebSocket connections
+  wss.on('connection', (ws: WebSocket) => {
+    logger.info('WebSocket client connected');
+    let userId: number | null = null;
+
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+
+        // Handle authentication message
+        if (data.type === 'auth') {
+          userId = parseInt(data.userId);
+          if (isNaN(userId)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
+            return;
+          }
+
+          // Add client to the user's connections
+          if (!clients.has(userId)) {
+            clients.set(userId, new Set());
+          }
+          clients.get(userId)?.add(ws);
+
+          logger.info(`WebSocket user ${userId} authenticated`);
+          ws.send(JSON.stringify({ type: 'auth_success', userId }));
+        }
+      } catch (error) {
+        logger.error('WebSocket message error:', error);
+        ws.send(JSON.stringify({ 
+          type: 'error', 
+          message: 'Invalid message format' 
+        }));
+      }
+    });
+
+    // Handle client disconnection
+    ws.on('close', () => {
+      if (userId) {
+        const userClients = clients.get(userId);
+        if (userClients) {
+          userClients.delete(ws);
+          if (userClients.size === 0) {
+            clients.delete(userId);
+          }
+        }
+        logger.info(`WebSocket client ${userId} disconnected`);
+      } else {
+        logger.info('Unauthenticated WebSocket client disconnected');
+      }
+    });
+
+    // Send initial connection message
+    ws.send(JSON.stringify({ 
+      type: 'connected', 
+      message: 'Connected to WebSocket server' 
+    }));
+  });
+
+  // Add a function to broadcast notifications to users
+  const broadcastNotification = (userId: number, notification: any) => {
+    const userClients = clients.get(userId);
+    if (userClients && userClients.size > 0) {
+      const message = JSON.stringify({
+        type: 'notification',
+        data: notification
+      });
+
+      userClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
+      });
+
+      logger.info(`Notification sent to user ${userId}`);
+    }
+  };
+
+  // Expose the broadcast function to the global scope
+  (app as any).broadcastNotification = broadcastNotification;
+
+  // User stats endpoint for simplified My Stats section
+  router.get("/api/user/stats", authenticate, async (req, res, next) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userId = req.user.id;
+
+      // Get timezone offset in minutes directly from the client
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      logger.info(`Stats requested for user ${userId} with timezone offset: ${tzOffset} minutes`);
+
+      // For debugging, let's see what posts this user has today in UTC
+      const postsToday = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, new Date(new Date().setHours(0, 0, 0, 0))),
+            lte(posts.createdAt, new Date(new Date().setHours(23, 59, 59, 999)))
+          )
+        );
+
+      logger.info(`Posts for user ${userId} today in UTC: ${postsToday.length}`);
+
+      // Calculate the local date for the user based on their timezone
+      const now = new Date();
+      // First convert to UTC by removing the local timezone offset
+      const utcTime = now.getTime();
+      // Then adjust to user's local time by applying their timezone offset (reversed since getTimezoneOffset returns the opposite)
+      const userLocalTime = new Date(utcTime - (tzOffset * 60000));
+
+      logger.info(`User's local time (${userId}): ${userLocalTime.toISOString()}`);
+
+      // Use this adjusted date to create proper day boundaries in the user's local timezone
+      const startOfDay = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth(),
+        userLocalTime.getDate(),
+        0, 0, 0, 0
+      );
+      // Convert back to UTC for database query
+      const startOfDayUTC = new Date(startOfDay.getTime() + (tzOffset * 60000));
+
+      const endOfDay = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth(),
+        userLocalTime.getDate(),
+        23, 59, 59, 999
+      );
+      // Convert back to UTC for database query
+      const endOfDayUTC = new Date(endOfDay.getTime() + (tzOffset * 60000));
+
+      logger.info(`Date range for daily stats (in user's local timezone): ${startOfDayUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
+
+      const dailyPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDayUTC),
+            lte(posts.createdAt, endOfDayUTC)
+          )
+        );
+
+      logger.info(`Found ${dailyPosts.length} posts for user ${userId} for today in their local timezone`);
+
+      let dailyPoints = 0;
+      for (const post of dailyPosts) {
+        if (post.type === 'food') dailyPoints += 3;
+        else if (post.type === 'workout') dailyPoints += 3;
+        else if (post.type === 'scripture') dailyPoints += 3;
+        else if (post.type === 'memory_verse') dailyPoints += 10;
+      }
+
+      // Weekly stats - Start from Sunday in user's local time
+      const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const startOfWeek = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth(),
+        userLocalTime.getDate() - dayOfWeek, // Go back to the start of the week (Sunday)
+        0, 0, 0, 0
+      );
+      // Convert back to UTC for database query
+      const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
+
+      logger.info(`Date range for weekly stats (in user's local timezone): ${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
+
+      const weeklyPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfWeekUTC),
+            lte(posts.createdAt, endOfDayUTC)
+          )
+        );
+
+      let weeklyPoints = 0;
+      for (const post of weeklyPosts) {
+        if (post.type === 'food') weeklyPoints += 3;
+        else if (post.type === 'workout') weeklyPoints += 3;
+        else if (post.type === 'scripture') weeklyPoints += 3;
+        else if (post.type === 'memory_verse') weeklyPoints += 10;
+      }
+
+      // Monthly average - Three months ago in user's local time
+      const threeMonthsAgo = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth() - 3,
+        userLocalTime.getDate(),
+        0, 0, 0, 0
+      );
+      // Convert back to UTC for database query
+      const threeMonthsAgoUTC = new Date(threeMonthsAgo.getTime() + (tzOffset * 60000));
+
+      logger.info(`Date range for monthly stats (in user's local timezone): ${threeMonthsAgoUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
+
+      const monthlyPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, threeMonthsAgoUTC),
+            lte(posts.createdAt, endOfDayUTC)
+          )
+        );
+
+      let totalPoints = 0;
+      for (const post of monthlyPosts) {
+        if (post.type === 'food') totalPoints += 3;
+        else if (post.type === 'workout') totalPoints += 3;
+        else if (post.type === 'scripture') totalPoints += 3;
+        else if (post.type === 'memory_verse') totalPoints += 10;
+      }
+
+      // Calculate monthly average (total points divided by 3 months)
+      const monthlyAvgPoints = Math.round(totalPoints / 3);
+
+      logger.info(`Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, monthlyAvg=${monthlyAvgPoints}`);
+      res.json({
+        dailyPoints,
+        weeklyPoints,
+        monthlyAvgPoints
+      });
+    } catch (error) {
+      logger.error(`Error calculating user stats: ${error instanceof Error ? error.message : String(error)}`);
+      next(error);
+    }
+  });
+
+  // Log server startup
+  logger.info('Server routes and WebSocket registered successfully');
+
+  return httpServer;
+};
