@@ -278,8 +278,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = (page - 1) * limit;
       
+      // Get filter parameters
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const postType = req.query.type as string;
+      
+      // Build the query conditions
+      let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+      
+      // Add user filter if specified
+      if (userId) {
+        conditions.push(eq(posts.userId, userId));
+      }
+      
+      // Add date range filters if specified
+      if (startDate) {
+        conditions.push(gte(posts.createdAt, startDate));
+      }
+      
+      if (endDate) {
+        // Add one day to include the entire end date
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        conditions.push(lt(posts.createdAt, nextDay));
+      }
+      
+      // Add type filter if specified and not 'all'
+      if (postType && postType !== 'all') {
+        conditions.push(eq(posts.type, postType));
+      }
+      
       // Join with users table to get author info
-      const result = await db
+      const query = db
         .select({
           id: posts.id,
           content: posts.content,
@@ -288,6 +319,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
+          userId: posts.userId,
           author: {
             id: users.id,
             username: users.username,
@@ -298,12 +330,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
         .from(posts)
         .leftJoin(users, eq(posts.userId, users.id))
-        .where(isNull(posts.parentId)) // Only get top-level posts, not comments
-        .orderBy(desc(posts.createdAt))
-        .limit(limit)
-        .offset(offset);
+        .where(and(...conditions))
+        .orderBy(desc(posts.createdAt));
       
-      logger.info(`Fetched ${result.length} posts for page ${page}`);
+      // Apply pagination only if not querying by date range (for analytics)
+      if (!startDate && !endDate) {
+        query.limit(limit).offset(offset);
+      }
+      
+      const result = await query;
+      
+      logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
       res.json(result);
     } catch (error) {
       logger.error('Error fetching posts:', error);
