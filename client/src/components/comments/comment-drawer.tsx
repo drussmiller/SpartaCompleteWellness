@@ -79,28 +79,17 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     refetchInterval: false, // Disable automatic periodic refetching
     refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
-        try {
-          const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-
-          if (!res.ok) {
-            if (res.status === 404) {
-              return [];
-            }
-            throw new Error(`Failed to load comments (${res.status})`);
-          }
-
-          const data = await res.json();
-          if (!Array.isArray(data)) {
-            console.warn("Comments API returned non-array data:", data);
-            return [];
-          }
-
-          return data;
-        } catch (error) {
-          console.error("Error fetching comments:", error);
-          return [];
-        }
-      },
+      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+      if (!res.ok) return [];
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        return Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.error("Failed to parse comments response:", e);
+        return [];
+      }
+    },
     retry: false
   });
 
