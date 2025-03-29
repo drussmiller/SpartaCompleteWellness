@@ -263,6 +263,81 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
+  
+  // Debug endpoint for posts - unprotected for testing
+  router.get("/api/debug/posts", async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+      
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const postType = req.query.type as string;
+      
+      logger.info(`Debug posts request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
+      
+      // Build the query conditions
+      let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+      
+      // Add user filter if specified
+      if (userId) {
+        conditions.push(eq(posts.userId, userId));
+      }
+      
+      // Add date range filters if specified
+      if (startDate) {
+        conditions.push(gte(posts.createdAt, startDate));
+      }
+      
+      if (endDate) {
+        // Add one day to include the entire end date
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        conditions.push(lt(posts.createdAt, nextDay));
+      }
+      
+      // Add type filter if specified and not 'all'
+      if (postType && postType !== 'all') {
+        conditions.push(eq(posts.type, postType));
+      }
+      
+      // Join with users table to get author info
+      const query = db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          type: posts.type,
+          imageUrl: posts.imageUrl,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          points: posts.points,
+          userId: posts.userId,
+          author: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            imageUrl: users.imageUrl,
+            isAdmin: users.isAdmin
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(and(...conditions))
+        .orderBy(desc(posts.createdAt));
+      
+      const result = await query;
+      
+      logger.info(`Debug: Fetched ${result.length} posts`);
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in debug posts endpoint:', error);
+      res.status(500).json({
+        message: "Failed to fetch posts",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Main GET endpoint for fetching posts
   router.get("/api/posts", authenticate, async (req, res) => {

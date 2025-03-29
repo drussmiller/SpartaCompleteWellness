@@ -19,6 +19,7 @@ import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
 import NotificationSchedulePage from "@/pages/notification-schedule-page"; //Import the new page component
+import { DebugApi } from "./debug-api"; // Import our debug component
 
 
 // Separate auth-dependent rendering
@@ -66,6 +67,7 @@ function MainContent() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
+          <Route path="/debug" component={() => <DebugApi />} />
           {user.isAdmin && <Route path="/admin" component={AdminPage} />}
           <Route path="*">Not found</Route>
         </Switch>
