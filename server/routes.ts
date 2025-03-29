@@ -1775,23 +1775,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const userId = req.user.id;
       const today = new Date();
       
-      // Get timezone offset in minutes
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      // Get timezone offset in minutes (negative because getTimezoneOffset() returns the opposite of what we need)
+      const tzOffset = -(parseInt(req.query.tzOffset as string) || 0);
       
-      // Adjust date for timezone if offset provided
-      let adjustedDate = today;
-      if (tzOffset) {
-        adjustedDate = new Date(today.getTime() + tzOffset * 60000);
-      }
+      logger.info(`Stats requested for user ${userId} with timezone offset: ${tzOffset} minutes`);
       
-      // Daily stats (today's points)
-      const startOfDay = new Date(adjustedDate);
-      startOfDay.setHours(0, 0, 0, 0);
+      // Adjust date for timezone - we use negative offset because browser's getTimezoneOffset() 
+      // returns minutes *behind* UTC, so we need to add them to go from UTC to local
+      const adjustedDate = new Date(today.getTime() + tzOffset * 60000);
       
-      const endOfDay = new Date(adjustedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Daily stats (today's points) - use UTC methods to prevent automatic timezone conversion
+      const startOfDay = new Date(Date.UTC(
+        adjustedDate.getUTCFullYear(),
+        adjustedDate.getUTCMonth(),
+        adjustedDate.getUTCDate(),
+        0, 0, 0, 0
+      ));
       
-      logger.info(`Calculating user stats for userId: ${userId}`);
+      const endOfDay = new Date(Date.UTC(
+        adjustedDate.getUTCFullYear(),
+        adjustedDate.getUTCMonth(),
+        adjustedDate.getUTCDate(),
+        23, 59, 59, 999
+      ));
+      
+      logger.info(`Date range for daily stats: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
       
       const dailyPosts = await db.select()
         .from(posts)
@@ -1811,10 +1819,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         else if (post.type === 'memory_verse') dailyPoints += 10;
       }
 
-      // Weekly stats
-      const startOfWeek = new Date(adjustedDate);
-      startOfWeek.setDate(adjustedDate.getDate() - adjustedDate.getDay()); // Go back to the start of the week (Sunday)
-      startOfWeek.setHours(0, 0, 0, 0);
+      // Weekly stats - find the most recent Sunday and go from there
+      const dayOfWeek = adjustedDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+      const startOfWeek = new Date(Date.UTC(
+        adjustedDate.getUTCFullYear(),
+        adjustedDate.getUTCMonth(),
+        adjustedDate.getUTCDate() - dayOfWeek, // Go back to the start of the week (Sunday)
+        0, 0, 0, 0
+      ));
+      
+      logger.info(`Date range for weekly stats: ${startOfWeek.toISOString()} to ${endOfDay.toISOString()}`);
       
       const weeklyPosts = await db.select()
         .from(posts)
@@ -1835,9 +1849,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Monthly average
-      const threeMonthsAgo = new Date(adjustedDate);
-      threeMonthsAgo.setMonth(adjustedDate.getMonth() - 3);
-      threeMonthsAgo.setHours(0, 0, 0, 0);
+      const threeMonthsAgo = new Date(Date.UTC(
+        adjustedDate.getUTCFullYear(),
+        adjustedDate.getUTCMonth() - 3,
+        adjustedDate.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      
+      logger.info(`Date range for monthly stats: ${threeMonthsAgo.toISOString()} to ${endOfDay.toISOString()}`);
       
       const monthlyPosts = await db.select()
         .from(posts)

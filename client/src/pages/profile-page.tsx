@@ -36,9 +36,15 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     enabled: !!authUser,
   });
   
-  // Add user stats query
+  // Add user stats query with timezone offset
+  const tzOffset = new Date().getTimezoneOffset();
   const { data: userStats, isLoading: statsLoading } = useQuery({
-    queryKey: ["/api/user/stats"],
+    queryKey: ["/api/user/stats", tzOffset],
+    queryFn: async () => {
+      const response = await fetch(`/api/user/stats?tzOffset=${tzOffset}`);
+      if (!response.ok) throw new Error('Failed to fetch user stats');
+      return response.json();
+    },
     staleTime: 60000, // 1 minute
     enabled: !!authUser,
   });
