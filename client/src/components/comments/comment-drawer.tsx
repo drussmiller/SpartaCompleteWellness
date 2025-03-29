@@ -13,240 +13,94 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect } from "react";
 
 interface CommentDrawerProps {
+  post: Post;
   postId: number;
-  isOpen: boolean;
-  onClose: () => void;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
 }
 
-export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
+export function CommentDrawer({ post, postId, onOpenChange, open }: CommentDrawerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
-  const drawerRef = useRef<HTMLDivElement>(null);
 
-  // Focus on the comment input when the drawer opens
-  useEffect(() => {
-    if (isOpen) {
-      // Try multiple approaches to ensure focus
-      const focusTextarea = () => {
-        // Method 1: Direct focus using our ref
-        if (commentInputRef.current) {
-          commentInputRef.current.focus();
-          console.log("Direct focus attempt");
-        }
-
-        // Method 2: Find by query selector if ref didn't work
-        setTimeout(() => {
-          const textarea = document.querySelector('.comment-drawer textarea') as HTMLTextAreaElement;
-          if (textarea) {
-            textarea.focus();
-            console.log("Query selector focus attempt");
-          }
-        }, 200);
-      };
-
-      // Try focusing multiple times with increasing delays
-      [50, 150, 300, 600, 1000].forEach(delay => {
-        setTimeout(focusTextarea, delay);
-      });
-    }
-  }, [isOpen]);
-
-  // Fetch original post
-  const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
-    queryKey: ["/api/posts", postId],
-    enabled: isOpen && Boolean(postId),
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", `/api/posts/${postId}`);
-        if (!res.ok) {
-          throw new Error(await res.text());
-        }
-        return res.json();
-      } catch (error) {
-        console.error("Error fetching post:", error);
-        throw error;
-      }
-    }
-  });
-
-  // Fetch comments
-  const { data: comments = [], isLoading: areCommentsLoading, error: commentsError } = useQuery({
+  const { data: comments = [], isLoading: isLoadingComments } = useQuery({
     queryKey: ["/api/posts/comments", postId],
-    enabled: isOpen && Boolean(postId),
-    staleTime: 60000, // Increase to 60 seconds
-    refetchOnWindowFocus: false,
-    refetchInterval: false, // Disable automatic periodic refetching
-    refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
-      if (!res.ok) return [];
-      const text = await res.text();
       try {
-        const data = JSON.parse(text);
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+        if (!res.ok) {
+          if (res.status === 404) return [];
+          throw new Error(`Failed to load comments (${res.status})`);
+        }
+        const data = await res.json();
         return Array.isArray(data) ? data : [];
-      } catch (e) {
-        console.error("Failed to parse comments response:", e);
+      } catch (error) {
+        console.error("Error loading comments:", error);
         return [];
       }
-    },
-    retry: false
+    }
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const data = {
-        type: "comment",
-        content: content.trim(),
-        parentId: postId,
-        points: 1
-      };
-
-      // Add proper headers for better error handling
-      const requestOptions = {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        data: JSON.stringify(data)
-      };
-
-      console.log(`Creating comment for post ${postId}...`);
-      const res = await apiRequest("POST", "/api/posts", requestOptions);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Comment creation error (${res.status}):`, errorText);
-        throw new Error(errorText || "Failed to create comment");
-      }
-
-      try {
-        return res.json();
-      } catch (jsonError) {
-        console.error("JSON parsing error in comment creation response:", jsonError);
-        throw new Error("Invalid response format when creating comment");
-      }
+    mutationFn: async ({ content }: { content: string }) => {
+      const res = await apiRequest("POST", `/api/posts/comments/${postId}`, { content });
+      if (!res.ok) throw new Error("Failed to create comment");
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
       toast({
-        description: "Comment posted successfully",
+        title: "Success",
+        description: "Comment added successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: () => {
       toast({
+        title: "Error",
+        description: "Failed to add comment",
         variant: "destructive",
-        description: error.message || "Failed to post comment",
       });
     },
   });
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent 
-        side="right" 
-        ref={drawerRef}
-        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full comment-drawer"
-        style={{ width: '100vw', maxWidth: '100vw' }}
-        onOpenAutoFocus={(e) => {
-          // Prevent default autofocus and handle it ourselves
-          e.preventDefault();
-          // Do nothing here - we'll handle it in the useEffect
-        }}
-        onMouseDown={(e) => {
-          // Prevent losing focus when clicking outside the textarea but inside the drawer
-          if (e.target instanceof HTMLTextAreaElement) {
-            // Allow normal behavior when clicking the textarea itself
-            return;
-          }
-          // For all other elements, prevent default behavior that might steal focus
-          e.preventDefault();
-          // Focus the textarea on next tick
-          setTimeout(() => {
-            const textarea = document.getElementById('comment-textarea');
-            if (textarea) {
-              (textarea as HTMLTextAreaElement).focus();
-            }
-          }, 0);
-        }}
-      >
-        <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
-          {/* Fixed header bar */}
-          <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
-            {/* Back button */}
-            <SheetClose className="absolute top-7 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-              <ChevronLeft className="text-xl" />
-              <span className="sr-only">Close</span>
-            </SheetClose>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-lg p-0 bg-background">
+        <div className="flex flex-col h-[100dvh]">
+          <div className="border-b">
+            <div className="p-4 flex items-center gap-2">
+              <SheetClose className="rounded-full hover:bg-accent p-2">
+                <ChevronLeft className="h-5 w-5" />
+              </SheetClose>
+              <h2 className="font-semibold">Comments</h2>
+            </div>
+            <PostView post={post} />
+          </div>
 
-            {/* Post author info */}
-            {originalPost?.author && (
-              <div className="flex flex-col items-start justify-center h-full ml-14">
-                {/* User info and time */}
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
-                      alt={originalPost.author.username}
-                    />
-                    <AvatarFallback>
-                      {originalPost.author.username?.[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xl font-semibold">{originalPost.author.username}</span>
-                  {originalPost?.createdAt && (
-                    <>
-                      <span className="text-muted-foreground">-</span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
-                      </span>
-                    </>
-                  )}
-                </div>
+          <div className="flex-1 overflow-auto">
+            {isLoadingComments ? (
+              <div className="flex justify-center items-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin" />
               </div>
+            ) : comments.length === 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                No comments yet. Be the first to comment!
+              </div>
+            ) : (
+              <CommentList comments={comments} postId={postId} />
             )}
           </div>
 
-          {/* Content area - adjust top margin to account for header */}
-          <div className="flex-1 overflow-hidden mt-20">
-            {/* Show loading state */}
-            {(isPostLoading || areCommentsLoading) && (
-              <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin" />
-              </div>
-            )}
-
-            {/* Show errors if any */}
-            {(postError || commentsError) && (
-              <div className="flex-1 flex items-center justify-center text-destructive">
-                <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
-              </div>
-            )}
-
-            {/* Post and comments section with scrolling */}
-            {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
-              <>
-                <div className="flex-1 overflow-y-auto h-[calc(100vh-12rem)] p-4 space-y-6 w-full max-w-none">
-                  {originalPost && <PostView post={originalPost} />}
-                  <CommentList comments={comments} postId={postId} />
-                </div>
-
-                {/* Fixed comment form at the bottom */}
-                <div className="p-4 border-t bg-background">
-                  <CommentForm
-                    onSubmit={async (content) => {
-                      await createCommentMutation.mutateAsync(content);
-                    }}
-                    isSubmitting={createCommentMutation.isPending}
-                    ref={commentInputRef}
-                    inputRef={commentInputRef}
-                  />
-                  {/* No longer need the invisible helper button */}
-                </div>
-              </>
-            )}
-          </div>
+          {user && (
+            <div className="border-t p-4 bg-background">
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync({ content });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+              />
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
