@@ -16,15 +16,16 @@ const MOBILE_BREAKPOINT = 768;
 
 const mobileScrollStyles = {
   WebkitOverflowScrolling: 'touch',
-  scrollBehavior: 'smooth' as const,
-  overflowY: 'auto',
+  scrollBehavior: 'auto' as const,
+  overflowY: 'scroll',
   WebkitMomentumScrolling: 'touch',
-  overscrollBehavior: 'contain' as const,
-  touchAction: 'pan-y' as const,
+  overscrollBehavior: 'touch' as const,
+  touchAction: 'pan-y pinch-zoom' as const,
   scrollSnapType: 'none' as const,
-  scrollDecelerationRate: '0.95' as const,
-  WebkitOverflowScrollingMomentum: 1.2,
-  msOverflowStyle: '-ms-autohiding-scrollbar' as const,
+  WebkitOverflowScrollingMomentum: 2,
+  msOverflowStyle: 'none' as const,
+  WebkitScrollSnapType: 'none',
+  scrollDecelerationRate: '0.80' as const,
 };
 
 export default function HomePage() {
