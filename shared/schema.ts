@@ -80,6 +80,8 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  type: text("type").default("general"),
+  sound: text("sound"),
 });
 
 export const videos = pgTable("videos", {
@@ -204,7 +206,9 @@ export const insertNotificationSchema = createInsertSchema(notifications)
     title: z.string().min(1, "Notification title is required"),
     message: z.string().min(1, "Notification message is required"),
     read: z.boolean().default(false),
-    createdAt: z.date().optional().default(() => new Date())
+    createdAt: z.date().optional().default(() => new Date()),
+    type: z.string().default("general"),
+    sound: z.string().optional()
   });
 export const insertVideoSchema = createInsertSchema(videos);
 export const insertActivitySchema = createInsertSchema(activities)

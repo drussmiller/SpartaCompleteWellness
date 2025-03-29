@@ -72,6 +72,47 @@ export function useNotifications(suppressToasts = false) {
             case "notification":
               // Show notification toast only if should show toasts
               if (data.data) {
+                // Check if notification has a sound property
+                if (data.data.sound) {
+                  try {
+                    // Play a notification sound
+                    // For mobile devices, we need to create and play an audio element 
+                    // instead of using the Web Audio API which may require user interaction
+                    const audio = new Audio();
+                    
+                    // Use "default" sound or custom sounds if specified
+                    if (data.data.sound === "default") {
+                      // Use a short notification sound
+                      audio.src = "/notification.wav"; // Use the WAV file we downloaded
+                    } else {
+                      // You could add other sound options here
+                      audio.src = `/sounds/${data.data.sound}.mp3`;
+                    }
+                    
+                    // Add event logging
+                    audio.oncanplay = () => console.log("Audio is ready to play");
+                    audio.onplay = () => console.log("Audio started playing");
+                    audio.onerror = (e) => console.error("Audio error:", e);
+                    
+                    // Play the sound - note that on mobile this might require a user interaction first
+                    const playPromise = audio.play();
+                    
+                    if (playPromise !== undefined) {
+                      playPromise
+                        .then(() => {
+                          console.log("Audio playback started successfully");
+                        })
+                        .catch(error => {
+                          console.error("Playback prevented by browser:", error);
+                          // On mobile, autoplay might be prevented without user interaction
+                          // We could show a visual indicator that there's a notification instead
+                        });
+                    }
+                  } catch (soundError) {
+                    console.error("Error playing notification sound:", soundError);
+                  }
+                }
+                
                 if (shouldShowToasts) {
                   toast({
                     title: data.data.title,
@@ -82,6 +123,47 @@ export function useNotifications(suppressToasts = false) {
                 
                 // Update notifications in the cache
                 queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                
+                // For mobile notifications, also show a mobile notification if browser supports it
+                if (data.data.type === "reminder" && "Notification" in window) {
+                  try {
+                    // Check if we have permission to show notifications
+                    if (Notification.permission === "granted") {
+                      // Create and show the notification
+                      const notification = new Notification(data.data.title, {
+                        body: data.data.message,
+                        icon: "/notification-icon.png" // Add your notification icon
+                        // Note: 'vibrate' is available in the specification but not all browsers support it
+                        // It will be ignored on unsupported browsers
+                      });
+                      
+                      // Handle notification click
+                      notification.onclick = () => {
+                        window.focus();
+                        notification.close();
+                      };
+                    } 
+                    // If we don't have permission and it hasn't been denied, request it
+                    else if (Notification.permission !== "denied") {
+                      Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                          // If permission was just granted, show the notification
+                          const notification = new Notification(data.data.title, {
+                            body: data.data.message,
+                            icon: "/notification-icon.png"
+                          });
+                          
+                          notification.onclick = () => {
+                            window.focus();
+                            notification.close();
+                          };
+                        }
+                      });
+                    }
+                  } catch (notificationError) {
+                    console.error("Error showing browser notification:", notificationError);
+                  }
+                }
               }
               break;
             
