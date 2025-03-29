@@ -1767,6 +1767,111 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Expose the broadcast function to the global scope
   (app as any).broadcastNotification = broadcastNotification;
 
+  // User stats endpoint for simplified My Stats section
+  router.get("/api/user/stats", authenticate, async (req, res, next) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const userId = req.user.id;
+      const today = new Date();
+      
+      // Get timezone offset in minutes
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      
+      // Adjust date for timezone if offset provided
+      let adjustedDate = today;
+      if (tzOffset) {
+        adjustedDate = new Date(today.getTime() + tzOffset * 60000);
+      }
+      
+      // Daily stats (today's points)
+      const startOfDay = new Date(adjustedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(adjustedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      logger.info(`Calculating user stats for userId: ${userId}`);
+      
+      const dailyPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lte(posts.createdAt, endOfDay)
+          )
+        );
+
+      let dailyPoints = 0;
+      for (const post of dailyPosts) {
+        if (post.type === 'food') dailyPoints += 3;
+        else if (post.type === 'workout') dailyPoints += 3;
+        else if (post.type === 'scripture') dailyPoints += 3;
+        else if (post.type === 'memory_verse') dailyPoints += 10;
+      }
+
+      // Weekly stats
+      const startOfWeek = new Date(adjustedDate);
+      startOfWeek.setDate(adjustedDate.getDate() - adjustedDate.getDay()); // Go back to the start of the week (Sunday)
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const weeklyPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfWeek),
+            lte(posts.createdAt, endOfDay)
+          )
+        );
+
+      let weeklyPoints = 0;
+      for (const post of weeklyPosts) {
+        if (post.type === 'food') weeklyPoints += 3;
+        else if (post.type === 'workout') weeklyPoints += 3;
+        else if (post.type === 'scripture') weeklyPoints += 3;
+        else if (post.type === 'memory_verse') weeklyPoints += 10;
+      }
+
+      // Monthly average
+      const threeMonthsAgo = new Date(adjustedDate);
+      threeMonthsAgo.setMonth(adjustedDate.getMonth() - 3);
+      threeMonthsAgo.setHours(0, 0, 0, 0);
+      
+      const monthlyPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, threeMonthsAgo),
+            lte(posts.createdAt, endOfDay)
+          )
+        );
+
+      let totalPoints = 0;
+      for (const post of monthlyPosts) {
+        if (post.type === 'food') totalPoints += 3;
+        else if (post.type === 'workout') totalPoints += 3;
+        else if (post.type === 'scripture') totalPoints += 3;
+        else if (post.type === 'memory_verse') totalPoints += 10;
+      }
+      
+      // Calculate monthly average (total points divided by 3 months)
+      const monthlyAvgPoints = Math.round(totalPoints / 3);
+
+      logger.info(`Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, monthlyAvg=${monthlyAvgPoints}`);
+      res.json({
+        dailyPoints,
+        weeklyPoints,
+        monthlyAvgPoints
+      });
+    } catch (error) {
+      logger.error(`Error calculating user stats: ${error instanceof Error ? error.message : String(error)}`);
+      next(error);
+    }
+  });
+
   // Log server startup
   logger.info('Server routes and WebSocket registered successfully');
 

@@ -176,6 +176,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
 
       toast({
         title: "Success",
