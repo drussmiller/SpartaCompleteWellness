@@ -16,14 +16,35 @@ export function useCommentCount(postId: number) {
           return { count: 0 };
         }
 
-        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
+        // Add explicit request headers to ensure expected response format
+        const requestOptions = {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        };
+
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`, undefined, requestOptions);
         if (!res.ok) {
           console.warn(`Comment count request for post ${postId} failed with status ${res.status}`);
           return { count: 0 };
         }
-        const comments = await res.json();
-        // The API returns an array of comments, so we use the length as the count
-        return { count: Array.isArray(comments) ? comments.length : 0 };
+
+        try {
+          // Add explicit JSON parsing error handling
+          const comments = await res.json();
+          
+          // Validate response structure to prevent downstream errors
+          if (!Array.isArray(comments)) {
+            console.warn(`Comment response for post ${postId} is not an array`, comments);
+            return { count: 0 };
+          }
+          
+          return { count: comments.length };
+        } catch (jsonError) {
+          console.error(`JSON parsing error for post ${postId} comments:`, jsonError);
+          return { count: 0 };
+        }
       } catch (error) {
         console.error(`Error fetching comment count for post ${postId}:`, error);
         // Return a default value instead of throwing
