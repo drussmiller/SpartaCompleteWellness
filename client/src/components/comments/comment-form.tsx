@@ -1,19 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { forwardRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query"; // Added import
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 
 interface CommentFormProps {
-  onSubmit: (content: string, postId: string) => Promise<void>; // Added postId
+  onSubmit: (content: string) => Promise<void>; 
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
   onCancel?: () => void;
-  inputRef?: RefObject<HTMLTextAreaElement>;
-  postId: string; // Added postId
+  inputRef?: React.RefObject<HTMLTextAreaElement>;
 }
 
 export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
@@ -22,8 +20,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   placeholder = "Enter a comment...",
   defaultValue = "",
   onCancel,
-  inputRef,
-  postId // Added postId
+  inputRef
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const internalRef = useRef<HTMLTextAreaElement>(null);
@@ -31,17 +28,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
-    if (ref) {
-      if (typeof ref === 'function') {
-        ref(element);
-      } else {
-        ref.current = element;
-      }
+    // Handle function refs
+    if (typeof ref === 'function') {
+      ref(element);
+    } else if (ref) {
+      // Object ref - handled by React
     }
-    if (inputRef) {
-      inputRef.current = element;
-    }
+    
+    // Set internal ref - this one is created locally and is mutable
     internalRef.current = element;
   };
 
@@ -81,7 +77,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const handleSubmit = async () => {
     try {
       if (!content.trim()) return;
-      await onSubmit(content, postId);
+      await onSubmit(content);
 
       // Reset state first
       setContent('');
@@ -91,9 +87,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         if (internalRef.current) {
           internalRef.current.style.height = '38px';
           // Reset both textarea parent and flex-1 container
-          const container = internalRef.current.closest('.flex-1');
-          if (container) {
-            container.style.height = '50px';
+          const containerElement = internalRef.current.closest('.flex-1');
+          if (containerElement instanceof HTMLElement) {
+            containerElement.style.height = '50px';
           }
         }
       });
