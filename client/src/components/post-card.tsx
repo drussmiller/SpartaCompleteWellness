@@ -35,6 +35,44 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
 
+  // Query to get weekly points total
+  const { data: weekPoints, isLoading: isLoadingWeekPoints } = useQuery({
+    queryKey: ["/api/posts/points/weekly", post.author.id],
+    queryFn: async () => {
+      try {
+        // Get the week that contains this post's date
+        const postDate = new Date(post.createdAt || new Date());
+        
+        // Get the first day of the week (Sunday)
+        const startOfWeek = new Date(postDate);
+        startOfWeek.setDate(postDate.getDate() - postDate.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        // Format for consistent querying
+        const startDateStr = startOfWeek.toISOString().split('T')[0];
+        
+        const response = await apiRequest(
+          "GET", 
+          `/api/posts?userId=${post.author.id}&startDate=${startDateStr}&type=all`
+        );
+        
+        if (!response.ok) {
+          return 0;
+        }
+        
+        const posts = await response.json();
+        // Calculate total points for the week
+        const total = posts.reduce((sum: number, p: any) => sum + (p.points || 0), 0);
+        return total;
+      } catch (error) {
+        console.error(`Error fetching weekly points for user ${post.author.id}:`, error);
+        return 0;
+      }
+    },
+    staleTime: 60000, // Cache for 1 minute
+    retry: 1
+  });
+
   const { data: dayPoints, isLoading: isLoadingPoints, error: pointsError } = useQuery({
     queryKey: ["/api/points/daily", post.createdAt, post.author.id],
     queryFn: async () => {
@@ -196,8 +234,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 ) : (
                   <span>
                     {post.points ? <span className="font-semibold">{post.points} point{post.points !== 1 ? 's' : ''}</span> : null}
-                    {post.points && dayPoints ? <span> · </span> : null}
-                    {dayPoints > 0 ? <span>{dayPoints} total for the day</span> : null}
+                    {(post.points && (dayPoints || weekPoints)) ? <span> (</span> : null}
+                    {dayPoints > 0 ? <span>Day = {dayPoints}</span> : null}
+                    {dayPoints > 0 && weekPoints ? <span>, </span> : null}
+                    {weekPoints > 0 ? <span>Week = {weekPoints}</span> : null}
+                    {(post.points && (dayPoints || weekPoints)) ? <span>)</span> : null}
                   </span>
                 )}
               </p>
