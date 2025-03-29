@@ -87,12 +87,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           },
           credentials: 'include'
         });
-        
+
         if (!res.ok) {
           console.error(`Comments API error (${res.status})`);
           return [];
         }
-        
+
         try {
           return await res.json();
         } catch (jsonError) {
@@ -117,7 +117,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       };
 
       console.log(`Creating comment for post ${postId}...`, data);
-      
+
       try {
         const res = await fetch('/api/posts', {
           method: 'POST',
