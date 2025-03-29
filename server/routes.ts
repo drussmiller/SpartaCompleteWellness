@@ -276,6 +276,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Get comments for a post
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+      
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
@@ -283,6 +286,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       // Get the comments
       const comments = await storage.getPostComments(postId);
+      
+      // Explicitly check if we have a valid array to return
+      if (!Array.isArray(comments)) {
+        logger.warn(`Comments for post ${postId} is not an array: ${typeof comments}`);
+        return res.json([]); // Return empty array instead of potentially invalid data
+      }
+      
       return res.json(comments);
     } catch (error) {
       logger.error('Error getting comments:', error);
@@ -296,21 +306,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Create a comment on a post
   router.post("/api/posts/comments", authenticate, async (req, res) => {
     try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+      
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
+      // Validate request body
       const { content, parentId, depth = 0 } = req.body;
+      
+      logger.info('Creating comment with data:', {
+        userId: req.user.id, 
+        parentId, 
+        contentLength: content ? content.length : 0,
+        depth
+      });
       
       if (!content || !parentId) {
         return res.status(400).json({ message: "Missing required fields" });
       }
       
+      // Make sure parentId is a valid number
+      const parentIdNum = parseInt(parentId);
+      if (isNaN(parentIdNum)) {
+        return res.status(400).json({ message: "Invalid parent post ID" });
+      }
+      
       const comment = await storage.createComment({
         userId: req.user.id,
         content,
-        parentId,
-        depth
+        parentId: parentIdNum,
+        depth,
+        type: 'comment' // Explicitly set type for comments
       });
       
       // Return the created comment with author information
