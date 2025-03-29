@@ -35,6 +35,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     staleTime: 0,
     enabled: !!authUser,
   });
+  
+  // Add user stats query
+  const { data: userStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/user/stats"],
+    staleTime: 60000, // 1 minute
+    enabled: !!authUser,
+  });
 
   // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
@@ -281,9 +288,39 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           <Card>
             <CardContent>
               <h3 className="text-lg font-semibold mb-4">My Stats</h3>
-              <div className="mt-4">
-                <p className="text-sm text-muted-foreground">Points</p>
-                <p className="text-xl font-semibold">{user?.points || 0}</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="text-sm text-muted-foreground">Daily Total</div>
+                  <div className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                    ) : (
+                      userStats?.dailyPoints || 0
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="text-sm text-muted-foreground">Week Total</div>
+                  <div className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                    ) : (
+                      userStats?.weeklyPoints || 0
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="text-sm text-muted-foreground">Monthly Avg</div>
+                  <div className="text-3xl font-bold">
+                    {statsLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                    ) : (
+                      userStats?.monthlyAvgPoints || 0
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
