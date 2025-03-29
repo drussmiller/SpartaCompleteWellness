@@ -39,35 +39,57 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     queryKey: ["/api/points/daily", post.createdAt, post.author.id],
     queryFn: async () => {
       try {
-        const date = new Date(post.createdAt!);
+        // Make sure we have a valid date to work with
+        if (!post.createdAt) {
+          console.error("Post createdAt is undefined or null", post);
+          return 0;
+        }
+        
+        const date = new Date(post.createdAt);
+        console.log(`Fetching points for post ${post.id}, date: ${date.toISOString()}, userId: ${post.author.id}`);
+        
         const response = await apiRequest(
           "GET", 
           `/api/points/daily?date=${date.toISOString()}&userId=${post.author.id}`
         );
 
+        console.log(`Points API response status: ${response.status} for post ${post.id}`);
+
         if (!response.ok) {
-          const errorText = await response.text().catch(() => "Unknown error");
+          let errorText = "Unknown error";
+          try {
+            errorText = await response.text();
+          } catch (e) {
+            console.error("Could not read error response", e);
+          }
           throw new Error(`Failed to fetch daily points: ${errorText}`);
         }
 
         let result;
         try {
           result = await response.json();
+          console.log('Points API response data:', {
+            postId: post.id,
+            userId: post.author.id,
+            date: date.toISOString(),
+            points: result.points
+          });
+          
+          // If post has points, show those directly as well
+          if (post.points) {
+            console.log(`Post ${post.id} has its own points: ${post.points}`);
+          }
+          
+          return result.points;
         } catch (jsonError) {
-          console.error("Error parsing points response:", jsonError);
-          throw new Error("Failed to parse points data");
+          console.error(`Error parsing points response for post ${post.id}:`, jsonError);
+          // Fallback to post's own points if available
+          return post.points || 0;
         }
-
-        console.log('Points API response:', {
-          userId: post.author.id,
-          date: date.toISOString(),
-          points: result.points
-        });
-
-        return result.points;
       } catch (error) {
-        console.error("Error fetching daily points:", error);
-        throw error;
+        console.error(`Error fetching daily points for post ${post.id}:`, error);
+        // Fallback to post's own points if available
+        return post.points || 0;
       }
     },
     staleTime: 300000, // Cache for 5 minutes
@@ -79,19 +101,37 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const deletePostMutation = useMutation({
     mutationFn: async () => {
       try {
+        console.log(`Attempting to delete post ID: ${post.id}`);
         const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
+        console.log(`Delete response status: ${response.status}`);
+        
         if (!response.ok) {
-          const errorText = await response.text().catch(() => "Unknown error");
-          throw new Error(`Failed to delete post: ${errorText}`);
+          let errorMessage = "Unknown error";
+          try {
+            const errorText = await response.text();
+            console.log(`Error response text: ${errorText}`);
+            errorMessage = errorText;
+          } catch (readError) {
+            console.error("Could not read error response:", readError);
+          }
+          throw new Error(`Failed to delete post: ${errorMessage}`);
         }
-        // Don't try to read the body again, just return the ID
-        return post.id;
+        
+        try {
+          const data = await response.json();
+          console.log("Delete success response:", data);
+          return post.id;
+        } catch (jsonError) {
+          console.log("Could not parse JSON response, using post ID:", jsonError);
+          return post.id;
+        }
       } catch (error) {
         console.error("Delete post error:", error);
         throw error;
       }
     },
     onSuccess: (deletedPostId) => {
+      console.log(`Post ${deletedPostId} deleted successfully`);
       toast({
         title: "Success",
         description: "Post deleted successfully"
@@ -100,14 +140,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       // Get current posts and filter out the deleted one
       const currentPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
       if (currentPosts) {
+        const filteredPosts = currentPosts.filter(p => p.id !== deletedPostId);
+        console.log(`Filtered posts: ${currentPosts.length} -> ${filteredPosts.length}`);
         queryClient.setQueryData(
           ["/api/posts"],
-          currentPosts.filter(p => p.id !== deletedPostId)
+          filteredPosts
         );
       }
 
       // Force immediate refetch to ensure data consistency
-      queryClient.refetchQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error) => {
       console.error("Error deleting post:", error);
@@ -142,15 +184,21 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 })()}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {isLoadingPoints ? (
-                <span className="animate-pulse">Calculating points...</span>
-              ) : pointsError ? (
-                <span className="text-destructive">Error loading points</span>
-              ) : (
-                `${dayPoints || 0} points (day's total)`
-              )}
-            </p>
+            <div className="flex flex-col">
+              <p className="text-sm text-muted-foreground">
+                {isLoadingPoints ? (
+                  <span className="animate-pulse">Calculating points...</span>
+                ) : pointsError ? (
+                  <span className="text-destructive">Error loading points</span>
+                ) : (
+                  <span>
+                    {post.points ? <span className="font-semibold">{post.points} point{post.points !== 1 ? 's' : ''}</span> : null}
+                    {post.points && dayPoints ? <span> · </span> : null}
+                    {dayPoints > 0 ? <span>{dayPoints} total for the day</span> : null}
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
         {canDelete && (
