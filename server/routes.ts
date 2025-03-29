@@ -253,15 +253,84 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Simple ping endpoint to verify API functionality
+  // Enhanced ping endpoint to verify API functionality and assist with WebSocket diagnostics
   router.get("/api/ping", (req, res) => {
     logger.info('Ping request received', { requestId: req.requestId });
-    res.json({ message: "pong" });
+    res.json({ 
+      message: "pong",
+      timestamp: new Date().toISOString(),
+      serverTime: new Date().toString(),
+      uptime: process.uptime(),
+      memoryUsage: {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
+      }
+    });
   });
 
   // Protected endpoint example
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
+  });
+  
+  // Get comments for a post
+  router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+      
+      // Get the comments
+      const comments = await storage.getPostComments(postId);
+      return res.json(comments);
+    } catch (error) {
+      logger.error('Error getting comments:', error);
+      return res.status(500).json({ 
+        message: "Failed to get comments",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Create a comment on a post
+  router.post("/api/posts/comments", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { content, parentId, depth = 0 } = req.body;
+      
+      if (!content || !parentId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      const comment = await storage.createComment({
+        userId: req.user.id,
+        content,
+        parentId,
+        depth
+      });
+      
+      // Return the created comment with author information
+      const commentWithAuthor = {
+        ...comment,
+        author: {
+          id: req.user.id,
+          username: req.user.username,
+          imageUrl: req.user.imageUrl
+        }
+      };
+      
+      return res.status(201).json(commentWithAuthor);
+    } catch (error) {
+      logger.error('Error creating comment:', error);
+      return res.status(500).json({ 
+        message: "Failed to create comment",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   });
 
   // Debug endpoint for posts - unprotected for testing
