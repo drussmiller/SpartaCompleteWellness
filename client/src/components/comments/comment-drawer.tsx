@@ -106,8 +106,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           throw new Error("Invalid response format. Expected JSON.");
         }
 
+        let data;
         try {
-          const data = await res.json();
+          data = await res.json();
 
           // Validate response structure
           if (!Array.isArray(data)) {
@@ -118,8 +119,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           console.log(`Successfully loaded ${data.length} comments`);
           return data;
         } catch (jsonError) {
-          console.error("JSON parsing error in comments response:", jsonError);
-          throw new Error("Invalid comment data format");
+          console.error("Error parsing comments response:", jsonError);
+          return [];
         }
       } catch (error) {
         console.error("Error fetching comments:", error);
