@@ -101,14 +101,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           throw new Error(errorText || `Failed to load comments (${res.status})`);
         }
 
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response format. Expected JSON.");
-        }
-
-        let data;
         try {
-          data = await res.json();
+          const data = await res.json();
 
           // Validate response structure
           if (!Array.isArray(data)) {
