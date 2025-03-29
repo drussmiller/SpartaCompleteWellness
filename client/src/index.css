@@ -15,6 +15,10 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: auto;
+    overflow-y: auto;
+    scroll-behavior: auto;
     user-select: none;
   }
   .overflow-y-auto {
