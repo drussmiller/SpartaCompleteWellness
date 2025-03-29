@@ -33,15 +33,29 @@ export function useNotifications(suppressToasts = false) {
 
   // Function to connect to WebSocket
   const connectWebSocket = useCallback(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("WebSocket not connecting - user not authenticated");
+      return;
+    }
 
     try {
       setConnectionStatus("connecting");
-      console.log("WebSocket connecting...");
+      console.log("WebSocket connecting...", new Date().toISOString());
       
       // Close existing connection if any
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.close();
+      if (socketRef.current) {
+        console.log("WebSocket current state:", 
+          socketRef.current.readyState === WebSocket.CONNECTING ? "CONNECTING" :
+          socketRef.current.readyState === WebSocket.OPEN ? "OPEN" :
+          socketRef.current.readyState === WebSocket.CLOSING ? "CLOSING" : 
+          socketRef.current.readyState === WebSocket.CLOSED ? "CLOSED" : "UNKNOWN"
+        );
+        
+        if (socketRef.current.readyState === WebSocket.OPEN || 
+            socketRef.current.readyState === WebSocket.CONNECTING) {
+          console.log("Closing existing WebSocket connection");
+          socketRef.current.close();
+        }
       }
 
       // Set up the WebSocket connection
@@ -50,6 +64,9 @@ export function useNotifications(suppressToasts = false) {
       console.log("WebSocket URL:", wsUrl);
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
+      
+      // Debug socket properties
+      console.log("WebSocket object created, protocol:", socket.protocol, "binaryType:", socket.binaryType);
 
       socket.onopen = () => {
         console.log("WebSocket connection established");
@@ -186,13 +203,28 @@ export function useNotifications(suppressToasts = false) {
       };
 
       socket.onclose = (event) => {
-        console.log("WebSocket connection closed with code:", event.code, "reason:", event.reason);
+        console.log("WebSocket connection closed at", new Date().toISOString(), 
+                    "with code:", event.code, "reason:", event.reason || "No reason provided");
         setConnectionStatus("disconnected");
         
-        // Attempt to reconnect
+        // Special handling for abnormal closure (1006) - this is common in production environments 
+        // due to proxies, load balancers, or network issues
+        const isAbnormalClosure = event.code === 1006;
+        if (isAbnormalClosure) {
+          console.warn("Abnormal WebSocket closure (1006) detected - likely a network/proxy issue");
+        }
+        
+        // Always attempt to reconnect, regardless of the closure reason
+        // Just use a more aggressive reconnect for abnormal closures
         if (reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
+          // Use a shorter delay for abnormal closures
+          const baseDelay = isAbnormalClosure ? 1000 : 2000;
+          const maxDelay = isAbnormalClosure ? 10000 : 30000;
+          
+          // Calculate delay with exponential backoff
+          const delay = Math.min(baseDelay * Math.pow(1.5, reconnectAttempts.current), maxDelay);
+          
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1} of ${maxReconnectAttempts})`);
           
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
@@ -203,12 +235,45 @@ export function useNotifications(suppressToasts = false) {
             connectWebSocket();
           }, delay);
         } else {
-          console.error("Max reconnect attempts reached");
+          console.error(`Max reconnect attempts (${maxReconnectAttempts}) reached. Please reload the page.`);
+          
+          // Optional - reset attempt counter after a longer delay to try again
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log("Resetting WebSocket reconnection attempts counter");
+            reconnectAttempts.current = 0;
+            connectWebSocket();
+          }, 60000); // Try again after 1 minute
         }
       };
 
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
+      socket.onerror = (event) => {
+        // The WebSocket error event doesn't provide error details in most browsers due to security concerns
+        console.error("WebSocket error occurred at", new Date().toISOString());
+        console.error("Error event details (may be limited):", event);
+        
+        // Try to get additional diagnostics
+        try {
+          console.log("Current WebSocket readyState:", 
+            socketRef.current?.readyState === WebSocket.CONNECTING ? "CONNECTING" :
+            socketRef.current?.readyState === WebSocket.OPEN ? "OPEN" :
+            socketRef.current?.readyState === WebSocket.CLOSING ? "CLOSING" : 
+            socketRef.current?.readyState === WebSocket.CLOSED ? "CLOSED" : "UNKNOWN"
+          );
+          
+          console.log("Network status: Online =", navigator.onLine);
+          
+          // Perform a simple check to see if the server is reachable
+          fetch('/api/ping')
+            .then(response => {
+              console.log("Server ping response:", response.status, response.statusText);
+            })
+            .catch(err => {
+              console.error("Server ping failed:", err.message);
+            });
+        } catch (diagnosticError) {
+          console.error("Error getting additional diagnostics:", diagnosticError);
+        }
+        
         setConnectionStatus("disconnected");
       };
       
