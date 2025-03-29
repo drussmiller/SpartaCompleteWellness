@@ -16,16 +16,16 @@ const MOBILE_BREAKPOINT = 768;
 
 const mobileScrollStyles = {
   height: '100vh',
-  WebkitOverflowScrolling: 'touch',
-  overscrollBehavior: 'auto',
-  overflowY: 'auto',
+  overflowY: 'scroll',
   overflowX: 'hidden',
-  touchAction: 'pan-y',
+  WebkitOverflowScrolling: 'touch',
+  overscrollBehavior: 'contain',
+  touchAction: 'manipulation',
   WebkitTapHighlightColor: 'transparent',
-  paddingBottom: '60px',
-  position: 'relative',
-  WebkitTransform: 'translate3d(0,0,0)',
+  WebkitTransform: 'translateZ(0)',
+  WebkitPerspective: '1000',
   WebkitBackfaceVisibility: 'hidden',
+  paddingBottom: '60px',
 } as const;
 
 export default function HomePage() {
