@@ -45,12 +45,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           return 0;
         }
         
-        const date = new Date(post.createdAt);
-        console.log(`Fetching points for post ${post.id}, date: ${date.toISOString()}, userId: ${post.author.id}`);
+        // Extract the date part only to ensure consistent comparison
+        const postDate = new Date(post.createdAt);
+        const dateString = postDate.toISOString().split('T')[0];
+        console.log(`Fetching points for post ${post.id}, date: ${dateString}, userId: ${post.author.id}`);
         
+        // Use the date in the format YYYY-MM-DD for better consistent results
         const response = await apiRequest(
           "GET", 
-          `/api/points/daily?date=${date.toISOString()}&userId=${post.author.id}`
+          `/api/points/daily?date=${dateString}T00:00:00.000Z&userId=${post.author.id}`
         );
 
         console.log(`Points API response status: ${response.status} for post ${post.id}`);
@@ -71,11 +74,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           console.log('Points API response data:', {
             postId: post.id,
             userId: post.author.id,
-            date: date.toISOString(),
+            date: dateString,
             points: result.points
           });
           
-          // If post has points, show those directly as well
+          // Log the post's individual points
           if (post.points) {
             console.log(`Post ${post.id} has its own points: ${post.points}`);
           }
@@ -92,7 +95,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         return post.points || 0;
       }
     },
-    staleTime: 300000, // Cache for 5 minutes
+    staleTime: 60000, // Cache for 1 minute to ensure more frequent updates
     retry: 2
   });
 

@@ -926,7 +926,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      // Parse the date more carefully to handle timezone issues
+      let dateStr = (req.query.date as string) || new Date().toISOString();
+      
+      // If the date doesn't include time, add a default time
+      if (dateStr.indexOf('T') === -1) {
+        dateStr = `${dateStr}T00:00:00.000Z`;
+      }
+      
+      const date = new Date(dateStr);
       const userId = parseInt(req.query.userId as string);
       
       if (isNaN(userId)) {
@@ -934,14 +942,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid user ID" });
       }
 
-      // Log request parameters for debugging
-      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`);
-
-      // Get start and end of the requested day
+      // Normalize to beginning of day in UTC to ensure consistent date handling
       const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
+      startOfDay.setUTCHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+      
+      // Log request parameters for debugging
+      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`, {
+        requestedDate: dateStr,
+        normalizedStartDate: startOfDay.toISOString(),
+        normalizedEndDate: endOfDay.toISOString()
+      });
 
       // Calculate total points for the day with detailed logging
       const result = await db
