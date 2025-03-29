@@ -45,55 +45,214 @@ function UserProfile({ user }: ProfileProps) {
     queryKey: ["/api/teams"],
   });
 
-  // Query to get user posts for the current week
-  const { data: userPosts, isLoading: isLoadingPosts, error: postsError } = useQuery<(Post & { author: User })[]>({
-    queryKey: ["/api/posts", user.id, formattedStartDate, formattedEndDate],
+  // Generate post type distribution data for pie chart
+  interface ChartDataPoint {
+    name: string;
+    value: number;
+  }
+  
+  // Query for post type distribution (pie chart)
+  const { data: serverPostTypeData, isLoading: isLoadingPostTypes, error: postTypesError } = useQuery<ChartDataPoint[]>({
+    queryKey: ["/api/debug/posts/type-distribution", user.id, formattedStartDate, formattedEndDate],
     queryFn: async () => {
-      console.log(`Fetching posts for user ${user.id} from ${formattedStartDate} to ${formattedEndDate}`);
-      // Use the debug endpoint that doesn't require authentication for direct API calls
+      console.log(`Fetching post type distribution for user ${user.id} from ${formattedStartDate} to ${formattedEndDate}`);
       const response = await apiRequest(
         "GET", 
-        `/api/debug/posts?userId=${user.id}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&type=all`
+        `/api/debug/posts/type-distribution?userId=${user.id}&startDate=${formattedStartDate}&endDate=${formattedEndDate}`
       );
       if (!response.ok) {
-        console.error('Failed to fetch user posts:', await response.text());
-        throw new Error('Failed to fetch user posts');
+        console.error('Failed to fetch post type distribution:', await response.text());
+        throw new Error('Failed to fetch post type distribution');
       }
       const data = await response.json();
-      console.log(`Received ${data.length} posts for profile charts`);
+      console.log(`Received post type distribution data:`, data);
       return data;
     }
   });
   
-  // Log any errors
-  if (postsError) {
-    console.error('Error fetching user posts:', postsError);
-  }
-
-  // Query to get the last 4 weeks of data for trends
-  const { data: monthlyPosts, isLoading: isLoadingMonthly, error: monthlyError } = useQuery<(Post & { author: User })[]>({
-    queryKey: ["/api/posts/monthly", user.id],
+  // Query to get weekly stats and aggregated data
+  const { data: weeklyStatsData, isLoading: isLoadingWeeklyStats, error: weeklyStatsError } = useQuery({
+    queryKey: ["/api/debug/posts/weekly-stats", user.id, formattedStartDate, formattedEndDate],
     queryFn: async () => {
       const fourWeeksAgo = subWeeks(startDate, 3).toISOString().split('T')[0];
-      console.log(`Fetching monthly posts for user ${user.id} from ${fourWeeksAgo} to ${formattedEndDate}`);
-      // Use debug endpoint for API testing
+      console.log(`Fetching weekly stats for user ${user.id} from ${fourWeeksAgo} to ${formattedEndDate}`);
       const response = await apiRequest(
         "GET", 
-        `/api/debug/posts?userId=${user.id}&startDate=${fourWeeksAgo}&endDate=${formattedEndDate}&type=all`
+        `/api/debug/posts/weekly-stats?userId=${user.id}&startDate=${fourWeeksAgo}&endDate=${formattedEndDate}`
       );
       if (!response.ok) {
-        console.error('Failed to fetch monthly posts:', await response.text());
-        throw new Error('Failed to fetch monthly posts');
+        console.error('Failed to fetch weekly stats:', await response.text());
+        throw new Error('Failed to fetch weekly stats');
       }
       const data = await response.json();
-      console.log(`Received ${data.length} posts for monthly trends`);
+      console.log(`Received weekly stats data:`, data);
       return data;
     }
   });
   
-  // Log any errors with monthly data
-  if (monthlyError) {
-    console.error('Error fetching monthly posts:', monthlyError);
+  // For backward compatibility with the rest of the component
+  // We still need userPosts and monthlyPosts for some calculations
+  // When we have weekly stats, we can derive some data from it
+  const userPosts = useMemo(() => {
+    if (!weeklyStatsData || !weeklyStatsData.weeklyStats) return [];
+    
+    // Filter down to just the current week's data if needed
+    const currentWeekStats = weeklyStatsData.weeklyStats.filter(week => {
+      const weekDate = new Date(week.week_label);
+      return weekDate >= startDate && weekDate <= endDate;
+    });
+    
+    // Create synthetic post data with just enough info for the charts
+    const posts: (Post & { author: User })[] = [];
+    
+    currentWeekStats.forEach(week => {
+      // Add food posts
+      for (let i = 0; i < parseInt(week.food_points) / POST_POINT_VALUES.food; i++) {
+        posts.push({
+          id: 0, // ID doesn't matter for our analysis
+          type: 'food',
+          points: POST_POINT_VALUES.food,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add workout posts
+      for (let i = 0; i < parseInt(week.workout_points) / POST_POINT_VALUES.workout; i++) {
+        posts.push({
+          id: 0,
+          type: 'workout',
+          points: POST_POINT_VALUES.workout,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add scripture posts
+      for (let i = 0; i < parseInt(week.scripture_points) / POST_POINT_VALUES.scripture; i++) {
+        posts.push({
+          id: 0,
+          type: 'scripture',
+          points: POST_POINT_VALUES.scripture,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add memory verse posts
+      for (let i = 0; i < parseInt(week.memory_verse_points) / POST_POINT_VALUES.memory_verse; i++) {
+        posts.push({
+          id: 0,
+          type: 'memory_verse',
+          points: POST_POINT_VALUES.memory_verse,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add miscellaneous posts
+      for (let i = 0; i < parseInt(week.misc_points) / POST_POINT_VALUES.miscellaneous; i++) {
+        posts.push({
+          id: 0,
+          type: 'miscellaneous',
+          points: POST_POINT_VALUES.miscellaneous,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+    });
+    
+    return posts;
+  }, [weeklyStatsData, startDate, endDate, user]);
+  
+  // Use week stats data for monthly posts
+  const monthlyPosts = useMemo(() => {
+    if (!weeklyStatsData || !weeklyStatsData.weeklyStats) return [];
+    
+    // Create synthetic post data with just enough info for the charts
+    const posts: (Post & { author: User })[] = [];
+    
+    weeklyStatsData.weeklyStats.forEach(week => {
+      // Add food posts
+      for (let i = 0; i < parseInt(week.food_points) / POST_POINT_VALUES.food; i++) {
+        posts.push({
+          id: 0,
+          type: 'food',
+          points: POST_POINT_VALUES.food,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add workout posts
+      for (let i = 0; i < parseInt(week.workout_points) / POST_POINT_VALUES.workout; i++) {
+        posts.push({
+          id: 0,
+          type: 'workout',
+          points: POST_POINT_VALUES.workout,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add scripture posts
+      for (let i = 0; i < parseInt(week.scripture_points) / POST_POINT_VALUES.scripture; i++) {
+        posts.push({
+          id: 0,
+          type: 'scripture',
+          points: POST_POINT_VALUES.scripture,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add memory verse posts
+      for (let i = 0; i < parseInt(week.memory_verse_points) / POST_POINT_VALUES.memory_verse; i++) {
+        posts.push({
+          id: 0,
+          type: 'memory_verse',
+          points: POST_POINT_VALUES.memory_verse,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+      
+      // Add miscellaneous posts
+      for (let i = 0; i < parseInt(week.misc_points) / POST_POINT_VALUES.miscellaneous; i++) {
+        posts.push({
+          id: 0,
+          type: 'miscellaneous',
+          points: POST_POINT_VALUES.miscellaneous,
+          createdAt: week.week_label,
+          author: user,
+          userId: user.id
+        } as Post & { author: User });
+      }
+    });
+    
+    return posts;
+  }, [weeklyStatsData, user]);
+  
+  // Calculate loading state for backwards compatibility
+  const isLoadingPosts = isLoadingWeeklyStats;
+  const isLoadingMonthly = isLoadingWeeklyStats;
+  
+  // Log any errors
+  if (weeklyStatsError) {
+    console.error('Error fetching weekly stats:', weeklyStatsError);
+  }
+  
+  if (postTypesError) {
+    console.error('Error fetching post type distribution:', postTypesError);
   }
 
   const userTeam = teams?.find(t => t.id === user.teamId);
@@ -196,13 +355,14 @@ function UserProfile({ user }: ProfileProps) {
     });
   }, [monthlyPosts, startDate]);
 
-  // Generate post type distribution data for pie chart
-  interface ChartDataPoint {
-    name: string;
-    value: number;
-  }
-  
+  // Use server type distribution data when available, or calculate from userPosts as fallback
   const postTypeData = useMemo<ChartDataPoint[]>(() => {
+    // First try to use server data
+    if (serverPostTypeData && serverPostTypeData.length > 0) {
+      return serverPostTypeData;
+    }
+    
+    // Fall back to calculating from userPosts
     if (!userPosts) return [];
     
     const foodCount = userPosts.filter(post => post.type === 'food').length;
@@ -218,19 +378,32 @@ function UserProfile({ user }: ProfileProps) {
       { name: 'Memory Verse', value: memoryVerseCount },
       { name: 'Miscellaneous', value: miscCount }
     ].filter(item => item.value > 0);
-  }, [userPosts]);
+  }, [serverPostTypeData, userPosts]);
 
-  // Calculate current week's total points
+  // Calculate current week's total points - use server-calculated data when available
   const currentWeekPoints = useMemo(() => {
+    // If we have the weekly stats data from the server, use it
+    if (weeklyStatsData && weeklyStatsData.weeklyStats && weeklyStatsData.weeklyStats.length > 0) {
+      // Find the current week (should be the first week in the array as it's sorted DESC)
+      const currentWeekStat = weeklyStatsData.weeklyStats[0];
+      if (currentWeekStat) {
+        return parseInt(currentWeekStat.total_points);
+      }
+    }
+    // Fallback to client-side calculation
     return dailyData.reduce((sum, day) => sum + day.totalPoints, 0);
-  }, [dailyData]);
+  }, [weeklyStatsData, dailyData]);
 
-  // Calculate average points per week
+  // Use server-calculated average when available
   const averageWeeklyPoints = useMemo(() => {
+    if (weeklyStatsData && typeof weeklyStatsData.averageWeeklyPoints === 'number') {
+      return weeklyStatsData.averageWeeklyPoints;
+    }
+    // Fallback to client-side calculation
     if (!weeklyData || weeklyData.length === 0) return 0;
     const total = weeklyData.reduce((sum, week) => sum + week.totalPoints, 0);
     return Math.round(total / weeklyData.length);
-  }, [weeklyData]);
+  }, [weeklyStatsData, weeklyData]);
 
   // Handle week navigation
   const goToPreviousWeek = () => {
