@@ -1168,7 +1168,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
-  });
+  };
 
   // Add activity progress endpoint before the return httpServer statement
   router.get("/api/activities/current", authenticate, async (req, res) => {

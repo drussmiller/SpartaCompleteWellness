@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
-import { Notification } from "@shared/schema";
+import type { Notification as DbNotification } from "@shared/schema";
 import { useLocation } from "wouter";
 
 type ConnectionStatus = "connected" | "connecting" | "disconnected";
@@ -25,7 +25,7 @@ export function useNotifications(suppressToasts = false) {
     !location.includes("notifications");
 
   // Query for notifications
-  const { data: notifications } = useQuery<Notification[]>({
+  const { data: notifications } = useQuery<DbNotification[]>({
     queryKey: ["/api/notifications"],
     enabled: !!user,
     refetchInterval: 60000, // Refetch every minute
