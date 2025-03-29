@@ -46,35 +46,55 @@ function UserProfile({ user }: ProfileProps) {
   });
 
   // Query to get user posts for the current week
-  const { data: userPosts, isLoading: isLoadingPosts } = useQuery<(Post & { author: User })[]>({
+  const { data: userPosts, isLoading: isLoadingPosts, error: postsError } = useQuery<(Post & { author: User })[]>({
     queryKey: ["/api/posts", user.id, formattedStartDate, formattedEndDate],
     queryFn: async () => {
+      console.log(`Fetching posts for user ${user.id} from ${formattedStartDate} to ${formattedEndDate}`);
+      // Use the debug endpoint that doesn't require authentication for direct API calls
       const response = await apiRequest(
         "GET", 
-        `/api/posts?userId=${user.id}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&type=all`
+        `/api/debug/posts?userId=${user.id}&startDate=${formattedStartDate}&endDate=${formattedEndDate}&type=all`
       );
       if (!response.ok) {
+        console.error('Failed to fetch user posts:', await response.text());
         throw new Error('Failed to fetch user posts');
       }
-      return response.json();
+      const data = await response.json();
+      console.log(`Received ${data.length} posts for profile charts`);
+      return data;
     }
   });
+  
+  // Log any errors
+  if (postsError) {
+    console.error('Error fetching user posts:', postsError);
+  }
 
   // Query to get the last 4 weeks of data for trends
-  const { data: monthlyPosts, isLoading: isLoadingMonthly } = useQuery<(Post & { author: User })[]>({
+  const { data: monthlyPosts, isLoading: isLoadingMonthly, error: monthlyError } = useQuery<(Post & { author: User })[]>({
     queryKey: ["/api/posts/monthly", user.id],
     queryFn: async () => {
       const fourWeeksAgo = subWeeks(startDate, 3).toISOString().split('T')[0];
+      console.log(`Fetching monthly posts for user ${user.id} from ${fourWeeksAgo} to ${formattedEndDate}`);
+      // Use debug endpoint for API testing
       const response = await apiRequest(
         "GET", 
-        `/api/posts?userId=${user.id}&startDate=${fourWeeksAgo}&endDate=${formattedEndDate}&type=all`
+        `/api/debug/posts?userId=${user.id}&startDate=${fourWeeksAgo}&endDate=${formattedEndDate}&type=all`
       );
       if (!response.ok) {
+        console.error('Failed to fetch monthly posts:', await response.text());
         throw new Error('Failed to fetch monthly posts');
       }
-      return response.json();
+      const data = await response.json();
+      console.log(`Received ${data.length} posts for monthly trends`);
+      return data;
     }
   });
+  
+  // Log any errors with monthly data
+  if (monthlyError) {
+    console.error('Error fetching monthly posts:', monthlyError);
+  }
 
   const userTeam = teams?.find(t => t.id === user.teamId);
 
