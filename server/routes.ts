@@ -1773,43 +1773,66 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       
       const userId = req.user.id;
-      const today = new Date();
       
-      // Get timezone offset in minutes (negative because getTimezoneOffset() returns the opposite of what we need)
-      const tzOffset = -(parseInt(req.query.tzOffset as string) || 0);
+      // Get timezone offset in minutes directly from the client
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
       
       logger.info(`Stats requested for user ${userId} with timezone offset: ${tzOffset} minutes`);
       
-      // Adjust date for timezone - we use negative offset because browser's getTimezoneOffset() 
-      // returns minutes *behind* UTC, so we need to add them to go from UTC to local
-      const adjustedDate = new Date(today.getTime() + tzOffset * 60000);
+      // For debugging, let's see what posts this user has today in UTC
+      const postsToday = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, new Date(new Date().setHours(0, 0, 0, 0))),
+            lte(posts.createdAt, new Date(new Date().setHours(23, 59, 59, 999)))
+          )
+        );
       
-      // Daily stats (today's points) - use UTC methods to prevent automatic timezone conversion
-      const startOfDay = new Date(Date.UTC(
-        adjustedDate.getUTCFullYear(),
-        adjustedDate.getUTCMonth(),
-        adjustedDate.getUTCDate(),
+      logger.info(`Posts for user ${userId} today in UTC: ${postsToday.length}`);
+      
+      // Calculate the local date for the user based on their timezone
+      const now = new Date();
+      // First convert to UTC by removing the local timezone offset
+      const utcTime = now.getTime();
+      // Then adjust to user's local time by applying their timezone offset (reversed since getTimezoneOffset returns the opposite)
+      const userLocalTime = new Date(utcTime - (tzOffset * 60000));
+      
+      logger.info(`User's local time (${userId}): ${userLocalTime.toISOString()}`);
+      
+      // Use this adjusted date to create proper day boundaries in the user's local timezone
+      const startOfDay = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth(),
+        userLocalTime.getDate(),
         0, 0, 0, 0
-      ));
+      );
+      // Convert back to UTC for database query
+      const startOfDayUTC = new Date(startOfDay.getTime() + (tzOffset * 60000));
       
-      const endOfDay = new Date(Date.UTC(
-        adjustedDate.getUTCFullYear(),
-        adjustedDate.getUTCMonth(),
-        adjustedDate.getUTCDate(),
+      const endOfDay = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth(),
+        userLocalTime.getDate(),
         23, 59, 59, 999
-      ));
+      );
+      // Convert back to UTC for database query
+      const endOfDayUTC = new Date(endOfDay.getTime() + (tzOffset * 60000));
       
-      logger.info(`Date range for daily stats: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+      logger.info(`Date range for daily stats (in user's local timezone): ${startOfDayUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
       
       const dailyPosts = await db.select()
         .from(posts)
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lte(posts.createdAt, endOfDay)
+            gte(posts.createdAt, startOfDayUTC),
+            lte(posts.createdAt, endOfDayUTC)
           )
         );
+
+      logger.info(`Found ${dailyPosts.length} posts for user ${userId} for today in their local timezone`);
 
       let dailyPoints = 0;
       for (const post of dailyPosts) {
@@ -1819,24 +1842,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         else if (post.type === 'memory_verse') dailyPoints += 10;
       }
 
-      // Weekly stats - find the most recent Sunday and go from there
-      const dayOfWeek = adjustedDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-      const startOfWeek = new Date(Date.UTC(
-        adjustedDate.getUTCFullYear(),
-        adjustedDate.getUTCMonth(),
-        adjustedDate.getUTCDate() - dayOfWeek, // Go back to the start of the week (Sunday)
+      // Weekly stats - Start from Sunday in user's local time
+      const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const startOfWeek = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth(),
+        userLocalTime.getDate() - dayOfWeek, // Go back to the start of the week (Sunday)
         0, 0, 0, 0
-      ));
+      );
+      // Convert back to UTC for database query
+      const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
       
-      logger.info(`Date range for weekly stats: ${startOfWeek.toISOString()} to ${endOfDay.toISOString()}`);
+      logger.info(`Date range for weekly stats (in user's local timezone): ${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
       
       const weeklyPosts = await db.select()
         .from(posts)
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, startOfWeek),
-            lte(posts.createdAt, endOfDay)
+            gte(posts.createdAt, startOfWeekUTC),
+            lte(posts.createdAt, endOfDayUTC)
           )
         );
 
@@ -1848,23 +1873,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         else if (post.type === 'memory_verse') weeklyPoints += 10;
       }
 
-      // Monthly average
-      const threeMonthsAgo = new Date(Date.UTC(
-        adjustedDate.getUTCFullYear(),
-        adjustedDate.getUTCMonth() - 3,
-        adjustedDate.getUTCDate(),
+      // Monthly average - Three months ago in user's local time
+      const threeMonthsAgo = new Date(
+        userLocalTime.getFullYear(),
+        userLocalTime.getMonth() - 3,
+        userLocalTime.getDate(),
         0, 0, 0, 0
-      ));
+      );
+      // Convert back to UTC for database query
+      const threeMonthsAgoUTC = new Date(threeMonthsAgo.getTime() + (tzOffset * 60000));
       
-      logger.info(`Date range for monthly stats: ${threeMonthsAgo.toISOString()} to ${endOfDay.toISOString()}`);
+      logger.info(`Date range for monthly stats (in user's local timezone): ${threeMonthsAgoUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
       
       const monthlyPosts = await db.select()
         .from(posts)
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, threeMonthsAgo),
-            lte(posts.createdAt, endOfDay)
+            gte(posts.createdAt, threeMonthsAgoUTC),
+            lte(posts.createdAt, endOfDayUTC)
           )
         );
 
