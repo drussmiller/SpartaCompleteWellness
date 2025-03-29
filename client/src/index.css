@@ -11,12 +11,20 @@
   body {
     @apply font-sans antialiased bg-gray-100 text-foreground;
     width: 100%;
-    min-height: 100vh;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-y: visible;
     overflow-x: hidden;
-    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: auto;
+    scroll-behavior: smooth;
+  }
+
+  #root {
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
