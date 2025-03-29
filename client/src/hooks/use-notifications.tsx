@@ -160,21 +160,13 @@ export function useNotifications(suppressToasts = false) {
     };
   }, [user, connectWebSocket]);
 
-  // Show toast for new notifications from the REST API
-  useEffect(() => {
-    // Only show toasts when appropriate
-    if (shouldShowToasts && notifications?.length) {
-      const unreadNotifications = notifications.filter(n => !n.read);
-      unreadNotifications.forEach(notification => {
-        // Show toasts for both score alerts and messages
-        toast({
-          title: notification.title,
-          description: notification.message,
-          duration: 5000,
-        });
-      });
-    }
-  }, [notifications, toast, shouldShowToasts]);
+  // Show toast for new notifications from the REST API - disabled for now
+  // We're not showing toasts for existing notifications as they create too many popups
+  // They will still appear from WebSocket real-time notifications only
+  
+  // We've disabled this because:
+  // 1. It was showing popups when viewing notification-related pages
+  // 2. It was showing all unread notifications on first load, which could be many
 
   return { 
     connectionStatus,
