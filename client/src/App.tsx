@@ -18,6 +18,8 @@ import AdminPage from "@/pages/admin-page";
 import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
+import NotificationSchedulePage from "@/pages/notification-schedule-page"; //Import the new page component
+
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -60,7 +62,7 @@ function MainContent() {
           <Route path="/" component={HomePage} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
-          <Route path="/help" component={HelpPage} />
+          <Route path="/notification-schedule" component={NotificationSchedulePage} />
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/menu" component={MenuPage} />
           {user.isAdmin && <Route path="/admin" component={AdminPage} />}
