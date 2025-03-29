@@ -20,12 +20,22 @@ export default function NotificationsPage() {
       // Then fetch notifications
       const response = await apiRequest("GET", "/api/notifications");
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to fetch notifications");
+        try {
+          const error = await response.json();
+          throw new Error(error.message || "Failed to fetch notifications");
+        } catch (jsonError) {
+          console.error("Error parsing response:", jsonError);
+          throw new Error("Failed to parse server response");
+        }
       }
       // Invalidate unread count
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
-      return response.json();
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        console.error("Error parsing notifications JSON:", jsonError);
+        return [];
+      }
     },
     enabled: !!user,
   });
@@ -37,10 +47,20 @@ export default function NotificationsPage() {
         `/api/notifications/${notificationId}/read`
       );
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to mark notification as read");
+        try {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to mark notification as read");
+        } catch (jsonError) {
+          console.error("Error parsing response:", jsonError);
+          throw new Error("Failed to parse server response");
+        }
       }
-      return res.json();
+      try {
+        return await res.json();
+      } catch (jsonError) {
+        console.error("Error parsing response JSON:", jsonError);
+        return null;
+      }
     },
     onSuccess: () => {
       // Invalidate both notifications and unread count queries
@@ -63,8 +83,13 @@ export default function NotificationsPage() {
         `/api/notifications/${notificationId}`
       );
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete notification");
+        try {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to delete notification");
+        } catch (jsonError) {
+          console.error("Error parsing delete response:", jsonError);
+          throw new Error("Failed to parse server response");
+        }
       }
     },
     onSuccess: () => {
@@ -142,7 +167,9 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(notification.createdAt).toLocaleString()}
+                        {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number' 
+  ? new Date(notification.createdAt).toLocaleString() 
+  : 'Unknown date'}
                       </p>
                     </div>
                     <div className="flex gap-2">
