@@ -37,6 +37,7 @@ export function useNotifications(suppressToasts = false) {
 
     try {
       setConnectionStatus("connecting");
+      console.log("WebSocket connecting...");
       
       // Close existing connection if any
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -46,6 +47,7 @@ export function useNotifications(suppressToasts = false) {
       // Set up the WebSocket connection
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws`;
+      console.log("WebSocket URL:", wsUrl);
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 
@@ -183,8 +185,8 @@ export function useNotifications(suppressToasts = false) {
         }
       };
 
-      socket.onclose = () => {
-        console.log("WebSocket connection closed");
+      socket.onclose = (event) => {
+        console.log("WebSocket connection closed with code:", event.code, "reason:", event.reason);
         setConnectionStatus("disconnected");
         
         // Attempt to reconnect
