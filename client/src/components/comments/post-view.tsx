@@ -12,6 +12,12 @@ interface PostViewProps {
 
 export function PostView({ post }: PostViewProps) {
   const { count: commentCount } = useCommentCount(post.id);
+
+  const onCommentClick = () => {
+    // Implement comment drawer opening logic here
+    console.log("Comment button clicked!");
+  };
+
   return (
     <Card className="relative w-full rounded-none mx-[-1rem]">
       <CardContent className="pt-6 px-6">
@@ -41,6 +47,7 @@ export function PostView({ post }: PostViewProps) {
               variant="ghost"
               size="sm"
               className="gap-1.5"
+              onClick={onCommentClick}
             >
               <MessageCircle className="h-4 w-4" />
               {commentCount}
