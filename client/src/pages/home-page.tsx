@@ -15,17 +15,10 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 const MOBILE_BREAKPOINT = 768;
 
 const mobileScrollStyles = {
-  height: '100vh',
-  overflowY: 'scroll',
-  overflowX: 'hidden',
+  minHeight: '100vh',
+  paddingBottom: '60px',
   WebkitOverflowScrolling: 'touch',
   overscrollBehavior: 'contain',
-  touchAction: 'manipulation',
-  WebkitTapHighlightColor: 'transparent',
-  WebkitTransform: 'translateZ(0)',
-  WebkitPerspective: '1000',
-  WebkitBackfaceVisibility: 'hidden',
-  paddingBottom: '60px',
 } as const;
 
 export default function HomePage() {
