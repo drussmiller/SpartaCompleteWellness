@@ -287,15 +287,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get the comments
       const comments = await storage.getPostComments(postId);
       
-      // Explicitly check if we have a valid array to return
-      if (!Array.isArray(comments)) {
-        logger.warn(`Comments for post ${postId} is not an array: ${typeof comments}`);
-        return res.json([]); // Return empty array instead of potentially invalid data
-      }
+      // Explicitly validate the response
+      const validComments = Array.isArray(comments) ? comments : [];
       
-      return res.json(comments);
+      // Log the response for debugging
+      logger.info(`Sending comments for post ${postId}:`, {
+        commentCount: validComments.length,
+        isArray: Array.isArray(validComments)
+      });
+      
+      // Make sure only JSON data is sent
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json'
+      });
+      
+      // Send JSON response
+      return res.json(validComments);
     } catch (error) {
       logger.error('Error getting comments:', error);
+      
+      // Set JSON content type on error as well
+      res.set('Content-Type', 'application/json');
+      
       return res.status(500).json({ 
         message: "Failed to get comments",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -324,12 +339,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
       
       if (!content || !parentId) {
+        // Set JSON content type on error
+        res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Missing required fields" });
       }
       
       // Make sure parentId is a valid number
       const parentIdNum = parseInt(parentId);
       if (isNaN(parentIdNum)) {
+        // Set JSON content type on error
+        res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Invalid parent post ID" });
       }
       
@@ -351,9 +370,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       };
       
+      // Make sure only JSON data is sent for the response
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json'
+      });
+      
       return res.status(201).json(commentWithAuthor);
     } catch (error) {
       logger.error('Error creating comment:', error);
+      
+      // Set JSON content type on error
+      res.set('Content-Type', 'application/json');
+      
       return res.status(500).json({ 
         message: "Failed to create comment",
         error: error instanceof Error ? error.message : "Unknown error"

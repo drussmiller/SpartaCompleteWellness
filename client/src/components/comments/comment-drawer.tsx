@@ -77,46 +77,34 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     staleTime: 60000, // Increase to 60 seconds
     refetchOnWindowFocus: false,
     refetchInterval: false, // Disable automatic periodic refetching
-    refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
       try {
-        // Add explicit request headers to ensure expected response format
-        const requestOptions = {
+        const res = await fetch(`/api/posts/comments/${postId}`, {
+          method: 'GET',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
-          }
-        };
-        
-        console.log(`Fetching comments for post ${postId}...`);
-        const res = await apiRequest("GET", `/api/posts/comments/${postId}`, undefined, requestOptions);
+          },
+          credentials: 'include'
+        });
         
         if (!res.ok) {
-          const errorText = await res.text();
-          console.error(`Comments API error (${res.status}):`, errorText);
-          throw new Error(errorText || `Failed to load comments (${res.status})`);
+          console.error(`Comments API error (${res.status})`);
+          return [];
         }
         
         try {
-          const data = await res.json();
-          
-          // Validate response structure
-          if (!Array.isArray(data)) {
-            console.error("Comments API returned non-array data:", data);
-            return []; // Return empty array as fallback
-          }
-          
-          console.log(`Successfully loaded ${data.length} comments`);
-          return data;
+          return await res.json();
         } catch (jsonError) {
           console.error("JSON parsing error in comments response:", jsonError);
-          throw new Error("Invalid comment data format");
+          return [];
         }
       } catch (error) {
         console.error("Error fetching comments:", error);
-        throw error;
+        return [];
       }
-    }
+    },
+    retry: 1
   });
 
   const createCommentMutation = useMutation({
@@ -127,30 +115,35 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         parentId: postId,
         points: 1
       };
-      
-      // Add proper headers for better error handling
-      const requestOptions = {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        data: JSON.stringify(data)
-      };
-      
-      console.log(`Creating comment for post ${postId}...`);
-      const res = await apiRequest("POST", "/api/posts", requestOptions);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Comment creation error (${res.status}):`, errorText);
-        throw new Error(errorText || "Failed to create comment");
-      }
+
+      console.log(`Creating comment for post ${postId}...`, data);
       
       try {
-        return res.json();
-      } catch (jsonError) {
-        console.error("JSON parsing error in comment creation response:", jsonError);
-        throw new Error("Invalid response format when creating comment");
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data),
+          credentials: 'include'
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`Comment creation error (${res.status}):`, errorText);
+          throw new Error(errorText || "Failed to create comment");
+        }
+
+        try {
+          return await res.json();
+        } catch (jsonError) {
+          console.error("JSON parsing error in comment creation response:", jsonError);
+          throw new Error("Invalid response format when creating comment");
+        }
+      } catch (error) {
+        console.error("Network error when creating comment:", error);
+        throw error;
       }
     },
     onSuccess: () => {
