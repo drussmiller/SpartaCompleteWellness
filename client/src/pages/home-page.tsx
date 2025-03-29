@@ -18,9 +18,11 @@ const mobileScrollStyles = {
   WebkitOverflowScrolling: 'touch',
   scrollBehavior: 'smooth' as const,
   overflowY: 'auto',
-  WebkitMomentum: 'true',
+  WebkitMomentumScrolling: 'touch',
   overscrollBehavior: 'auto' as const,
-  scrollDecelerationRate: '0.95' as const,
+  touchAction: 'pan-y' as const,
+  WebkitOverflowScrollingMomentum: 1,
+  scrollDecelerationRate: '0.85' as const,
 };
 
 export default function HomePage() {
