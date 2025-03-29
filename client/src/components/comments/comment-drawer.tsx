@@ -79,48 +79,28 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
     refetchInterval: false, // Disable automatic periodic refetching
     refetchOnMount: "if-stale", // Only refetch on mount if data is stale
     queryFn: async () => {
-      try {
-        // Add explicit request headers to ensure expected response format
-        const requestOptions = {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        };
-
-        console.log(`Fetching comments for post ${postId}...`);
-        const res = await apiRequest("GET", `/api/posts/comments/${postId}`, undefined, requestOptions);
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error(`Comments API error (${res.status}):`, errorText);
-          //Added more robust error handling
-          if(res.status === 404){
-            throw new Error(`Post with ID ${postId} not found`);
-          }
-          throw new Error(errorText || `Failed to load comments (${res.status})`);
-        }
-
         try {
-          const data = await res.json();
+          const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
 
-          // Validate response structure
-          if (!Array.isArray(data)) {
-            console.error("Comments API returned non-array data:", data);
-            return []; // Return empty array as fallback
+          if (!res.ok) {
+            if (res.status === 404) {
+              return [];
+            }
+            throw new Error(`Failed to load comments (${res.status})`);
           }
 
-          console.log(`Successfully loaded ${data.length} comments`);
+          const data = await res.json();
+          if (!Array.isArray(data)) {
+            console.warn("Comments API returned non-array data:", data);
+            return [];
+          }
+
           return data;
-        } catch (jsonError) {
-          console.error("Error parsing comments response:", jsonError);
+        } catch (error) {
+          console.error("Error fetching comments:", error);
           return [];
         }
-      } catch (error) {
-        console.error("Error fetching comments:", error);
-        throw error;
-      }
-    },
+      },
     retry: false
   });
 
