@@ -518,7 +518,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Calculate points based on post type
       let points = 0;
-      switch (postData.type) {
+      const type = postData.type?.toLowerCase();
+      switch (type) {
         case 'food':
           points = 3; // 3 points per meal
           break;
@@ -535,6 +536,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         default:
           points = 0;
       }
+
+      // Log point assignment for verification
+      console.log('Assigning points:', { type, points });
 
       // Log point calculation for verification
       logger.info('Post points calculation:', {
