@@ -19,10 +19,12 @@ const mobileScrollStyles = {
   scrollBehavior: 'smooth' as const,
   overflowY: 'auto',
   WebkitMomentumScrolling: 'touch',
-  overscrollBehavior: 'auto' as const,
+  overscrollBehavior: 'contain' as const,
   touchAction: 'pan-y' as const,
-  WebkitOverflowScrollingMomentum: 1,
-  scrollDecelerationRate: '0.85' as const,
+  scrollSnapType: 'none' as const,
+  scrollDecelerationRate: '0.95' as const,
+  WebkitOverflowScrollingMomentum: 1.2,
+  msOverflowStyle: '-ms-autohiding-scrollbar' as const,
 };
 
 export default function HomePage() {
