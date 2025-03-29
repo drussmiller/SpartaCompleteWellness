@@ -272,78 +272,78 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
-  
+
   // Get comments for a post
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
       res.setHeader('Content-Type', 'application/json');
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
-      
+
       // Get the comments
       const comments = await storage.getPostComments(postId);
-      
+
       // Explicitly validate the response
       const validComments = Array.isArray(comments) ? comments : [];
-      
+
       // Log the response for debugging
       logger.info(`Sending comments for post ${postId}:`, {
         commentCount: validComments.length,
         isArray: Array.isArray(validComments)
       });
-      
+
       // Make sure only JSON data is sent
       res.set({
         'Cache-Control': 'no-store',
         'Pragma': 'no-cache',
         'Content-Type': 'application/json'
       });
-      
+
       // Send JSON response
       return res.json(validComments);
     } catch (error) {
       logger.error('Error getting comments:', error);
-      
+
       // Set JSON content type on error as well
       res.set('Content-Type', 'application/json');
-      
+
       return res.status(500).json({ 
         message: "Failed to get comments",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
-  
+
   // Create a comment on a post
   router.post("/api/posts/comments", authenticate, async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
       res.setHeader('Content-Type', 'application/json');
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       // Validate request body
       const { content, parentId, depth = 0 } = req.body;
-      
+
       logger.info('Creating comment with data:', {
         userId: req.user.id, 
         parentId, 
         contentLength: content ? content.length : 0,
         depth
       });
-      
+
       if (!content || !parentId) {
         // Set JSON content type on error
         res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Missing required fields" });
       }
-      
+
       // Make sure parentId is a valid number
       const parentIdNum = parseInt(parentId);
       if (isNaN(parentIdNum)) {
@@ -351,7 +351,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Invalid parent post ID" });
       }
-      
+
       const comment = await storage.createComment({
         userId: req.user.id,
         content,
@@ -359,7 +359,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         depth,
         type: 'comment' // Explicitly set type for comments
       });
-      
+
       // Return the created comment with author information
       const commentWithAuthor = {
         ...comment,
@@ -369,21 +369,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           imageUrl: req.user.imageUrl
         }
       };
-      
+
       // Make sure only JSON data is sent for the response
       res.set({
         'Cache-Control': 'no-store',
         'Pragma': 'no-cache',
         'Content-Type': 'application/json'
       });
-      
+
       return res.status(201).json(commentWithAuthor);
     } catch (error) {
       logger.error('Error creating comment:', error);
-      
+
       // Set JSON content type on error
       res.set('Content-Type', 'application/json');
-      
+
       return res.status(500).json({ 
         message: "Failed to create comment",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -1807,8 +1807,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Get unread messages count
-  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
-    try {
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const [result] = await db
