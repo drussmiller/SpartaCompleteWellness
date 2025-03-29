@@ -234,11 +234,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 ) : (
                   <span>
                     {post.points ? <span className="font-semibold">{post.points} point{post.points !== 1 ? 's' : ''}</span> : null}
-                    {(post.points && (dayPoints || weekPoints)) ? <span> (</span> : null}
-                    {dayPoints > 0 ? <span>Day = {dayPoints}</span> : null}
-                    {dayPoints > 0 && weekPoints ? <span>, </span> : null}
-                    {weekPoints > 0 ? <span>Week = {weekPoints}</span> : null}
-                    {(post.points && (dayPoints || weekPoints)) ? <span>)</span> : null}
                   </span>
                 )}
               </p>

@@ -57,8 +57,7 @@ const upload = multer({
   limits: { 
     fileSize: 50 * 1024 * 1024, // 50MB limit
     fieldSize: 25 * 1024 * 1024 // 25MB per field
-  },
-  highWaterMark: 2 * 1024 * 1024 // 2MB chunks
+  }
 });
 
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
@@ -1436,8 +1435,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Create WebSocket server on a distinct path
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws',
-    clientTracking: true 
+    path: '/ws'
   });
 
   // Map to store active client connections by user ID
