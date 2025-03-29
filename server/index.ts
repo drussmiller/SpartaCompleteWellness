@@ -40,10 +40,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '150mb' }));
 app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
-// Basic middleware setup with increased limits
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: true, limit: '100mb' }));
-app.use(express.raw({ limit: '100mb' }));
+// Body parser middleware already defined above
 
 // Setup auth first (includes session middleware)
 setupAuth(app);
@@ -117,15 +114,18 @@ const scheduleDailyScoreCheck = () => {
     }
   };
 
-  // Run an immediate check when the server starts
-  runDailyCheck();
-
-  // Schedule first check for tomorrow
+  // Skip immediate check during startup
+  // Instead, schedule the first check to run 30 seconds after startup
   setTimeout(() => {
     runDailyCheck();
-    // Schedule subsequent checks every 24 hours
-    setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
-  }, timeUntilCheck);
+    
+    // Schedule next check for tomorrow
+    setTimeout(() => {
+      runDailyCheck();
+      // Schedule subsequent checks every 24 hours
+      setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
+    }, timeUntilCheck);
+  }, 30 * 1000);
 
   // Log the schedule
   logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes`);
