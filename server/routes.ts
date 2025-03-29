@@ -340,7 +340,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
   
   // Endpoint to get aggregated weekly data
-  router.get("/api/debug/posts/weekly-stats", async (req, res) => {
+  router.get("/api/debug/posts/weekly-stats", authenticate, async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
       
@@ -415,7 +415,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
   
   // Endpoint to get post type distribution
-  router.get("/api/debug/posts/type-distribution", async (req, res) => {
+  router.get("/api/debug/posts/type-distribution", authenticate, async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
       
