@@ -263,45 +263,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
-  
+
   // Debug endpoint for posts - unprotected for testing
   router.get("/api/debug/posts", async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
       res.setHeader('Content-Type', 'application/json');
-      
+
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const postType = req.query.type as string;
-      
+
       logger.info(`Debug posts request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
-      
+
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
-      
+
       // Add user filter if specified
       if (userId) {
         conditions.push(eq(posts.userId, userId));
       }
-      
+
       // Add date range filters if specified
       if (startDate) {
         conditions.push(gte(posts.createdAt, startDate));
       }
-      
+
       if (endDate) {
         // Add one day to include the entire end date
         const nextDay = new Date(endDate);
         nextDay.setDate(nextDay.getDate() + 1);
         conditions.push(lt(posts.createdAt, nextDay));
       }
-      
+
       // Add type filter if specified and not 'all'
       if (postType && postType !== 'all') {
         conditions.push(eq(posts.type, postType));
       }
-      
+
       // Join with users table to get author info
       const query = db
         .select({
@@ -325,9 +325,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .leftJoin(users, eq(posts.userId, users.id))
         .where(and(...conditions))
         .orderBy(desc(posts.createdAt));
-      
+
       const result = await query;
-      
+
       logger.info(`Debug: Fetched ${result.length} posts`);
       res.json(result);
     } catch (error) {
@@ -338,28 +338,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Endpoint to get aggregated weekly data
   router.get("/api/debug/posts/weekly-stats", authenticate, async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
-      
+
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-      
+
       logger.info(`Weekly stats request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
-      
+
       if (!userId || !startDate || !endDate) {
         return res.status(400).json({ message: "Missing required parameters: userId, startDate, and endDate are required" });
       }
-      
+
       // Convert dates to PostgreSQL date format strings
       const pgStartDate = startDate.toISOString();
       const nextDay = new Date(endDate);
       nextDay.setDate(nextDay.getDate() + 1);
       const pgEndDate = nextDay.toISOString();
-      
+
       // Use SQL to calculate weekly stats directly in the database
       const weeklyStats = await db.execute(
         sql`
@@ -386,19 +386,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           week_start DESC
         `
       );
-      
+
       // Calculate the average weekly points
       let totalPoints = 0;
       const weeks = weeklyStats.length;
-      
+
       if (weeks > 0) {
         weeklyStats.forEach(week => {
           totalPoints += parseInt(week.total_points);
         });
       }
-      
+
       const averageWeeklyPoints = weeks > 0 ? Math.round(totalPoints / weeks) : 0;
-      
+
       // Return both the weekly data and the average
       res.json({
         weeklyStats,
@@ -413,28 +413,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Endpoint to get post type distribution
   router.get("/api/debug/posts/type-distribution", authenticate, async (req, res) => {
     try {
       res.setHeader('Content-Type', 'application/json');
-      
+
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-      
+
       logger.info(`Type distribution request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
-      
+
       if (!userId || !startDate || !endDate) {
         return res.status(400).json({ message: "Missing required parameters: userId, startDate, and endDate are required" });
       }
-      
+
       // Convert dates to PostgreSQL date format strings
       const pgStartDate = startDate.toISOString();
       const nextDay = new Date(endDate);
       nextDay.setDate(nextDay.getDate() + 1);
       const pgEndDate = nextDay.toISOString();
-      
+
       // Use SQL to calculate type distribution directly in the database
       const typeDistribution = await db.execute(
         sql`
@@ -455,14 +455,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           total_points DESC
         `
       );
-      
+
       // Transform the data for frontend pie chart
       const chartData = typeDistribution.map(item => ({
         name: item.type.charAt(0).toUpperCase() + item.type.slice(1).replace('_', ' '),
         value: parseInt(item.count),
         points: parseInt(item.total_points)
       }));
-      
+
       res.json(chartData);
     } catch (error) {
       logger.error('Error in type distribution endpoint:', error);
@@ -478,46 +478,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       // Set content type early to prevent browser confusion
       res.setHeader('Content-Type', 'application/json');
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = (page - 1) * limit;
-      
+
       // Get filter parameters
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const postType = req.query.type as string;
-      
+
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
-      
+
       // Add user filter if specified
       if (userId) {
         conditions.push(eq(posts.userId, userId));
       }
-      
+
       // Add date range filters if specified
       if (startDate) {
         conditions.push(gte(posts.createdAt, startDate));
       }
-      
+
       if (endDate) {
         // Add one day to include the entire end date
         const nextDay = new Date(endDate);
         nextDay.setDate(nextDay.getDate() + 1);
         conditions.push(lt(posts.createdAt, nextDay));
       }
-      
+
       // Add type filter if specified and not 'all'
       if (postType && postType !== 'all') {
         conditions.push(eq(posts.type, postType));
       }
-      
+
       // Join with users table to get author info
       const query = db
         .select({
@@ -541,14 +541,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .leftJoin(users, eq(posts.userId, users.id))
         .where(and(...conditions))
         .orderBy(desc(posts.createdAt));
-      
+
       // Apply pagination only if not querying by date range (for analytics)
       if (!startDate && !endDate) {
         query.limit(limit).offset(offset);
       }
-      
+
       const result = await query;
-      
+
       logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
       res.json(result);
     } catch (error) {
@@ -852,25 +852,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       // Set content type early to prevent browser confusion
       res.setHeader('Content-Type', 'application/json');
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       // Get the post ID as a string to handle timestamp-based IDs
       const postIdStr = req.params.id;
-      
+
       // Log the raw post ID for debugging
       logger.info(`Raw post ID from request: ${postIdStr}`);
-      
+
       // Validate it's a valid number
       if (!/^\d+$/.test(postIdStr)) {
         return res.status(400).json({ message: "Invalid post ID format" });
       }
-      
+
       // Convert to numeric ID for database operations
       const postId = parseInt(postIdStr);
-      
+
       // Use Drizzle's built-in query methods which handle parameter binding correctly
       logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
 
@@ -879,7 +879,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .select()
         .from(posts)
         .where(eq(posts.id, postId));
-      
+
       if (!post) {
         logger.info(`Post ${postId} not found during deletion attempt`);
         return res.status(404).json({ message: "Post not found" });
@@ -899,13 +899,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             .delete(reactions)
             .where(eq(reactions.postId, postId));
           logger.info(`Deleted reactions for post ${postId}`);
-          
+
           // Then delete any comments on the post
           await tx
             .delete(posts)
             .where(eq(posts.parentId, postId));
           logger.info(`Deleted comments for post ${postId}`);
-          
+
           // Finally delete the post itself
           await tx
             .delete(posts)
@@ -936,13 +936,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       const userId = parseInt(req.query.userId as string);
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-      
+
       if (isNaN(userId)) {
         return res.status(400).json({ message: "User ID is required" });
       }
-      
+
       logger.info(`Manual check daily scores for user ${userId} with timezone offset ${tzOffset}`);
-      
+
       // Forward to the post endpoint
       // We're creating a fake request with the necessary properties
       await checkDailyScores({ body: { userId, tzOffset } } as Request, res);
@@ -954,7 +954,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Add the actual POST endpoint for the daily scores check
   router.post("/api/check-daily-scores", async (req, res) => {
     try {
@@ -968,7 +968,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Main function to check daily scores
   const checkDailyScores = async (req: Request, res: Response) => {
     try {
@@ -1060,7 +1060,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 )
               )
               .groupBy(posts.type);
-              
+
             // Create maps to track what's posted
             const counts: Record<string, number> = {
               food: 0,
@@ -1068,43 +1068,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               scripture: 0,
               memory_verse: 0
             };
-            
+
             // Fill in actual counts
             postsByType.forEach(post => {
               if (post.type in counts) {
                 counts[post.type] = post.count;
               }
             });
-            
+
             // Determine what should have been posted yesterday
             const missedItems = [];
             const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Yesterday's day
-            
+
             // For food, we need 3 posts every day except Sunday
             if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
               missedItems.push(`${3 - counts.food} meals`);
             }
-            
+
             // For workout, we need 1 per day, max 5 per week
             if (yesterdayDayOfWeek !== 0 && counts.workout < 1) {
               missedItems.push("your workout");
             }
-            
+
             // For scripture, we need 1 every day
             if (counts.scripture < 1) {
               missedItems.push("your scripture reading");
             }
-            
+
             // For memory verse, we need 1 on Saturday
             if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
               missedItems.push("your memory verse");
             }
-            
+
             // Create the notification message
             let message = "";
             if (missedItems.length > 0) {
               message = "Yesterday you missed posting ";
-              
+
               if (missedItems.length === 1) {
                 message += missedItems[0] + ".";
               } else if (missedItems.length === 2) {
@@ -1116,7 +1116,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             } else {
               message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
             }
-            
+
             const notification = {
               userId: user.id,
               title: "Daily Reminder",
@@ -1137,7 +1137,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               userId: user.id,
               message: notification.message
             });
-            
+
             // Send via WebSocket if user is connected
             const userClients = clients.get(user.id);
             if (userClients && userClients.size > 0) {
@@ -1148,7 +1148,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 sound: notification.sound,
                 type: notification.type
               };
-              
+
               broadcastNotification(user.id, notificationData);
             }
           } else {
@@ -1320,15 +1320,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Parse the date more carefully to handle timezone issues
       let dateStr = (req.query.date as string) || new Date().toISOString();
-      
+
       // If the date doesn't include time, add a default time
       if (dateStr.indexOf('T') === -1) {
         dateStr = `${dateStr}T00:00:00.000Z`;
       }
-      
+
       const date = new Date(dateStr);
       const userId = parseInt(req.query.userId as string);
-      
+
       if (isNaN(userId)) {
         logger.error(`Invalid userId: ${req.query.userId}`);
         return res.status(400).json({ message: "Invalid user ID" });
@@ -1339,7 +1339,665 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       startOfDay.setUTCHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setUTCHours(23, 59, 59, 999);
-      
+
+      // Log request parameters for debugging
+      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`, {
+        requestedDate: dateStr,
+        normalizedStartDate: startOfDay.toISOString(),
+        normalizedEndDate: endOfDay.toISOString()
+      });
+
+      // Calculate total points for the day with detailed logging
+      const result = await db
+        .select({
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId) // Don't count comments in the total
+          )
+        );
+
+      // Get post details for debugging
+      const postDetails = await db
+        .select({
+          id: posts.id,
+          type: posts.type,
+          points: posts.points,
+          createdAt: posts.createdAt
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
+            isNull(posts.parentId)
+          )
+        );
+
+      const totalPoints = result[0]?.points || 0;
+
+      // Log the response details
+      logger.info(`Daily points for user ${userId}: ${totalPoints}`, {
+        date: date.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        endOfDay: endOfDay.toISOString(),
+        postCount: postDetails.length,
+        posts: JSON.stringify(postDetails)
+      });
+
+      // Ensure content type is set
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ points: totalPoints });
+    } catch (error) {
+      logger.error('Error calculating daily points:', error);
+      res.status(500).json({
+        message: "Failed to calculate daily points",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add notifications count endpoint
+  router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)::integer` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.read, false)
+          )
+        );
+
+      res.json({ unreadCount: unreadCount[0].count });
+    } catch (error) {
+      logger.error('Error fetching unread notifications:', error);
+      res.status(500).json({
+        message: "Failed to fetch notification count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark notifications as read
+  router.post("/api/notifications/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationIds } = req.body;
+
+      if (!Array.isArray(notificationIds)) {
+        return res.status(400).json({ message: "Invalid notification IDs" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            sql`${notifications.id} = ANY(${notificationIds})`
+          )
+        );
+
+      res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+      logger.error('Error marking notifications as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get user notifications
+  router.get("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt));
+
+      res.json(userNotifications);
+    } catch (error) {
+      logger.error('Error fetching notifications:', error);
+      res.status(500).json({
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      // Validate teamId if present
+      if (req.body.teamId !== undefined && req.body.teamId !== null) {
+        if (typeof req.body.teamId !== 'number') {
+          return res.status(400).json({ message: "Team ID must be a number" });
+        }
+        // Verify team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, req.body.teamId))
+          .limit(1);
+
+        if (!team) {
+          return res.status(400).json({ message: "Team not found" });
+        }
+      }
+
+      // Prepare update data
+      const updateData = {
+        ...req.body,
+        teamJoinedAt: req.body.teamId ? new Date() : null
+      };
+
+      // Update user
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Return sanitized user data
+      res.setHeader('Content-Type', 'application/json');
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        teamId: updatedUser.teamId,
+        isAdmin: updatedUser.isAdmin,
+        isTeamLead: updatedUser.isTeamLead,
+        imageUrl: updatedUser.imageUrl,
+        teamJoinedAt: updatedUser.teamJoinedAt
+      });
+    } catch (error) {
+      logger.error('Error updating user:', error);
+      res.status(500).json({
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.notificationId);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      // Set content type before sending response
+      res.setHeader('Content-Type', 'application/json');
+
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.id, notificationId)
+          )
+        )
+        .returning();
+
+      if (!updatedNotification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      res.json({ message: "Notification marked as read", notification: updatedNotification });
+    } catch (error) {
+      logger.error('Error marking notification as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notification as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints before return statement
+  router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { content, recipientId } = req.body;
+
+      // Validate recipient exists
+      const [recipient] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(recipientId)))
+        .limit(1);
+
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient not found" });
+      }
+
+      // Create message
+      const [message] = await db
+        .insert(messages)
+        .values({
+          senderId: req.user.id,
+          recipientId: parseInt(recipientId),
+          content: content || null,
+          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+          isRead: false,
+        })
+        .returning();
+
+      // Create notification for recipient
+      await db.insert(notifications).values({
+        userId: parseInt(recipientId),
+        title: "New Message",
+        message: `You have a new message from ${req.user.username}`,
+        read: false,
+      });
+
+      res.status(201).json(message);
+    } catch (error) {
+      logger.error('Error creating message:', error);
+      res.status(500).json({
+        message: "Failed to create message",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get messages between users
+  router.get("/api/messages/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const userMessages = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          imageUrl: messages.imageUrl,
+          createdAt: messages.createdAt,
+          isRead: messages.isRead,
+          sender: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+          },
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(messages.senderId, req.user.id),
+              eq(messages.recipientId, otherUserId)
+            ),
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.recipientId, req.user.id)
+            )
+          )
+        )
+        .orderBy(messages.createdAt);
+
+      res.json(userMessages);
+    } catch (error) {
+      logger.error('Error fetching messages:', error);
+      res.status(500).json({
+        message: "Failed to fetch messages",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get unread messages count
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const [result] = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ unreadCount: result.count });
+    } catch (error) {
+      logger.error('Error getting unread message count:', error);
+      res.status(500).json({
+        message: "Failed to get unread message count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Mark messages as read
+  router.post("/api/messages/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { senderId } = req.body;
+      if (!senderId) {
+        return res.status(400).json({ message: "Sender ID is required" });
+      }
+
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.senderId, parseInt(senderId)),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      logger.error('Error marking messages as read:', error);
+      res.status(500).json({
+        message: "Failed to mark messages as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add messages endpoints before return statement
+  router.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get all senders who have sent unread messages to the current user
+      const unreadBySender = await db
+        .select({
+          senderId: messages.senderId,
+          hasUnread: sql<boolean>`true`
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        )
+        .groupBy(messages.senderId);
+
+      // Convert to a map of senderId -> hasUnread
+      const unreadMap = Object.fromEntries(
+        unreadBySender.map(({ senderId }) => [senderId, true])
+      );
+
+      res.json(unreadMap);
+    } catch (error) {
+      logger.error('Error getting unread messages by sender:', error);
+      res.status(500).json({
+        message: "Failed to get unread messages by sender",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add this endpoint before the app.use(router) line
+  router.post("/api/users/notification-schedule", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationTime } = req.body;
+
+      // Validate time format (HH:mm)
+      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationTime)) {
+        return res.status(400).json({ message: "Invalid time format. Use HH:mm format." });
+      }
+
+      // Update user's notification time preference
+      const [updatedUser] = await db
+        .update(users)
+        .set({ notificationTime })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      logger.error('Error updating notification schedule:', error);
+      res.status(500).json({
+        message: "Failed to update notification schedule",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.post("/api/notifications/read-all", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const result = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, req.user.id))
+        .returning();
+
+      logger.info(`Marked ${result.length} notifications as read for user ${req.user.id}`);
+
+      // Set content type and ensure proper JSON response
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ 
+        message: "All notifications marked as read",
+        count: result.length
+      });
+    } catch (error) {
+      logger.error('Error marking all notifications as read:', error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add activity progress endpoint before the return httpServer statement
+  router.get("/api/activities/current", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      // Helper function to convert UTC date to user's local time
+      const toUserLocalTime = (utcDate: Date): Date => {
+        const localDate = new Date(utcDate.getTime());
+        localDate.setMinutes(localDate.getMinutes() - tzOffset);
+        return localDate;
+      };
+
+      // Get user's team join date
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user?.teamJoinedAt) {
+        return res.status(400).json({ message: "User has no team join date" });
+      }
+
+      // Program start date (2/24/2025)
+      const programStart = new Date('2025-02-24T00:00:00.000Z');
+
+      // Get current time in user's timezone
+      const utcNow = new Date();
+      const userLocalNow = toUserLocalTime(utcNow);
+
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Debug info
+      console.log('Date Calculations:', {
+        timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+        utcNow: utcNow.toISOString(),
+        userLocalNow: userLocalNow.toLocaleString(),
+        daysSinceStart,
+        weekNumber,
+        dayNumber,
+        progressDays
+      });
+
+      res.json({
+        currentWeek: weekNumber,
+        currentDay: dayNumber,
+        daysSinceStart,
+        progressDays,
+        debug: {
+          timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
+          localTime: userLocalNow.toLocaleString()
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error calculating activity dates:', error);
+      res.status(500).json({
+        message: "Failed to calculate activity dates",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Measurements endpoints
+  router.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      logger.info('Creating measurement with data:', req.body);
+
+      const parsedData = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+        date: new Date()
+      });
+
+      if (!parsedData.success) {
+        logger.error('Validation errors:', parsedData.error.errors);
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsedData.error.errors
+        });
+      }
+
+      const measurement = await db
+        .insert(measurements)
+        .values(parsedData.data)
+        .returning();
+
+      res.status(201).json(measurement[0]);
+    } catch (error) {
+      logger.error('Error creating measurement:', error);
+      res.status(500).json({
+        message: "Failed to create measurement",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.get("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+      if (req.user.id !== userId && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to view these measurements" });
+      }
+
+      const userMeasurements = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(desc(measurements.date));
+
+      res.json(userMeasurements);
+    } catch (error) {
+      logger.error('Error fetching measurements:', error);
+      res.status(500).json({
+        message: "Failed to fetch measurements",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Add daily points endpoint with corrected calculation and improved logging
+  router.get("/api/points/daily", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Parse the date more carefully to handle timezone issues
+      let dateStr = (req.query.date as string) || new Date().toISOString();
+
+      // If the date doesn't include time, add a default time
+      if (dateStr.indexOf('T') === -1) {
+        dateStr = `${dateStr}T00:00:00.000Z`;
+      }
+
+      const date = new Date(dateStr);
+      const userId = parseInt(req.query.userId as string);
+
+      if (isNaN(userId)) {
+        logger.error(`Invalid userId: ${req.query.userId}`);
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Normalize to beginning of day in UTC to ensure consistent date handling
+      const startOfDay = new Date(date);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
       // Log request parameters for debugging
       logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`, {
         requestedDate: dateStr,
@@ -1819,11 +2477,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   wss.on('connection', (ws: WebSocket) => {
     logger.info('WebSocket client connected');
     let userId: number | null = null;
-    
+
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
-        
+
         // Handle authentication message
         if (data.type === 'auth') {
           userId = parseInt(data.userId);
@@ -1831,13 +2489,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
             return;
           }
-          
+
           // Add client to the user's connections
           if (!clients.has(userId)) {
             clients.set(userId, new Set());
           }
           clients.get(userId)?.add(ws);
-          
+
           logger.info(`WebSocket user ${userId} authenticated`);
           ws.send(JSON.stringify({ type: 'auth_success', userId }));
         }
@@ -1849,7 +2507,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }));
       }
     });
-    
+
     // Handle client disconnection
     ws.on('close', () => {
       if (userId) {
@@ -1865,7 +2523,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info('Unauthenticated WebSocket client disconnected');
       }
     });
-    
+
     // Send initial connection message
     ws.send(JSON.stringify({ 
       type: 'connected', 
@@ -1881,13 +2539,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         type: 'notification',
         data: notification
       });
-      
+
       userClients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(message);
         }
       });
-      
+
       logger.info(`Notification sent to user ${userId}`);
     }
   };
@@ -1899,14 +2557,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/user/stats", authenticate, async (req, res, next) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       const userId = req.user.id;
-      
+
       // Get timezone offset in minutes directly from the client
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-      
+
       logger.info(`Stats requested for user ${userId} with timezone offset: ${tzOffset} minutes`);
-      
+
       // For debugging, let's see what posts this user has today in UTC
       const postsToday = await db.select()
         .from(posts)
@@ -1917,18 +2575,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             lte(posts.createdAt, new Date(new Date().setHours(23, 59, 59, 999)))
           )
         );
-      
+
       logger.info(`Posts for user ${userId} today in UTC: ${postsToday.length}`);
-      
+
       // Calculate the local date for the user based on their timezone
       const now = new Date();
       // First convert to UTC by removing the local timezone offset
       const utcTime = now.getTime();
       // Then adjust to user's local time by applying their timezone offset (reversed since getTimezoneOffset returns the opposite)
       const userLocalTime = new Date(utcTime - (tzOffset * 60000));
-      
+
       logger.info(`User's local time (${userId}): ${userLocalTime.toISOString()}`);
-      
+
       // Use this adjusted date to create proper day boundaries in the user's local timezone
       const startOfDay = new Date(
         userLocalTime.getFullYear(),
@@ -1938,7 +2596,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       );
       // Convert back to UTC for database query
       const startOfDayUTC = new Date(startOfDay.getTime() + (tzOffset * 60000));
-      
+
       const endOfDay = new Date(
         userLocalTime.getFullYear(),
         userLocalTime.getMonth(),
@@ -1947,9 +2605,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       );
       // Convert back to UTC for database query
       const endOfDayUTC = new Date(endOfDay.getTime() + (tzOffset * 60000));
-      
+
       logger.info(`Date range for daily stats (in user's local timezone): ${startOfDayUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
-      
+
       const dailyPosts = await db.select()
         .from(posts)
         .where(
@@ -1980,9 +2638,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       );
       // Convert back to UTC for database query
       const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
-      
+
       logger.info(`Date range for weekly stats (in user's local timezone): ${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
-      
+
       const weeklyPosts = await db.select()
         .from(posts)
         .where(
@@ -2010,9 +2668,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       );
       // Convert back to UTC for database query
       const threeMonthsAgoUTC = new Date(threeMonthsAgo.getTime() + (tzOffset * 60000));
-      
+
       logger.info(`Date range for monthly stats (in user's local timezone): ${threeMonthsAgoUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
-      
+
       const monthlyPosts = await db.select()
         .from(posts)
         .where(
@@ -2030,7 +2688,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         else if (post.type === 'scripture') totalPoints += 3;
         else if (post.type === 'memory_verse') totalPoints += 10;
       }
-      
+
       // Calculate monthly average (total points divided by 3 months)
       const monthlyAvgPoints = Math.round(totalPoints / 3);
 
