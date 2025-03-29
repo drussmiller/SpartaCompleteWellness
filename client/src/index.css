@@ -11,13 +11,17 @@
   body {
     @apply font-sans antialiased bg-gray-100 text-foreground;
     -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    overscroll-behavior-y: contain;
+    scroll-behavior: auto;
+    overscroll-behavior-y: touch;
     -webkit-overflow-scrolling: touch;
     -webkit-momentum-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
+    touch-action: pan-y pinch-zoom;
     -webkit-text-size-adjust: none;
+    -webkit-scroll-snap-type: none;
+    scroll-snap-type: none;
+    -webkit-scroll-snap-points-y: none;
+    scroll-snap-points-y: none;
   }
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
