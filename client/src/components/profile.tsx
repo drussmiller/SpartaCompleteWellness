@@ -55,18 +55,24 @@ function UserProfile({ user }: ProfileProps) {
   const { data: serverPostTypeData, isLoading: isLoadingPostTypes, error: postTypesError } = useQuery<ChartDataPoint[]>({
     queryKey: ["/api/debug/posts/type-distribution", user.id, formattedStartDate, formattedEndDate],
     queryFn: async () => {
-      console.log(`Fetching post type distribution for user ${user.id} from ${formattedStartDate} to ${formattedEndDate}`);
-      const response = await apiRequest(
-        "GET", 
-        `/api/debug/posts/type-distribution?userId=${user.id}&startDate=${formattedStartDate}&endDate=${formattedEndDate}`
-      );
-      if (!response.ok) {
-        console.error('Failed to fetch post type distribution:', await response.text());
-        throw new Error('Failed to fetch post type distribution');
+      try {
+        console.log(`Fetching post type distribution for user ${user.id} from ${formattedStartDate} to ${formattedEndDate}`);
+        const response = await apiRequest(
+          "GET", 
+          `/api/debug/posts/type-distribution?userId=${user.id}&startDate=${formattedStartDate}&endDate=${formattedEndDate}`
+        );
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Failed to fetch post type distribution:', errorText);
+          throw new Error(`Failed to fetch post type distribution: ${errorText}`);
+        }
+        const data = await response.json();
+        console.log(`Received post type distribution data:`, data);
+        return data;
+      } catch (error) {
+        console.error('Error in post type distribution query:', error);
+        throw error;
       }
-      const data = await response.json();
-      console.log(`Received post type distribution data:`, data);
-      return data;
     }
   });
   
