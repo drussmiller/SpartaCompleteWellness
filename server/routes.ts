@@ -338,6 +338,140 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
+  
+  // Endpoint to get aggregated weekly data
+  router.get("/api/debug/posts/weekly-stats", async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      logger.info(`Weekly stats request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
+      
+      if (!userId || !startDate || !endDate) {
+        return res.status(400).json({ message: "Missing required parameters: userId, startDate, and endDate are required" });
+      }
+      
+      // Convert dates to PostgreSQL date format strings
+      const pgStartDate = startDate.toISOString();
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const pgEndDate = nextDay.toISOString();
+      
+      // Use SQL to calculate weekly stats directly in the database
+      const weeklyStats = await db.execute(
+        sql`
+        SELECT 
+          date_trunc('week', "createdAt") AS week_start,
+          to_char(date_trunc('week', "createdAt"), 'YYYY-MM-DD') as week_label,
+          SUM(points) AS total_points,
+          COUNT(*) AS post_count,
+          SUM(CASE WHEN type = 'food' THEN points ELSE 0 END) AS food_points,
+          SUM(CASE WHEN type = 'workout' THEN points ELSE 0 END) AS workout_points,
+          SUM(CASE WHEN type = 'scripture' THEN points ELSE 0 END) AS scripture_points,
+          SUM(CASE WHEN type = 'memory_verse' THEN points ELSE 0 END) AS memory_verse_points,
+          SUM(CASE WHEN type = 'miscellaneous' THEN points ELSE 0 END) AS misc_points
+        FROM 
+          posts
+        WHERE 
+          "userId" = ${userId} 
+          AND "createdAt" >= ${pgStartDate}
+          AND "createdAt" < ${pgEndDate}
+          AND "parentId" IS NULL
+        GROUP BY 
+          date_trunc('week', "createdAt")
+        ORDER BY 
+          week_start DESC
+        `
+      );
+      
+      // Calculate the average weekly points
+      let totalPoints = 0;
+      const weeks = weeklyStats.length;
+      
+      if (weeks > 0) {
+        weeklyStats.forEach(week => {
+          totalPoints += parseInt(week.total_points);
+        });
+      }
+      
+      const averageWeeklyPoints = weeks > 0 ? Math.round(totalPoints / weeks) : 0;
+      
+      // Return both the weekly data and the average
+      res.json({
+        weeklyStats,
+        averageWeeklyPoints,
+        totalWeeks: weeks
+      });
+    } catch (error) {
+      logger.error('Error in weekly stats endpoint:', error);
+      res.status(500).json({
+        message: "Failed to fetch weekly stats",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Endpoint to get post type distribution
+  router.get("/api/debug/posts/type-distribution", async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+      
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      logger.info(`Type distribution request with: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
+      
+      if (!userId || !startDate || !endDate) {
+        return res.status(400).json({ message: "Missing required parameters: userId, startDate, and endDate are required" });
+      }
+      
+      // Convert dates to PostgreSQL date format strings
+      const pgStartDate = startDate.toISOString();
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const pgEndDate = nextDay.toISOString();
+      
+      // Use SQL to calculate type distribution directly in the database
+      const typeDistribution = await db.execute(
+        sql`
+        SELECT 
+          type,
+          COUNT(*) AS count,
+          SUM(points) AS total_points
+        FROM 
+          posts
+        WHERE 
+          "userId" = ${userId} 
+          AND "createdAt" >= ${pgStartDate}
+          AND "createdAt" < ${pgEndDate}
+          AND "parentId" IS NULL
+        GROUP BY 
+          type
+        ORDER BY 
+          total_points DESC
+        `
+      );
+      
+      // Transform the data for frontend pie chart
+      const chartData = typeDistribution.map(item => ({
+        name: item.type.charAt(0).toUpperCase() + item.type.slice(1).replace('_', ' '),
+        value: parseInt(item.count),
+        points: parseInt(item.total_points)
+      }));
+      
+      res.json(chartData);
+    } catch (error) {
+      logger.error('Error in type distribution endpoint:', error);
+      res.status(500).json({
+        message: "Failed to fetch type distribution",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Main GET endpoint for fetching posts
   router.get("/api/posts", authenticate, async (req, res) => {
