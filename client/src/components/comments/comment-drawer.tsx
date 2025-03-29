@@ -87,25 +87,34 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             'Content-Type': 'application/json'
           }
         };
-        
+
         console.log(`Fetching comments for post ${postId}...`);
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`, undefined, requestOptions);
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           console.error(`Comments API error (${res.status}):`, errorText);
+          //Added more robust error handling
+          if(res.status === 404){
+            throw new Error(`Post with ID ${postId} not found`);
+          }
           throw new Error(errorText || `Failed to load comments (${res.status})`);
         }
-        
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid response format. Expected JSON.");
+        }
+
         try {
           const data = await res.json();
-          
+
           // Validate response structure
           if (!Array.isArray(data)) {
             console.error("Comments API returned non-array data:", data);
             return []; // Return empty array as fallback
           }
-          
+
           console.log(`Successfully loaded ${data.length} comments`);
           return data;
         } catch (jsonError) {
@@ -116,7 +125,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         console.error("Error fetching comments:", error);
         throw error;
       }
-    }
+    },
+    retry: false
   });
 
   const createCommentMutation = useMutation({
@@ -127,7 +137,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         parentId: postId,
         points: 1
       };
-      
+
       // Add proper headers for better error handling
       const requestOptions = {
         headers: {
@@ -136,16 +146,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         },
         data: JSON.stringify(data)
       };
-      
+
       console.log(`Creating comment for post ${postId}...`);
       const res = await apiRequest("POST", "/api/posts", requestOptions);
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error(`Comment creation error (${res.status}):`, errorText);
         throw new Error(errorText || "Failed to create comment");
       }
-      
+
       try {
         return res.json();
       } catch (jsonError) {
