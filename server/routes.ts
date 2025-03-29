@@ -576,14 +576,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         });
       }
 
-      const post = await storage.createPost({
-        userId: req.user.id,
-        type: postData.type,
-        content: postData.content?.trim() || '',
-        imageUrl: imageUrl,
-        points: points, // Use calculated points
-        createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
-      });
+      const post = await db
+        .insert(posts)
+        .values({
+          userId: req.user.id,
+          type: postData.type,
+          content: postData.content?.trim() || '',
+          imageUrl: imageUrl,
+          points: points,
+          createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+        })
+        .returning()
+        .then(posts => posts[0]);
+
+      // Log the created post for verification
+      logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
 
       res.status(201).json(post);
     } catch (error) {
@@ -631,17 +638,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // First delete any reactions that reference this post
-      await db.delete(reactions).where(eq(reactions.postId, postId));
-      logger.info(`Deleted reactions for post ${postId}`);
-      
-      // Then delete any comments on the post
-      await db.delete(posts).where(eq(posts.parentId, postId));
-      logger.info(`Deleted comments for post ${postId}`);
-      
-      // Finally delete the post
-      await db.delete(posts).where(eq(posts.id, postId));
-      logger.info(`Post ${postId} successfully deleted`);
+      // Use a transaction to ensure all deletes succeed or none do
+      await db.transaction(async (tx) => {
+        // First delete any reactions that reference this post
+        await tx.delete(reactions).where(eq(reactions.postId, postId));
+        logger.info(`Deleted reactions for post ${postId}`);
+        
+        // Then delete any comments on the post
+        await tx.delete(posts).where(eq(posts.parentId, postId));
+        logger.info(`Deleted comments for post ${postId}`);
+        
+        // Finally delete the post itself
+        await tx.delete(posts).where(eq(posts.id, postId));
+        logger.info(`Post ${postId} successfully deleted`);
+      });
 
       return res.status(200).json({ 
         message: "Post deleted successfully",
