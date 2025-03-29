@@ -15,18 +15,19 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 const MOBILE_BREAKPOINT = 768;
 
 const mobileScrollStyles = {
+  height: '100vh',
+  overflowY: 'auto',
+  overflowX: 'hidden',
   WebkitOverflowScrolling: 'touch',
-  scrollBehavior: 'auto' as const,
-  overflowY: 'scroll',
-  WebkitMomentumScrolling: 'touch',
-  overscrollBehavior: 'touch' as const,
-  touchAction: 'pan-y pinch-zoom' as const,
-  scrollSnapType: 'none' as const,
-  WebkitOverflowScrollingMomentum: 2,
-  msOverflowStyle: 'none' as const,
-  WebkitScrollSnapType: 'none',
-  scrollDecelerationRate: '0.80' as const,
-};
+  overscrollBehavior: 'none',
+  touchAction: 'pan-y',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  WebkitTapHighlightColor: 'transparent',
+} as const;
 
 export default function HomePage() {
   const isMobile = useIsMobile();
