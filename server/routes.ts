@@ -612,7 +612,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Use bigint for post ID to handle timestamp-based IDs
+      // Get the post ID as a string to handle timestamp-based IDs
       const postIdStr = req.params.id;
       
       // Log the raw post ID for debugging
@@ -623,57 +623,58 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID format" });
       }
       
-      // Instead of using parseInt which can cause issues with large numbers,
-      // we'll use the string ID directly in our queries
-      // Log deletion attempt for debugging
-      logger.info(`Attempting to delete post ${postIdStr} by user ${req.user.id}`);
+      // Convert to numeric ID for database operations
+      const postId = parseInt(postIdStr);
+      
+      // Use Drizzle's built-in query methods which handle parameter binding correctly
+      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
 
       // Get the post to check ownership
-      const postResults = await db.execute(
-        `SELECT * FROM posts WHERE id = $1 LIMIT 1`,
-        [postIdStr]
-      );
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId));
       
-      const post = postResults.rows[0];
       if (!post) {
-        logger.info(`Post ${postIdStr} not found during deletion attempt`);
+        logger.info(`Post ${postId} not found during deletion attempt`);
         return res.status(404).json({ message: "Post not found" });
       }
 
       // Check if user is admin or the post owner
-      if (!req.user.isAdmin && post.user_id !== req.user.id) {
-        logger.info(`User ${req.user.id} not authorized to delete post ${postIdStr} owned by ${post.user_id}`);
+      if (!req.user.isAdmin && post.userId !== req.user.id) {
+        logger.info(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Use SQL directly to handle the large integer IDs
       // Use a transaction to ensure all deletes succeed or none do
       await db.transaction(async (tx) => {
-        // First delete any reactions that reference this post using parameterized SQL
-        await tx.execute(
-          `DELETE FROM reactions WHERE post_id = $1`,
-          [postIdStr]
-        );
-        logger.info(`Deleted reactions for post ${postIdStr}`);
-        
-        // Then delete any comments on the post
-        await tx.execute(
-          `DELETE FROM posts WHERE parent_id = $1`,
-          [postIdStr]
-        );
-        logger.info(`Deleted comments for post ${postIdStr}`);
-        
-        // Finally delete the post itself
-        await tx.execute(
-          `DELETE FROM posts WHERE id = $1`,
-          [postIdStr]
-        );
-        logger.info(`Post ${postIdStr} successfully deleted`);
+        try {
+          // First delete any reactions that reference this post
+          await tx
+            .delete(reactions)
+            .where(eq(reactions.postId, postId));
+          logger.info(`Deleted reactions for post ${postId}`);
+          
+          // Then delete any comments on the post
+          await tx
+            .delete(posts)
+            .where(eq(posts.parentId, postId));
+          logger.info(`Deleted comments for post ${postId}`);
+          
+          // Finally delete the post itself
+          await tx
+            .delete(posts)
+            .where(eq(posts.id, postId));
+          logger.info(`Post ${postId} successfully deleted`);
+        } catch (txError) {
+          logger.error(`Transaction error while deleting post ${postId}:`, txError);
+          throw txError; // Re-throw to roll back the transaction
+        }
       });
 
       return res.status(200).json({ 
         message: "Post deleted successfully",
-        id: postIdStr 
+        id: postId 
       });
     } catch (error) {
       logger.error("Error deleting post:", error);
