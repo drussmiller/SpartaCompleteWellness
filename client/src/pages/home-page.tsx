@@ -16,17 +16,13 @@ const MOBILE_BREAKPOINT = 768;
 
 const mobileScrollStyles = {
   height: '100vh',
-  overflowY: 'auto',
+  overflowY: 'scroll',
   overflowX: 'hidden',
   WebkitOverflowScrolling: 'touch',
-  overscrollBehavior: 'none',
-  touchAction: 'pan-y',
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
+  overscrollBehavior: 'touch',
+  touchAction: 'manipulation',
   WebkitTapHighlightColor: 'transparent',
+  paddingBottom: '60px',
 } as const;
 
 export default function HomePage() {
