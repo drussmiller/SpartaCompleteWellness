@@ -1071,6 +1071,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Update the post creation endpoint to ensure correct point assignment
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+    // Set content type early to prevent browser confusion
+    res.set({
+      'Cache-Control': 'no-store',
+      'Pragma': 'no-cache',
+      'Content-Type': 'application/json',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
       let postData = req.body;
@@ -1162,6 +1170,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(201).json(post);
     } catch (error) {
       logger.error("Error in post creation:", error);
+      
+      // Ensure content type is still set on error
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create post",
         error: error instanceof Error ? error.stack : "Unknown error"
