@@ -85,19 +85,19 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
   // Add a function to check if a post type should be disabled
   function isPostTypeDisabled(type: string) {
-    const selectedDayOfWeek = selectedDate.getDay();
-
+    // Use the canPost values directly from the usePostLimits hook
+    // This ensures consistency between the dropdown display and button status
     switch (type) {
       case 'food':
-        return selectedDayOfWeek === 0 || counts.food >= 3;
+        return !canPost.food; 
       case 'workout':
-        return counts.workout > 0 || workoutWeekPoints >= 15;
+        return !canPost.workout;
       case 'scripture':
-        return counts.scripture > 0;
+        return !canPost.scripture;
       case 'memory_verse':
-        return memoryVerseWeekCount > 0;
+        return !canPost.memory_verse;
       case 'miscellaneous':
-        return false;
+        return !canPost.miscellaneous; // Always false (enabled)
       default:
         return false;
     }
