@@ -220,7 +220,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
             className="h-8 w-8 p-0"
             aria-label="Close"
           >
-            <span className="text-lg">×</span>
+            <span className="text-2xl font-bold">×</span>
           </Button>
           <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
         </div>
