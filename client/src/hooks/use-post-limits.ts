@@ -101,8 +101,21 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
   // Check if we have valid data from the API before using defaults
   const counts = data?.counts || defaultCounts;
-  const canPost = data?.canPost || defaultCanPost;
-  const remaining = data?.remaining || defaultRemaining;
+  // Derive canPost from counts rather than using potentially stale data from API
+  const canPost = {
+    food: (selectedDate.getDay() !== 0) && (counts.food < 3),
+    workout: counts.workout < 1,
+    scripture: counts.scripture < 1,
+    memory_verse: selectedDate.getDay() === 6 && counts.memory_verse < 1,
+    miscellaneous: true // Always allow miscellaneous posts
+  };
+  const remaining = {
+    food: Math.max(0, 3 - counts.food),
+    workout: Math.max(0, 1 - counts.workout),
+    scripture: Math.max(0, 1 - counts.scripture),
+    memory_verse: (selectedDate.getDay() === 6) ? Math.max(0, 1 - counts.memory_verse) : 0,
+    miscellaneous: null // No limit
+  };
 
   // Force a clean fetch of the data when the hook is used
   useEffect(() => {
