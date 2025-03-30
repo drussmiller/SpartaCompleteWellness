@@ -1,3 +1,4 @@
+
 import { CreatePostDialog } from "./create-post-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -33,7 +34,9 @@ export function TopNav() {
             </div>
           )}
         </div>
-        <CreatePostDialog />
+        <div className="scale-125">
+          <CreatePostDialog />
+        </div>
       </div>
     </nav>
   );
