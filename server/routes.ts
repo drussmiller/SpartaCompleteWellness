@@ -1312,6 +1312,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   const checkDailyScores = async (req: Request, res: Response) => {
     try {
       logger.info('Starting daily score check');
+      
+      // Log the intent to check scores for debugging
+      logger.info('Daily check endpoint triggered - will check all users for missed posts');
 
       // Get all users using a more explicit query to avoid type issues
       const allUsers = await db
@@ -1320,7 +1323,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           username: users.username,
           email: users.email,
           isAdmin: users.isAdmin,
-          teamId: users.teamId
+          teamId: users.teamId,
+          notificationTime: users.notificationTime
         })
         .from(users);
 

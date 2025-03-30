@@ -88,13 +88,16 @@ const scheduleDailyScoreCheck = () => {
 
   const timeUntilCheck = tomorrow.getTime() - now.getTime();
 
-  logger.info('Scheduling next daily score check for:', tomorrow.toISOString());
+  logger.info('Scheduling next daily score check for:', { timestamp: tomorrow.toISOString() });
 
   // Run an immediate check if it hasn't been run today
   const runDailyCheck = async () => {
     try {
       logger.info('Running daily score check');
-      const response = await fetch('http://0.0.0.0:5000/api/check-daily-scores', {
+      
+      // Use relative URL to avoid port binding issues
+      const baseUrl = 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -106,17 +109,18 @@ const scheduleDailyScoreCheck = () => {
       }
 
       const result = await response.json();
-      logger.info('Daily score check completed:', result);
+      logger.info('Daily score check completed:', { result });
     } catch (error) {
-      logger.error('Error running daily score check:', error);
+      logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
       // Schedule a retry in 5 minutes if there's an error
       setTimeout(runDailyCheck, 5 * 60 * 1000);
     }
   };
 
-  // Skip immediate check during startup
-  // Instead, schedule the first check to run 30 seconds after startup
+  // Run an immediate check during startup for debugging purposes
+  // This helps us verify the notification system quickly
   setTimeout(() => {
+    logger.info('Running immediate daily score check for debugging...');
     runDailyCheck();
     
     // Schedule next check for tomorrow
@@ -125,10 +129,10 @@ const scheduleDailyScoreCheck = () => {
       // Schedule subsequent checks every 24 hours
       setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
     }, timeUntilCheck);
-  }, 30 * 1000);
+  }, 10 * 1000); // Reduced to 10 seconds to check sooner
 
   // Log the schedule
-  logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes`);
+  logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes and immediate check in 10 seconds`);
 };
 
 // Ensure API requests respond with JSON
@@ -137,15 +141,8 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Placeholder route for daily score check
-app.post('/api/check-daily-scores', async (req, res) => {
-  try {
-    // Implement your daily score check logic here
-    res.status(200).json({ message: 'Daily score check initiated' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to check daily scores' });
-  }
-});
+// Remove the placeholder route since the real endpoint is in routes.ts
+// We'll directly call the endpoint in routes.ts
 
 
 (async () => {
