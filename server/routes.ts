@@ -273,48 +273,52 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
 
+  // This is a deleted route definition that will be added later in the correct order
+
   // Get comments for a post
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
     try {
-      // Set content type early to prevent browser confusion
-      res.setHeader('Content-Type', 'application/json');
-
-      const postId = parseInt(req.params.postId);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-
-      // Get the comments
-      const comments = await storage.getPostComments(postId);
-
-      // Explicitly validate the response
-      const validComments = Array.isArray(comments) ? comments : [];
-
-      // Log the response for debugging
-      logger.info(`Sending comments for post ${postId}:`, {
-        commentCount: validComments.length,
-        isArray: Array.isArray(validComments)
-      });
-
-      // Make sure only JSON data is sent
+      // Force JSON content type header immediately to prevent any potential HTML response
       res.set({
         'Cache-Control': 'no-store',
         'Pragma': 'no-cache',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
       });
-
-      // Send JSON response
-      return res.json(validComments);
+      
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).send(JSON.stringify({ message: "Invalid post ID" }));
+      }
+      
+      // Get the comments
+      const comments = await storage.getPostComments(postId);
+      
+      // Explicitly validate the response
+      const validComments = Array.isArray(comments) ? comments : [];
+      
+      // Log the response for debugging
+      logger.info(`Sending comments for post ${postId}: ${validComments.length} comments`);
+      
+      // Double-check we're still sending as JSON (just in case)
+      res.set('Content-Type', 'application/json');
+      
+      // Manually stringify the JSON to ensure it's not transformed in any way
+      const jsonString = JSON.stringify(validComments);
+      
+      // Send the manual JSON response
+      return res.send(jsonString);
     } catch (error) {
       logger.error('Error getting comments:', error);
-
-      // Set JSON content type on error as well
+      
+      // Make sure we're still sending JSON on error
       res.set('Content-Type', 'application/json');
-
-      return res.status(500).json({ 
+      
+      // Return the error as a manually stringified JSON
+      return res.status(500).send(JSON.stringify({ 
         message: "Failed to get comments",
         error: error instanceof Error ? error.message : "Unknown error"
-      });
+      }));
     }
   });
 
@@ -687,6 +691,76 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Get single post by ID - this must be placed after any more specific routes like /api/posts/comments
+  router.get("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      // Force JSON content type header immediately to prevent any potential HTML response
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).send(JSON.stringify({ message: "Invalid post ID" }));
+      }
+      
+      // Get the post with author info using a db query
+      const result = await db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          type: posts.type,
+          imageUrl: posts.imageUrl,
+          createdAt: posts.createdAt,
+          parentId: posts.parentId,
+          points: posts.points,
+          userId: posts.userId,
+          author: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            imageUrl: users.imageUrl,
+            isAdmin: users.isAdmin
+          }
+        })
+        .from(posts)
+        .leftJoin(users, eq(posts.userId, users.id))
+        .where(eq(posts.id, postId))
+        .limit(1);
+      
+      if (!result || result.length === 0) {
+        return res.status(404).send(JSON.stringify({ message: "Post not found" }));
+      }
+      
+      const post = result[0];
+      
+      // Log the response for debugging
+      logger.info(`Sending post ${postId}`);
+      
+      // Double-check we're still sending as JSON (just in case)
+      res.set('Content-Type', 'application/json');
+      
+      // Manually stringify the JSON to ensure it's not transformed in any way
+      const jsonString = JSON.stringify(post);
+      
+      // Send the manual JSON response
+      return res.send(jsonString);
+    } catch (error) {
+      logger.error('Error getting post:', error);
+      
+      // Make sure we're still sending JSON on error
+      res.set('Content-Type', 'application/json');
+      
+      // Return the error as a manually stringified JSON
+      return res.status(500).send(JSON.stringify({ 
+        message: "Failed to get post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      }));
+    }
+  });
 
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
