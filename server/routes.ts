@@ -761,6 +761,127 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }));
     }
   });
+  
+  // Get reactions for a post
+  router.get("/api/posts/:postId/reactions", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+      
+      const reactions = await storage.getReactionsByPost(postId);
+      return res.json(reactions);
+    } catch (error) {
+      logger.error('Error getting reactions:', error);
+      // Ensure JSON content type on error
+      res.set('Content-Type', 'application/json');
+      return res.status(500).json({
+        message: "Failed to get reactions",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Add a reaction to a post
+  router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+      
+      const { type } = req.body;
+      if (!type) {
+        return res.status(400).json({ message: "Reaction type is required" });
+      }
+      
+      // Check if reaction already exists
+      const existingReactions = await storage.getReactionsByPost(postId);
+      const existingReaction = existingReactions.find(
+        r => r.userId === req.user!.id && r.type === type
+      );
+      
+      if (existingReaction) {
+        // If reaction exists, remove it (toggle behavior)
+        await storage.deleteReaction(req.user.id, postId, type);
+        return res.json({ message: "Reaction removed" });
+      }
+      
+      // Create new reaction
+      const reaction = await storage.createReaction({
+        userId: req.user.id,
+        postId,
+        type
+      });
+      
+      return res.status(201).json(reaction);
+    } catch (error) {
+      logger.error('Error creating reaction:', error);
+      // Ensure JSON content type on error
+      res.set('Content-Type', 'application/json');
+      return res.status(500).json({
+        message: "Failed to create reaction",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Delete a reaction
+  router.delete("/api/posts/:postId/reactions/:type", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const postId = parseInt(req.params.postId);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+      
+      const { type } = req.params;
+      
+      await storage.deleteReaction(req.user.id, postId, type);
+      
+      return res.json({ message: "Reaction deleted" });
+    } catch (error) {
+      logger.error('Error deleting reaction:', error);
+      // Ensure JSON content type on error
+      res.set('Content-Type', 'application/json');
+      return res.status(500).json({
+        message: "Failed to delete reaction",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
