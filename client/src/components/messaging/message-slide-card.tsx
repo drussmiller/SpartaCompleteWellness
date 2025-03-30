@@ -260,7 +260,7 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100]`}
+        } pt-12 z-[100]`}
       >
         <Card className="h-full rounded-none">
           {/* Header */}
