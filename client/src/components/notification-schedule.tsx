@@ -84,9 +84,9 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="mr-2"
+          className="mr-2 scale-125"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-8 w-8 scale-125" />
         </Button>
         <h2 className="text-lg font-semibold">Notification Schedule</h2>
         {renderConnectionStatus()}
