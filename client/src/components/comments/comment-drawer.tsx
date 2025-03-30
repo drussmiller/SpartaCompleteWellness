@@ -275,7 +275,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           }, 0);
         }}
       >
-        <div className="h-[100dvh] flex flex-col overflow-hidden w-full pt-20">
+        <div className="h-[100dvh] flex flex-col overflow-hidden w-full pt-24">
           {/* Fixed header bar */}
           <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
             {/* Back button */}
