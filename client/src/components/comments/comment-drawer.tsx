@@ -23,12 +23,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
-  
+
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
   const [isPostLoading, setIsPostLoading] = useState(false);
   const [postError, setPostError] = useState<Error | null>(null);
-  
+
   const [comments, setComments] = useState<Array<Post & { author: User }>>([]);
   const [areCommentsLoading, setAreCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<Error | null>(null);
@@ -64,11 +64,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   // Fetch original post manually
   useEffect(() => {
     if (!isOpen || !postId) return;
-    
+
     async function fetchPost() {
       setIsPostLoading(true);
       setPostError(null);
-      
+
       try {
         const res = await fetch(`/api/posts/${postId}`, {
           method: 'GET',
@@ -77,15 +77,15 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           },
           credentials: 'include'
         });
-        
+
         if (!res.ok) {
           console.error(`Post fetch error (${res.status})`);
           throw new Error(`Failed to fetch post: ${res.status}`);
         }
-        
+
         const responseText = await res.text();
         console.log(`Raw post response (first 100 chars):`, responseText.substring(0, 100));
-        
+
         try {
           const data = JSON.parse(responseText);
           setOriginalPost(data);
@@ -100,32 +100,32 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         setIsPostLoading(false);
       }
     }
-    
+
     fetchPost();
   }, [isOpen, postId]);
-  
+
   // Fetch comments manually
   useEffect(() => {
     if (!isOpen || !postId) return;
-    
+
     async function fetchComments() {
       setAreCommentsLoading(true);
       setCommentsError(null);
-      
+
       try {
         console.log(`Manually fetching comments for post ${postId}...`);
-        
+
         // Use XMLHttpRequest instead of fetch to better handle content type issues
         const xhr = new XMLHttpRequest();
         xhr.open('GET', `/api/posts/comments/${postId}`);
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.withCredentials = true;
-        
+
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             const contentType = xhr.getResponseHeader('Content-Type');
             console.log(`Response Content-Type for comments: ${contentType}`);
-            
+
             // Check if we actually got JSON back
             if (contentType && contentType.includes('application/json')) {
               try {
@@ -153,17 +153,17 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             setCommentsError(new Error(`Failed to fetch comments: ${xhr.status}`));
             setComments([]);
           }
-          
+
           setAreCommentsLoading(false);
         };
-        
+
         xhr.onerror = function() {
           console.error("Network error when fetching comments");
           setCommentsError(new Error("Network error when fetching comments"));
           setComments([]);
           setAreCommentsLoading(false);
         };
-        
+
         xhr.send();
       } catch (error) {
         console.error("Error in comments fetch:", error);
@@ -172,7 +172,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         setAreCommentsLoading(false);
       }
     }
-    
+
     fetchComments();
   }, [isOpen, postId]);
 
@@ -186,7 +186,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       };
 
       console.log(`Creating comment for post ${postId}...`, data);
-      
+
       try {
         const res = await fetch('/api/posts', {
           method: 'POST',
@@ -233,7 +233,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .catch(err => console.error("Error reloading comments:", err))
         .finally(() => setAreCommentsLoading(false));
       }
-      
+
       toast({
         description: "Comment posted successfully",
       });
@@ -277,9 +277,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full pt-24">
           {/* Fixed header bar */}
-          <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000] pt-12">
+          <div className="h-24 border-b bg-background fixed top-0 left-0 right-0 z-[10000] pt-12">
             {/* Back button */}
-            <SheetClose className="absolute top-10 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+            <SheetClose className="absolute top-12 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-xl" />
               <span className="sr-only">Close</span>
             </SheetClose>
