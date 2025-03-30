@@ -339,9 +339,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="mr-2"
+                className="mr-2 scale-125"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-10 w-10 scale-125" />
               </Button>
             )}
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
