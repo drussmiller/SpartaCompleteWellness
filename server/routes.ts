@@ -2162,7 +2162,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         count: result.length
       });
     } catch (error) {
-      logger.error('Error marking all notifications as read:', error);
+      logger.error('Error marking all notifications as read:', error instanceof Error ? error : new Error(String(error)));
       res.status(500).json({
         message: "Failed to mark notifications as read",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -3050,6 +3050,49 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     } catch (error) {
       logger.error(`Error calculating user stats: ${error instanceof Error ? error.message : String(error)}`);
       next(error);
+    }
+  });
+
+  // Add endpoint to delete a notification
+  router.delete("/api/notifications/:notificationId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.notificationId);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      // Set content type before sending response
+      res.setHeader('Content-Type', 'application/json');
+
+      // Delete the notification
+      const result = await db
+        .delete(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.id, notificationId)
+          )
+        )
+        .returning();
+
+      // Log the deletion result
+      logger.info(`Deletion result for notification ${notificationId}:`, { 
+        userId: req.user.id
+      });
+
+      if (!result.length) {
+        return res.status(404).json({ message: "Notification not found or already deleted" });
+      }
+
+      res.json({ message: "Notification deleted successfully", notification: result[0] });
+    } catch (error) {
+      logger.error('Error deleting notification:', error instanceof Error ? error : new Error(String(error)));
+      res.status(500).json({
+        message: "Failed to delete notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
