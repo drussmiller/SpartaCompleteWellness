@@ -275,9 +275,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           }, 0);
         }}
       >
-        <div className="h-[100dvh] flex flex-col overflow-hidden w-full pt-24">
+        <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
           {/* Fixed header bar */}
-          <div className="h-28 border-b bg-background fixed top-0 left-0 right-0 z-[10000] pt-12">
+          <div className="h-16 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
             {/* Back button */}
             <SheetClose className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-2xl" />
@@ -331,7 +331,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             {/* Post and comments section with scrolling */}
             {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
               <>
-                <div className="flex-1 overflow-y-auto h-[calc(100vh-12rem)] p-4 space-y-6 w-full max-w-none">
+                <div className="flex-1 overflow-y-auto h-[calc(100vh-8rem)] pt-16 px-4 space-y-6 w-full max-w-none">
                   {originalPost && <PostView post={originalPost} />}
                   <CommentList comments={comments} postId={postId} />
                 </div>
