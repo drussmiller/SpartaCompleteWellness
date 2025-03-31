@@ -1460,39 +1460,62 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
             }
 
-            const notification = {
-              userId: user.id,
-              title: "Daily Reminder",
-              message,
-              read: false,
-              createdAt: new Date(),
-              type: "reminder",
-              sound: "default" // Add sound property for mobile notifications
-            };
+            // Check if a reminder notification has already been sent today
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            
+            const existingNotifications = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, user.id),
+                  eq(notifications.type, "reminder"),
+                  gte(notifications.createdAt, startOfToday)
+                )
+              );
 
-            const [insertedNotification] = await db
-              .insert(notifications)
-              .values(notification)
-              .returning();
-
-            logger.info(`Created notification for user ${user.id}:`, {
-              notificationId: insertedNotification.id,
-              userId: user.id,
-              message: notification.message
-            });
-
-            // Send via WebSocket if user is connected
-            const userClients = clients.get(user.id);
-            if (userClients && userClients.size > 0) {
-              const notificationData = {
-                id: insertedNotification.id,
-                title: notification.title,
-                message: notification.message,
-                sound: notification.sound,
-                type: notification.type
+            // Only send a notification if one hasn't been sent today
+            if (existingNotifications.length === 0) {
+              const notification = {
+                userId: user.id,
+                title: "Daily Reminder",
+                message,
+                read: false,
+                createdAt: new Date(),
+                type: "reminder",
+                sound: "default" // Add sound property for mobile notifications
               };
 
-              broadcastNotification(user.id, notificationData);
+              const [insertedNotification] = await db
+                .insert(notifications)
+                .values(notification)
+                .returning();
+
+              logger.info(`Created notification for user ${user.id}:`, {
+                notificationId: insertedNotification.id,
+                userId: user.id,
+                message: notification.message
+              });
+              
+              // Send via WebSocket if user is connected
+              const userClients = clients.get(user.id);
+              if (userClients && userClients.size > 0) {
+                const notificationData = {
+                  id: insertedNotification.id,
+                  title: notification.title,
+                  message: notification.message,
+                  sound: notification.sound,
+                  type: notification.type
+                };
+
+                broadcastNotification(user.id, notificationData);
+              }
+            } else {
+              logger.info(`Skipping notification for user ${user.id} - already sent today`, {
+                userId: user.id,
+                existingNotifications: existingNotifications.length
+              });
             }
           } else {
             logger.info(`No notification needed for user ${user.id}, met daily goal`);
