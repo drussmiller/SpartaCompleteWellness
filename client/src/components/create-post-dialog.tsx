@@ -212,7 +212,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="h-screen overflow-y-auto pb-32 sm:pb-28 pt-6">
+      <DialogContent className="h-screen overflow-y-auto pb-32 sm:pb-28 pt-8">
         <div className="flex justify-between items-center mb-4 px-2">
           <Button 
             onClick={() => setOpen(false)} 
