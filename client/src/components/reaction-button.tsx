@@ -162,7 +162,6 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={(open) => {
-      // Only allow opening via right-click
       if (!open) {
         setIsOpen(false);
       }
@@ -175,6 +174,21 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           variant="ghost"
           size="lg"  /* Increased button size */
           className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
+          onTouchStart={(e) => {
+            const longPressTimer = setTimeout(() => {
+              e.preventDefault();
+              setIsOpen(true);
+            }, 500); // 500ms for long press
+            
+            const cleanup = () => {
+              clearTimeout(longPressTimer);
+              document.removeEventListener('touchend', cleanup);
+              document.removeEventListener('touchmove', cleanup);
+            };
+
+            document.addEventListener('touchend', cleanup);
+            document.addEventListener('touchmove', cleanup);
+          }}
           onClick={(e) => {
             e.preventDefault(); // Prevent default action
             e.stopPropagation(); // Prevent event bubbling
