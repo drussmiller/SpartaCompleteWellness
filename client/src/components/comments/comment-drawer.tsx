@@ -313,7 +313,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Content area - adjust top margin to account for header */}
-          <div className="flex-1 overflow-hidden mt-20">
+          <div className="flex-1 overflow-hidden mt-4" bp-8>
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
               <div className="flex-1 flex items-center justify-center">
