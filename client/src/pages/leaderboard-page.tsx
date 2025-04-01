@@ -43,17 +43,12 @@ type LeaderboardData = {
 
 export function LeaderboardPage() {
   const [, navigate] = useLocation();
-  const isMobile = useIsMobile();
   const { user } = useAuth();
 
   const { data, isLoading, error } = useQuery<LeaderboardData>({
     queryKey: ["/api/leaderboard"],
     refetchInterval: 60000, // Refresh every minute
   });
-
-  const handleBack = () => {
-    navigate("/menu");
-  };
 
   if (!user) {
     return null;
@@ -71,14 +66,6 @@ export function LeaderboardPage() {
   return (
     <AppLayout title="Leaderboard">
       <div className="container py-4 max-w-4xl mx-auto">
-        <div className="flex items-center mb-4">
-          <Button variant="ghost" onClick={handleBack} className="mr-2">
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">Leaderboard</h1>
-        </div>
-
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <p>Loading leaderboard data...</p>
