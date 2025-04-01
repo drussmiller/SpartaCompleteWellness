@@ -70,13 +70,13 @@ export function LeaderboardPage() {
   return (
     <div className="flex flex-col min-h-screen pb-16 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-border bg-background">
-        <div className="container flex items-center py-4">
+        <div className="container flex items-center p-4 pt-16">
           <Link href="/menu">
-            <Button variant="ghost" size="icon" className="mr-2">
-              <ChevronLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="mr-2 scale-125">
+              <ChevronLeft className="h-8 w-8 scale-125" />
             </Button>
           </Link>
-          <h1 className="text-xl font-semibold">Leaderboard</h1>
+          <h1 className="text-lg font-semibold">Leaderboard</h1>
         </div>
       </header>
 
