@@ -174,10 +174,23 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                 variant="outline" 
                 className="w-full"
                 size="sm"
-                onClick={() => testNotificationTimeMutation.mutate()}
+                onClick={() => {
+                  try {
+                    testNotificationTimeMutation.mutate();
+                  } catch (error) {
+                    console.error("Error triggering test notification:", error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to send test notification. Please try again.",
+                      variant: "destructive"
+                    });
+                  }
+                }}
                 disabled={testNotificationTimeMutation.isPending}
               >
-                Test At My Scheduled Time ({notificationTime})
+                {testNotificationTimeMutation.isPending 
+                  ? "Testing..." 
+                  : `Test At My Scheduled Time (${notificationTime})`}
               </Button>
               
               {user?.isAdmin && (

@@ -39,6 +39,13 @@ export function useNotifications(suppressToasts = false) {
     }
 
     try {
+      // Ensure we're in a disconnected state before trying to reconnect
+      // This prevents any issues with previous connection attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
       setConnectionStatus("connecting");
       console.log("WebSocket connecting...", new Date().toISOString());
       
@@ -51,10 +58,19 @@ export function useNotifications(suppressToasts = false) {
           socketRef.current.readyState === WebSocket.CLOSED ? "CLOSED" : "UNKNOWN"
         );
         
-        if (socketRef.current.readyState === WebSocket.OPEN || 
-            socketRef.current.readyState === WebSocket.CONNECTING) {
-          console.log("Closing existing WebSocket connection");
-          socketRef.current.close();
+        try {
+          if (socketRef.current.readyState === WebSocket.OPEN || 
+              socketRef.current.readyState === WebSocket.CONNECTING) {
+            console.log("Closing existing WebSocket connection");
+            socketRef.current.close();
+          }
+          
+          // Release the reference to the old WebSocket to prevent memory leaks
+          socketRef.current = null;
+        } catch (closeError) {
+          console.error("Error closing existing WebSocket:", closeError);
+          // Continue anyway - we want to create a fresh connection
+          socketRef.current = null;
         }
       }
 
