@@ -141,8 +141,8 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center p-4 pt-16 border-b">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center p-4 pt-16 border-b shrink-0">
         <Button
           variant="ghost"
           size="icon"
@@ -155,7 +155,7 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
         {renderConnectionStatus()}
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 overflow-y-auto flex-1">
         <div className="space-y-2">
           <Label htmlFor="notification-time">Daily Notification Time</Label>
           <Input
