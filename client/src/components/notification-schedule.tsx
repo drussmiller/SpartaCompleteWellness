@@ -141,7 +141,7 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] overflow-y-auto">
+    <div className="flex flex-col h-full overflow-y-auto">
       <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-20">
         <Button
           variant="ghost"
