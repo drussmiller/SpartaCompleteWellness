@@ -3119,6 +3119,141 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Get weekly points for a user
+  router.get("/api/points/weekly", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      const now = new Date();
+      
+      // Get start of week (Monday)
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Get end of week (Sunday)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      const result = await db
+        .select({
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, startOfWeek),
+            lte(posts.createdAt, endOfWeek),
+            isNull(posts.parentId) // Don't count comments
+          )
+        );
+
+      // Ensure this endpoint also has consistent content-type
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ 
+        points: result[0]?.points || 0,
+        startDate: startOfWeek.toISOString(),
+        endDate: endOfWeek.toISOString()
+      });
+    } catch (error) {
+      logger.error('Error getting weekly points:', error instanceof Error ? error : new Error(String(error)));
+      res.status(500).json({
+        message: "Failed to get weekly points",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Get leaderboard data
+  router.get("/api/leaderboard", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const now = new Date();
+      
+      // Get start of week (Monday)
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Get end of week (Sunday)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      // First get the user's team ID
+      const [currentUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!currentUser || !currentUser.teamId) {
+        return res.status(400).json({ message: "User not assigned to a team" });
+      }
+
+      // Get team members points
+      const teamMembers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          imageUrl: users.imageUrl,
+          points: sql<number>`COALESCE((
+            SELECT SUM(p.points)
+            FROM posts p
+            WHERE p.user_id = users.id
+            AND p.created_at >= ${startOfWeek}
+            AND p.created_at <= ${endOfWeek}
+            AND p.parent_id IS NULL
+          ), 0)::integer AS points`
+        })
+        .from(users)
+        .where(eq(users.teamId, currentUser.teamId))
+        .orderBy(sql`points DESC`);
+
+      // Get all teams average points
+      const teamStats = await db
+        .execute(sql`
+          SELECT 
+            t.id, 
+            t.name, 
+            COALESCE(AVG(user_points.total_points), 0)::integer as avg_points
+          FROM teams t
+          LEFT JOIN (
+            SELECT 
+              u.team_id,
+              u.id as user_id,
+              COALESCE(SUM(p.points), 0) as total_points
+            FROM users u
+            LEFT JOIN posts p ON p.user_id = u.id AND p.created_at >= ${startOfWeek} AND p.created_at <= ${endOfWeek} AND p.parent_id IS NULL
+            WHERE u.team_id IS NOT NULL
+            GROUP BY u.id
+          ) user_points ON user_points.team_id = t.id
+          GROUP BY t.id, t.name
+          ORDER BY avg_points DESC
+        `);
+
+      res.setHeader('Content-Type', 'application/json');
+      res.json({
+        teamMembers,
+        teamStats,
+        weekRange: {
+          start: startOfWeek.toISOString(),
+          end: endOfWeek.toISOString()
+        }
+      });
+    } catch (error) {
+      logger.error('Error getting leaderboard data:', error instanceof Error ? error : new Error(String(error)));
+      res.status(500).json({
+        message: "Failed to get leaderboard data",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Log server startup
   logger.info('Server routes and WebSocket registered successfully');
 

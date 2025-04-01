@@ -2,10 +2,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings } from "lucide-react";
+import { Menu, Bell, Settings, Trophy } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
+import { LeaderboardPage } from "./leaderboard-page";
 import { NotificationSchedule } from "@/components/notification-schedule";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -15,6 +16,7 @@ export default function MenuPage() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [notificationScheduleOpen, setNotificationScheduleOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [, navigate] = useLocation();
 
   if (!user) return null;
@@ -61,6 +63,19 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
               <NotificationSchedule onClose={() => setNotificationScheduleOpen(false)} />
+            </SheetContent>
+          </Sheet>
+
+          {/* Leaderboard */}
+          <Sheet open={leaderboardOpen} onOpenChange={setLeaderboardOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Trophy className="mr-2 h-5 w-5" />
+                Leaderboard
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              <LeaderboardPage />
             </SheetContent>
           </Sheet>
 
