@@ -130,7 +130,7 @@ export function LeaderboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Team Ranking</CardTitle>
-                  <CardDescription>Overall Average</CardDescription>
+                  <CardDescription>All-Time Totals</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {Array.isArray(data?.teamStats) ? data?.teamStats.map((team, index) => (
@@ -160,7 +160,7 @@ export function LeaderboardPage() {
                   )}
                 </CardContent>
                 <CardFooter className="text-xs text-gray-500">
-                  Overall average points per team member
+                  Average of all weekly totals per team member
                 </CardFooter>
               </Card>
             </TabsContent>
