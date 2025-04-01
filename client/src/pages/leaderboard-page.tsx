@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
+import { Link } from "wouter";
 
 type TeamMember = {
   id: number;
@@ -51,9 +52,8 @@ export function LeaderboardPage() {
     refetchInterval: 60000, // Refresh every minute
   });
 
-  const handleBack = () => {
-    navigate("/menu");
-  };
+  // Don't use navigate() which can have history issues
+  // Use Link component instead for consistent navigation
 
   if (!user) {
     return null;
@@ -72,9 +72,11 @@ export function LeaderboardPage() {
     <div className="flex flex-col min-h-screen pb-16 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-border bg-background">
         <div className="container flex items-center py-4">
-          <Button variant="ghost" onClick={handleBack} size="icon" className="mr-2">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+          <Link href="/menu">
+            <Button variant="ghost" size="icon" className="mr-2">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          </Link>
           <h1 className="text-xl font-semibold">Leaderboard</h1>
         </div>
       </header>
