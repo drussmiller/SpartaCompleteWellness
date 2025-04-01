@@ -55,8 +55,16 @@ if (!fs.existsSync(uploadDir)) {
 const upload = multer({
   storage: multerStorage,
   limits: { 
-    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit for video uploads
     fieldSize: 25 * 1024 * 1024 // 25MB per field
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
   }
 });
 
