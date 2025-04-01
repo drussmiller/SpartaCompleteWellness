@@ -52,7 +52,7 @@ export function LeaderboardPage() {
   });
 
   const handleBack = () => {
-    navigate("/");
+    navigate("/menu");
   };
 
   if (!user) {
