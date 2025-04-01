@@ -20,6 +20,7 @@ import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
 import NotificationSchedulePage from "@/pages/notification-schedule-page"; //Import the new page component
+import { LeaderboardPage } from "@/pages/leaderboard-page"; // Import the leaderboard page
 import { DebugApi } from "./debug-api"; // Import our debug component
 
 
@@ -68,6 +69,7 @@ function MainContent() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
+          <Route path="/leaderboard" component={LeaderboardPage} />
           <Route path="/debug" component={() => <DebugApi />} />
           {user.isAdmin && <Route path="/admin" component={AdminPage} />}
           <Route path="*">Not found</Route>
