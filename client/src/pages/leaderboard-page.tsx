@@ -50,6 +50,10 @@ export function LeaderboardPage() {
     refetchInterval: 60000, // Refresh every minute
   });
 
+  const handleBack = () => {
+    navigate("/menu");
+  };
+
   if (!user) {
     return null;
   }
@@ -64,7 +68,16 @@ export function LeaderboardPage() {
     : "This Week";
 
   return (
-    <AppLayout title="Leaderboard">
+    <div className="flex flex-col min-h-screen pb-16 md:pb-0">
+      <header className="sticky top-0 z-50 border-b border-border bg-background">
+        <div className="container flex items-center py-4">
+          <Button variant="ghost" onClick={handleBack} size="icon" className="mr-2">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-semibold">Leaderboard</h1>
+        </div>
+      </header>
+
       <div className="container py-4 max-w-4xl mx-auto">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
@@ -153,6 +166,7 @@ export function LeaderboardPage() {
           </Tabs>
         )}
       </div>
-    </AppLayout>
+      <BottomNav />
+    </div>
   );
 }
