@@ -131,7 +131,7 @@ export function LeaderboardPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Team Ranking</CardTitle>
-                  <CardDescription>Average of Weekly Points</CardDescription>
+                  <CardDescription>Goal Completion Percentage</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {Array.isArray(data?.teamStats) ? data?.teamStats.map((team, index) => (
@@ -140,7 +140,7 @@ export function LeaderboardPage() {
                         <div className="font-bold w-6 text-center">{index + 1}</div>
                         <div className="font-medium">{team.name}</div>
                       </div>
-                      <div className="font-bold text-primary">{team.avg_points} pts</div>
+                      <div className="font-bold text-primary">{team.avg_points}%</div>
                     </div>
                   )) : data?.teamStats?.rows?.map((team, index) => (
                     <div key={team.id} className="flex items-center justify-between p-2 border-b last:border-b-0">
@@ -148,7 +148,7 @@ export function LeaderboardPage() {
                         <div className="font-bold w-6 text-center">{index + 1}</div>
                         <div className="font-medium">{team.name}</div>
                       </div>
-                      <div className="font-bold text-primary">{team.avg_points} pts</div>
+                      <div className="font-bold text-primary">{team.avg_points}%</div>
                     </div>
                   ))}
                   
@@ -161,7 +161,7 @@ export function LeaderboardPage() {
                   )}
                 </CardContent>
                 <CardFooter className="text-xs text-gray-500">
-                  Average of all weekly team member points
+                  Based on the team's weekly goal achievement rate
                 </CardFooter>
               </Card>
             </TabsContent>
