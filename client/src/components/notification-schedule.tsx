@@ -6,7 +6,7 @@ import { ChevronLeft, WifiOff, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useNotifications } from "@/hooks/use-notifications";
 import { Badge } from "@/components/ui/badge";
 
@@ -50,16 +50,34 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
   
   const testNotificationTimeMutation = useMutation({
     mutationFn: async () => {
-      // Extract hour and minute from notification time
-      const [hour, minute] = notificationTime.split(':').map(Number);
-      const response = await fetch(`/api/test-notification?hour=${hour}&minute=${minute}`);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to test notification time");
+      try {
+        // Extract hour and minute from notification time
+        const [hour, minute] = notificationTime.split(':').map(Number);
+        
+        // Set timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(
+          `/api/test-notification?hour=${hour}&minute=${minute}`, 
+          { signal: controller.signal }
+        );
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to test notification time");
+        }
+        
+        return response.json();
+      } catch (err) {
+        // Handle AbortError specially
+        if (err instanceof Error && err.name === 'AbortError') {
+          throw new Error("Request timed out. The notification test may still be processing in the background.");
+        }
+        throw err;
       }
-      
-      return response.json();
     },
     onSuccess: (data) => {
       console.log("Test notification response:", data);
@@ -74,14 +92,23 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
           description: `No notifications sent. Your notification time ${notificationTime} doesn't match the test time.`,
         });
       }
+      
+      // Add a slight delay to prevent UI issues after notification test
+      setTimeout(() => {
+        // Refresh notifications to ensure we're showing the latest
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      }, 500);
     },
     onError: (error: Error) => {
+      console.error("Test notification error:", error);
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
     },
+    // Add retry with exponential backoff
+    retry: 0, // Don't retry - we'll handle errors directly
   });
 
   // Generate the connection status badge
@@ -211,7 +238,16 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                           description: "Sending a test notification request...",
                         });
                         
-                        const response = await fetch(`/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`);
+                        // Set timeout to prevent hanging requests
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                        
+                        const response = await fetch(
+                          `/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`,
+                          { signal: controller.signal }
+                        );
+                        
+                        clearTimeout(timeoutId);
                         
                         if (!response.ok) {
                           throw new Error(`Failed to send test notification: ${response.statusText}`);
@@ -224,11 +260,28 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                         });
                         
                         console.log("Test notification response:", data);
-                      } catch (error) {
-                        console.error("Error sending test notification:", error);
+                        
+                        // Add a slight delay to prevent UI issues after notification test
+                        setTimeout(() => {
+                          // Refresh notifications to ensure we're showing the latest
+                          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                        }, 500);
+                      } catch (err) {
+                        // Handle AbortError specially
+                        if (err instanceof Error && err.name === 'AbortError') {
+                          console.error("Daily score check request timed out");
+                          toast({
+                            title: "Request Timed Out",
+                            description: "The request took too long, but the notification might still be processing in the background.",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        
+                        console.error("Error sending test notification:", err);
                         toast({
                           title: "Error",
-                          description: error instanceof Error ? error.message : "Failed to send test notification",
+                          description: err instanceof Error ? err.message : "Failed to send test notification",
                           variant: "destructive",
                         });
                       }

@@ -270,90 +270,129 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Add a test endpoint for triggering notification checks with manual time override
   router.get("/api/test-notification", async (req, res) => {
+    // Set a longer timeout for this endpoint as it can be resource-intensive
+    req.setTimeout(30000); // 30 seconds timeout
+    
     try {
+      // Get specified time or use current time
       const hour = parseInt(req.query.hour as string) || new Date().getHours();
       const minute = parseInt(req.query.minute as string) || new Date().getMinutes();
       
       logger.info(`Manual notification test triggered with time override: ${hour}:${minute}`);
       
-      // Get all users from the users table
-      const allUsers = await db.select().from(users);
+      // Optional userId parameter to limit test to a specific user if needed
+      // This helps reduce load for targeted testing
+      const specificUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+      
+      // Get users with optimized query, limiting to specific user if provided
+      let userQuery = db.select().from(users);
+      if (specificUserId) {
+        userQuery = userQuery.where(eq(users.id, specificUserId));
+        logger.info(`Test limited to specific user ID: ${specificUserId}`);
+      }
+      const allUsers = await userQuery;
+      
+      // Early return if no users found
+      if (allUsers.length === 0) {
+        logger.info("No matching users found for test notification");
+        return res.json({
+          message: "No matching users found",
+          totalNotifications: 0
+        });
+      }
       
       // Keep track of notifications sent
       const notificationsSent = [];
       
-      for (const user of allUsers) {
-        try {
-          // Skip users without notification preferences
-          if (!user.notificationTime) {
-            continue;
-          }
-          
-          // Parse user's notification time preference
-          const [preferredHour, preferredMinute] = user.notificationTime.split(':').map(Number);
-          
-          // Log detailed time comparison for debugging
-          logger.info(`Notification time check for user ${user.id}:`, {
-            userId: user.id,
-            username: user.username,
-            currentTime: `${hour}:${minute}`,
-            preferredTime: `${preferredHour}:${preferredMinute}`,
-            notificationTime: user.notificationTime
-          });
-          
-          // Check if current time matches user's preferred notification time (with 10-minute window)
-          const isPreferredTimeWindow = 
-            (hour === preferredHour && 
-              (minute >= preferredMinute && minute < preferredMinute + 10)) ||
-            // Handle edge case where preferred time is near the end of an hour
-            (hour === preferredHour + 1 && 
-              preferredMinute >= 50 && 
-              minute < (preferredMinute + 10) % 60);
-          
-          if (isPreferredTimeWindow) {
-            // Create a test notification
-            const notification = {
-              userId: user.id,
-              title: "Test Notification",
-              message: "This is a test notification sent at your preferred time.",
-              read: false,
-              createdAt: new Date(),
-              type: "test",
-              sound: "default"
-            };
+      // Process in batches if needed for large user counts
+      // Using Promise.all with a limited batch size prevents server overload
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < allUsers.length; i += BATCH_SIZE) {
+        const userBatch = allUsers.slice(i, i + BATCH_SIZE);
+        
+        // Process users in parallel but in limited batches
+        await Promise.all(userBatch.map(async (user) => {
+          try {
+            // Skip users without notification preferences
+            if (!user.notificationTime) {
+              logger.info(`Skipping user ${user.id} - no notification time preference set`);
+              return;
+            }
             
-            // Insert the notification
-            const [createdNotification] = await db
-              .insert(notifications)
-              .values(notification)
-              .returning();
+            // Parse user's notification time preference
+            const [preferredHour, preferredMinute] = user.notificationTime.split(':').map(Number);
             
-            notificationsSent.push({
+            // Log detailed time comparison for debugging
+            logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
-              username: user.username,
-              notificationId: createdNotification.id,
-              preferredTime: user.notificationTime,
-              currentTime: `${hour}:${minute}`
+              currentTime: `${hour}:${minute}`,
+              preferredTime: `${preferredHour}:${preferredMinute}`,
+              notificationTime: user.notificationTime
             });
             
-            // Send via WebSocket if user is connected
-            const userClients = clients.get(user.id);
-            if (userClients && userClients.size > 0) {
-              broadcastNotification(user.id, {
-                id: createdNotification.id,
-                title: notification.title,
-                message: notification.message,
-                sound: notification.sound,
-                type: notification.type
+            // Check if current time matches user's preferred notification time (with 10-minute window)
+            const isPreferredTimeWindow = 
+              (hour === preferredHour && 
+                (minute >= preferredMinute && minute < preferredMinute + 10)) ||
+              // Handle edge case where preferred time is near the end of an hour
+              (hour === preferredHour + 1 && 
+                preferredMinute >= 50 && 
+                minute < (preferredMinute + 10) % 60);
+            
+            if (isPreferredTimeWindow) {
+              // Create a test notification with proper schema references
+              const notification = {
+                userId: user.id,
+                title: "Test Notification",
+                message: "This is a test notification sent at your preferred time.",
+                read: false,
+                createdAt: new Date(),
+                type: "test",
+                sound: "default"
+              };
+              
+              // Insert the notification
+              const [createdNotification] = await db
+                .insert(notifications)
+                .values(notification)
+                .returning();
+              
+              notificationsSent.push({
+                userId: user.id,
+                username: user.username || `User ${user.id}`,
+                notificationId: createdNotification.id,
+                preferredTime: user.notificationTime,
+                currentTime: `${hour}:${minute}`
               });
+              
+              // Send via WebSocket if user is connected
+              const userClients = clients.get(user.id);
+              if (userClients && userClients.size > 0) {
+                broadcastNotification(user.id, {
+                  id: createdNotification.id,
+                  title: notification.title,
+                  message: notification.message,
+                  sound: notification.sound,
+                  type: notification.type
+                });
+                
+                logger.info(`Real-time notification sent to user ${user.id} via WebSocket`);
+              } else {
+                logger.info(`No active WebSocket connections for user ${user.id}`);
+              }
+            } else {
+              logger.info(`User ${user.id}'s preferred time ${preferredHour}:${preferredMinute} doesn't match test time ${hour}:${minute}`);
             }
+          } catch (userError) {
+            logger.error(`Error processing test notification for user ${user.id}:`, userError instanceof Error ? userError : new Error(String(userError)));
           }
-        } catch (userError) {
-          logger.error(`Error processing test notification for user ${user.id}:`, userError);
-        }
+        }));
       }
       
-      // Return results
+      // Set proper content type header
+      res.setHeader('Content-Type', 'application/json');
+      
+      // Return results - send before additional processing if needed
       res.json({
         message: `Test notification check completed for time ${hour}:${minute}`,
         notificationsSent,
