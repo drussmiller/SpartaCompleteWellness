@@ -267,6 +267,106 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     });
   });
+  
+  // Add a test endpoint for triggering notification checks with manual time override
+  router.get("/api/test-notification", async (req, res) => {
+    try {
+      const hour = parseInt(req.query.hour as string) || new Date().getHours();
+      const minute = parseInt(req.query.minute as string) || new Date().getMinutes();
+      
+      logger.info(`Manual notification test triggered with time override: ${hour}:${minute}`);
+      
+      // Get all users from the users table
+      const allUsers = await db.select().from(users);
+      
+      // Keep track of notifications sent
+      const notificationsSent = [];
+      
+      for (const user of allUsers) {
+        try {
+          // Skip users without notification preferences
+          if (!user.notificationTime) {
+            continue;
+          }
+          
+          // Parse user's notification time preference
+          const [preferredHour, preferredMinute] = user.notificationTime.split(':').map(Number);
+          
+          // Log detailed time comparison for debugging
+          logger.info(`Notification time check for user ${user.id}:`, {
+            userId: user.id,
+            username: user.username,
+            currentTime: `${hour}:${minute}`,
+            preferredTime: `${preferredHour}:${preferredMinute}`,
+            notificationTime: user.notificationTime
+          });
+          
+          // Check if current time matches user's preferred notification time (with 10-minute window)
+          const isPreferredTimeWindow = 
+            (hour === preferredHour && 
+              (minute >= preferredMinute && minute < preferredMinute + 10)) ||
+            // Handle edge case where preferred time is near the end of an hour
+            (hour === preferredHour + 1 && 
+              preferredMinute >= 50 && 
+              minute < (preferredMinute + 10) % 60);
+          
+          if (isPreferredTimeWindow) {
+            // Create a test notification
+            const notification = {
+              userId: user.id,
+              title: "Test Notification",
+              message: "This is a test notification sent at your preferred time.",
+              read: false,
+              createdAt: new Date(),
+              type: "test",
+              sound: "default"
+            };
+            
+            // Insert the notification
+            const [createdNotification] = await db
+              .insert(notifications)
+              .values(notification)
+              .returning();
+            
+            notificationsSent.push({
+              userId: user.id,
+              username: user.username,
+              notificationId: createdNotification.id,
+              preferredTime: user.notificationTime,
+              currentTime: `${hour}:${minute}`
+            });
+            
+            // Send via WebSocket if user is connected
+            const userClients = clients.get(user.id);
+            if (userClients && userClients.size > 0) {
+              broadcastNotification(user.id, {
+                id: createdNotification.id,
+                title: notification.title,
+                message: notification.message,
+                sound: notification.sound,
+                type: notification.type
+              });
+            }
+          }
+        } catch (userError) {
+          logger.error(`Error processing test notification for user ${user.id}:`, userError);
+        }
+      }
+      
+      // Return results
+      res.json({
+        message: `Test notification check completed for time ${hour}:${minute}`,
+        notificationsSent,
+        totalNotifications: notificationsSent.length
+      });
+    } catch (error) {
+      logger.error('Error in test notification endpoint:', error);
+      res.status(500).json({
+        message: "Test notification failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Protected endpoint example
   router.get("/api/protected", authenticate, (req, res) => {
