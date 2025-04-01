@@ -1475,8 +1475,34 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 )
               );
 
-            // Only send a notification if one hasn't been sent today
-            if (existingNotifications.length === 0) {
+            // Only send notification if it's the user's preferred time and if one hasn't been sent today
+            const currentHour = new Date().getHours();
+            const currentMinute = new Date().getMinutes();
+            
+            // Parse user's notification time preference (HH:MM format)
+            const notificationTimeParts = user.notificationTime ? user.notificationTime.split(':') : ['9', '00'];
+            const preferredHour = parseInt(notificationTimeParts[0]);
+            const preferredMinute = parseInt(notificationTimeParts[1] || '0');
+            
+            // Check if we're within a 10-minute window of the user's preferred time
+            const isPreferredTimeWindow = 
+              (currentHour === preferredHour && 
+                (currentMinute >= preferredMinute && currentMinute < preferredMinute + 10)) ||
+              // Handle edge case where preferred time is near the end of an hour
+              (currentHour === preferredHour + 1 && 
+                preferredMinute >= 50 && 
+                currentMinute < (preferredMinute + 10) % 60);
+                
+            logger.info(`Notification time check for user ${user.id}:`, {
+              userId: user.id,
+              currentTime: `${currentHour}:${currentMinute}`,
+              preferredTime: `${preferredHour}:${preferredMinute}`,
+              isPreferredTimeWindow,
+              existingNotificationsToday: existingNotifications.length
+            });
+            
+            // Only send if within time window and no notifications sent today
+            if (existingNotifications.length === 0 && isPreferredTimeWindow) {
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
