@@ -366,28 +366,80 @@ export function useNotifications(suppressToasts = false) {
 
   // Connect to WebSocket when user is available
   useEffect(() => {
+    console.log("useAuth hook called");
+    // Track if the component is still mounted
+    let isMounted = true;
+    
+    // Only attempt connections when logged in
     if (user) {
-      connectWebSocket();
+      // Use a small delay to ensure any previous cleanup has completed
+      const initTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.log("Starting WebSocket connection after authentication");
+          connectWebSocket();
+        }
+      }, 500);
+      
+      // Clean up this timeout if the component unmounts before it fires
+      return () => {
+        console.log("Cleaning up notification hook resources");
+        isMounted = false;
+        clearTimeout(initTimeout);
+        
+        // Clear any pending reconnection attempts
+        if (reconnectTimeoutRef.current) {
+          console.log("Clearing pending reconnection timeout");
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        
+        // Close any open WebSocket connections
+        if (socketRef.current) {
+          console.log("Closing WebSocket connection during cleanup");
+          try {
+            // Only try to close if it's not already closed
+            if (socketRef.current.readyState !== WebSocket.CLOSED) {
+              socketRef.current.onclose = null; // Remove the onclose handler to prevent reconnection attempts
+              socketRef.current.close();
+            }
+          } catch (err) {
+            console.error("Error during WebSocket cleanup:", err);
+          } finally {
+            socketRef.current = null;
+          }
+        }
+        
+        // Reset state if needed
+        setConnectionStatus("disconnected");
+      };
     } else {
+      // User is not authenticated - close any existing connections
+      console.log("User not authenticated, closing any existing WebSocket connections");
+      
       // Close connection if user logs out
       if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
-      setConnectionStatus("disconnected");
-    }
-    
-    // Clean up on unmount
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+        try {
+          socketRef.current.close();
+        } catch (err) {
+          console.error("Error closing WebSocket on logout:", err);
+        } finally {
+          socketRef.current = null;
+        }
       }
       
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
+      // Clear any reconnection attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
-    };
+      
+      setConnectionStatus("disconnected");
+      
+      // Still return a cleanup function
+      return () => {
+        isMounted = false;
+      };
+    }
   }, [user, connectWebSocket]);
 
   // Show toast for new notifications from the REST API - disabled for now
