@@ -23,9 +23,17 @@ type TeamStat = {
   avg_points: number;
 };
 
+type TeamStatsResponse = TeamStat[] | {
+  rows: Array<{
+    id: number;
+    name: string;
+    avg_points: number;
+  }>;
+};
+
 type LeaderboardData = {
   teamMembers: TeamMember[];
-  teamStats: TeamStat[];
+  teamStats: TeamStatsResponse;
   weekRange: {
     start: string;
     end: string;
@@ -99,7 +107,7 @@ export function LeaderboardPage() {
                   <CardDescription>{weekRangeText}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {data?.teamMembers.map((member, index) => (
+                  {Array.isArray(data?.teamMembers) && data?.teamMembers.map((member, index) => (
                     <div key={member.id} className="flex items-center justify-between p-2 border-b last:border-b-0">
                       <div className="flex items-center space-x-3">
                         <div className="font-bold w-6 text-center">{index + 1}</div>
@@ -113,7 +121,7 @@ export function LeaderboardPage() {
                     </div>
                   ))}
                   
-                  {data?.teamMembers.length === 0 && (
+                  {(!data?.teamMembers || (Array.isArray(data?.teamMembers) && data?.teamMembers.length === 0)) && (
                     <div className="text-center py-4 text-gray-500">
                       No team members found
                     </div>
@@ -129,7 +137,15 @@ export function LeaderboardPage() {
                   <CardDescription>{weekRangeText}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {data?.teamStats.map((team, index) => (
+                  {Array.isArray(data?.teamStats) ? data?.teamStats.map((team, index) => (
+                    <div key={team.id} className="flex items-center justify-between p-2 border-b last:border-b-0">
+                      <div className="flex items-center space-x-3">
+                        <div className="font-bold w-6 text-center">{index + 1}</div>
+                        <div className="font-medium">{team.name}</div>
+                      </div>
+                      <div className="font-bold text-primary">{team.avg_points} pts</div>
+                    </div>
+                  )) : data?.teamStats?.rows?.map((team, index) => (
                     <div key={team.id} className="flex items-center justify-between p-2 border-b last:border-b-0">
                       <div className="flex items-center space-x-3">
                         <div className="font-bold w-6 text-center">{index + 1}</div>
@@ -139,7 +155,8 @@ export function LeaderboardPage() {
                     </div>
                   ))}
                   
-                  {data?.teamStats.length === 0 && (
+                  {(!data?.teamStats || (Array.isArray(data?.teamStats) && data?.teamStats.length === 0) || 
+                    (data?.teamStats?.rows && data?.teamStats?.rows.length === 0)) && (
                     <div className="text-center py-4 text-gray-500">
                       No teams found
                     </div>
