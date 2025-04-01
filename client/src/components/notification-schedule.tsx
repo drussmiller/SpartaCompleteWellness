@@ -47,6 +47,42 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
   const handleSave = () => {
     updateScheduleMutation.mutate(notificationTime);
   };
+  
+  const testNotificationTimeMutation = useMutation({
+    mutationFn: async () => {
+      // Extract hour and minute from notification time
+      const [hour, minute] = notificationTime.split(':').map(Number);
+      const response = await fetch(`/api/test-notification?hour=${hour}&minute=${minute}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to test notification time");
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log("Test notification response:", data);
+      if (data.totalNotifications > 0) {
+        toast({
+          title: "Notification Test Successful",
+          description: `Sent ${data.totalNotifications} test notification(s) for time ${notificationTime}`,
+        });
+      } else {
+        toast({
+          title: "Test Complete",
+          description: `No notifications sent. Your notification time ${notificationTime} doesn't match the test time.`,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Generate the connection status badge
   const renderConnectionStatus = () => {
@@ -131,111 +167,123 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
           </Button>
           
           {/* Debug button for testing notifications */}
-          {user?.isAdmin && (
-            <div className="mt-4 pt-4 border-t">
-              <h3 className="text-sm font-medium mb-2">Admin Controls</h3>
-              <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  size="sm"
-                  onClick={async () => {
-                    if (!user) return;
-                    
-                    try {
-                      // Get the browser's timezone offset in minutes
-                      const tzOffset = new Date().getTimezoneOffset();
+          <div className="mt-4 pt-4 border-t">
+            <h3 className="text-sm font-medium mb-2">Test Notifications</h3>
+            <div className="space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                size="sm"
+                onClick={() => testNotificationTimeMutation.mutate()}
+                disabled={testNotificationTimeMutation.isPending}
+              >
+                Test At My Scheduled Time ({notificationTime})
+              </Button>
+              
+              {user?.isAdmin && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    size="sm"
+                    onClick={async () => {
+                      if (!user) return;
                       
-                      toast({
-                        title: "Testing notifications",
-                        description: "Sending a test notification request...",
-                      });
-                      
-                      const response = await fetch(`/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`);
-                      
-                      if (!response.ok) {
-                        throw new Error(`Failed to send test notification: ${response.statusText}`);
-                      }
-                      
-                      const data = await response.json();
-                      
-                      toast({
-                        description: "Test notification sent successfully!",
-                      });
-                      
-                      console.log("Test notification response:", data);
-                    } catch (error) {
-                      console.error("Error sending test notification:", error);
-                      toast({
-                        title: "Error",
-                        description: error instanceof Error ? error.message : "Failed to send test notification",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  Test Daily Notification
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  size="sm"
-                  onClick={async () => {
-                    if (!user) return;
-                    
-                    try {
-                      toast({
-                        title: "Testing",
-                        description: "Sending a test push notification...",
-                      });
-                      
-                      // Create a test notification
-                      const notification = new Notification("Test Notification", {
-                        body: "This is a test notification with sound",
-                        icon: "/notification-icon.png"
-                      });
-                      
-                      // Play the notification sound manually
-                      const audio = new Audio("/notification.wav");
-                      await audio.play();
-                      
-                      toast({
-                        description: "Test push notification sent successfully!",
-                      });
-                    } catch (error) {
-                      console.error("Error sending test push notification:", error);
-                      
-                      if (Notification.permission !== "granted") {
-                        // Ask for permission if we don't have it
-                        Notification.requestPermission().then(permission => {
-                          if (permission === "granted") {
-                            toast({
-                              description: "Permission granted! Try the test again.",
-                            });
-                          } else {
-                            toast({
-                              title: "Permission denied",
-                              description: "You need to allow notifications in your browser settings.",
-                              variant: "destructive",
-                            });
-                          }
+                      try {
+                        // Get the browser's timezone offset in minutes
+                        const tzOffset = new Date().getTimezoneOffset();
+                        
+                        toast({
+                          title: "Testing notifications",
+                          description: "Sending a test notification request...",
                         });
-                      } else {
+                        
+                        const response = await fetch(`/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`);
+                        
+                        if (!response.ok) {
+                          throw new Error(`Failed to send test notification: ${response.statusText}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        toast({
+                          description: "Test notification sent successfully!",
+                        });
+                        
+                        console.log("Test notification response:", data);
+                      } catch (error) {
+                        console.error("Error sending test notification:", error);
                         toast({
                           title: "Error",
                           description: error instanceof Error ? error.message : "Failed to send test notification",
                           variant: "destructive",
                         });
                       }
-                    }
-                  }}
-                >
-                  Test Push Notification
-                </Button>
-              </div>
+                    }}
+                  >
+                    Debug: Test Daily Score Check
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    size="sm"
+                    onClick={async () => {
+                      if (!user) return;
+                      
+                      try {
+                        toast({
+                          title: "Testing",
+                          description: "Sending a test push notification...",
+                        });
+                        
+                        // Create a test notification
+                        const notification = new Notification("Test Notification", {
+                          body: "This is a test notification with sound",
+                          icon: "/notification-icon.png"
+                        });
+                        
+                        // Play the notification sound manually
+                        const audio = new Audio("/notification.wav");
+                        await audio.play();
+                        
+                        toast({
+                          description: "Test push notification sent successfully!",
+                        });
+                      } catch (error) {
+                        console.error("Error sending test push notification:", error);
+                        
+                        if (Notification.permission !== "granted") {
+                          // Ask for permission if we don't have it
+                          Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                              toast({
+                                description: "Permission granted! Try the test again.",
+                              });
+                            } else {
+                              toast({
+                                title: "Permission denied",
+                                description: "You need to allow notifications in your browser settings.",
+                                variant: "destructive",
+                              });
+                            }
+                          });
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: error instanceof Error ? error.message : "Failed to send test notification",
+                            variant: "destructive",
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    Debug: Test Push Notification
+                  </Button>
+                </>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
