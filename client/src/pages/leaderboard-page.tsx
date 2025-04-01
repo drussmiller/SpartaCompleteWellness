@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
-import { X } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AppLayout } from "@/components/app-layout";
 
 type TeamMember = {
   id: number;
@@ -41,7 +42,6 @@ type LeaderboardData = {
 };
 
 export function LeaderboardPage() {
-  const [isOpen, setIsOpen] = useState(true);
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -51,12 +51,9 @@ export function LeaderboardPage() {
     refetchInterval: 60000, // Refresh every minute
   });
 
-  useEffect(() => {
-    if (!isOpen) {
-      // Navigate back when sheet is closed
-      navigate("/menu");
-    }
-  }, [isOpen, navigate]);
+  const handleBack = () => {
+    navigate("/menu");
+  };
 
   if (!user) {
     return null;
@@ -72,17 +69,15 @@ export function LeaderboardPage() {
     : "This Week";
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetContent
-        side={isMobile ? "bottom" : "right"}
-        className={isMobile ? "h-[90vh] overflow-y-auto" : "w-[400px] overflow-y-auto"}
-      >
-        <SheetHeader className="flex flex-row justify-between items-center mb-4">
-          <SheetTitle className="text-2xl font-bold">Leaderboard</SheetTitle>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-            <X className="h-5 w-5" />
+    <AppLayout title="Leaderboard">
+      <div className="container py-4 max-w-4xl mx-auto">
+        <div className="flex items-center mb-4">
+          <Button variant="ghost" onClick={handleBack} className="mr-2">
+            <ChevronLeft className="h-5 w-5 mr-1" />
+            Back
           </Button>
-        </SheetHeader>
+          <h1 className="text-2xl font-bold">Leaderboard</h1>
+        </div>
 
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
@@ -155,8 +150,9 @@ export function LeaderboardPage() {
                     </div>
                   ))}
                   
-                  {(!data?.teamStats || (Array.isArray(data?.teamStats) && data?.teamStats.length === 0) || 
-                    (data?.teamStats?.rows && data?.teamStats?.rows.length === 0)) && (
+                  {(!data?.teamStats || 
+                    (Array.isArray(data?.teamStats) && data?.teamStats.length === 0) || 
+                    (data?.teamStats && 'rows' in data.teamStats && data.teamStats.rows.length === 0)) && (
                     <div className="text-center py-4 text-gray-500">
                       No teams found
                     </div>
@@ -169,7 +165,7 @@ export function LeaderboardPage() {
             </TabsContent>
           </Tabs>
         )}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </AppLayout>
   );
 }
