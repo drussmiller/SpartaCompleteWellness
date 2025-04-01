@@ -69,9 +69,9 @@ function MainContent() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
-          <Route path="/leaderboard" component={LeaderboardPage} />
+          <Route path="/leaderboard" component={() => <LeaderboardPage />} />
           <Route path="/debug" component={() => <DebugApi />} />
-          {user.isAdmin && <Route path="/admin" component={AdminPage} />}
+          {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>
       </div>

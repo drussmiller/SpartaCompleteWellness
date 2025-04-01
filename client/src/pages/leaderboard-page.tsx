@@ -42,17 +42,19 @@ type LeaderboardData = {
   };
 };
 
-export function LeaderboardPage() {
+interface LeaderboardPageProps {
+  onClose?: () => void;
+}
+
+export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const isSheetMode = Boolean(onClose); // If onClose is provided, we're in sheet mode
 
   const { data, isLoading, error } = useQuery<LeaderboardData>({
     queryKey: ["/api/leaderboard"],
     refetchInterval: 60000, // Refresh every minute
   });
-
-  // Don't use navigate() which can have history issues
-  // Use Link component instead for consistent navigation
 
   if (!user) {
     return null;
@@ -67,15 +69,26 @@ export function LeaderboardPage() {
     ? `${formatDate(data.weekRange.start)} - ${formatDate(data.weekRange.end)}`
     : "This Week";
 
+  const handleBackClick = () => {
+    if (isSheetMode && onClose) {
+      onClose();
+    } else {
+      navigate("/menu");
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-16 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-border bg-background">
         <div className="container flex items-center p-4 pt-16">
-          <Link href="/menu">
-            <Button variant="ghost" size="icon" className="mr-2 scale-125">
-              <ChevronLeft className="h-8 w-8 scale-125" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-2 scale-125"
+            onClick={handleBackClick}
+          >
+            <ChevronLeft className="h-8 w-8 scale-125" />
+          </Button>
           <h1 className="text-lg font-semibold">Leaderboard</h1>
         </div>
       </header>
