@@ -313,76 +313,31 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                     </FormLabel>
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
-                        <div className="flex gap-2">
-                          <Button 
-                            type="button" 
+                        <div className="space-y-4">
+                          <Button
+                            type="button"
+                            onClick={() => videoInputRef.current?.click()}
                             variant="outline"
-                            onClick={() => {
-                              if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                                  .then(stream => {
-                                    const mediaRecorder = new MediaRecorder(stream);
-                                    let chunks: BlobPart[] = [];
-
-                                    mediaRecorder.ondataavailable = (e) => {
-                                      chunks.push(e.data);
-                                    };
-
-                                    mediaRecorder.onstop = () => {
-                                      const blob = new Blob(chunks, { type: 'video/webm' });
-                                      const videoUrl = URL.createObjectURL(blob);
-                                      setImagePreview(videoUrl);
-                                      field.onChange(videoUrl);
-                                      chunks = [];
-                                      stream.getTracks().forEach(track => track.stop());
-                                    };
-
-                                    mediaRecorder.start();
-                                    setTimeout(() => mediaRecorder.stop(), 60000); // 60 second limit
-                                  })
-                                  .catch(err => {
-                                    console.error('Error accessing camera:', err);
-                                    toast({
-                                      title: "Error",
-                                      description: "Could not access camera. Please check permissions.",
-                                      variant: "destructive",
-                                    });
-                                  });
-                              }
-                            }}
+                            className="w-full"
                           >
-                            Record Video
+                            Select Video
                           </Button>
                           <Input
                             type="file"
-                            accept="video/*,image/*"
+                            accept="video/*"
                             ref={videoInputRef}
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
                                 const reader = new FileReader();
-                                reader.onload = async () => {
-                                  try {
-                                    if (file.type.startsWith("video/")) {
-                                      setImagePreview(reader.result as string);
-                                      field.onChange(reader.result);
-                                    } else {
-                                      const compressed = await compressImage(reader.result as string);
-                                      setImagePreview(compressed);
-                                      field.onChange(compressed);
-                                    }
-                                  } catch (error) {
-                                    console.error('Error processing file:', error);
-                                    toast({
-                                      title: "Error",
-                                      description: "Failed to process file. Please try again.",
-                                      variant: "destructive",
-                                    });
-                                  }
+                                reader.onload = () => {
+                                  setImagePreview(reader.result as string);
+                                  field.onChange(reader.result);
                                 };
                                 reader.readAsDataURL(file);
                               }
                             }}
+                            className="hidden"
                           />
                         </div>
                       )}
