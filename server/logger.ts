@@ -83,17 +83,26 @@ class Logger {
     }, 3600000);
   }
 
-  private formatLogEntry(message: string, metadata: LogMetadata, error?: Error): string {
-    const logEntry = {
-      message,
-      ...metadata,
-      ...(error && {
-        error: {
+  private formatLogEntry(message: string, metadata: LogMetadata, error?: Error | unknown): string {
+    let errorObj = null;
+    if (error) {
+      if (error instanceof Error) {
+        errorObj = {
           name: error.name,
           message: error.message,
           stack: error.stack,
-        },
-      }),
+        };
+      } else {
+        errorObj = {
+          message: String(error)
+        };
+      }
+    }
+    
+    const logEntry = {
+      message,
+      ...metadata,
+      ...(errorObj ? { error: errorObj } : {})
     };
     return JSON.stringify(logEntry) + '\n';
   }
@@ -153,7 +162,7 @@ class Logger {
     }
   }
 
-  public error(message: string, error?: Error, metadata: Partial<LogMetadata> = {}): void {
+  public error(message: string, error?: Error | unknown, metadata: Partial<LogMetadata> = {}): void {
     const entry = this.formatLogEntry(message, {
       ...metadata,
       timestamp: new Date().toISOString(),

@@ -1341,21 +1341,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         imageUrl = null;
       } else if (req.file) {
         try {
+          // Use SpartaObjectStorage for file handling
+          const { spartaStorage } = await import('./sparta-object-storage');
+          
           // Verify the file exists before proceeding
           const filePath = req.file.path;
           if (fs.existsSync(filePath)) {
-            imageUrl = `/uploads/${req.file.filename}`;
-            logger.info(`Image file stored successfully at ${filePath}`);
+            // Store the file using SpartaObjectStorage
+            const fileInfo = await spartaStorage.storeFile(
+              filePath,
+              req.file.originalname,
+              req.file.mimetype
+            );
             
-            // Process the image resize synchronously to ensure it's done
+            imageUrl = fileInfo.url;
+            imageProcessed = !!fileInfo.thumbnailUrl;
+            
+            logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+            logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+            
+            // We can remove the original uploaded file as SpartaObjectStorage has copied it
             try {
-              const { resizeUploadedImage } = await import('./middleware/image-resize');
-              await resizeUploadedImage(filePath);
-              imageProcessed = true;
-              logger.info(`Image thumbnail created for ${req.file.filename}`);
-            } catch (resizeErr) {
-              logger.error('Error during image resize:', resizeErr);
-              // Continue with original image even if thumbnail creation fails
+              fs.unlinkSync(filePath);
+              logger.info(`Removed original temporary file at ${filePath}`);
+            } catch (unlinkErr) {
+              logger.warn(`Could not remove temporary file: ${unlinkErr instanceof Error ? unlinkErr.message : 'Unknown error'}`);
             }
           } else {
             logger.error(`Image file not found at expected path: ${filePath}`);
@@ -1456,6 +1466,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
+      // Delete associated image files if they exist
+      if (post.imageUrl) {
+        try {
+          const { spartaStorage } = await import('./sparta-object-storage');
+          
+          logger.info(`Deleting file associated with post: ${post.imageUrl}`);
+          await spartaStorage.deleteFile(post.imageUrl);
+          logger.info(`Successfully deleted file for post: ${postId}`);
+        } catch (fileError) {
+          logger.error(`Error deleting file for post ${postId}:`, fileError);
+          // Continue with post deletion even if file deletion fails
+        }
+      }
+      
       // Use a transaction to ensure all deletes succeed or none do
       await db.transaction(async (tx) => {
         try {
