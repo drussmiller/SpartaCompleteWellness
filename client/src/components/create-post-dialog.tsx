@@ -30,6 +30,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const { canPost, counts, refetch, remaining, workoutWeekPoints, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null); // Added video input ref
   const queryClient = useQueryClient();
 
   const form = useForm<CreatePostForm>({
@@ -301,26 +302,33 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               )}
             />
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous") && (
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse") && (
               <FormField
                 control={form.control}
                 name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image</FormLabel>
+                    <FormLabel>
+                      {form.watch("type") === "memory_verse" ? "Video or Image" : "Image"}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
+                        accept={form.getValues("type") === "memory_verse" ? "video/*,image/*" : "image/*"}
+                        ref={form.getValues("type") === "memory_verse" ? videoInputRef : fileInputRef}
+                        onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
                             const reader = new FileReader();
-                            reader.onloadend = async () => {
+                            reader.onload = async () => {
                               try {
-                                const compressed = await compressImage(reader.result as string);
-                                setImagePreview(compressed);
-                                field.onChange(compressed);
+                                if (file.type.startsWith("video/")) {
+                                  setImagePreview(reader.result as string);
+                                } else {
+                                  const compressed = await compressImage(reader.result as string);
+                                  setImagePreview(compressed);
+                                  field.onChange(compressed);
+                                }
                               } catch (error) {
                                 console.error('Error compressing image:', error);
                                 toast({
@@ -333,16 +341,21 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             reader.readAsDataURL(file);
                           }
                         }}
-                        ref={fileInputRef}
+                        className="hidden"
                       />
                     </FormControl>
                     {imagePreview && (
                       <div className="mt-2">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="max-h-40 rounded-md"
-                        />
+                        {form.watch("type") === "memory_verse" && (
+                          <video src={imagePreview} controls className="max-h-40 rounded-md" />
+                        )}
+                        {form.watch("type") !== "memory_verse" && (
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="max-h-40 rounded-md"
+                          />
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
@@ -353,7 +366,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             field.onChange(null);
                           }}
                         >
-                          Remove Image
+                          Remove {form.watch("type") === "memory_verse" ? "Video" : "Image"}
                         </Button>
                       </div>
                     )}

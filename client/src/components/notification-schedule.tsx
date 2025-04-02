@@ -54,28 +54,62 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
         // Extract hour and minute from notification time
         const [hour, minute] = notificationTime.split(':').map(Number);
         
+        // Validate time values
+        if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+          throw new Error("Invalid notification time. Please use the format HH:MM.");
+        }
+        
         // Set timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
         
-        const response = await fetch(
-          `/api/test-notification?hour=${hour}&minute=${minute}`, 
-          { signal: controller.signal }
-        );
+        // Track request start time for logging/debugging
+        const requestStartTime = Date.now();
+        console.log(`Starting notification test request at ${new Date().toISOString()}`);
         
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to test notification time");
+        try {
+          const response = await fetch(
+            `/api/test-notification?hour=${hour}&minute=${minute}`, 
+            { signal: controller.signal }
+          );
+          
+          const requestDuration = Date.now() - requestStartTime;
+          console.log(`Notification test request completed in ${requestDuration}ms`);
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            // Try to get detailed error information if available
+            let errorMessage = "Failed to test notification time";
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.message || errorMessage;
+            } catch (parseError) {
+              console.error("Error parsing error response:", parseError);
+              // Fallback to status text if JSON parsing fails
+              errorMessage = response.statusText || errorMessage;
+            }
+            throw new Error(errorMessage);
+          }
+          
+          return response.json();
+        } catch (fetchError) {
+          // Make sure to clear timeout if fetch fails
+          clearTimeout(timeoutId);
+          throw fetchError;
         }
-        
-        return response.json();
       } catch (err) {
-        // Handle AbortError specially
-        if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error("Request timed out. The notification test may still be processing in the background.");
+        // Handle different error types with customized messages
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            console.warn("Notification test request timed out after 15 seconds");
+            throw new Error("Request timed out. The notification test may still be processing in the background.");
+          } else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+            console.error("Network error during notification test:", err);
+            throw new Error("Network error. Please check your connection and try again.");
+          }
         }
+        console.error("Error in notification test:", err);
         throw err;
       }
     },
@@ -141,8 +175,8 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center p-4 pt-16 border-b">
+    <div className="flex flex-col h-full overflow-y-auto">
+      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-20">
         <Button
           variant="ghost"
           size="icon"
@@ -155,7 +189,7 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
         {renderConnectionStatus()}
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 pb-24 overflow-y-auto">
         <div className="space-y-2">
           <Label htmlFor="notification-time">Daily Notification Time</Label>
           <Input
@@ -202,8 +236,33 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                 className="w-full"
                 size="sm"
                 onClick={() => {
+                  // Prevent starting a new test if one is already in progress
+                  if (testNotificationTimeMutation.isPending) {
+                    toast({
+                      title: "Test in progress",
+                      description: "Please wait for the current test to complete."
+                    });
+                    return;
+                  }
+                  
+                  // Provide user feedback immediately
+                  toast({
+                    description: "Starting notification test...",
+                  });
+                  
+                  // Use a try-catch block to handle any synchronous errors
                   try {
-                    testNotificationTimeMutation.mutate();
+                    // The mutation's async errors will be handled by the onError callback
+                    testNotificationTimeMutation.mutate(undefined, {
+                      // Add additional error handling here to ensure UI recovery
+                      onSettled: () => {
+                        // Force update notification list regardless of outcome
+                        setTimeout(() => {
+                          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                          queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+                        }, 1000);
+                      }
+                    });
                   } catch (error) {
                     console.error("Error triggering test notification:", error);
                     toast({
@@ -238,44 +297,75 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                           description: "Sending a test notification request...",
                         });
                         
+                        // Track request start time for logging/debugging
+                        const requestStartTime = Date.now();
+                        console.log(`Starting daily score check at ${new Date().toISOString()}`);
+                        
                         // Set timeout to prevent hanging requests
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
                         
-                        const response = await fetch(
-                          `/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`,
-                          { signal: controller.signal }
-                        );
-                        
-                        clearTimeout(timeoutId);
-                        
-                        if (!response.ok) {
-                          throw new Error(`Failed to send test notification: ${response.statusText}`);
-                        }
-                        
-                        const data = await response.json();
-                        
-                        toast({
-                          description: "Test notification sent successfully!",
-                        });
-                        
-                        console.log("Test notification response:", data);
-                        
-                        // Add a slight delay to prevent UI issues after notification test
-                        setTimeout(() => {
-                          // Refresh notifications to ensure we're showing the latest
-                          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                        }, 500);
-                      } catch (err) {
-                        // Handle AbortError specially
-                        if (err instanceof Error && err.name === 'AbortError') {
-                          console.error("Daily score check request timed out");
+                        try {
+                          const response = await fetch(
+                            `/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`,
+                            { signal: controller.signal }
+                          );
+                          
+                          const requestDuration = Date.now() - requestStartTime;
+                          console.log(`Daily score check completed in ${requestDuration}ms`);
+                          
+                          clearTimeout(timeoutId);
+                          
+                          if (!response.ok) {
+                            // Try to get detailed error information if available
+                            let errorMessage = `Failed to send test notification: ${response.status} ${response.statusText}`;
+                            try {
+                              const errorData = await response.json();
+                              errorMessage = errorData.message || errorMessage;
+                            } catch (parseError) {
+                              console.error("Error parsing error response:", parseError);
+                            }
+                            throw new Error(errorMessage);
+                          }
+                          
+                          const data = await response.json();
+                          
                           toast({
-                            title: "Request Timed Out",
-                            description: "The request took too long, but the notification might still be processing in the background.",
-                            variant: "destructive"
+                            description: "Test notification sent successfully!",
                           });
-                          return;
+                          
+                          console.log("Test notification response:", data);
+                          
+                          // Add a slight delay to prevent UI issues after notification test
+                          setTimeout(() => {
+                            // Refresh notifications to ensure we're showing the latest
+                            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                          }, 500);
+                        } catch (fetchError) {
+                          // Make sure to clear timeout if fetch fails
+                          clearTimeout(timeoutId);
+                          throw fetchError;
+                        }
+                      } catch (err) {
+                        // Handle different error types with customized messages
+                        if (err instanceof Error) {
+                          if (err.name === 'AbortError') {
+                            console.error("Daily score check request timed out after 15 seconds");
+                            toast({
+                              title: "Request Timed Out",
+                              description: "The request took too long, but the notification might still be processing in the background.",
+                              variant: "destructive"
+                            });
+                            return;
+                          } else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+                            console.error("Network error during daily score check:", err);
+                            toast({
+                              title: "Network Error",
+                              description: "Please check your connection and try again.",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
                         }
                         
                         console.error("Error sending test notification:", err);
@@ -303,15 +393,81 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                           description: "Sending a test push notification...",
                         });
                         
-                        // Create a test notification
-                        const notification = new Notification("Test Notification", {
-                          body: "This is a test notification with sound",
-                          icon: "/notification-icon.png"
-                        });
+                        // Check if browser supports notifications
+                        if (!("Notification" in window)) {
+                          throw new Error("This browser does not support desktop notifications");
+                        }
                         
-                        // Play the notification sound manually
-                        const audio = new Audio("/notification.wav");
-                        await audio.play();
+                        // Check permission status
+                        if (Notification.permission === "denied") {
+                          throw new Error("Notification permission has been denied. Please enable notifications in your browser settings.");
+                        }
+                        
+                        // Request permission if needed
+                        if (Notification.permission !== "granted") {
+                          console.log("Requesting notification permission");
+                          const permission = await Notification.requestPermission();
+                          
+                          if (permission !== "granted") {
+                            throw new Error("Notification permission not granted");
+                          }
+                          
+                          // Show a message that permission was granted
+                          toast({
+                            description: "Notification permission granted! Sending test notification...",
+                          });
+                        }
+                        
+                        // Log actions for debugging
+                        console.log("Creating test notification");
+                        
+                        // Create a test notification with error handling
+                        try {
+                          const notification = new Notification("Test Notification", {
+                            body: "This is a test notification with sound",
+                            icon: "/notification-icon.png"
+                          });
+                          
+                          // Set up notification events
+                          notification.onclick = () => {
+                            console.log("Notification clicked");
+                            window.focus();
+                            notification.close();
+                          };
+                          
+                          notification.onshow = () => {
+                            console.log("Notification shown");
+                          };
+                          
+                          notification.onerror = (event) => {
+                            console.error("Notification error:", event);
+                            throw new Error("Error showing notification");
+                          };
+                        } catch (notificationError) {
+                          console.error("Error creating notification:", notificationError);
+                          throw new Error(`Failed to create notification: ${notificationError instanceof Error ? notificationError.message : 'Unknown error'}`);
+                        }
+                        
+                        // Play the notification sound manually with error handling
+                        try {
+                          console.log("Playing notification sound");
+                          const audio = new Audio("/notification.wav");
+                          
+                          // Add error handling for audio
+                          audio.onerror = (event) => {
+                            console.error("Audio error:", event);
+                            throw new Error("Failed to play notification sound");
+                          };
+                          
+                          await audio.play();
+                        } catch (audioError) {
+                          console.warn("Error playing notification sound:", audioError);
+                          // Don't fail the whole operation if just the sound fails
+                          toast({
+                            description: "Notification sent, but sound couldn't be played.",
+                          });
+                          return;
+                        }
                         
                         toast({
                           description: "Test push notification sent successfully!",
@@ -319,20 +475,18 @@ export function NotificationSchedule({ onClose }: NotificationScheduleProps) {
                       } catch (error) {
                         console.error("Error sending test push notification:", error);
                         
+                        // More detailed error handling based on error type
                         if (Notification.permission !== "granted") {
-                          // Ask for permission if we don't have it
-                          Notification.requestPermission().then(permission => {
-                            if (permission === "granted") {
-                              toast({
-                                description: "Permission granted! Try the test again.",
-                              });
-                            } else {
-                              toast({
-                                title: "Permission denied",
-                                description: "You need to allow notifications in your browser settings.",
-                                variant: "destructive",
-                              });
-                            }
+                          toast({
+                            title: "Permission Required",
+                            description: "Notification permission is required. Please enable notifications in your browser settings.",
+                            variant: "destructive",
+                          });
+                        } else if (error instanceof Error && error.message.includes("play")) {
+                          toast({
+                            title: "Sound Error",
+                            description: "Notification was sent but sound couldn't be played. This may require user interaction first.",
+                            variant: "destructive",
                           });
                         } else {
                           toast({

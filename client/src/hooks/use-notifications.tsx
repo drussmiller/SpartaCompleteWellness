@@ -16,7 +16,10 @@ export function useNotifications(suppressToasts = false) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 10; // Increased from 5 to be more resilient
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // New timeout for connection monitoring
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null); // Interval for sending heartbeat pings
+  const lastMessageTimeRef = useRef<number>(Date.now()); // Track when we last received a message
   
   // Determine if we should show notification toasts
   // Don't show if explicitly suppressed or if we're on the notification-related pages
@@ -37,6 +40,35 @@ export function useNotifications(suppressToasts = false) {
       console.log("WebSocket not connecting - user not authenticated");
       return;
     }
+    
+    // Setup client-side heartbeat to actively check connection
+    const setupHeartbeat = () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      
+      // Set up a regular ping to the server to ensure connection stays alive
+      heartbeatIntervalRef.current = setInterval(() => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          // Update the last message time reference
+          const timeSinceLastMessage = Date.now() - lastMessageTimeRef.current;
+          
+          // If it's been more than 25 seconds since last message, send a ping
+          if (timeSinceLastMessage > 25000) {
+            console.log(`Sending heartbeat ping (${timeSinceLastMessage}ms since last activity)`);
+            try {
+              socketRef.current.send(JSON.stringify({
+                type: "ping",
+                timestamp: Date.now()
+              }));
+            } catch (err) {
+              console.error("Error sending heartbeat ping:", err);
+            }
+          }
+        }
+      }, 15000); // Send heartbeat every 15 seconds if needed
+    };
 
     try {
       // Ensure we're in a disconnected state before trying to reconnect
@@ -89,6 +121,12 @@ export function useNotifications(suppressToasts = false) {
         setConnectionStatus("connected");
         reconnectAttempts.current = 0;
         
+        // Reset message timestamp reference on new connection
+        lastMessageTimeRef.current = Date.now();
+        
+        // Start heartbeat monitoring for connection health
+        setupHeartbeat();
+        
         // Authenticate with the server
         if (user) {
           socket.send(JSON.stringify({
@@ -99,6 +137,9 @@ export function useNotifications(suppressToasts = false) {
       };
 
       socket.onmessage = (event) => {
+        // Update the last message time to show we're getting server activity
+        lastMessageTimeRef.current = Date.now();
+        
         try {
           // Log raw data for debugging purposes
           console.log(`WebSocket raw message received at ${new Date().toISOString()}, typeof:`, typeof event.data);
@@ -238,6 +279,37 @@ export function useNotifications(suppressToasts = false) {
             case "connected":
               console.log("WebSocket connection confirmed by server");
               break;
+            
+            case "ping":
+              // Received ping from server, respond with pong
+              console.log("Received ping from server, responding with pong");
+              if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                try {
+                  socketRef.current.send(JSON.stringify({
+                    type: "pong",
+                    timestamp: Date.now(),
+                    pingTimestamp: data.timestamp
+                  }));
+                } catch (err) {
+                  console.error("Error sending pong response:", err);
+                }
+              }
+              break;
+            
+            case "pong":
+              // Received pong from server
+              console.log("Received pong from server");
+              // Calculate round-trip time if we have the original ping timestamp
+              if (data.receivedAt) {
+                const roundTripTime = Date.now() - data.receivedAt;
+                console.log(`WebSocket ping-pong round trip time: ${roundTripTime}ms`);
+                
+                // Update connection status if ping is very slow
+                if (roundTripTime > 5000) {
+                  console.warn(`High WebSocket latency detected: ${roundTripTime}ms`);
+                }
+              }
+              break;
               
             default:
               console.log("Received unknown WebSocket message type:", data.type, data);
@@ -366,9 +438,77 @@ export function useNotifications(suppressToasts = false) {
 
   // Connect to WebSocket when user is available
   useEffect(() => {
-    console.log("useAuth hook called");
+    console.log("useNotifications hook called - initializing");
+    
     // Track if the component is still mounted
     let isMounted = true;
+    
+    // Setup a heartbeat/watchdog to detect zombie connections
+    const setupConnectionWatchdog = () => {
+      // Clear any existing connection watchdog
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      
+      // Set a new watchdog timeout
+      connectionTimeoutRef.current = setTimeout(() => {
+        console.log("Connection watchdog checking WebSocket status...");
+        
+        // Check if socket still exists but is in a broken state
+        if (socketRef.current) {
+          const state = socketRef.current.readyState;
+          
+          if (state === WebSocket.CONNECTING) {
+            console.warn("WebSocket still in CONNECTING state after 15 seconds - likely stuck");
+            
+            try {
+              // Force close and reconnect
+              socketRef.current.close();
+              socketRef.current = null;
+              
+              // Reset status and attempt reconnect
+              setConnectionStatus("disconnected");
+              connectWebSocket();
+            } catch (error) {
+              console.error("Error resetting stuck connection:", error);
+              
+              // Last resort - null the reference and force reconnect
+              socketRef.current = null;
+              setConnectionStatus("disconnected");
+              connectWebSocket();
+            }
+          }
+          else if (state !== WebSocket.OPEN) {
+            console.warn(`WebSocket in unexpected state: ${state} - resetting connection`);
+            
+            // Cleanup and reconnect
+            try {
+              socketRef.current.close();
+            } catch (error) {
+              console.error("Error closing connection in watchdog:", error);
+            } finally {
+              socketRef.current = null;
+              setConnectionStatus("disconnected");
+              connectWebSocket();
+            }
+          }
+          else {
+            console.log("Connection watchdog: WebSocket connection is healthy");
+            
+            // Keep checking periodically while connection is active
+            if (isMounted) {
+              setupConnectionWatchdog();
+            }
+          }
+        }
+        else if (user && isMounted && connectionStatus !== "connecting") {
+          // No socket ref but we should have one - reconnect
+          console.warn("Connection watchdog: No active WebSocket but user is logged in - reconnecting");
+          connectWebSocket();
+        }
+      }, 15000); // Check every 15 seconds
+    };
     
     // Only attempt connections when logged in
     if (user) {
@@ -377,6 +517,9 @@ export function useNotifications(suppressToasts = false) {
         if (isMounted) {
           console.log("Starting WebSocket connection after authentication");
           connectWebSocket();
+          
+          // Start the connection watchdog
+          setupConnectionWatchdog();
         }
       }, 500);
       
@@ -384,7 +527,22 @@ export function useNotifications(suppressToasts = false) {
       return () => {
         console.log("Cleaning up notification hook resources");
         isMounted = false;
+        
+        // Clear the initial timeout
         clearTimeout(initTimeout);
+        
+        // Clear connection watchdog
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
+        // Clear heartbeat interval
+        if (heartbeatIntervalRef.current) {
+          console.log("Clearing heartbeat interval");
+          clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = null;
+        }
         
         // Clear any pending reconnection attempts
         if (reconnectTimeoutRef.current) {
@@ -397,9 +555,16 @@ export function useNotifications(suppressToasts = false) {
         if (socketRef.current) {
           console.log("Closing WebSocket connection during cleanup");
           try {
-            // Only try to close if it's not already closed
+            // Disable all event handlers first to prevent any callbacks
+            if (socketRef.current) {
+              socketRef.current.onopen = null;
+              socketRef.current.onmessage = null;
+              socketRef.current.onclose = null;
+              socketRef.current.onerror = null;
+            }
+            
+            // Then try to close if not already closed
             if (socketRef.current.readyState !== WebSocket.CLOSED) {
-              socketRef.current.onclose = null; // Remove the onclose handler to prevent reconnection attempts
               socketRef.current.close();
             }
           } catch (err) {
@@ -409,7 +574,7 @@ export function useNotifications(suppressToasts = false) {
           }
         }
         
-        // Reset state if needed
+        // Reset state
         setConnectionStatus("disconnected");
       };
     } else {
@@ -419,6 +584,13 @@ export function useNotifications(suppressToasts = false) {
       // Close connection if user logs out
       if (socketRef.current) {
         try {
+          // Disable all callbacks first
+          socketRef.current.onopen = null;
+          socketRef.current.onmessage = null;
+          socketRef.current.onclose = null;
+          socketRef.current.onerror = null;
+          
+          // Then close
           socketRef.current.close();
         } catch (err) {
           console.error("Error closing WebSocket on logout:", err);
@@ -427,12 +599,24 @@ export function useNotifications(suppressToasts = false) {
         }
       }
       
-      // Clear any reconnection attempts
+      // Clear any timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
       
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      
+      // Clear heartbeat interval
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      
+      // Reset state
       setConnectionStatus("disconnected");
       
       // Still return a cleanup function
@@ -440,7 +624,7 @@ export function useNotifications(suppressToasts = false) {
         isMounted = false;
       };
     }
-  }, [user, connectWebSocket]);
+  }, [user, connectWebSocket, connectionStatus]);
 
   // Show toast for new notifications from the REST API - disabled for now
   // We're not showing toasts for existing notifications as they create too many popups
