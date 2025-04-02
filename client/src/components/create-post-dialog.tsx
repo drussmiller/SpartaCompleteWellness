@@ -309,13 +309,54 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch("type") === "memory_verse" ? "Video or Image" : "Image"}
+                      {form.watch("type") === "memory_verse" ? "Video Recording or Upload" : "Image"}
                     </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="file"
-                        accept={form.getValues("type") === "memory_verse" ? "video/*,image/*" : "image/*"}
-                        ref={form.getValues("type") === "memory_verse" ? videoInputRef : fileInputRef}
+                    <div className="space-y-4">
+                      {form.watch("type") === "memory_verse" && (
+                        <div className="flex gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={() => {
+                              if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                                  .then(stream => {
+                                    const mediaRecorder = new MediaRecorder(stream);
+                                    let chunks: BlobPart[] = [];
+                                    
+                                    mediaRecorder.ondataavailable = (e) => {
+                                      chunks.push(e.data);
+                                    };
+                                    
+                                    mediaRecorder.onstop = () => {
+                                      const blob = new Blob(chunks, { type: 'video/webm' });
+                                      const videoUrl = URL.createObjectURL(blob);
+                                      setImagePreview(videoUrl);
+                                      field.onChange(videoUrl);
+                                      chunks = [];
+                                      stream.getTracks().forEach(track => track.stop());
+                                    };
+                                    
+                                    mediaRecorder.start();
+                                    setTimeout(() => mediaRecorder.stop(), 60000); // 60 second limit
+                                  })
+                                  .catch(err => {
+                                    console.error('Error accessing camera:', err);
+                                    toast({
+                                      title: "Error",
+                                      description: "Could not access camera. Please check permissions.",
+                                      variant: "destructive",
+                                    });
+                                  });
+                              }
+                            }}
+                          >
+                            Record Video
+                          </Button>
+                          <Input
+                            type="file"
+                            accept="video/*,image/*"
+                            ref={videoInputRef}
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
