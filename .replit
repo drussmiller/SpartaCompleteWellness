@@ -56,3 +56,6 @@ author = 39881282
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-e6bb3646-07e5-4587-b64d-ca7b96c712ff"

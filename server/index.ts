@@ -8,6 +8,7 @@ import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
 import { logger } from "./logger";
+import path from "path";
 
 const execAsync = promisify(exec);
 
@@ -109,7 +110,7 @@ const scheduleDailyScoreCheck = () => {
       }
 
       const result = await response.json();
-      logger.info('Daily score check completed:', { result });
+      logger.info('Daily score check completed:');
     } catch (error) {
       logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
       // Schedule a retry in 5 minutes if there's an error
@@ -181,6 +182,18 @@ app.use('/api', (req, res, next) => {
     });
 
 
+    // Serve uploads directory as static files
+    const uploadsPath = path.join(process.cwd(), 'uploads');
+    console.log("[Startup] Setting up static uploads directory:", uploadsPath);
+    app.use('/uploads', express.static(uploadsPath, {
+      // Set maximum cache age to 1 day
+      maxAge: '1d',
+      // Don't transform paths
+      fallthrough: false,
+      // Return 404 if file not found
+      redirect: false
+    }));
+    
     // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {
       console.log("[Startup] Setting up Vite...");
@@ -330,12 +343,7 @@ async function runMigrations() {
     throw error;
   }
 }
-// Serve static files
-app.use(express.static("client/dist"));
-app.use('/uploads', express.static('uploads'));
-// Explicitly serve the thumbnails directory as well
-app.use('/uploads/thumbnails', express.static('uploads/thumbnails'));
-
+// API endpoint for user authentication
 app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

@@ -96,7 +96,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       case 'scripture':
         return !canPost.scripture;
       case 'memory_verse':
-        return !canPost.memory_verse;
+        return memoryVerseWeekCount > 0;
       case 'miscellaneous':
         return !canPost.miscellaneous; // Always false (enabled)
       default:
@@ -309,67 +309,102 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch("type") === "memory_verse" ? "Video or Image" : "Image"}
+                      {form.watch("type") === "memory_verse" ? "Video Recording or Upload" : "Image"}
                     </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="file"
-                        accept={form.getValues("type") === "memory_verse" ? "video/*,image/*" : "image/*"}
-                        ref={form.getValues("type") === "memory_verse" ? videoInputRef : fileInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = async () => {
-                              try {
-                                if (file.type.startsWith("video/")) {
+                    <div className="space-y-4">
+                      {form.watch("type") === "memory_verse" && (
+                        <div className="space-y-4">
+                          <Button
+                            type="button"
+                            onClick={() => videoInputRef.current?.click()}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            Select Video
+                          </Button>
+                          <Input
+                            type="file"
+                            accept="video/*"
+                            ref={videoInputRef}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
                                   setImagePreview(reader.result as string);
-                                } else {
-                                  const compressed = await compressImage(reader.result as string);
-                                  setImagePreview(compressed);
-                                  field.onChange(compressed);
-                                }
-                              } catch (error) {
-                                console.error('Error compressing image:', error);
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to process image. Please try again.",
-                                  variant: "destructive",
-                                });
+                                  field.onChange(reader.result);
+                                };
+                                reader.readAsDataURL(file);
                               }
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="hidden"
-                      />
-                    </FormControl>
-                    {imagePreview && (
-                      <div className="mt-2">
-                        {form.watch("type") === "memory_verse" && (
-                          <video src={imagePreview} controls className="max-h-40 rounded-md" />
-                        )}
+                            }}
+                            className="hidden"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <FormControl>
                         {form.watch("type") !== "memory_verse" && (
-                          <img
-                            src={imagePreview}
-                            alt="Preview"
-                            className="max-h-40 rounded-md"
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            ref={fileInputRef}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  try {
+                                    if (file.type.startsWith("video/")) {
+                                      setImagePreview(reader.result as string);
+                                    } else {
+                                      const compressed = await compressImage(reader.result as string);
+                                      setImagePreview(compressed);
+                                      field.onChange(compressed);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error compressing image:', error);
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to process image. Please try again.",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="hidden"
                           />
                         )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            setImagePreview(null);
-                            field.onChange(null);
-                          }}
-                        >
-                          Remove {form.watch("type") === "memory_verse" ? "Video" : "Image"}
-                        </Button>
-                      </div>
-                    )}
+                      </FormControl>
+                      {imagePreview && (
+                        <div className="mt-2">
+                          {form.watch("type") === "memory_verse" && (
+                            <video src={imagePreview} controls className="max-h-40 rounded-md" />
+                          )}
+                          {form.watch("type") !== "memory_verse" && (
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="max-h-40 rounded-md"
+                            />
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => {
+                              setImagePreview(null);
+                              field.onChange(null);
+                            }}
+                          >
+                            Remove {form.watch("type") === "memory_verse" ? "Video" : "Image"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
