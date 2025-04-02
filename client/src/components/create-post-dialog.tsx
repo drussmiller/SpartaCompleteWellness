@@ -387,9 +387,18 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                         </div>
                       )}
                     </div>
-                            const reader = new FileReader();
-                            reader.onload = async () => {
-                              try {
+                    <FormControl>
+                      {form.watch("type") !== "memory_verse" && (
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          ref={fileInputRef}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = async () => {
+                                try {
                                 if (file.type.startsWith("video/")) {
                                   setImagePreview(reader.result as string);
                                 } else {
