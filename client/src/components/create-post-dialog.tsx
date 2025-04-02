@@ -323,11 +323,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   .then(stream => {
                                     const mediaRecorder = new MediaRecorder(stream);
                                     let chunks: BlobPart[] = [];
-                                    
+
                                     mediaRecorder.ondataavailable = (e) => {
                                       chunks.push(e.data);
                                     };
-                                    
+
                                     mediaRecorder.onstop = () => {
                                       const blob = new Blob(chunks, { type: 'video/webm' });
                                       const videoUrl = URL.createObjectURL(blob);
@@ -336,7 +336,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                       chunks = [];
                                       stream.getTracks().forEach(track => track.stop());
                                     };
-                                    
+
                                     mediaRecorder.start();
                                     setTimeout(() => mediaRecorder.stop(), 60000); // 60 second limit
                                   })
@@ -399,54 +399,55 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               const reader = new FileReader();
                               reader.onload = async () => {
                                 try {
-                                if (file.type.startsWith("video/")) {
-                                  setImagePreview(reader.result as string);
-                                } else {
-                                  const compressed = await compressImage(reader.result as string);
-                                  setImagePreview(compressed);
-                                  field.onChange(compressed);
+                                  if (file.type.startsWith("video/")) {
+                                    setImagePreview(reader.result as string);
+                                  } else {
+                                    const compressed = await compressImage(reader.result as string);
+                                    setImagePreview(compressed);
+                                    field.onChange(compressed);
+                                  }
+                                } catch (error) {
+                                  console.error('Error compressing image:', error);
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to process image. Please try again.",
+                                    variant: "destructive",
+                                  });
                                 }
-                              } catch (error) {
-                                console.error('Error compressing image:', error);
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to process image. Please try again.",
-                                  variant: "destructive",
-                                });
-                              }
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="hidden"
-                      />
-                    </FormControl>
-                    {imagePreview && (
-                      <div className="mt-2">
-                        {form.watch("type") === "memory_verse" && (
-                          <video src={imagePreview} controls className="max-h-40 rounded-md" />
-                        )}
-                        {form.watch("type") !== "memory_verse" && (
-                          <img
-                            src={imagePreview}
-                            alt="Preview"
-                            className="max-h-40 rounded-md"
-                          />
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            setImagePreview(null);
-                            field.onChange(null);
+                              };
+                              reader.readAsDataURL(file);
+                            }
                           }}
-                        >
-                          Remove {form.watch("type") === "memory_verse" ? "Video" : "Image"}
-                        </Button>
-                      </div>
-                    )}
+                          className="hidden"
+                        />
+                        )}
+                        {imagePreview && (
+                          <div className="mt-2">
+                            {form.watch("type") === "memory_verse" && (
+                              <video src={imagePreview} controls className="max-h-40 rounded-md" />
+                            )}
+                            {form.watch("type") !== "memory_verse" && (
+                              <img
+                                src={imagePreview}
+                                alt="Preview"
+                                className="max-h-40 rounded-md"
+                              />
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => {
+                                setImagePreview(null);
+                                field.onChange(null);
+                              }}
+                            >
+                              Remove {form.watch("type") === "memory_verse" ? "Video" : "Image"}
+                            </Button>
+                          </div>
+                        )}
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
