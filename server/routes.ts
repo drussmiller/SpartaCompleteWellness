@@ -1335,6 +1335,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let imageProcessed = false;
       
       // Scripture posts shouldn't have images
+      // Miscellaneous posts may or may not have images/videos
       if (postData.type === 'scripture') {
         logger.info('Scripture post created with no image');
         imageUrl = null;
@@ -1358,22 +1359,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             }
           } else {
             logger.error(`Image file not found at expected path: ${filePath}`);
-            // Use fallback image URL based on post type (except for scripture)
-            imageUrl = `/uploads/default-${postData.type}.svg`;
-            logger.info(`Using fallback image for post type: ${postData.type}`);
+            // Don't use any fallback image
+            imageUrl = null;
+            logger.info(`No image found for post type: ${postData.type}`);
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          // Use fallback image URL based on post type (except for scripture)
-          imageUrl = `/uploads/default-${postData.type}.svg`;
-          logger.info(`Using fallback image for post type: ${postData.type}`);
+          // Don't use any fallback image
+          imageUrl = null;
+          logger.info(`Error with uploaded file for post type: ${postData.type}`);
         }
-      } else if (postData.type && postData.type !== 'scripture') {
-        // If no file uploaded but post type is known, use appropriate fallback (except for scripture)
-        const validTypes = ['food', 'workout', 'memory_verse'];
-        const type = validTypes.includes(postData.type) ? postData.type : 'post';
-        imageUrl = `/uploads/default-${type.replace('memory_verse', 'verse')}.svg`;
-        logger.info(`No image uploaded, using fallback for ${postData.type}`);
+      } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
+        // For miscellaneous posts, images are optional
+        // For scripture posts, no images
+        // For other posts, we previously would use fallbacks, but now we leave them blank
+        imageUrl = null;
+        logger.info(`No image uploaded for ${postData.type} post`);
       }
 
       const post = await db
