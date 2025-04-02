@@ -357,9 +357,36 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             type="file"
                             accept="video/*,image/*"
                             ref={videoInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  try {
+                                    if (file.type.startsWith("video/")) {
+                                      setImagePreview(reader.result as string);
+                                      field.onChange(reader.result);
+                                    } else {
+                                      const compressed = await compressImage(reader.result as string);
+                                      setImagePreview(compressed);
+                                      field.onChange(compressed);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error processing file:', error);
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to process file. Please try again.",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
                             const reader = new FileReader();
                             reader.onload = async () => {
                               try {
