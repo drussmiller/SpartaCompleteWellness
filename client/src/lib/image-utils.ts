@@ -18,13 +18,13 @@ export function getThumbnailUrl(originalUrl: string | null): string {
 export function getFallbackImageUrl(postType: string): string {
   switch(postType) {
     case 'food':
-      return '/uploads/default-food.jpg';
+      return '/uploads/default-food.svg';
     case 'workout':
-      return '/uploads/default-workout.jpg';
+      return '/uploads/default-workout.svg';
     case 'memory_verse':
-      return '/uploads/default-verse.jpg';
+      return '/uploads/default-verse.svg';
     default:
-      return '/uploads/default-post.jpg';
+      return '/uploads/default-post.svg';
   }
 }
 
