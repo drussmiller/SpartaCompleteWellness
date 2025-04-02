@@ -276,6 +276,52 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     });
   });
   
+  // WebSocket status endpoint to check real-time connections
+  router.get("/api/ws-status", (req, res) => {
+    // Count active WebSocket connections
+    let totalConnections = 0;
+    let activeUsers = 0;
+    const userConnectionCounts = [];
+    
+    // Analyze the clients map
+    clients.forEach((userClients, userId) => {
+      const openConnections = Array.from(userClients).filter(
+        ws => ws.readyState === WebSocket.OPEN
+      ).length;
+      
+      if (openConnections > 0) {
+        activeUsers++;
+        totalConnections += openConnections;
+        
+        userConnectionCounts.push({
+          userId,
+          connections: openConnections
+        });
+      }
+    });
+    
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      websocket: {
+        totalConnections,
+        activeUsers,
+        userDetails: userConnectionCounts
+      },
+      wss: {
+        clients: wss.clients.size
+      },
+      serverInfo: {
+        uptime: Math.floor(process.uptime()),
+        startTime: new Date(Date.now() - (process.uptime() * 1000)).toISOString(),
+        memoryUsage: {
+          rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
+        }
+      }
+    });
+  });
+  
   // Add a test endpoint for triggering notification checks with manual time override
   router.get("/api/test-notification", async (req, res) => {
     // Set a longer timeout for this endpoint as it can be resource-intensive
@@ -3016,10 +3062,56 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     console.log('WebSocket client connected');
     logger.info('WebSocket client connected');
     let userId: number | null = null;
+    let pingTimeout: NodeJS.Timeout | null = null;
+    
+    // Set custom properties to track socket health
+    (ws as any).isAlive = true;
+    (ws as any).lastPingTime = Date.now();
+    (ws as any).userId = null;
+
+    // Function to keep connections alive with ping/pong pattern
+    const heartbeat = () => {
+      (ws as any).isAlive = true;
+      (ws as any).lastPingTime = Date.now();
+      
+      // Clear existing timeout
+      if (pingTimeout) {
+        clearTimeout(pingTimeout);
+      }
+      
+      // Set a timeout to terminate the connection if no pong is received
+      pingTimeout = setTimeout(() => {
+        logger.warn(`WebSocket connection timed out after no response for 30s, userId: ${userId || 'unauthenticated'}`);
+        ws.terminate();
+      }, 30000); // 30 seconds timeout
+    };
+    
+    // Start the heartbeat immediately on connection
+    heartbeat();
 
     ws.on('message', async (message) => {
       try {
+        // Reset the heartbeat on any message
+        heartbeat();
+        
         const data = JSON.parse(message.toString());
+        
+        // Handle pong message (response to our ping)
+        if (data.type === 'pong') {
+          // Client responded to our ping, update alive status
+          (ws as any).isAlive = true;
+          (ws as any).lastPongTime = Date.now();
+          
+          // Calculate round-trip time if we have both ping and pong timestamps
+          if (data.pingTimestamp) {
+            const roundTripTime = Date.now() - data.pingTimestamp;
+            if (roundTripTime > 5000) {
+              // Log only if latency is high (over 5 seconds)
+              logger.warn(`High WebSocket latency detected for user ${userId}: ${roundTripTime}ms`);
+            }
+          }
+          return;
+        }
 
         // Handle authentication message
         if (data.type === 'auth') {
@@ -3028,27 +3120,111 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
             return;
           }
+          
+          // Store userId on the socket for easier debugging
+          (ws as any).userId = userId;
 
           // Add client to the user's connections
           if (!clients.has(userId)) {
             clients.set(userId, new Set());
           }
-          clients.get(userId)?.add(ws);
+          
+          // Add to the clients map, but first check if there are too many connections
+          const userClients = clients.get(userId);
+          if (userClients && userClients.size >= 10) {
+            // If there are too many connections for this user, close the oldest ones
+            logger.warn(`User ${userId} has too many WebSocket connections (${userClients.size}), closing oldest`);
+            
+            // Sort connections by last activity time and close the oldest ones
+            const oldConnections = Array.from(userClients)
+              .filter(client => (client as any).lastPingTime)
+              .sort((a, b) => (a as any).lastPingTime - (b as any).lastPingTime)
+              .slice(0, userClients.size - 8); // Keep the 8 newest connections
+              
+            // Close the old connections
+            for (const oldClient of oldConnections) {
+              try {
+                userClients.delete(oldClient);
+                oldClient.close(1000, "Too many connections for this user");
+              } catch (err) {
+                logger.error(`Error closing old connection: ${err}`, Error(String(err)));
+              }
+            }
+          }
+          
+          userClients?.add(ws);
 
-          logger.info(`WebSocket user ${userId} authenticated`);
+          logger.info(`WebSocket user ${userId} authenticated with ${userClients?.size || 0} total connections`);
           ws.send(JSON.stringify({ type: 'auth_success', userId }));
         }
+        
+        // Handle ping from client (different from our server-initiated ping)
+        if (data.type === 'ping') {
+          // Client is checking if we're still alive, respond with pong
+          ws.send(JSON.stringify({ 
+            type: 'pong', 
+            timestamp: Date.now(),
+            receivedAt: data.timestamp
+          }));
+        }
       } catch (error) {
-        logger.error('WebSocket message error:', error);
-        ws.send(JSON.stringify({ 
-          type: 'error', 
-          message: 'Invalid message format' 
-        }));
+        logger.error('WebSocket message error:', error instanceof Error ? error : new Error(String(error)));
+        
+        try {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            message: 'Invalid message format' 
+          }));
+        } catch (sendErr) {
+          logger.error('Error sending error message to client:', sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
+          // If we can't send a message, the connection might be dead
+          ws.terminate();
+        }
       }
     });
 
     // Handle client disconnection
     ws.on('close', () => {
+      // Clear the ping timeout
+      if (pingTimeout) {
+        clearTimeout(pingTimeout);
+        pingTimeout = null;
+      }
+      
+      if (userId) {
+        const userClients = clients.get(userId);
+        if (userClients) {
+          userClients.delete(ws);
+          logger.info(`WebSocket client disconnected for user ${userId}, remaining connections: ${userClients.size}`);
+          
+          if (userClients.size === 0) {
+            clients.delete(userId);
+            logger.info(`No more connections for user ${userId}, removed from clients map`);
+          }
+        }
+      } else {
+        logger.info('Unauthenticated WebSocket client disconnected');
+      }
+    });
+    
+    // Handle connection errors
+    ws.on('error', (err) => {
+      logger.error(`WebSocket error for user ${userId || 'unauthenticated'}:`, err instanceof Error ? err : new Error(String(err)));
+      
+      // Clear the ping timeout
+      if (pingTimeout) {
+        clearTimeout(pingTimeout);
+        pingTimeout = null;
+      }
+      
+      // On error, terminate the connection
+      try {
+        ws.terminate();
+      } catch (termErr) {
+        logger.error('Error terminating WebSocket connection:', termErr instanceof Error ? termErr : new Error(String(termErr)));
+      }
+      
+      // Make sure to clean up client map
       if (userId) {
         const userClients = clients.get(userId);
         if (userClients) {
@@ -3057,22 +3233,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             clients.delete(userId);
           }
         }
-        logger.info(`WebSocket client ${userId} disconnected`);
-      } else {
-        logger.info('Unauthenticated WebSocket client disconnected');
       }
     });
 
     // Send initial connection message
     try {
-      console.log('Sending initial connection message');
+      logger.info('Sending initial connection message');
       ws.send(JSON.stringify({ 
         type: 'connected', 
-        message: 'Connected to WebSocket server' 
+        message: 'Connected to WebSocket server',
+        serverTime: Date.now()
       }));
-      console.log('Initial connection message sent successfully');
     } catch (error) {
-      console.error('Error sending initial WebSocket message:', error);
+      logger.error('Error sending initial WebSocket message:', error instanceof Error ? error : new Error(String(error)));
+      // If we can't send the initial message, terminate the connection
+      ws.terminate();
     }
   });
 
@@ -3097,6 +3272,107 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Expose the broadcast function to the global scope
   (app as any).broadcastNotification = broadcastNotification;
+  
+  // Start WebSocket heartbeat monitoring
+  // This helps detect and clean up stale connections
+  const startHeartbeatMonitoring = () => {
+    logger.info('Starting WebSocket heartbeat monitoring');
+    
+    const HEARTBEAT_INTERVAL = 30000; // Check every 30 seconds
+    
+    setInterval(() => {
+      let activeConnections = 0;
+      let closedConnections = 0;
+      
+      // For each user in our clients map
+      clients.forEach((userClients, userId) => {
+        // For each connection for this user
+        userClients.forEach(ws => {
+          try {
+            // Skip if connection is already closed
+            if (ws.readyState !== WebSocket.OPEN) {
+              // Connection is not open, close and remove it
+              try {
+                ws.terminate();
+              } catch (err) {
+                logger.error(`Error terminating stale connection: ${err}`, Error(String(err)));
+              }
+              
+              userClients.delete(ws);
+              closedConnections++;
+              return;
+            }
+            
+            // Check if the connection is stale by checking isAlive flag
+            if (!(ws as any).isAlive) {
+              logger.warn(`Terminating stale connection for user ${userId}`);
+              try {
+                ws.terminate();
+              } catch (err) {
+                logger.error(`Error terminating stale connection: ${err}`, Error(String(err)));
+              }
+              
+              userClients.delete(ws);
+              closedConnections++;
+              return;
+            }
+            
+            // Mark as not alive - will be marked alive when pong is received
+            (ws as any).isAlive = false;
+            
+            // Send ping
+            try {
+              ws.send(JSON.stringify({ 
+                type: 'ping',
+                timestamp: Date.now()
+              }));
+              
+              activeConnections++;
+            } catch (err) {
+              logger.error(`Error sending ping: ${err}`, Error(String(err)));
+              
+              // Error sending ping, connection is probably dead
+              try {
+                // Make sure socket's ping timeout is properly cleared through a custom attribute
+                if ((ws as any).pingTimeout) {
+                  clearTimeout((ws as any).pingTimeout);
+                  (ws as any).pingTimeout = null;
+                }
+                
+                ws.terminate();
+              } catch (termErr) {
+                // Ignore errors during terminate
+                logger.debug(`Error during terminate after ping failure: ${termErr}`);
+              }
+              
+              userClients.delete(ws);
+              closedConnections++;
+            }
+          } catch (err) {
+            logger.error(`Error in heartbeat: ${err}`, Error(String(err)));
+            
+            // Error in heartbeat logic, close and remove the connection
+            try {
+              userClients.delete(ws);
+              closedConnections++;
+            } catch (cleanupErr) {
+              logger.error(`Error cleaning up connection: ${cleanupErr}`, Error(String(cleanupErr)));
+            }
+          }
+        });
+        
+        // Clean up user entry if no connections remain
+        if (userClients.size === 0) {
+          clients.delete(userId);
+        }
+      });
+      
+      logger.info(`WebSocket heartbeat complete - active: ${activeConnections}, closed: ${closedConnections}`);
+    }, HEARTBEAT_INTERVAL);
+  };
+  
+  // Start the heartbeat monitoring
+  startHeartbeatMonitoring();
 
   // User stats endpoint for simplified My Stats section
   router.get("/api/user/stats", authenticate, async (req, res, next) => {
