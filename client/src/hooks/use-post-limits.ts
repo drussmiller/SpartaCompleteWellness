@@ -106,7 +106,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     food: (selectedDate.getDay() !== 0) && (counts.food < 3),
     workout: counts.workout < 1,
     scripture: counts.scripture < 1,
-    memory_verse: selectedDate.getDay() === 6 && counts.memory_verse < 1,
+    memory_verse: memoryVerseWeekCount === 0,
     miscellaneous: true // Always allow miscellaneous posts
   };
   const remaining = {

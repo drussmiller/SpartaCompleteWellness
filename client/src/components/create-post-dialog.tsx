@@ -96,7 +96,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       case 'scripture':
         return !canPost.scripture;
       case 'memory_verse':
-        return !canPost.memory_verse;
+        return memoryVerseWeekCount > 0;
       case 'miscellaneous':
         return !canPost.miscellaneous; // Always false (enabled)
       default:
