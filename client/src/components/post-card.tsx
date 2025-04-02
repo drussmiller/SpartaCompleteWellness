@@ -302,30 +302,65 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 const img = e.currentTarget;
                 const originalSrc = img.getAttribute('data-full-src');
                 
-                // Try original first if we're looking at a thumbnail
-                if (originalSrc && originalSrc !== img.src) {
-                  img.src = originalSrc;
-                  // Add a second error handler for the original image
-                  img.onerror = () => {
-                    console.error("Failed to load original image:", originalSrc);
-                    // Use the fallback based on post type
-                    const fallbackSrc = getFallbackImageUrl(post.type);
-                    img.src = fallbackSrc;
-                    // If fallback fails too, hide the image
-                    img.onerror = () => {
-                      console.error("Fallback image also failed:", fallbackSrc);
-                      img.style.display = "none";
-                    };
-                  };
+                // Simple fallback - just show the post type with a colored background
+                // This simplifies our approach since SVG files may not always load 
+                // predictably in all browsers
+                const containerElement = img.closest('.min-h-[50vh]');
+                if (containerElement) {
+                  console.log(`Using fallback display for ${post.type} post`);
+                  
+                  // Hide the image
+                  img.style.display = 'none';
+                  
+                  // Create a fallback div with the post type
+                  const fallbackDiv = document.createElement('div');
+                  fallbackDiv.className = 'w-full h-full min-h-[200px] flex items-center justify-center';
+                  
+                  // Set a background color based on post type
+                  let bgColor = '#f0f4f8'; // Default
+                  let txtColor = '#4a5568'; // Default text
+                  
+                  switch(post.type) {
+                    case 'food':
+                      bgColor = '#e6fffa'; // teal-50
+                      txtColor = '#2c7a7b'; // teal-700
+                      break;
+                    case 'workout':
+                      bgColor = '#ebf4ff'; // blue-50
+                      txtColor = '#3182ce'; // blue-600
+                      break;
+                    case 'memory_verse':
+                      bgColor = '#faf5ff'; // purple-50
+                      txtColor = '#805ad5'; // purple-600
+                      break;
+                    case 'scripture':
+                      bgColor = '#fff5f5'; // red-50
+                      txtColor = '#e53e3e'; // red-600
+                      break;
+                    default:
+                      bgColor = '#f7fafc'; // gray-50
+                      txtColor = '#4a5568'; // gray-700
+                  }
+                  
+                  fallbackDiv.style.backgroundColor = bgColor;
+                  
+                  const content = document.createElement('div');
+                  content.className = 'text-center p-4';
+                  content.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
+                        stroke="${txtColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <p class="mt-2 font-semibold" style="color:${txtColor}">${post.type.replace('_', ' ').toUpperCase()} POST</p>
+                  `;
+                  
+                  fallbackDiv.appendChild(content);
+                  containerElement.appendChild(fallbackDiv);
                 } else {
-                  // Use the fallback based on post type
-                  const fallbackSrc = getFallbackImageUrl(post.type);
-                  img.src = fallbackSrc;
-                  // If fallback fails too, hide the image
-                  img.onerror = () => {
-                    console.error("Fallback image also failed:", fallbackSrc);
-                    img.style.display = "none";
-                  };
+                  // If we can't find the container, just hide the image
+                  img.style.display = 'none';
                 }
               }}
             />
