@@ -300,134 +300,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               onError={(e) => {
                 console.error("Failed to load image:", post.imageUrl);
                 const img = e.currentTarget;
-                const originalSrc = img.getAttribute('data-full-src');
                 
-                // Try to load the fallback image instead
-                const fallbackSrc = getFallbackImageUrl(post.type);
-                console.log(`Attempting to use fallback image: ${fallbackSrc}`);
+                // Simply hide the image element when it fails to load
+                img.style.display = 'none';
                 
-                // Try the fallback image first
-                if (fallbackSrc) {
-                  img.src = fallbackSrc;
-                  img.setAttribute('data-using-fallback', 'true');
-                  
-                  // If SVG fallback fails too, switch to inline SVG display
-                  img.onerror = () => {
-                    console.error("Fallback image also failed to load for post type:", post.type);
-                    const containerElement = img.closest('.min-h-[50vh]');
-                    if (containerElement) {
-                      console.log(`Using inline SVG fallback for ${post.type} post`);
-                      
-                      // Hide the image
-                      img.style.display = 'none';
-                      
-                      // Create a fallback div with the post type
-                      const fallbackDiv = document.createElement('div');
-                      fallbackDiv.className = 'w-full h-full min-h-[200px] flex items-center justify-center';
-                      
-                      // Set a background color based on post type
-                      let bgColor = '#f0f4f8'; // Default
-                      let txtColor = '#4a5568'; // Default text
-                      
-                      switch(post.type) {
-                        case 'food':
-                          bgColor = '#e6fffa'; // teal-50
-                          txtColor = '#2c7a7b'; // teal-700
-                          break;
-                        case 'workout':
-                          bgColor = '#ebf4ff'; // blue-50
-                          txtColor = '#3182ce'; // blue-600
-                          break;
-                        case 'memory_verse':
-                          bgColor = '#faf5ff'; // purple-50
-                          txtColor = '#805ad5'; // purple-600
-                          break;
-                        case 'scripture':
-                          bgColor = '#fff5f5'; // red-50
-                          txtColor = '#e53e3e'; // red-600
-                          break;
-                        default:
-                          bgColor = '#f7fafc'; // gray-50
-                          txtColor = '#4a5568'; // gray-700
-                      }
-                      
-                      fallbackDiv.style.backgroundColor = bgColor;
-                      
-                      const content = document.createElement('div');
-                      content.className = 'text-center p-4';
-                      content.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
-                            stroke="${txtColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                          <polyline points="21 15 16 10 5 21"></polyline>
-                        </svg>
-                        <p class="mt-2 font-semibold" style="color:${txtColor}">${post.type.replace('_', ' ').toUpperCase()} POST</p>
-                      `;
-                      
-                      fallbackDiv.appendChild(content);
-                      containerElement.appendChild(fallbackDiv);
-                    }
-                  };
-                } else {
-                  // If we don't have a fallback image, use the inline approach immediately
-                  const containerElement = img.closest('.min-h-[50vh]');
-                  if (containerElement) {
-                    console.log(`Using inline fallback display for ${post.type} post`);
-                    
-                    // Hide the image
-                    img.style.display = 'none';
-                    
-                    // Create a fallback div with the post type
-                    const fallbackDiv = document.createElement('div');
-                    fallbackDiv.className = 'w-full h-full min-h-[200px] flex items-center justify-center';
-                    
-                    // Set a background color based on post type
-                    let bgColor = '#f0f4f8'; // Default
-                    let txtColor = '#4a5568'; // Default text
-                    
-                    switch(post.type) {
-                      case 'food':
-                        bgColor = '#e6fffa'; // teal-50
-                        txtColor = '#2c7a7b'; // teal-700
-                        break;
-                      case 'workout':
-                        bgColor = '#ebf4ff'; // blue-50
-                        txtColor = '#3182ce'; // blue-600
-                        break;
-                      case 'memory_verse':
-                        bgColor = '#faf5ff'; // purple-50
-                        txtColor = '#805ad5'; // purple-600
-                        break;
-                      case 'scripture':
-                        bgColor = '#fff5f5'; // red-50
-                        txtColor = '#e53e3e'; // red-600
-                        break;
-                      default:
-                        bgColor = '#f7fafc'; // gray-50
-                        txtColor = '#4a5568'; // gray-700
-                    }
-                    
-                    fallbackDiv.style.backgroundColor = bgColor;
-                    
-                    const content = document.createElement('div');
-                    content.className = 'text-center p-4';
-                    content.innerHTML = `
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
-                          stroke="${txtColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                      </svg>
-                      <p class="mt-2 font-semibold" style="color:${txtColor}">${post.type.replace('_', ' ').toUpperCase()} POST</p>
-                    `;
-                    
-                    fallbackDiv.appendChild(content);
-                    containerElement.appendChild(fallbackDiv);
-                  } else {
-                    // If we can't find the container, just hide the image
-                    img.style.display = 'none';
-                  }
+                // Get the container element
+                const containerElement = img.closest('.min-h-[50vh]');
+                if (containerElement) {
+                  // Add a small empty placeholder div to maintain some space
+                  const placeholderDiv = document.createElement('div');
+                  placeholderDiv.className = 'w-full min-h-[100px]';
+                  containerElement.appendChild(placeholderDiv);
                 }
               }}
             />
