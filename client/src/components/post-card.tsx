@@ -23,7 +23,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
-import { getThumbnailUrl } from "../lib/image-utils";
+import { getThumbnailUrl, getFallbackImageUrl } from "../lib/image-utils";
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
@@ -287,7 +287,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             <img
               src={getThumbnailUrl(post.imageUrl)}
               data-full-src={post.imageUrl}
-              alt="Post content"
+              alt={`${post.type} post content`}
               loading="lazy"
               decoding="async"
               className="w-full h-full object-contain cursor-pointer"
@@ -301,10 +301,31 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 console.error("Failed to load image:", post.imageUrl);
                 const img = e.currentTarget;
                 const originalSrc = img.getAttribute('data-full-src');
+                
+                // Try original first if we're looking at a thumbnail
                 if (originalSrc && originalSrc !== img.src) {
                   img.src = originalSrc;
+                  // Add a second error handler for the original image
+                  img.onerror = () => {
+                    console.error("Failed to load original image:", originalSrc);
+                    // Use the fallback based on post type
+                    const fallbackSrc = getFallbackImageUrl(post.type);
+                    img.src = fallbackSrc;
+                    // If fallback fails too, hide the image
+                    img.onerror = () => {
+                      console.error("Fallback image also failed:", fallbackSrc);
+                      img.style.display = "none";
+                    };
+                  };
                 } else {
-                  img.style.display = "none";
+                  // Use the fallback based on post type
+                  const fallbackSrc = getFallbackImageUrl(post.type);
+                  img.src = fallbackSrc;
+                  // If fallback fails too, hide the image
+                  img.onerror = () => {
+                    console.error("Fallback image also failed:", fallbackSrc);
+                    img.style.display = "none";
+                  };
                 }
               }}
             />
