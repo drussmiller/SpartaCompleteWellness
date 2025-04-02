@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="300" height="300" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="300" fill="#edf2f7"/>
+  <g transform="translate(100, 100)">
+    <rect x="20" y="20" width="60" height="60" rx="5" fill="#a0aec0"/>
+    <text x="50" y="55" font-family="Arial" font-size="12" text-anchor="middle" fill="#2d3748">Workout Image</text>
+  </g>
+</svg>

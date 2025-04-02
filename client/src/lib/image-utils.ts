@@ -12,6 +12,23 @@ export function getThumbnailUrl(originalUrl: string | null): string {
 }
 
 /**
+ * Get a fallback image URL
+ * This will return a generic image URL for different post types
+ */
+export function getFallbackImageUrl(postType: string): string {
+  switch(postType) {
+    case 'food':
+      return '/uploads/default-food.jpg';
+    case 'workout':
+      return '/uploads/default-workout.jpg';
+    case 'memory_verse':
+      return '/uploads/default-verse.jpg';
+    default:
+      return '/uploads/default-post.jpg';
+  }
+}
+
+/**
  * Preload an image to ensure it's cached
  */
 export function preloadImage(url: string): Promise<void> {
@@ -37,7 +54,14 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
       preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
         // If thumbnail fails, try original
         preloadImage(post.imageUrl).catch(() => {
-          console.error('Failed to preload image:', post.imageUrl);
+          // If original fails, try the fallback
+          if (post.type) {
+            preloadImage(getFallbackImageUrl(post.type)).catch(() => {
+              console.error('Failed to preload all image options:', post.imageUrl);
+            });
+          } else {
+            console.error('Failed to preload image:', post.imageUrl);
+          }
         });
       });
     }
@@ -50,7 +74,15 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
         // Stagger loading to prevent network congestion
         setTimeout(() => {
           preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
-            // Silent failure for non-visible posts
+            // Try original next
+            preloadImage(post.imageUrl).catch(() => {
+              // Silently try the fallback
+              if (post.type) {
+                preloadImage(getFallbackImageUrl(post.type)).catch(() => {
+                  // Silent failure for non-visible posts
+                });
+              }
+            });
           });
         }, index * 100);
       }
