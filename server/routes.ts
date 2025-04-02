@@ -1331,17 +1331,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Handle regular post creation
-      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
-      // If there's an image, resize it for thumbnails
+      let imageUrl = null;
+      let imageProcessed = false;
+      
       if (req.file) {
-        import('./middleware/image-resize').then(({ resizeUploadedImage }) => {
-          resizeUploadedImage(req.file!.path).catch(err => {
-            logger.error('Error during image resize:', err);
-          });
-        }).catch(err => {
-          logger.error('Error importing image resize module:', err);
-        });
+        try {
+          // Verify the file exists before proceeding
+          const filePath = req.file.path;
+          if (fs.existsSync(filePath)) {
+            imageUrl = `/uploads/${req.file.filename}`;
+            logger.info(`Image file stored successfully at ${filePath}`);
+            
+            // Process the image resize synchronously to ensure it's done
+            try {
+              const { resizeUploadedImage } = await import('./middleware/image-resize');
+              await resizeUploadedImage(filePath);
+              imageProcessed = true;
+              logger.info(`Image thumbnail created for ${req.file.filename}`);
+            } catch (resizeErr) {
+              logger.error('Error during image resize:', resizeErr);
+              // Continue with original image even if thumbnail creation fails
+            }
+          } else {
+            logger.error(`Image file not found at expected path: ${filePath}`);
+            // Use fallback image URL based on post type
+            imageUrl = `/uploads/default-${postData.type}.svg`;
+            logger.info(`Using fallback image for post type: ${postData.type}`);
+          }
+        } catch (fileErr) {
+          logger.error('Error processing uploaded file:', fileErr);
+          // Use fallback image URL based on post type
+          imageUrl = `/uploads/default-${postData.type}.svg`;
+          logger.info(`Using fallback image for post type: ${postData.type}`);
+        }
+      } else if (postData.type) {
+        // If no file uploaded but post type is known, use appropriate fallback
+        const validTypes = ['food', 'workout', 'scripture', 'memory_verse'];
+        const type = validTypes.includes(postData.type) ? postData.type : 'post';
+        imageUrl = `/uploads/default-${type.replace('memory_verse', 'verse')}.svg`;
+        logger.info(`No image uploaded, using fallback for ${postData.type}`);
       }
 
       const post = await db
