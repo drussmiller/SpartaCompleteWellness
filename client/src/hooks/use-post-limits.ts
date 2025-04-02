@@ -101,6 +101,8 @@ export function usePostLimits(selectedDate: Date = new Date()) {
 
   // Check if we have valid data from the API before using defaults
   const counts = data?.counts || defaultCounts;
+  const memoryVerseWeekCount = data?.memoryVerseWeekCount || 0;
+  
   // Derive canPost from counts rather than using potentially stale data from API
   const canPost = {
     food: (selectedDate.getDay() !== 0) && (counts.food < 3),
@@ -140,6 +142,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     remaining,
     isLoading,
     error,
-    refetch
+    refetch,
+    memoryVerseWeekCount
   };
 }
