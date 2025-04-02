@@ -1560,11 +1560,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Main function to check daily scores
   const checkDailyScores = async (req: Request, res: Response) => {
     try {
-      logger.info('Starting daily score check');
+      logger.info('Starting daily score check with request body:', req.body);
       
-      // Log the intent to check scores for debugging
-      logger.info('Daily check endpoint triggered - will check all users for missed posts');
-
+      // Get current hour and minute from request body or use current time
+      const currentHour = req.body?.currentHour !== undefined 
+        ? parseInt(req.body.currentHour) 
+        : new Date().getHours();
+      
+      const currentMinute = req.body?.currentMinute !== undefined 
+        ? parseInt(req.body.currentMinute) 
+        : new Date().getMinutes();
+      
+      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute}`);
+      
       // Get all users using a more explicit query to avoid type issues
       const allUsers = await db
         .select({
@@ -1578,8 +1586,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .from(users);
 
       logger.info(`Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`);
-      logger.info(`User details: ${JSON.stringify(allUsers, null, 2)}`);
-
+      
       // Get yesterday's date with proper timezone handling
       const now = new Date();
       const yesterday = new Date(now);
@@ -1724,10 +1731,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 )
               );
 
-            // Only send notification if it's the user's preferred time and if one hasn't been sent today
-            const currentHour = new Date().getHours();
-            const currentMinute = new Date().getMinutes();
-            
+            // Use passed in hour/minute or current time
             // Parse user's notification time preference (HH:MM format)
             const notificationTimeParts = user.notificationTime ? user.notificationTime.split(':') : ['9', '00'];
             const preferredHour = parseInt(notificationTimeParts[0]);
