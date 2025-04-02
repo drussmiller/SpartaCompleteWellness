@@ -345,37 +345,47 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                     <div>
                       <FormControl>
                         {form.watch("type") !== "memory_verse" && (
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            ref={fileInputRef}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = async () => {
-                                  try {
-                                    if (file.type.startsWith("video/")) {
-                                      setImagePreview(reader.result as string);
-                                    } else {
-                                      const compressed = await compressImage(reader.result as string);
-                                      setImagePreview(compressed);
-                                      field.onChange(compressed);
+                          <>
+                            <Button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              variant="outline"
+                              className="w-full"
+                            >
+                              Select Image
+                            </Button>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              ref={fileInputRef}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = async () => {
+                                    try {
+                                      if (file.type.startsWith("video/")) {
+                                        setImagePreview(reader.result as string);
+                                      } else {
+                                        const compressed = await compressImage(reader.result as string);
+                                        setImagePreview(compressed);
+                                        field.onChange(compressed);
+                                      }
+                                    } catch (error) {
+                                      console.error('Error compressing image:', error);
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to process image. Please try again.",
+                                        variant: "destructive",
+                                      });
                                     }
-                                  } catch (error) {
-                                    console.error('Error compressing image:', error);
-                                    toast({
-                                      title: "Error",
-                                      description: "Failed to process image. Please try again.",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            className="hidden"
-                          />
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </>
                         )}
                       </FormControl>
                       {imagePreview && (
