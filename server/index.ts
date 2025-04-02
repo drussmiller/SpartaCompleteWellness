@@ -333,6 +333,8 @@ async function runMigrations() {
 // Serve static files
 app.use(express.static("client/dist"));
 app.use('/uploads', express.static('uploads'));
+// Explicitly serve the thumbnails directory as well
+app.use('/uploads/thumbnails', express.static('uploads/thumbnails'));
 
 app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
