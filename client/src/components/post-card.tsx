@@ -281,7 +281,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         )}
       </div>
 
-      {post.imageUrl && (
+      {post.imageUrl && post.type !== 'scripture' && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
             <img

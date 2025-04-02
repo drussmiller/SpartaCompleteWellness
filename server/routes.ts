@@ -1334,7 +1334,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let imageUrl = null;
       let imageProcessed = false;
       
-      if (req.file) {
+      // Scripture posts shouldn't have images
+      if (postData.type === 'scripture') {
+        logger.info('Scripture post created with no image');
+        imageUrl = null;
+      } else if (req.file) {
         try {
           // Verify the file exists before proceeding
           const filePath = req.file.path;
@@ -1354,19 +1358,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             }
           } else {
             logger.error(`Image file not found at expected path: ${filePath}`);
-            // Use fallback image URL based on post type
+            // Use fallback image URL based on post type (except for scripture)
             imageUrl = `/uploads/default-${postData.type}.svg`;
             logger.info(`Using fallback image for post type: ${postData.type}`);
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          // Use fallback image URL based on post type
+          // Use fallback image URL based on post type (except for scripture)
           imageUrl = `/uploads/default-${postData.type}.svg`;
           logger.info(`Using fallback image for post type: ${postData.type}`);
         }
-      } else if (postData.type) {
-        // If no file uploaded but post type is known, use appropriate fallback
-        const validTypes = ['food', 'workout', 'scripture', 'memory_verse'];
+      } else if (postData.type && postData.type !== 'scripture') {
+        // If no file uploaded but post type is known, use appropriate fallback (except for scripture)
+        const validTypes = ['food', 'workout', 'memory_verse'];
         const type = validTypes.includes(postData.type) ? postData.type : 'post';
         imageUrl = `/uploads/default-${type.replace('memory_verse', 'verse')}.svg`;
         logger.info(`No image uploaded, using fallback for ${postData.type}`);
