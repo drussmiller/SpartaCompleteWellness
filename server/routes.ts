@@ -32,6 +32,7 @@ import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
+import { spartaStorage } from './sparta-object-storage';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -1469,8 +1470,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Delete associated image files if they exist
       if (post.imageUrl) {
         try {
-          const { spartaStorage } = await import('./sparta-object-storage');
-          
           logger.info(`Deleting file associated with post: ${post.imageUrl}`);
           await spartaStorage.deleteFile(post.imageUrl);
           logger.info(`Successfully deleted file for post: ${postId}`);
