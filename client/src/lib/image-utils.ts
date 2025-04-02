@@ -3,12 +3,23 @@
  * Get the thumbnail URL for an image
  */
 export function getThumbnailUrl(originalUrl: string | null): string {
-  if (!originalUrl || !originalUrl.startsWith('/uploads/')) {
-    return originalUrl || '';
+  if (!originalUrl) {
+    return '';
   }
   
-  const filename = originalUrl.split('/').pop() || '';
-  return `/uploads/thumbnails/${filename}`;
+  // Handle SVG files - use them directly without thumbnailing
+  if (originalUrl.endsWith('.svg')) {
+    return originalUrl;
+  }
+  
+  // Handle regular images that need thumbnailing
+  if (originalUrl.startsWith('/uploads/')) {
+    const filename = originalUrl.split('/').pop() || '';
+    return `/uploads/thumbnails/${filename}`;
+  }
+  
+  // For any other URLs, return as is
+  return originalUrl;
 }
 
 /**
@@ -16,16 +27,36 @@ export function getThumbnailUrl(originalUrl: string | null): string {
  * This will return a generic image URL for different post types
  */
 export function getFallbackImageUrl(postType: string): string {
-  switch(postType) {
-    case 'food':
-      return '/uploads/default-food.svg';
-    case 'workout':
-      return '/uploads/default-workout.svg';
-    case 'memory_verse':
-      return '/uploads/default-verse.svg';
-    default:
-      return '/uploads/default-post.svg';
+  let type = postType;
+  
+  // Normalize type (in case we get variations)
+  if (type === 'memory_verse' || type === 'verse') {
+    type = 'verse';
+  } else if (!['food', 'workout', 'scripture'].includes(type)) {
+    type = 'post'; // Default fallback for any unrecognized type
   }
+  
+  // Return the appropriate SVG
+  return `/uploads/default-${type}.svg`;
+}
+
+/**
+ * Check if an image exists locally
+ * This is used to validate if a fallback is needed
+ */
+export function checkImageExists(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    // For SVG files and non-uploads, assume they exist
+    if (url.endsWith('.svg') || !url.startsWith('/uploads/')) {
+      resolve(true);
+      return;
+    }
+    
+    // For regular images, do a HEAD request
+    fetch(url, { method: 'HEAD' })
+      .then(response => resolve(response.ok))
+      .catch(() => resolve(false));
+  });
 }
 
 /**
