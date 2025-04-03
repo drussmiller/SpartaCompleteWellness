@@ -326,6 +326,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             type="file"
                             accept="video/*"
                             ref={videoInputRef}
+                            capture="user"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
@@ -341,10 +342,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
                                 // Store the actual file for upload
-                                field.onChange(file);;
-                                  field.onChange(reader.result);
-                                };
-                                reader.readAsDataURL(file);
+                                field.onChange(file);
                               }
                             }}
                             className="hidden"
