@@ -512,24 +512,20 @@ export function useNotifications(suppressToasts = false) {
     
     // Only attempt connections when logged in
     if (user) {
-      // Use a small delay to ensure any previous cleanup has completed
-      const initTimeout = setTimeout(() => {
-        if (isMounted) {
-          console.log("Starting WebSocket connection after authentication");
-          connectWebSocket();
-          
-          // Start the connection watchdog
-          setupConnectionWatchdog();
-        }
-      }, 500);
+      // Use manual connection strategy to prevent aggressive reconnects
+      // If the user clicks the reconnect button, they'll get a connection
+      // Otherwise, they'll need to refresh the page to reconnect
       
-      // Clean up this timeout if the component unmounts before it fires
+      // Store the connection status for the UI but don't automatically connect
+      console.log("User authenticated - connection will be established manually");
+            
+      // Start the connection watchdog to monitor connection issues
+      setupConnectionWatchdog();
+      
+      // Clean up resources when the component unmounts
       return () => {
         console.log("Cleaning up notification hook resources");
         isMounted = false;
-        
-        // Clear the initial timeout
-        clearTimeout(initTimeout);
         
         // Clear connection watchdog
         if (connectionTimeoutRef.current) {
