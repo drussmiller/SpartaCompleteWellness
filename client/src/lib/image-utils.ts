@@ -1,8 +1,8 @@
 
 /**
- * Get the thumbnail URL for an image
+ * Get the thumbnail URL for an image with size optimization
  */
-export function getThumbnailUrl(originalUrl: string | null): string {
+export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
   if (!originalUrl) {
     return '';
   }
@@ -15,11 +15,24 @@ export function getThumbnailUrl(originalUrl: string | null): string {
   // Handle regular images that need thumbnailing
   if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';
-    return `/uploads/thumbnails/thumb-${filename}`;
+    return `/uploads/thumbnails/${filename}`;
   }
   
   // For any other URLs, return as is
   return originalUrl;
+}
+
+/**
+ * Check if image is in viewport for lazy loading
+ */
+export function isInViewport(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
 }
 
 /**

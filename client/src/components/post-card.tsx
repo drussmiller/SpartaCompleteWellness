@@ -42,24 +42,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       try {
         // Get the week that contains this post's date
         const postDate = new Date(post.createdAt || new Date());
-        
+
         // Get the first day of the week (Sunday)
         const startOfWeek = new Date(postDate);
         startOfWeek.setDate(postDate.getDate() - postDate.getDay());
         startOfWeek.setHours(0, 0, 0, 0);
-        
+
         // Format for consistent querying
         const startDateStr = startOfWeek.toISOString().split('T')[0];
-        
+
         const response = await apiRequest(
           "GET", 
           `/api/posts?userId=${post.author.id}&startDate=${startDateStr}&type=all`
         );
-        
+
         if (!response.ok) {
           return 0;
         }
-        
+
         const posts = await response.json();
         // Calculate total points for the week
         const total = posts.reduce((sum: number, p: any) => sum + (p.points || 0), 0);
@@ -82,12 +82,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           console.error("Post createdAt is undefined or null", post);
           return 0;
         }
-        
+
         // Extract the date part only to ensure consistent comparison
         const postDate = new Date(post.createdAt);
         const dateString = postDate.toISOString().split('T')[0];
         console.log(`Fetching points for post ${post.id}, date: ${dateString}, userId: ${post.author.id}`);
-        
+
         // Use the date in the format YYYY-MM-DD for better consistent results
         const response = await apiRequest(
           "GET", 
@@ -115,12 +115,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             date: dateString,
             points: result.points
           });
-          
+
           // Log the post's individual points
           if (post.points) {
             console.log(`Post ${post.id} has its own points: ${post.points}`);
           }
-          
+
           return result.points;
         } catch (jsonError) {
           console.error(`Error parsing points response for post ${post.id}:`, jsonError);
@@ -145,7 +145,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         console.log(`Attempting to delete post ID: ${post.id}`);
         const response = await apiRequest("DELETE", `/api/posts/${post.id}`);
         console.log(`Delete response status: ${response.status}`);
-        
+
         if (!response.ok) {
           let errorMessage = "Unknown error";
           try {
@@ -157,7 +157,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           }
           throw new Error(`Failed to delete post: ${errorMessage}`);
         }
-        
+
         try {
           const data = await response.json();
           console.log("Delete success response:", data);
@@ -201,6 +201,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       });
     },
   });
+
+  const isInViewport = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    return (
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
+  };
 
   return (
     <div className="border-y border-gray-200 bg-white w-full">
@@ -285,32 +295,34 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
             <img
-              src={getThumbnailUrl(post.imageUrl)}
+              src={getThumbnailUrl(post.imageUrl, 'small')}
               data-full-src={post.imageUrl}
               alt={`${post.type} post content`}
               loading="lazy"
               decoding="async"
               className="w-full h-full object-contain cursor-pointer"
-              onClick={(e) => {
-                const fullSrc = e.currentTarget.getAttribute('data-full-src');
-                if (fullSrc) {
-                  window.open(fullSrc, '_blank');
+              onLoad={(e) => {
+                const img = e.target as HTMLImageElement;
+                if (isInViewport(img)) {
+                  const mediumUrl = getThumbnailUrl(post.imageUrl, 'medium');
+                  // Preload medium size
+                  const preloadImg = new Image();
+                  preloadImg.onload = () => {
+                    img.src = mediumUrl;
+                  };
+                  preloadImg.src = mediumUrl;
                 }
               }}
               onError={(e) => {
                 console.error("Failed to load image:", post.imageUrl);
                 const img = e.currentTarget;
-                
-                // Simply hide the image element when it fails to load
                 img.style.display = 'none';
                 
-                // Get the container element
-                const containerElement = img.closest('.min-h-[50vh]');
-                if (containerElement) {
-                  // Add a small empty placeholder div to maintain some space
-                  const placeholderDiv = document.createElement('div');
-                  placeholderDiv.className = 'w-full min-h-[100px]';
-                  containerElement.appendChild(placeholderDiv);
+                // Add a minimal message instead
+                const container = img.parentElement;
+                if (container) {
+                  container.style.minHeight = 'auto';
+                  container.style.background = 'transparent';
                 }
               }}
             />

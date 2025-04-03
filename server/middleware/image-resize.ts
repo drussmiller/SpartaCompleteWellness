@@ -1,37 +1,59 @@
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
 import { logger } from '../logger';
 
-// Ensure thumbnails directory exists
-const thumbnailDir = path.join(process.cwd(), 'uploads', 'thumbnails');
-fs.mkdir(thumbnailDir, { recursive: true }).catch(err => {
-  logger.error('Error creating thumbnails directory:', err);
-});
+const uploadsDir = path.join(process.cwd(), 'uploads');
+const thumbnailDir = path.join(uploadsDir, 'thumbnails');
+
+// Ensure directories exist
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(thumbnailDir)) {
+  fs.mkdirSync(thumbnailDir, { recursive: true });
+}
 
 export async function resizeUploadedImage(filePath: string): Promise<void> {
   try {
     const filename = path.basename(filePath);
-    const thumbnailPath = path.join(thumbnailDir, filename);
+    const fileExt = path.extname(filename);
+    const baseName = path.basename(filename, fileExt);
     
-    // Create a thumbnail (width: 300px)
-    await sharp(filePath)
-      .resize({ width: 300 })
-      .jpeg({ quality: 80 })
-      .toFile(thumbnailPath);
-      
-    logger.info(`Created thumbnail for ${filename}`);
+    // Create thumbnails of different sizes
+    await Promise.all([
+      // Small thumbnail
+      sharp(filePath)
+        .resize(150, 150, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 70 })
+        .toFile(path.join(thumbnailDir, `${baseName}`)),
+        
+      // Medium thumbnail  
+      sharp(filePath)
+        .resize(300, 300, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 80 })
+        .toFile(path.join(thumbnailDir, `${baseName}`)),
+        
+      // Large thumbnail
+      sharp(filePath)
+        .resize(600, 600, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 85 })
+        .toFile(path.join(thumbnailDir, `${baseName}`))
+    ]);
+    
+    logger.info(`Created thumbnails for ${filename}`);
   } catch (error) {
-    logger.error('Error resizing image:', error);
+    logger.error('Error creating thumbnails:', error);
+    throw new Error(`Failed to create thumbnails: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
-
-export function getThumbnailUrl(originalUrl: string): string {
-  if (!originalUrl || !originalUrl.startsWith('/uploads/')) {
-    return originalUrl;
-  }
-  
-  const filename = path.basename(originalUrl);
-  return `/uploads/thumbnails/${filename}`;
 }
