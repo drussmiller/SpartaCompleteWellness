@@ -15,11 +15,21 @@ export async function resizeUploadedImage(filePath: string): Promise<void> {
     const filename = path.basename(filePath);
     const thumbnailPath = path.join(thumbnailDir, filename);
     
-    // Create a thumbnail (width: 300px)
-    await sharp(filePath)
-      .resize({ width: 300 })
-      .jpeg({ quality: 80 })
-      .toFile(thumbnailPath);
+    // Create thumbnails of different sizes
+    await Promise.all([
+      sharp(filePath)
+        .resize({ width: 150 })
+        .jpeg({ quality: 70 })
+        .toFile(thumbnailPath.replace('thumb-', 'thumb-sm-')),
+      sharp(filePath)
+        .resize({ width: 300 })
+        .jpeg({ quality: 80 })
+        .toFile(thumbnailPath),
+      sharp(filePath)
+        .resize({ width: 600 })
+        .jpeg({ quality: 85 })
+        .toFile(thumbnailPath.replace('thumb-', 'thumb-lg-'))
+    ]);
       
     logger.info(`Created thumbnail for ${filename}`);
   } catch (error) {
