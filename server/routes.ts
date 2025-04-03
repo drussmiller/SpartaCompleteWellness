@@ -1335,10 +1335,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let imageUrl = null;
       let imageProcessed = false;
       
-      // Scripture posts shouldn't have images
+      // Scripture posts shouldn't have images/videos
       // Miscellaneous posts may or may not have images/videos
       if (postData.type === 'scripture') {
-        logger.info('Scripture post created with no image');
+        logger.info('Scripture post created with no media');
         imageUrl = null;
       } else if (req.file) {
         try {
@@ -1348,15 +1348,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Verify the file exists before proceeding
           const filePath = req.file.path;
           if (fs.existsSync(filePath)) {
+            // Handle video files differently
+            const isVideo = req.file.mimetype.startsWith('video/');
             // Store the file using SpartaObjectStorage
             const fileInfo = await spartaStorage.storeFile(
               filePath,
               req.file.originalname,
-              req.file.mimetype
+              req.file.mimetype,
+              isVideo // Pass flag for video handling
             );
             
             imageUrl = fileInfo.url;
-            imageProcessed = !!fileInfo.thumbnailUrl;
+            imageProcessed = postData.type === 'memory_verse' ? true : !!fileInfo.thumbnailUrl;
             
             logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
             logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);

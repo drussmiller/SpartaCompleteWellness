@@ -27,7 +27,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { canPost, counts, refetch, remaining, workoutWeekPoints, memoryVerseWeekCount } = usePostLimits(selectedDate);
+  const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null); // Added video input ref
@@ -60,9 +60,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     if (type === 'workout') {
       if (counts.workout > 0) {
         return "(already posted workout today)";
-      }
-      if (workoutWeekPoints >= 15) {
-        return "(reached 15 points this week)";
       }
       return "(up to 5 workouts per week)";
     }
@@ -115,17 +112,30 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
         if (data.imageUrl && data.imageUrl.length > 0) {
           try {
-            const blob = await fetch(data.imageUrl).then(r => r.blob());
-            formData.append("image", blob, "image.jpeg");
+            if (data.type === 'memory_verse') {
+              // For memory verse, we need to handle video files
+              if (videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
+                const videoFile = videoInputRef.current.files[0];
+                // Append the actual video file to the form data
+                formData.append("image", videoFile, videoFile.name);
+                console.log("Uploading video file:", videoFile.name, videoFile.type, videoFile.size);
+              } else {
+                throw new Error("No video file selected");
+              }
+            } else {
+              // For images, fetch the blob from the data URL
+              const blob = await fetch(data.imageUrl).then(r => r.blob());
+              formData.append("image", blob, "image.jpeg");
+            }
           } catch (error) {
-            console.error("Error processing image:", error);
-            throw new Error("Failed to process image");
+            console.error("Error processing media:", error);
+            throw new Error("Failed to process media file");
           }
         }
 
         const postData = {
           type: data.type,
-          content: data.content.trim(),
+          content: data.content?.trim() || '',
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
@@ -326,15 +336,25 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             type="file"
                             accept="video/*"
                             ref={videoInputRef}
+                            capture="user"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  setImagePreview(reader.result as string);
-                                  field.onChange(reader.result);
-                                };
-                                reader.readAsDataURL(file);
+                                if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                                  toast({
+                                    title: "Error",
+                                    description: "Video file is too large. Maximum size is 100MB.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                
+                                // For video, create a preview and store the file
+                                const videoUrl = URL.createObjectURL(file);
+                                setImagePreview(videoUrl);
+                                field.onChange(videoUrl);
+                                // Don't create a separate FormData here - 
+                                // we'll handle the file in the main submission
                               }
                             }}
                             className="hidden"
@@ -390,10 +410,16 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       </FormControl>
                       {imagePreview && (
                         <div className="mt-2">
-                          {form.watch("type") === "memory_verse" && (
-                            <video src={imagePreview} controls className="max-h-40 rounded-md" />
+                          {form.watch("type") === "memory_verse" && imagePreview && (
+                            <video 
+                              src={imagePreview} 
+                              controls
+                              controlsList="nodownload"
+                              className="w-full max-h-60 rounded-md object-contain bg-black"
+                              preload="metadata"
+                            />
                           )}
-                          {form.watch("type") !== "memory_verse" && (
+                          {form.watch("type") !== "memory_verse" && imagePreview && (
                             <img
                               src={imagePreview}
                               alt="Preview"

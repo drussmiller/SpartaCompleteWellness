@@ -294,38 +294,50 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       {post.imageUrl && post.type !== 'scripture' && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
-            <img
-              src={getThumbnailUrl(post.imageUrl, 'small')}
-              data-full-src={post.imageUrl}
-              alt={`${post.type} post content`}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-contain cursor-pointer"
-              onLoad={(e) => {
-                const img = e.target as HTMLImageElement;
-                if (isInViewport(img)) {
-                  const mediumUrl = getThumbnailUrl(post.imageUrl, 'medium');
-                  // Preload medium size
-                  const preloadImg = new Image();
-                  preloadImg.onload = () => {
-                    img.src = mediumUrl;
-                  };
-                  preloadImg.src = mediumUrl;
-                }
-              }}
-              onError={(e) => {
-                console.error("Failed to load image:", post.imageUrl);
-                const img = e.currentTarget;
-                img.style.display = 'none';
-                
-                // Add a minimal message instead
-                const container = img.parentElement;
-                if (container) {
-                  container.style.minHeight = 'auto';
-                  container.style.background = 'transparent';
-                }
-              }}
-            />
+            {post.type === 'memory_verse' ? (
+              <div className="relative w-full">
+                <video
+                  src={post.imageUrl}
+                  controls
+                  preload="metadata"
+                  className="w-full h-full object-contain"
+                  playsInline
+                />
+              </div>
+            ) : (
+              <img
+                src={getThumbnailUrl(post.imageUrl, 'small')}
+                data-full-src={post.imageUrl}
+                alt={`${post.type} post content`}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-contain cursor-pointer"
+                onLoad={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (isInViewport(img)) {
+                    const mediumUrl = getThumbnailUrl(post.imageUrl, 'medium');
+                    // Preload medium size
+                    const preloadImg = new Image();
+                    preloadImg.onload = () => {
+                      img.src = mediumUrl;
+                    };
+                    preloadImg.src = mediumUrl;
+                  }
+                }}
+                onError={(e) => {
+                  console.error("Failed to load image:", post.imageUrl);
+                  const img = e.currentTarget;
+                  img.style.display = 'none';
+                  
+                  // Add a minimal message instead
+                  const container = img.parentElement;
+                  if (container) {
+                    container.style.minHeight = 'auto';
+                    container.style.background = 'transparent';
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       )}
