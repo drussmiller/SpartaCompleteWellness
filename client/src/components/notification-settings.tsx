@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, WifiOff, Wifi } from "lucide-react";
+import { ChevronLeft, WifiOff, Wifi, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -19,9 +19,33 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { connectionStatus } = useNotifications();
+  const { connectionStatus, reconnect } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  
+  // Handler for manual reconnection
+  const handleReconnect = useCallback(() => {
+    if (connectionStatus === "connecting") {
+      toast({
+        description: "Connection attempt already in progress..."
+      });
+      return;
+    }
+    
+    setIsReconnecting(true);
+    toast({
+      description: "Attempting to reconnect to notification service..."
+    });
+    
+    // Attempt reconnection
+    reconnect();
+    
+    // Reset reconnecting state after delay
+    setTimeout(() => {
+      setIsReconnecting(false);
+    }, 2000);
+  }, [connectionStatus, reconnect, toast]);
 
   const updateScheduleMutation = useMutation({
     mutationFn: async (time: string) => {
@@ -235,11 +259,26 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         <div className="space-y-4">
           <div className="border rounded-md p-4 bg-muted/30">
             <h3 className="text-sm font-medium mb-2">Real-time notifications</h3>
-            <p className="text-sm text-muted-foreground">
-              {connectionStatus === "connected" 
-                ? "You'll receive real-time notifications when you're online."
-                : "Connect to receive real-time notifications."}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {connectionStatus === "connected" 
+                  ? "You'll receive real-time notifications when you're online."
+                  : "Connect to receive real-time notifications."}
+              </p>
+              
+              {connectionStatus !== "connected" && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-2"
+                  onClick={handleReconnect}
+                  disabled={isReconnecting || connectionStatus === "connecting"}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${isReconnecting || connectionStatus === "connecting" ? "animate-spin" : ""}`} />
+                  {connectionStatus === "connecting" ? "Connecting..." : "Reconnect"}
+                </Button>
+              )}
+            </div>
           </div>
 
           <Button 

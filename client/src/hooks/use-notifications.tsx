@@ -9,6 +9,7 @@ import { useLocation } from "wouter";
 type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
 export function useNotifications(suppressToasts = false) {
+  // Expose connectWebSocket for manual reconnection
   const { user } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
@@ -39,10 +40,15 @@ export function useNotifications(suppressToasts = false) {
 
   // Function to connect to WebSocket with connection guard
   const connectWebSocket = useCallback(() => {
-    // Exit if no user or already connecting
-    if (!user || isConnectingRef.current) {
-      console.log("WebSocket not connecting - no user or connection in progress");
+    // Exit if no user 
+    if (!user) {
+      console.log("WebSocket not connecting - user not authenticated");
       return;
+    }
+    
+    // If already connecting, just log but continue (to handle manual reconnection attempts)
+    if (isConnectingRef.current) {
+      console.log("WebSocket connection already in progress, but allowing manual reconnection");
     }
     
     // Set connecting flag to prevent multiple connection attempts
@@ -631,5 +637,6 @@ export function useNotifications(suppressToasts = false) {
   return { 
     connectionStatus,
     notifications,
+    reconnect: connectWebSocket, // Expose reconnection function for manual use
   };
 }
