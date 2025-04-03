@@ -339,10 +339,19 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   return;
                                 }
                                 
-                                // For video, directly use the file
+                                // For video, create a preview and store the file
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
-                                field.onChange(file); // Pass the file directly to form data
+                                field.onChange(file);
+                                // Store the file for upload
+                                const formData = new FormData();
+                                formData.append("image", file);
+                                // Add other necessary fields
+                                formData.append("data", JSON.stringify({
+                                  type: form.getValues("type"),
+                                  content: form.getValues("content"),
+                                  points: form.getValues("type") === "memory_verse" ? 10 : 3
+                                }));
                               }
                             }}
                             className="hidden"
