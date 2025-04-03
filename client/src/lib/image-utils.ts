@@ -15,8 +15,15 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
   // Handle regular images that need thumbnailing
   if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';
-    // The thumbnails in the directory don't have any prefix
-    return `/uploads/thumbnails/${filename}`;
+    
+    // If we're requesting a small thumbnail, return the thumbnail URL
+    // For other sizes, return the original to reduce likelihood of 404s
+    if (size === 'small') {
+      return `/uploads/thumbnails/${filename}`;
+    } else {
+      // For medium/large sizes or when size isn't specified, use original
+      return originalUrl;
+    }
   }
   
   // For any other URLs, return as is
