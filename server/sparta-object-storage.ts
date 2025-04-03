@@ -12,7 +12,7 @@ export class SpartaObjectStorage {
   private baseDir: string;
   private thumbnailDir: string;
   private allowedTypes: string[];
-  
+
   /**
    * Creates a new SpartaObjectStorage instance
    * @param baseDir Base directory to store original uploads
@@ -22,16 +22,16 @@ export class SpartaObjectStorage {
   constructor(
     baseDir: string = path.join(process.cwd(), 'uploads'),
     thumbnailDir: string = path.join(process.cwd(), 'uploads', 'thumbnails'),
-    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'] // Added video types
   ) {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
-    
+
     // Ensure directories exist
     this.ensureDirectories();
   }
-  
+
   /**
    * Make sure required directories exist
    */
@@ -41,7 +41,7 @@ export class SpartaObjectStorage {
         fs.mkdirSync(this.baseDir, { recursive: true });
         logger.info(`Created base upload directory: ${this.baseDir}`);
       }
-      
+
       if (!fs.existsSync(this.thumbnailDir)) {
         fs.mkdirSync(this.thumbnailDir, { recursive: true });
         logger.info(`Created thumbnail directory: ${this.thumbnailDir}`);
@@ -51,18 +51,20 @@ export class SpartaObjectStorage {
       throw new Error('Failed to create storage directories');
     }
   }
-  
+
   /**
    * Stores a file from a Buffer or local path
    * @param fileData Buffer containing file data or path to local file
    * @param originalFilename Original filename from upload
    * @param mimeType MIME type of the file
+   * @param isVideo Boolean indicating if the file is a video
    * @returns Promise with the stored file information
    */
   async storeFile(
     fileData: Buffer | string,
     originalFilename: string,
-    mimeType: string
+    mimeType: string,
+    isVideo: boolean = false
   ): Promise<{ 
     url: string;
     thumbnailUrl: string | null;
@@ -76,14 +78,14 @@ export class SpartaObjectStorage {
       if (!this.allowedTypes.includes(mimeType)) {
         throw new Error(`File type ${mimeType} not allowed`);
       }
-      
+
       // Generate a unique filename
       const timestamp = Date.now();
       const uniqueId = uuidv4().substring(0, 8);
       const fileExt = path.extname(originalFilename);
       const safeFilename = `${timestamp}-${uniqueId}${fileExt}`;
       const filePath = path.join(this.baseDir, safeFilename);
-      
+
       // Convert string path to buffer if needed
       let fileBuffer: Buffer;
       if (typeof fileData === 'string') {
@@ -91,26 +93,26 @@ export class SpartaObjectStorage {
       } else {
         fileBuffer = fileData;
       }
-      
+
       // Write the file
       fs.writeFileSync(filePath, fileBuffer);
-      
+
       // Get file size
       const stats = fs.statSync(filePath);
-      
+
       let thumbnailUrl = null;
-      
+
       // Create thumbnail if it's an image
-      if (mimeType.startsWith('image/')) {
+      if (mimeType.startsWith('image/') && !isVideo) { //check for video
         const thumbnailFilename = `thumb-${safeFilename}`;
         const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
-        
+
         await this.createThumbnail(filePath, thumbnailPath);
         thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
       }
-      
+
       logger.info(`Successfully stored file ${safeFilename}`);
-      
+
       return {
         url: `/uploads/${safeFilename}`,
         thumbnailUrl,
@@ -124,7 +126,7 @@ export class SpartaObjectStorage {
       throw new Error(`Failed to store file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-  
+
   /**
    * Creates a thumbnail version of an image
    * @param sourcePath Path to source image
@@ -142,14 +144,14 @@ export class SpartaObjectStorage {
           withoutEnlargement: true
         })
         .toFile(targetPath);
-      
+
       logger.info(`Created thumbnail at ${targetPath}`);
     } catch (error) {
       logger.error('Error creating thumbnail:', error instanceof Error ? error : new Error(String(error)));
       throw new Error('Failed to create thumbnail');
     }
   }
-  
+
   /**
    * Deletes a file by its URL
    * @param fileUrl URL of the file to delete (e.g., /uploads/filename.jpg)
@@ -161,16 +163,16 @@ export class SpartaObjectStorage {
         logger.warn('Attempted to delete null file URL');
         return;
       }
-      
+
       // Extract filename from URL
       const filename = path.basename(fileUrl);
       const filePath = path.join(this.baseDir, filename);
-      
+
       // Check if file exists before deleting
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         logger.info(`Deleted file ${filename}`);
-        
+
         // Also try to delete thumbnail if it exists
         const thumbnailPath = path.join(this.thumbnailDir, `thumb-${filename}`);
         if (fs.existsSync(thumbnailPath)) {
@@ -185,7 +187,7 @@ export class SpartaObjectStorage {
       throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-  
+
   /**
    * Get file information by URL
    * @param fileUrl URL of the file
@@ -201,32 +203,35 @@ export class SpartaObjectStorage {
   } | null {
     try {
       if (!fileUrl) return null;
-      
+
       // Extract filename from URL
       const filename = path.basename(fileUrl);
       const filePath = path.join(this.baseDir, filename);
-      
+
       if (!fs.existsSync(filePath)) {
         return null;
       }
-      
+
       // Get file stats
       const stats = fs.statSync(filePath);
-      
+
       // Determine mime type based on extension (simplified)
       const ext = path.extname(filename).toLowerCase();
       let mimeType = null;
-      
+
       if (['.jpg', '.jpeg'].includes(ext)) mimeType = 'image/jpeg';
       else if (ext === '.png') mimeType = 'image/png';
       else if (ext === '.gif') mimeType = 'image/gif';
       else if (ext === '.webp') mimeType = 'image/webp';
-      
+      else if (ext === '.mp4') mimeType = 'video/mp4';
+      else if (ext === '.webm') mimeType = 'video/webm';
+
+
       // Check if thumbnail exists
       const thumbnailFilename = `thumb-${filename}`;
       const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
       const thumbnailUrl = fs.existsSync(thumbnailPath) ? `/uploads/thumbnails/${thumbnailFilename}` : null;
-      
+
       return {
         url: fileUrl,
         thumbnailUrl,
