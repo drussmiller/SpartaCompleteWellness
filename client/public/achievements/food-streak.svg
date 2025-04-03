@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128px" height="128px" viewBox="0 0 128 128" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="64" cy="64" r="60" fill="#4CAF50" />
+  <circle cx="64" cy="64" r="50" fill="#81C784" />
+  <circle cx="64" cy="64" r="40" fill="#C8E6C9" />
+  
+  <!-- Plate shape -->
+  <circle cx="64" cy="70" r="25" fill="#E0E0E0" stroke="#BDBDBD" stroke-width="2" />
+  
+  <!-- Fork and knife -->
+  <path d="M48 40 L48 77 M48 50 L38 40 M48 60 L38 50" 
+        stroke="#424242" stroke-width="3" stroke-linecap="round" />
+        
+  <path d="M80 40 L80 50 C80 60, 70 60, 70 50 L70 40 M75 50 L75 77" 
+        stroke="#424242" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Food on plate -->
+  <circle cx="58" cy="65" r="5" fill="#FF9800" />
+  <circle cx="70" cy="65" r="5" fill="#F44336" />
+  <rect x="60" y="74" width="8" height="4" fill="#8D6E63" />
+</svg>

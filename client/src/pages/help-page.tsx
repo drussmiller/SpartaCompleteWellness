@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Book, Dumbbell, Cross } from "lucide-react";
+import { HelpCircle, Book, Dumbbell, Cross, Award } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
+import { AchievementDemo } from "@/components/achievements/achievement-demo";
 
 export default function HelpPage() {
   return (
@@ -83,6 +84,27 @@ export default function HelpPage() {
               <li>Engaging in spiritual discussions</li>
               <li>Supporting team members through prayer and encouragement</li>
             </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              Achievements
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>Earn achievements by reaching milestones in your wellness journey:</p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Complete a streak of consistent food posts</li>
+              <li>Finish all your workouts for the week</li>
+              <li>Maintain a daily scripture reading habit</li>
+              <li>Successfully memorize and share weekly verses</li>
+              <li>Help your team reach collective goals</li>
+            </ul>
+            
+            <AchievementDemo />
           </CardContent>
         </Card>
       </main>

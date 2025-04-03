@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128px" height="128px" viewBox="0 0 128 128" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="64" cy="64" r="60" fill="#FFD700" />
+  <circle cx="64" cy="64" r="50" fill="#FFEB99" />
+  <circle cx="64" cy="64" r="40" fill="#FFF6D9" />
+  
+  <!-- Star shape -->
+  <path d="M64 24
+           L71.48 46.48
+           L95 46.48
+           L76.76 60.52
+           L84.24 83
+           L64 69
+           L43.76 83
+           L51.24 60.52
+           L33 46.48
+           L56.52 46.48
+           Z" fill="#FFD700" />
+</svg>

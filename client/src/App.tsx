@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AuthProvider } from "@/hooks/use-auth";
 import { useAuth } from "@/hooks/use-auth";
+import { AchievementsProvider } from "@/hooks/use-achievements";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { Route, Switch } from "wouter";
@@ -22,6 +23,7 @@ import { VerticalNav } from "@/components/vertical-nav";
 import NotificationSchedulePage from "@/pages/notification-schedule-page"; //Import the new page component
 import { LeaderboardPage } from "@/pages/leaderboard-page"; // Import the leaderboard page
 import { DebugApi } from "./debug-api"; // Import our debug component
+import { AchievementsContainer } from "@/components/achievements/achievements-container";
 
 
 // Separate auth-dependent rendering
@@ -103,8 +105,11 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <MainContent />
-          <Toaster />
+          <AchievementsProvider>
+            <MainContent />
+            <AchievementsContainer />
+            <Toaster />
+          </AchievementsProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
