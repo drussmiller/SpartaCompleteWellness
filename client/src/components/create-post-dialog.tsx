@@ -342,7 +342,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
                                 // Store the actual file for upload
-                                field.onChange(file);
+                                field.onChange(videoUrl);
                               }
                             }}
                             className="hidden"
