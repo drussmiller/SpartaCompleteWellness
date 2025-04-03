@@ -22,7 +22,7 @@ export class SpartaObjectStorage {
   constructor(
     baseDir: string = path.join(process.cwd(), 'uploads'),
     thumbnailDir: string = path.join(process.cwd(), 'uploads', 'thumbnails'),
-    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'] // Added video types
+    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'] // Added video types
   ) {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
