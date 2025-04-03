@@ -46,7 +46,7 @@ export const posts = pgTable("posts", {
   userId: integer("user_id").notNull(),
   type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"] }).notNull(),
   content: text("content"),
-  imageUrl: text("image_url"),
+  mediaUrl: text("media_url"), // Renamed from imageUrl to mediaUrl to handle both images and videos
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   parentId: integer("parent_id"),
@@ -181,7 +181,7 @@ export const insertPostSchema = createInsertSchema(posts)
   })
   .extend({
     content: z.string().nullable(),
-    imageUrl: z.string().nullable(),
+    mediaUrl: z.string().nullable(), // Updated from imageUrl to mediaUrl
     type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
