@@ -3145,7 +3145,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Handle WebSocket connections
   wss.on('connection', (ws: WebSocket) => {
-    console.log('WebSocket client connected');
+    console.log('WebSocket client connected at', new Date().toISOString());
     logger.info('WebSocket client connected');
     let userId: number | null = null;
     let pingTimeout: NodeJS.Timeout | null = null;
@@ -3154,6 +3154,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     (ws as any).isAlive = true;
     (ws as any).lastPingTime = Date.now();
     (ws as any).userId = null;
+    
+    // Send an immediate connection confirmation
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({
+          type: "connected",
+          message: "Connection established with server",
+          timestamp: Date.now()
+        }));
+        console.log('Sent connection confirmation message to client');
+      } catch (err) {
+        console.error('Error sending connection confirmation:', err);
+      }
+    }
 
     // Function to keep connections alive with ping/pong pattern
     const heartbeat = () => {
@@ -3322,19 +3336,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     });
 
-    // Send initial connection message
-    try {
-      logger.info('Sending initial connection message');
-      ws.send(JSON.stringify({ 
-        type: 'connected', 
-        message: 'Connected to WebSocket server',
-        serverTime: Date.now()
-      }));
-    } catch (error) {
-      logger.error('Error sending initial WebSocket message:', error instanceof Error ? error : new Error(String(error)));
-      // If we can't send the initial message, terminate the connection
-      ws.terminate();
-    }
+    // We've already sent a connection message above, no need to send again
   });
 
   // Add a function to broadcast notifications to users
