@@ -24,6 +24,7 @@ export function useNotifications(suppressToasts = false) {
   // Determine if we should show notification toasts
   // Don't show if explicitly suppressed or if we're on the notification-related pages
   const shouldShowToasts = !suppressToasts && 
+    !location.includes("notification-settings") && 
     !location.includes("notification-schedule") && 
     !location.includes("notifications");
 
