@@ -291,13 +291,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         )}
       </div>
 
-      {post.imageUrl && post.type !== 'scripture' && (
+      {post.mediaUrl && post.type !== 'scripture' && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
             {post.type === 'memory_verse' ? (
               <div className="relative w-full">
                 <video
-                  src={post.imageUrl}
+                  src={post.mediaUrl}
                   controls
                   preload="metadata"
                   className="w-full h-full object-contain"
@@ -306,8 +306,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               <img
-                src={getThumbnailUrl(post.imageUrl, 'small')}
-                data-full-src={post.imageUrl}
+                src={getThumbnailUrl(post.mediaUrl, 'small')}
+                data-full-src={post.mediaUrl}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
@@ -315,7 +315,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 onLoad={(e) => {
                   const img = e.target as HTMLImageElement;
                   if (isInViewport(img)) {
-                    const mediumUrl = getThumbnailUrl(post.imageUrl, 'medium');
+                    const mediumUrl = getThumbnailUrl(post.mediaUrl, 'medium');
                     // Preload medium size
                     const preloadImg = new Image();
                     preloadImg.onload = () => {
@@ -325,7 +325,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   }
                 }}
                 onError={(e) => {
-                  console.error("Failed to load image:", post.imageUrl);
+                  console.error("Failed to load image:", post.mediaUrl);
                   const img = e.currentTarget;
                   img.style.display = 'none';
                   
