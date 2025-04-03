@@ -18,8 +18,6 @@ if (!fs.existsSync(thumbnailDir)) {
 export async function resizeUploadedImage(filePath: string): Promise<void> {
   try {
     const filename = path.basename(filePath);
-    const fileExt = path.extname(filename);
-    const baseName = path.basename(filename, fileExt);
     
     // Create thumbnails of different sizes
     await Promise.all([
@@ -30,7 +28,7 @@ export async function resizeUploadedImage(filePath: string): Promise<void> {
           withoutEnlargement: true
         })
         .jpeg({ quality: 70 })
-        .toFile(path.join(thumbnailDir, `${baseName}`)),
+        .toFile(path.join(thumbnailDir, `thumb-sm-${filename}`)),
         
       // Medium thumbnail  
       sharp(filePath)
@@ -39,7 +37,7 @@ export async function resizeUploadedImage(filePath: string): Promise<void> {
           withoutEnlargement: true
         })
         .jpeg({ quality: 80 })
-        .toFile(path.join(thumbnailDir, `${baseName}`)),
+        .toFile(path.join(thumbnailDir, `thumb-${filename}`)),
         
       // Large thumbnail
       sharp(filePath)
@@ -48,7 +46,7 @@ export async function resizeUploadedImage(filePath: string): Promise<void> {
           withoutEnlargement: true
         })
         .jpeg({ quality: 85 })
-        .toFile(path.join(thumbnailDir, `${baseName}`))
+        .toFile(path.join(thumbnailDir, `thumb-lg-${filename}`))
     ]);
     
     logger.info(`Created thumbnails for ${filename}`);
