@@ -316,12 +316,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               onError={(e) => {
                 console.error("Failed to load image:", post.imageUrl);
                 const img = e.currentTarget;
-                const fallbackUrl = getFallbackImageUrl(post.type);
+                img.style.display = 'none';
                 
-                // Try loading the fallback image
-                img.src = fallbackUrl;
-                img.classList.add('max-h-[300px]');
-                img.classList.add('p-4');
+                // Add a minimal message instead
+                const container = img.parentElement;
+                if (container) {
+                  container.style.minHeight = 'auto';
+                  container.style.background = 'transparent';
+                }
               }}
             />
           </div>
