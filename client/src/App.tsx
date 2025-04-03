@@ -20,7 +20,8 @@ import AdminPage from "@/pages/admin-page";
 import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
-import NotificationSchedulePage from "@/pages/notification-schedule-page"; //Import the new page component
+import NotificationSettingsPage from "@/pages/notification-settings-page"; // Import the notification settings page
+import NotificationSchedulePage from "@/pages/notification-schedule-page"; // Keep for backward compatibility
 import { LeaderboardPage } from "@/pages/leaderboard-page"; // Import the leaderboard page
 import { DebugApi } from "./debug-api"; // Import our debug component
 import { AchievementsContainer } from "@/components/achievements/achievements-container";
@@ -67,7 +68,9 @@ function MainContent() {
           <Route path="/" component={HomePage} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
-          <Route path="/notification-schedule" component={NotificationSchedulePage} />
+          <Route path="/notification-settings" component={NotificationSettingsPage} />
+          {/* Keep for backward compatibility */}
+          <Route path="/notification-schedule" component={NotificationSettingsPage} />
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
