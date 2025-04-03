@@ -46,7 +46,7 @@ export const posts = pgTable("posts", {
   userId: integer("user_id").notNull(),
   type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"] }).notNull(),
   content: text("content"),
-  mediaUrl: text("media_url"), // Renamed from imageUrl to mediaUrl to handle both images and videos
+  mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   parentId: integer("parent_id"),
