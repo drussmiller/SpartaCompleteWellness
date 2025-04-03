@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128px" height="128px" viewBox="0 0 128 128" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="64" cy="64" r="60" fill="#9C27B0" />
+  <circle cx="64" cy="64" r="50" fill="#CE93D8" />
+  <circle cx="64" cy="64" r="40" fill="#E1BEE7" />
+  
+  <!-- Book shape -->
+  <path d="M44 40
+           L44 88
+           C44 88, 54 78, 64 78
+           C74 78, 84 88, 84 88
+           L84 40
+           C84 40, 74 30, 64 30
+           C54 30, 44 40, 44 40
+           Z" fill="#FFF9C4" stroke="#9E9E9E" stroke-width="1" />
+  
+  <!-- Book spine -->
+  <path d="M64 30
+           L64 78" stroke="#9E9E9E" stroke-width="1" />
+  
+  <!-- Text lines -->
+  <line x1="48" y1="48" x2="60" y2="48" stroke="#616161" stroke-width="1" />
+  <line x1="48" y1="53" x2="58" y2="53" stroke="#616161" stroke-width="1" />
+  <line x1="48" y1="58" x2="60" y2="58" stroke="#616161" stroke-width="1" />
+  <line x1="48" y1="63" x2="56" y2="63" stroke="#616161" stroke-width="1" />
+  <line x1="48" y1="68" x2="59" y2="68" stroke="#616161" stroke-width="1" />
+  
+  <line x1="68" y1="48" x2="80" y2="48" stroke="#616161" stroke-width="1" />
+  <line x1="70" y1="53" x2="80" y2="53" stroke="#616161" stroke-width="1" />
+  <line x1="68" y1="58" x2="80" y2="58" stroke="#616161" stroke-width="1" />
+  <line x1="72" y1="63" x2="80" y2="63" stroke="#616161" stroke-width="1" />
+  <line x1="69" y1="68" x2="80" y2="68" stroke="#616161" stroke-width="1" />
+  
+  <!-- Small cross symbol -->
+  <path d="M64 92
+           L64 102
+           M59 97
+           L69 97" stroke="#616161" stroke-width="2" stroke-linecap="round" />
+</svg>
