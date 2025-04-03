@@ -1,5 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   useAchievements, 
   createAchievement, 
@@ -7,7 +9,11 @@ import {
 } from '@/hooks/use-achievements';
 
 export function AchievementDemo() {
-  const { showAchievement } = useAchievements();
+  const { 
+    showAchievement, 
+    notificationsEnabled, 
+    setNotificationsEnabled
+  } = useAchievements();
 
   const achievementTypes: AchievementType[] = [
     'food-streak-3',
@@ -30,8 +36,24 @@ export function AchievementDemo() {
 
   return (
     <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
-      <h3 className="font-semibold">Achievement Demo</h3>
-      <p className="text-sm text-muted-foreground">Click a button to show an achievement badge</p>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold">Achievement Demo</h3>
+        <div className="flex items-center gap-2">
+          <Switch 
+            id="achievement-notifications"
+            checked={notificationsEnabled}
+            onCheckedChange={setNotificationsEnabled}
+          />
+          <Label htmlFor="achievement-notifications">
+            {notificationsEnabled ? 'Notifications On' : 'Notifications Off'}
+          </Label>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {notificationsEnabled 
+          ? 'Click a button to show an achievement badge' 
+          : 'Achievements are hidden. Toggle the switch to enable notifications.'}
+      </p>
       
       <div className="grid grid-cols-2 gap-2">
         {achievementTypes.map(type => (

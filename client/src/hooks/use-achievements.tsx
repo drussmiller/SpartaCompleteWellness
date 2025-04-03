@@ -52,6 +52,8 @@ interface AchievementsContextType {
   activeAchievements: ActiveAchievement[];
   showAchievement: (achievement: Achievement) => void;
   hideAchievement: (id: string) => void;
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: (enabled: boolean) => void;
 }
 
 // Create the context
@@ -59,6 +61,8 @@ const AchievementsContext = createContext<AchievementsContextType>({
   activeAchievements: [],
   showAchievement: () => {},
   hideAchievement: () => {},
+  notificationsEnabled: false,
+  setNotificationsEnabled: () => {},
 });
 
 // Helper function to create an achievement
@@ -160,6 +164,7 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
   const [activeAchievements, setActiveAchievements] = useState<ActiveAchievement[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   
   // Fetch unviewed achievements
   const { data: unviewedAchievements } = useQuery<DbAchievement[]>({
@@ -205,6 +210,15 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
   
   // Show an achievement
   const showAchievement = useCallback((achievement: Achievement) => {
+    // Don't show achievements if notifications are disabled
+    // But still mark them as viewed in the database
+    if (!notificationsEnabled) {
+      if ('dbId' in achievement && typeof achievement.dbId === 'number') {
+        markAchievementAsViewed(achievement.dbId);
+      }
+      return;
+    }
+    
     const activeAchievement: ActiveAchievement = {
       ...achievement,
       position: getNextPosition(),
@@ -221,7 +235,7 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
     if ('dbId' in achievement && typeof achievement.dbId === 'number') {
       markAchievementAsViewed(achievement.dbId);
     }
-  }, [getNextPosition, markAchievementAsViewed]);
+  }, [getNextPosition, markAchievementAsViewed, notificationsEnabled]);
   
   // Hide an achievement
   const hideAchievement = useCallback((id: string) => {
@@ -254,7 +268,7 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
         if (data.type === 'achievement' && data.achievement) {
           console.log("Received achievement:", data.achievement);
           
-          // Convert to Achievement format and show it
+          // Convert to Achievement format and show it (or just mark as viewed if disabled)
           const achievement: Achievement = {
             id: uuidv4(),
             type: data.achievement.type as AchievementType,
@@ -292,7 +306,7 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
     // Mark as initialized to prevent showing achievements multiple times
     setIsInitialized(true);
     
-    // Show each unviewed achievement with a slight delay between them
+    // Show each unviewed achievement with a slight delay between them (or just mark as viewed if disabled)
     unviewedAchievements.forEach((dbAchievement, index) => {
       setTimeout(() => {
         const achievement = dbAchievementToAchievement(dbAchievement);
@@ -302,7 +316,13 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
   }, [unviewedAchievements, isInitialized, showAchievement]);
   
   return (
-    <AchievementsContext.Provider value={{ activeAchievements, showAchievement, hideAchievement }}>
+    <AchievementsContext.Provider value={{ 
+      activeAchievements, 
+      showAchievement, 
+      hideAchievement,
+      notificationsEnabled,
+      setNotificationsEnabled
+    }}>
       {children}
     </AchievementsContext.Provider>
   );
