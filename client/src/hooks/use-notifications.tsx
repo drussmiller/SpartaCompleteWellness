@@ -46,26 +46,32 @@ export function useNotifications(suppressToasts = false) {
       return;
     }
     
-    // Allow manual reconnection even if already connecting
-    if (isConnectingRef.current) {
-      console.log("WebSocket connection already in progress, but allowing manual reconnection");
-      
-      // Force close any existing connection first
-      if (socketRef.current) {
-        try {
-          socketRef.current.onclose = null; // Prevent onclose handler from firing
-          socketRef.current.close();
-          socketRef.current = null;
-          isConnectingRef.current = false;
-          console.log("Forced close of existing connection for manual reconnect");
-        } catch (err) {
-          console.error("Error forcing close of connection:", err);
-        }
+    console.log("Manual WebSocket connection attempt initiated at", new Date().toISOString());
+    
+    // Force close any existing connection regardless of state
+    if (socketRef.current) {
+      try {
+        console.log("Forcing closure of existing connection before reconnect attempt");
+        // Remove all handlers to prevent callbacks
+        socketRef.current.onopen = null;
+        socketRef.current.onmessage = null;
+        socketRef.current.onclose = null;
+        socketRef.current.onerror = null;
+        
+        // Close the socket
+        socketRef.current.close();
+        socketRef.current = null;
+        console.log("Successfully closed previous connection");
+      } catch (err) {
+        console.error("Error forcing close of connection:", err);
+        // Ensure we reset the socket reference even if error occurs
+        socketRef.current = null;
       }
     }
     
-    // Reset flag and set it again
+    // Reset connecting flag
     isConnectingRef.current = false;
+    
     // Set connecting flag to prevent multiple connection attempts
     isConnectingRef.current = true;
     
@@ -107,28 +113,7 @@ export function useNotifications(suppressToasts = false) {
       setConnectionStatus("connecting");
       console.log("WebSocket connecting...", new Date().toISOString());
       
-      // Close existing connection
-      if (socketRef.current) {
-        console.log("WebSocket current state:", 
-          socketRef.current.readyState === WebSocket.CONNECTING ? "CONNECTING" :
-          socketRef.current.readyState === WebSocket.OPEN ? "OPEN" :
-          socketRef.current.readyState === WebSocket.CLOSING ? "CLOSING" : 
-          socketRef.current.readyState === WebSocket.CLOSED ? "CLOSED" : "UNKNOWN"
-        );
-        
-        try {
-          if (socketRef.current.readyState === WebSocket.OPEN || 
-              socketRef.current.readyState === WebSocket.CONNECTING) {
-            console.log("Closing existing WebSocket connection");
-            socketRef.current.close();
-          }
-          
-          socketRef.current = null;
-        } catch (closeError) {
-          console.error("Error closing existing WebSocket:", closeError);
-          socketRef.current = null;
-        }
-      }
+      // Socket has already been closed above
 
       // Set up the WebSocket connection
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
