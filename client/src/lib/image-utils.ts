@@ -15,7 +15,8 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
   // Handle regular images that need thumbnailing
   if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';
-    return `/uploads/thumbnails/${filename}`;
+    const sizeSuffix = size === 'small' ? '-sm' : size === 'large' ? '-lg' : '';
+    return `/uploads/thumbnails/thumb${sizeSuffix}-${filename}`;
   }
   
   // For any other URLs, return as is
