@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128px" height="128px" viewBox="0 0 128 128" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="64" cy="64" r="60" fill="#2196F3" />
+  <circle cx="64" cy="64" r="50" fill="#90CAF9" />
+  <circle cx="64" cy="64" r="40" fill="#E3F2FD" />
+  
+  <!-- Scroll shape -->
+  <path d="M40 45
+           C40 40, 45 35, 50 35
+           L78 35
+           C83 35, 88 40, 88 45
+           L88 75
+           C88 75, 83 70, 78 70
+           L50 70
+           C45 70, 40 75, 40 75
+           Z" fill="#FFF9C4" stroke="#9E9E9E" stroke-width="1" />
+  
+  <path d="M40 45
+           L40 75
+           C40 70, 45 65, 50 65
+           L78 65
+           C83 65, 88 70, 88 70
+           L88 45
+           C88 40, 83 35, 78 35
+           L50 35
+           C45 35, 40 40, 40 45
+           Z" fill="#FFF9C4" stroke="#9E9E9E" stroke-width="1" />
+  
+  <!-- Text lines -->
+  <line x1="48" y1="48" x2="80" y2="48" stroke="#616161" stroke-width="1" />
+  <line x1="48" y1="53" x2="80" y2="53" stroke="#616161" stroke-width="1" />
+  <line x1="48" y1="58" x2="70" y2="58" stroke="#616161" stroke-width="1" />
+  
+  <!-- Brain or memory symbol -->
+  <path d="M64 90
+           C50 90, 50 75, 60 75
+           C60 65, 70 65, 70 75
+           C80 75, 78 90, 64 90
+           Z" fill="#E3F2FD" stroke="#616161" stroke-width="1.5" fill-opacity="0.7" />
+  
+  <path d="M60 82
+           C60 82, 65 77, 70 82" stroke="#616161" stroke-width="1.5" fill="none" />
+</svg>
