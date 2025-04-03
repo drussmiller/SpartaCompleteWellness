@@ -13,6 +13,8 @@ import {
   workoutVideos,
   measurements,
   reactions,
+  achievementTypes,
+  userAchievements,
   insertTeamSchema,
   insertPostSchema,
   insertMeasurementSchema,
@@ -20,6 +22,8 @@ import {
   insertVideoSchema,
   insertActivitySchema,
   insertUserSchema,
+  insertAchievementTypeSchema,
+  insertUserAchievementSchema,
   messages,
   insertMessageSchema
 } from "@shared/schema";
@@ -1406,6 +1410,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Log the created post for verification
       logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
+
+      // Check for achievements based on post type
+      try {
+        await checkForAchievements(req.user.id, post.type);
+      } catch (achievementError) {
+        logger.error("Error checking achievements:", achievementError);
+        // Non-fatal error, continue without blocking post creation
+      }
 
       res.status(201).json(post);
     } catch (error) {
@@ -3768,6 +3780,533 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Log server startup
   logger.info('Server routes and WebSocket registered successfully');
+
+  // Achievement routes
+  router.get("/api/achievements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      // Get all achievement types
+      const allAchievementTypes = await db
+        .select()
+        .from(achievementTypes);
+        
+      // Get user's earned achievements
+      const userAchievementsData = await db
+        .select({
+          userAchievement: userAchievements,
+          achievementType: achievementTypes
+        })
+        .from(userAchievements)
+        .innerJoin(
+          achievementTypes,
+          eq(userAchievements.achievementTypeId, achievementTypes.id)
+        )
+        .where(eq(userAchievements.userId, req.user.id));
+        
+      // Format the response
+      const earnedAchievements = userAchievementsData.map(item => ({
+        id: item.userAchievement.id,
+        type: item.achievementType.type,
+        name: item.achievementType.name,
+        description: item.achievementType.description,
+        iconPath: item.achievementType.iconPath,
+        pointValue: item.achievementType.pointValue,
+        earnedAt: item.userAchievement.earnedAt,
+        viewed: item.userAchievement.viewed
+      }));
+      
+      res.json({
+        allTypes: allAchievementTypes,
+        earned: earnedAchievements
+      });
+    } catch (error) {
+      logger.error("Error fetching achievements:", error);
+      res.status(500).json({
+        message: "Failed to fetch achievements",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Mark achievement as viewed
+  router.patch("/api/achievements/:id/viewed", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const achievementId = parseInt(req.params.id);
+      if (isNaN(achievementId)) {
+        return res.status(400).json({ message: "Invalid achievement ID" });
+      }
+      
+      // Get the achievement to verify ownership
+      const [achievement] = await db
+        .select()
+        .from(userAchievements)
+        .where(
+          and(
+            eq(userAchievements.id, achievementId),
+            eq(userAchievements.userId, req.user.id)
+          )
+        );
+        
+      if (!achievement) {
+        return res.status(404).json({ message: "Achievement not found" });
+      }
+      
+      // Update the achievement viewed status
+      const [updated] = await db
+        .update(userAchievements)
+        .set({ viewed: true })
+        .where(eq(userAchievements.id, achievementId))
+        .returning();
+        
+      res.json(updated);
+    } catch (error) {
+      logger.error("Error marking achievement as viewed:", error);
+      res.status(500).json({
+        message: "Failed to update achievement",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Get unviewed achievements only
+  router.get("/api/achievements/unviewed", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      // Get user's unviewed achievements
+      const unviewedAchievements = await db
+        .select({
+          userAchievement: userAchievements,
+          achievementType: achievementTypes
+        })
+        .from(userAchievements)
+        .innerJoin(
+          achievementTypes,
+          eq(userAchievements.achievementTypeId, achievementTypes.id)
+        )
+        .where(
+          and(
+            eq(userAchievements.userId, req.user.id),
+            eq(userAchievements.viewed, false)
+          )
+        );
+        
+      // Format the response
+      const formattedAchievements = unviewedAchievements.map(item => ({
+        id: item.userAchievement.id,
+        type: item.achievementType.type,
+        name: item.achievementType.name,
+        description: item.achievementType.description,
+        iconPath: item.achievementType.iconPath,
+        pointValue: item.achievementType.pointValue,
+        earnedAt: item.userAchievement.earnedAt
+      }));
+      
+      res.json(formattedAchievements);
+    } catch (error) {
+      logger.error("Error fetching unviewed achievements:", error);
+      res.status(500).json({
+        message: "Failed to fetch unviewed achievements",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Initialize achievement types
+  const initializeAchievementTypes = async () => {
+    try {
+      // Check if achievement types exist
+      const existingTypes = await db.select().from(achievementTypes);
+      
+      if (existingTypes.length === 0) {
+        // Insert default achievement types
+        const defaultTypes = [
+          {
+            type: "food-streak-3",
+            name: "Food Streak - 3 Days",
+            description: "Posted food for 3 consecutive days",
+            iconPath: "/achievements/food-streak.svg",
+            pointValue: 5
+          },
+          {
+            type: "food-streak-7",
+            name: "Food Streak - 7 Days",
+            description: "Posted food for 7 consecutive days",
+            iconPath: "/achievements/food-streak.svg",
+            pointValue: 10
+          },
+          {
+            type: "workout-streak-3",
+            name: "Workout Streak - 3 Days",
+            description: "Posted workout for 3 consecutive days",
+            iconPath: "/achievements/workout-streak.svg",
+            pointValue: 5
+          },
+          {
+            type: "workout-streak-7",
+            name: "Workout Streak - 7 Days",
+            description: "Posted workout for 7 consecutive days",
+            iconPath: "/achievements/workout-streak.svg",
+            pointValue: 10
+          },
+          {
+            type: "scripture-streak-3",
+            name: "Scripture Streak - 3 Days",
+            description: "Posted scripture for 3 consecutive days",
+            iconPath: "/achievements/scripture-streak.svg",
+            pointValue: 5
+          },
+          {
+            type: "scripture-streak-7",
+            name: "Scripture Streak - 7 Days",
+            description: "Posted scripture for 7 consecutive days",
+            iconPath: "/achievements/scripture-streak.svg",
+            pointValue: 10
+          },
+          {
+            type: "memory-verse-streak-4",
+            name: "Memory Verse Streak - 4 Weeks",
+            description: "Posted memory verse for 4 consecutive weeks",
+            iconPath: "/achievements/memory-verse.svg",
+            pointValue: 15
+          }
+        ];
+        
+        await db.insert(achievementTypes).values(defaultTypes);
+        logger.info("Initialized default achievement types");
+      }
+    } catch (error) {
+      logger.error("Error initializing achievement types:", error);
+    }
+  };
+  
+  // Call initialization when server starts
+  initializeAchievementTypes();
+  
+  // Function to check for achievements based on post type
+  const checkForAchievements = async (userId: number, postType: string) => {
+    try {
+      // Get user's recent posts of this type to check for streaks
+      const recentDate = new Date();
+      recentDate.setDate(recentDate.getDate() - 10); // Look back 10 days to find streaks
+      
+      const userPosts = await db
+        .select({
+          type: posts.type,
+          createdAt: posts.createdAt
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            eq(posts.type, postType),
+            gte(posts.createdAt, recentDate),
+            isNull(posts.parentId) // Don't count comments
+          )
+        )
+        .orderBy(desc(posts.createdAt));
+      
+      // Get all achievement types
+      const allAchievements = await db
+        .select()
+        .from(achievementTypes);
+      
+      // Get user's already earned achievements
+      const earnedAchievements = await db
+        .select({
+          userAchievement: userAchievements,
+          achievementType: achievementTypes
+        })
+        .from(userAchievements)
+        .innerJoin(
+          achievementTypes,
+          eq(userAchievements.achievementTypeId, achievementTypes.id)
+        )
+        .where(eq(userAchievements.userId, userId));
+      
+      const earnedTypes = new Set(earnedAchievements.map(a => a.achievementType.type));
+      
+      // Check for streaks based on post type
+      if (postType === 'food') {
+        await checkFoodStreak(userId, userPosts, allAchievements, earnedTypes);
+      } else if (postType === 'workout') {
+        await checkWorkoutStreak(userId, userPosts, allAchievements, earnedTypes);
+      } else if (postType === 'scripture') {
+        await checkScriptureStreak(userId, userPosts, allAchievements, earnedTypes);
+      } else if (postType === 'memory_verse') {
+        await checkMemoryVerseStreak(userId, userPosts, allAchievements, earnedTypes);
+      }
+    } catch (error) {
+      logger.error("Error checking for achievements:", error);
+      throw error;
+    }
+  };
+  
+  // Helper function to check food streaks
+  const checkFoodStreak = async (
+    userId: number, 
+    userPosts: any[], 
+    allAchievements: any[], 
+    earnedTypes: Set<string>
+  ) => {
+    try {
+      if (userPosts.length < 3) return; // Need at least 3 posts for a streak
+      
+      // Group posts by day to count as 1 per day
+      const postsByDay = new Map<string, boolean>();
+      userPosts.forEach(post => {
+        const date = new Date(post.createdAt);
+        const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        postsByDay.set(dateKey, true);
+      });
+      
+      // Check for consecutive days
+      const sortedDays = Array.from(postsByDay.keys()).sort();
+      let currentStreak = 1;
+      let maxStreak = 1;
+      
+      for (let i = 1; i < sortedDays.length; i++) {
+        const prevDay = new Date(sortedDays[i-1]);
+        const currDay = new Date(sortedDays[i]);
+        
+        const diffTime = Math.abs(currDay.getTime() - prevDay.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+      
+      // Award achievements based on streak length
+      if (maxStreak >= 3 && !earnedTypes.has('food-streak-3')) {
+        await awardAchievement(userId, 'food-streak-3', allAchievements);
+      }
+      
+      if (maxStreak >= 7 && !earnedTypes.has('food-streak-7')) {
+        await awardAchievement(userId, 'food-streak-7', allAchievements);
+      }
+    } catch (error) {
+      logger.error("Error checking food streak:", error);
+    }
+  };
+  
+  // Helper function to check workout streaks
+  const checkWorkoutStreak = async (
+    userId: number, 
+    userPosts: any[], 
+    allAchievements: any[], 
+    earnedTypes: Set<string>
+  ) => {
+    try {
+      if (userPosts.length < 3) return; // Need at least 3 posts for a streak
+      
+      // Group posts by day to count as 1 per day
+      const postsByDay = new Map<string, boolean>();
+      userPosts.forEach(post => {
+        const date = new Date(post.createdAt);
+        const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        postsByDay.set(dateKey, true);
+      });
+      
+      // Check for consecutive days
+      const sortedDays = Array.from(postsByDay.keys()).sort();
+      let currentStreak = 1;
+      let maxStreak = 1;
+      
+      for (let i = 1; i < sortedDays.length; i++) {
+        const prevDay = new Date(sortedDays[i-1]);
+        const currDay = new Date(sortedDays[i]);
+        
+        const diffTime = Math.abs(currDay.getTime() - prevDay.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+      
+      // Award achievements based on streak length
+      if (maxStreak >= 3 && !earnedTypes.has('workout-streak-3')) {
+        await awardAchievement(userId, 'workout-streak-3', allAchievements);
+      }
+      
+      if (maxStreak >= 7 && !earnedTypes.has('workout-streak-7')) {
+        await awardAchievement(userId, 'workout-streak-7', allAchievements);
+      }
+    } catch (error) {
+      logger.error("Error checking workout streak:", error);
+    }
+  };
+  
+  // Helper function to check scripture streaks
+  const checkScriptureStreak = async (
+    userId: number, 
+    userPosts: any[], 
+    allAchievements: any[], 
+    earnedTypes: Set<string>
+  ) => {
+    try {
+      if (userPosts.length < 3) return; // Need at least 3 posts for a streak
+      
+      // Group posts by day to count as 1 per day
+      const postsByDay = new Map<string, boolean>();
+      userPosts.forEach(post => {
+        const date = new Date(post.createdAt);
+        const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        postsByDay.set(dateKey, true);
+      });
+      
+      // Check for consecutive days
+      const sortedDays = Array.from(postsByDay.keys()).sort();
+      let currentStreak = 1;
+      let maxStreak = 1;
+      
+      for (let i = 1; i < sortedDays.length; i++) {
+        const prevDay = new Date(sortedDays[i-1]);
+        const currDay = new Date(sortedDays[i]);
+        
+        const diffTime = Math.abs(currDay.getTime() - prevDay.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+      
+      // Award achievements based on streak length
+      if (maxStreak >= 3 && !earnedTypes.has('scripture-streak-3')) {
+        await awardAchievement(userId, 'scripture-streak-3', allAchievements);
+      }
+      
+      if (maxStreak >= 7 && !earnedTypes.has('scripture-streak-7')) {
+        await awardAchievement(userId, 'scripture-streak-7', allAchievements);
+      }
+    } catch (error) {
+      logger.error("Error checking scripture streak:", error);
+    }
+  };
+  
+  // Helper function to check memory verse streaks
+  const checkMemoryVerseStreak = async (
+    userId: number, 
+    userPosts: any[], 
+    allAchievements: any[], 
+    earnedTypes: Set<string>
+  ) => {
+    try {
+      if (userPosts.length < 4) return; // Need at least 4 posts for a 4-week streak
+      
+      // Group posts by week to count as 1 per week
+      const postsByWeek = new Map<string, boolean>();
+      userPosts.forEach(post => {
+        const date = new Date(post.createdAt);
+        // Get the week number (approximate)
+        const weekNum = Math.floor(date.getDate() / 7);
+        const weekKey = `${date.getFullYear()}-${date.getMonth() + 1}-week-${weekNum}`;
+        postsByWeek.set(weekKey, true);
+      });
+      
+      // Check for consecutive weeks
+      const sortedWeeks = Array.from(postsByWeek.keys()).sort();
+      
+      // If we have at least 4 weeks of memory verses
+      if (sortedWeeks.length >= 4 && !earnedTypes.has('memory-verse-streak-4')) {
+        await awardAchievement(userId, 'memory-verse-streak-4', allAchievements);
+      }
+    } catch (error) {
+      logger.error("Error checking memory verse streak:", error);
+    }
+  };
+  
+  // Helper function to award an achievement
+  const awardAchievement = async (userId: number, achievementType: string, allAchievements: any[]) => {
+    try {
+      // Find the matching achievement type
+      const achievementTypeObj = allAchievements.find(a => a.type === achievementType);
+      if (!achievementTypeObj) {
+        logger.error(`Achievement type not found: ${achievementType}`);
+        return;
+      }
+      
+      // Check if user already has this achievement
+      const existingAchievement = await db
+        .select()
+        .from(userAchievements)
+        .innerJoin(
+          achievementTypes,
+          eq(userAchievements.achievementTypeId, achievementTypes.id)
+        )
+        .where(
+          and(
+            eq(userAchievements.userId, userId),
+            eq(achievementTypes.type, achievementType)
+          )
+        );
+        
+      if (existingAchievement.length > 0) {
+        logger.info(`User ${userId} already has achievement ${achievementType}`);
+        return;
+      }
+      
+      // Award the achievement
+      const [newAchievement] = await db
+        .insert(userAchievements)
+        .values({
+          userId: userId,
+          achievementTypeId: achievementTypeObj.id,
+          earnedAt: new Date(),
+          viewed: false
+        })
+        .returning();
+        
+      logger.info(`Awarded achievement ${achievementType} to user ${userId}`);
+      
+      // Add points to user
+      await db
+        .update(users)
+        .set({
+          points: sql`${users.points} + ${achievementTypeObj.pointValue}`
+        })
+        .where(eq(users.id, userId));
+        
+      // Notify the user about the achievement
+      const userSockets = clients.get(userId);
+      if (userSockets && userSockets.size > 0 && userSockets.values().next().value.readyState === WebSocket.OPEN) {
+        // Send the achievement notification
+        const achievementData = {
+          type: 'achievement',
+          achievement: {
+            id: newAchievement.id,
+            type: achievementType,
+            name: achievementTypeObj.name,
+            description: achievementTypeObj.description,
+            iconPath: achievementTypeObj.iconPath,
+            pointValue: achievementTypeObj.pointValue
+          }
+        };
+        
+        for (const client of userSockets) {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(achievementData));
+          }
+        }
+      }
+    } catch (error) {
+      logger.error(`Error awarding achievement ${achievementType} to user ${userId}:`, error);
+    }
+  };
 
   return httpServer;
 };

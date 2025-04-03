@@ -10,10 +10,13 @@ export function AchievementDemo() {
   const { showAchievement } = useAchievements();
 
   const achievementTypes: AchievementType[] = [
-    'food-streak',
-    'workout-streak',
-    'scripture-streak',
-    'memory-verse',
+    'food-streak-3',
+    'food-streak-7',
+    'workout-streak-3',
+    'workout-streak-7',
+    'scripture-streak-3',
+    'scripture-streak-7',
+    'memory-verse-streak-4',
     'first-post',
     'week-complete',
     'team-milestone',

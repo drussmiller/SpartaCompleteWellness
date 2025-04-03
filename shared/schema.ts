@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -265,3 +265,54 @@ export type CommentWithAuthor = Post & {
   };
   replies?: CommentWithAuthor[];
 };
+
+// Achievement tables
+export const achievementTypes = pgTable("achievement_types", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull().unique(), // food-streak, workout-streak, etc.
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  iconPath: text("icon_path").notNull(),
+  pointValue: integer("point_value").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  achievementTypeId: integer("achievement_type_id").notNull(),
+  earnedAt: timestamp("earned_at").defaultNow(),
+  viewed: boolean("viewed").default(false),
+});
+
+// Relations for achievements
+export const userAchievementRelations = relations(userAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [userAchievements.userId],
+    references: [users.id],
+  }),
+  achievementType: one(achievementTypes, {
+    fields: [userAchievements.achievementTypeId],
+    references: [achievementTypes.id],
+  }),
+}));
+
+// Types for achievements
+export type AchievementType = typeof achievementTypes.$inferSelect;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+
+// Insert schemas for achievements
+export const insertAchievementTypeSchema = createInsertSchema(achievementTypes)
+  .omit({
+    id: true,
+    createdAt: true,
+  });
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements)
+  .omit({
+    id: true,
+    earnedAt: true,
+  });
+
+export type InsertAchievementType = z.infer<typeof insertAchievementTypeSchema>;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
