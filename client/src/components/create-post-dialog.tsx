@@ -338,11 +338,14 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   });
                                   return;
                                 }
-                                // For video, we'll use URL.createObjectURL for preview
-                                const videoUrl = URL.createObjectURL(file);
-                                setImagePreview(videoUrl);
-                                // Store the actual file for upload
-                                field.onChange(videoUrl);
+                                
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  const videoUrl = URL.createObjectURL(file);
+                                  setImagePreview(videoUrl);
+                                  field.onChange(file);
+                                };
+                                reader.readAsDataURL(file);
                               }
                             }}
                             className="hidden"
@@ -398,10 +401,16 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       </FormControl>
                       {imagePreview && (
                         <div className="mt-2">
-                          {form.watch("type") === "memory_verse" && (
-                            <video src={imagePreview} controls className="max-h-40 rounded-md" />
+                          {form.watch("type") === "memory_verse" && imagePreview && (
+                            <video 
+                              src={imagePreview} 
+                              controls
+                              controlsList="nodownload"
+                              className="w-full max-h-60 rounded-md object-contain bg-black"
+                              preload="metadata"
+                            />
                           )}
-                          {form.watch("type") !== "memory_verse" && (
+                          {form.watch("type") !== "memory_verse" && imagePreview && (
                             <img
                               src={imagePreview}
                               alt="Preview"
