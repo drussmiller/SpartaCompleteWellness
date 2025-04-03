@@ -188,11 +188,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
-
-      toast({
-        title: "Success",
-        description: `${newPost.type.charAt(0).toUpperCase() + newPost.type.slice(1)} post created successfully!`,
-      });
     },
     onError: (error, _, context) => {
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
@@ -348,7 +343,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   });
                                   return;
                                 }
-                                
+
                                 // For video, create a preview and store the file
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
