@@ -1336,14 +1336,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Handle regular post creation
-      let imageUrl = null;
-      let imageProcessed = false;
+      let mediaUrl = null;
+      let mediaProcessed = false;
       
       // Scripture posts shouldn't have images/videos
       // Miscellaneous posts may or may not have images/videos
       if (postData.type === 'scripture') {
         logger.info('Scripture post created with no media');
-        imageUrl = null;
+        mediaUrl = null;
       } else if (req.file) {
         try {
           // Use SpartaObjectStorage for file handling
@@ -1354,7 +1354,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           if (fs.existsSync(filePath)) {
             // Handle video files differently
             const isVideo = req.file.mimetype.startsWith('video/');
-            // Store the file using SpartaObjectStorage
+            
+            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
+            
+            // Store the file using SpartaObjectStorage (used for both images and videos)
             const fileInfo = await spartaStorage.storeFile(
               filePath,
               req.file.originalname,
@@ -1362,11 +1365,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               isVideo // Pass flag for video handling
             );
             
-            imageUrl = fileInfo.url;
-            imageProcessed = postData.type === 'memory_verse' ? true : !!fileInfo.thumbnailUrl;
+            mediaUrl = fileInfo.url;
+            mediaProcessed = true;
             
-            logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
-            logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+            if (isVideo) {
+              logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+            } else {
+              logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+              logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+            }
             
             // We can remove the original uploaded file as SpartaObjectStorage has copied it
             try {
@@ -1376,23 +1383,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               logger.warn(`Could not remove temporary file: ${unlinkErr instanceof Error ? unlinkErr.message : 'Unknown error'}`);
             }
           } else {
-            logger.error(`Image file not found at expected path: ${filePath}`);
+            logger.error(`Media file not found at expected path: ${filePath}`);
             // Don't use any fallback image
-            imageUrl = null;
-            logger.info(`No image found for post type: ${postData.type}`);
+            mediaUrl = null;
+            logger.info(`No media found for post type: ${postData.type}`);
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
           // Don't use any fallback image
-          imageUrl = null;
+          mediaUrl = null;
           logger.info(`Error with uploaded file for post type: ${postData.type}`);
         }
       } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
-        // For miscellaneous posts, images are optional
-        // For scripture posts, no images
+        // For miscellaneous posts, media is optional
+        // For scripture posts, no media
         // For other posts, we previously would use fallbacks, but now we leave them blank
-        imageUrl = null;
-        logger.info(`No image uploaded for ${postData.type} post`);
+        mediaUrl = null;
+        logger.info(`No media uploaded for ${postData.type} post`);
       }
 
       const post = await db
@@ -1401,7 +1408,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           userId: req.user.id,
           type: postData.type,
           content: postData.content?.trim() || '',
-          imageUrl: imageUrl,
+          mediaUrl: mediaUrl,
           points: points,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
@@ -1482,14 +1489,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Delete associated image files if they exist
-      if (post.imageUrl) {
+      // Delete associated media files if they exist
+      if (post.mediaUrl) {
         try {
-          logger.info(`Deleting file associated with post: ${post.imageUrl}`);
-          await spartaStorage.deleteFile(post.imageUrl);
-          logger.info(`Successfully deleted file for post: ${postId}`);
+          logger.info(`Deleting file associated with post: ${post.mediaUrl}`);
+          await spartaStorage.deleteFile(post.mediaUrl);
+          logger.info(`Successfully deleted media file for post: ${postId}`);
         } catch (fileError) {
-          logger.error(`Error deleting file for post ${postId}:`, fileError);
+          logger.error(`Error deleting media file for post ${postId}:`, fileError);
           // Continue with post deletion even if file deletion fails
         }
       }
