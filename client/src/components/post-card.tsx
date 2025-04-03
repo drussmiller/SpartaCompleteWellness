@@ -304,24 +304,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               onLoad={(e) => {
                 const img = e.target as HTMLImageElement;
                 if (isInViewport(img)) {
-                  img.src = getThumbnailUrl(post.imageUrl, 'medium');
+                  const mediumUrl = getThumbnailUrl(post.imageUrl, 'medium');
+                  // Preload medium size
+                  const preloadImg = new Image();
+                  preloadImg.onload = () => {
+                    img.src = mediumUrl;
+                  };
+                  preloadImg.src = mediumUrl;
                 }
               }}
               onError={(e) => {
                 console.error("Failed to load image:", post.imageUrl);
                 const img = e.currentTarget;
-
-                // Simply hide the image element when it fails to load
-                img.style.display = 'none';
-
-                // Get the container element
-                const containerElement = img.closest('.min-h-[50vh]');
-                if (containerElement) {
-                  // Add a small empty placeholder div to maintain some space
-                  const placeholderDiv = document.createElement('div');
-                  placeholderDiv.className = 'w-full min-h-[100px]';
-                  containerElement.appendChild(placeholderDiv);
-                }
+                const fallbackUrl = getFallbackImageUrl(post.type);
+                
+                // Try loading the fallback image
+                img.src = fallbackUrl;
+                img.classList.add('max-h-[300px]');
+                img.classList.add('p-4');
               }}
             />
           </div>
