@@ -294,13 +294,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       {post.imageUrl && post.type !== 'scripture' && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
-            {post.type === 'memory' ? (
+            {post.type === 'memory_verse' ? (
               <div className="relative w-full">
                 <video
                   src={post.imageUrl}
                   controls
                   preload="metadata"
-                  poster={getThumbnailUrl(post.imageUrl, 'medium')}
                   className="w-full h-full object-contain"
                   playsInline
                 />
