@@ -116,6 +116,63 @@ export async function runMigrations() {
       )
     `);
 
+    // Add achievement_notifications_enabled column to users table
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS achievement_notifications_enabled BOOLEAN DEFAULT false
+      `);
+      console.log('Added achievement_notifications_enabled column to users table');
+    } catch (columnError) {
+      console.error('Error adding achievement_notifications_enabled column:', columnError);
+    }
+
+    // Add notification_time column to users table if it doesn't exist yet
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS notification_time TEXT
+      `);
+      console.log('Added notification_time column to users table');
+    } catch (columnError) {
+      console.error('Error adding notification_time column:', columnError);
+    }
+
+    // Add achievement_types table if it doesn't exist
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS achievement_types (
+          id SERIAL PRIMARY KEY,
+          type TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL,
+          icon_path TEXT,
+          point_value INTEGER DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Created achievement_types table if not exists');
+    } catch (tableError) {
+      console.error('Error creating achievement_types table:', tableError);
+    }
+
+    // Add user_achievements table if it doesn't exist
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS user_achievements (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          achievement_type_id INTEGER NOT NULL REFERENCES achievement_types(id) ON DELETE CASCADE,
+          earned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          viewed BOOLEAN DEFAULT false,
+          UNIQUE(user_id, achievement_type_id)
+        )
+      `);
+      console.log('Created user_achievements table if not exists');
+    } catch (tableError) {
+      console.error('Error creating user_achievements table:', tableError);
+    }
+
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Error running migrations:', error);
