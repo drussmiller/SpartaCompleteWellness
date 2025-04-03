@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
+  achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
 });
 
 export const teams = pgTable("teams", {

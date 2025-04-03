@@ -164,7 +164,52 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
   const [activeAchievements, setActiveAchievements] = useState<ActiveAchievement[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
+  const [notificationsEnabled, setNotificationsEnabledState] = useState<boolean>(false);
+  
+  // Custom setter that also updates the server
+  const setNotificationsEnabled = useCallback(async (enabled: boolean) => {
+    // Update local state immediately for responsive UI
+    setNotificationsEnabledState(enabled);
+    
+    // Update the server if the user is logged in
+    if (user) {
+      try {
+        const response = await fetch('/api/users/notification-schedule', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            achievementNotificationsEnabled: enabled
+          })
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to update achievement notification preference on server');
+        } else {
+          // Invalidate the user query to ensure all components have the latest data
+          queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+        }
+      } catch (error) {
+        console.error('Error updating achievement notification preference:', error);
+      }
+    }
+  }, [user]);
+  
+  // Fetch user notification preferences and unviewed achievements
+  const { data: userData } = useQuery<{ achievementNotificationsEnabled?: boolean }>({
+    queryKey: ["/api/users/me"],
+    enabled: !!user
+  });
+  
+  // Update notifications state when user data changes
+  useEffect(() => {
+    if (userData && typeof userData.achievementNotificationsEnabled === 'boolean') {
+      // Use the state setter directly to avoid triggering the server update
+      setNotificationsEnabledState(userData.achievementNotificationsEnabled);
+    }
+  }, [userData]);
   
   // Fetch unviewed achievements
   const { data: unviewedAchievements } = useQuery<DbAchievement[]>({
