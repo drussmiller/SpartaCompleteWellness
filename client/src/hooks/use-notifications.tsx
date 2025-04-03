@@ -16,10 +16,12 @@ export function useNotifications(suppressToasts = false) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 10; // Increased from 5 to be more resilient
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null); // New timeout for connection monitoring
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null); // Interval for sending heartbeat pings
-  const lastMessageTimeRef = useRef<number>(Date.now()); // Track when we last received a message
+  const maxReconnectAttempts = 3; // Reduced from 10 to avoid too many reconnections
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMessageTimeRef = useRef<number>(Date.now());
+  // Flag to prevent multiple simultaneous connection attempts
+  const isConnectingRef = useRef<boolean>(false);
   
   // Determine if we should show notification toasts
   // Don't show if explicitly suppressed or if we're on the notification-related pages
@@ -35,28 +37,31 @@ export function useNotifications(suppressToasts = false) {
     refetchInterval: 60000, // Refetch every minute
   });
 
-  // Function to connect to WebSocket
+  // Function to connect to WebSocket with connection guard
   const connectWebSocket = useCallback(() => {
-    if (!user) {
-      console.log("WebSocket not connecting - user not authenticated");
+    // Exit if no user or already connecting
+    if (!user || isConnectingRef.current) {
+      console.log("WebSocket not connecting - no user or connection in progress");
       return;
     }
     
-    // Setup client-side heartbeat to actively check connection
+    // Set connecting flag to prevent multiple connection attempts
+    isConnectingRef.current = true;
+    
+    // Setup client-side heartbeat with increased interval
     const setupHeartbeat = () => {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = null;
       }
       
-      // Set up a regular ping to the server to ensure connection stays alive
+      // Set up less frequent heartbeats to reduce network activity
       heartbeatIntervalRef.current = setInterval(() => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-          // Update the last message time reference
           const timeSinceLastMessage = Date.now() - lastMessageTimeRef.current;
           
-          // If it's been more than 25 seconds since last message, send a ping
-          if (timeSinceLastMessage > 25000) {
+          // Only ping if it's been more than 45 seconds (increased from 25)
+          if (timeSinceLastMessage > 45000) {
             console.log(`Sending heartbeat ping (${timeSinceLastMessage}ms since last activity)`);
             try {
               socketRef.current.send(JSON.stringify({
@@ -68,12 +73,11 @@ export function useNotifications(suppressToasts = false) {
             }
           }
         }
-      }, 15000); // Send heartbeat every 15 seconds if needed
+      }, 30000); // Increased interval from 15s to 30s
     };
 
     try {
-      // Ensure we're in a disconnected state before trying to reconnect
-      // This prevents any issues with previous connection attempts
+      // Clear any pending reconnection
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -82,7 +86,7 @@ export function useNotifications(suppressToasts = false) {
       setConnectionStatus("connecting");
       console.log("WebSocket connecting...", new Date().toISOString());
       
-      // Close existing connection if any
+      // Close existing connection
       if (socketRef.current) {
         console.log("WebSocket current state:", 
           socketRef.current.readyState === WebSocket.CONNECTING ? "CONNECTING" :
@@ -98,11 +102,9 @@ export function useNotifications(suppressToasts = false) {
             socketRef.current.close();
           }
           
-          // Release the reference to the old WebSocket to prevent memory leaks
           socketRef.current = null;
         } catch (closeError) {
           console.error("Error closing existing WebSocket:", closeError);
-          // Continue anyway - we want to create a fresh connection
           socketRef.current = null;
         }
       }
@@ -336,42 +338,41 @@ export function useNotifications(suppressToasts = false) {
                     "with code:", event.code, "reason:", event.reason || "No reason provided");
         setConnectionStatus("disconnected");
         
-        // Special handling for abnormal closure (1006) - this is common in production environments 
-        // due to proxies, load balancers, or network issues
-        const isAbnormalClosure = event.code === 1006;
-        if (isAbnormalClosure) {
-          console.warn("Abnormal WebSocket closure (1006) detected - likely a network/proxy issue");
+        // Clear the connecting flag so future attempts can proceed
+        isConnectingRef.current = false;
+        
+        // Clean up any existing heartbeat interval
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = null;
         }
         
-        // Always attempt to reconnect, regardless of the closure reason
-        // Just use a more aggressive reconnect for abnormal closures
+        // Clean up connection timeout if it exists
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
+        // Only attempt to reconnect if we haven't reached the maximum attempts
         if (reconnectAttempts.current < maxReconnectAttempts) {
-          // Use a shorter delay for abnormal closures
-          const baseDelay = isAbnormalClosure ? 1000 : 2000;
-          const maxDelay = isAbnormalClosure ? 10000 : 30000;
+          // Use a much larger fixed delay to avoid rapid reconnection attempts
+          const delay = 10000; // 10 seconds between reconnection attempts
           
-          // Calculate delay with exponential backoff
-          const delay = Math.min(baseDelay * Math.pow(1.5, reconnectAttempts.current), maxDelay);
+          console.log(`Will attempt to reconnect in ${delay/1000} seconds (attempt ${reconnectAttempts.current + 1} of ${maxReconnectAttempts})`);
           
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1} of ${maxReconnectAttempts})`);
-          
+          // Clear any existing reconnect timeout
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
           }
           
+          // Set up the reconnect timeout
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
             connectWebSocket();
           }, delay);
         } else {
-          console.error(`Max reconnect attempts (${maxReconnectAttempts}) reached. Please reload the page.`);
-          
-          // Optional - reset attempt counter after a longer delay to try again
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log("Resetting WebSocket reconnection attempts counter");
-            reconnectAttempts.current = 0;
-            connectWebSocket();
-          }, 60000); // Try again after 1 minute
+          console.error(`Max reconnect attempts (${maxReconnectAttempts}) reached.`);
+          // We won't auto-reconnect after max attempts to avoid focus stealing
         }
       };
 
@@ -444,7 +445,7 @@ export function useNotifications(suppressToasts = false) {
     // Track if the component is still mounted
     let isMounted = true;
     
-    // Setup a heartbeat/watchdog to detect zombie connections
+    // Setup a passive watchdog to detect broken connections
     const setupConnectionWatchdog = () => {
       // Clear any existing connection watchdog
       if (connectionTimeoutRef.current) {
@@ -452,63 +453,55 @@ export function useNotifications(suppressToasts = false) {
         connectionTimeoutRef.current = null;
       }
       
-      // Set a new watchdog timeout
+      // Set a new watchdog timeout with a longer interval
       connectionTimeoutRef.current = setTimeout(() => {
         console.log("Connection watchdog checking WebSocket status...");
         
-        // Check if socket still exists but is in a broken state
-        if (socketRef.current) {
-          const state = socketRef.current.readyState;
+        // Only perform checks if we're not reconnecting already
+        if (!isConnectingRef.current) {
+          // Check if socket exists but is in an incorrect state
+          if (socketRef.current) {
+            const state = socketRef.current.readyState;
+            
+            if (state === WebSocket.CONNECTING && reconnectAttempts.current < maxReconnectAttempts) {
+              // Socket has been stuck in CONNECTING state for too long
+              console.warn("WebSocket stuck in CONNECTING state - resetting connection");
+              
+              try {
+                // Clean up properly
+                socketRef.current.close();
+                socketRef.current = null;
+                
+                // Update UI state
+                setConnectionStatus("disconnected");
+                
+                // Don't reconnect immediately - let the system cool down
+                // This helps prevent focus-stealing in development
+              } catch (error) {
+                console.error("Error cleaning up stuck connection:", error);
+                socketRef.current = null;
+                setConnectionStatus("disconnected");
+              }
+            }
+            else if (state === WebSocket.OPEN) {
+              // Connection is healthy, just log status
+              console.log("Connection watchdog: WebSocket connection is open and healthy");
+              
+              // Keep checking periodically while connection is active
+              if (isMounted) {
+                setupConnectionWatchdog();
+              }
+            }
+          }
+        } else {
+          console.log("Connection watchdog: Connection attempt in progress, skipping checks");
           
-          if (state === WebSocket.CONNECTING) {
-            console.warn("WebSocket still in CONNECTING state after 15 seconds - likely stuck");
-            
-            try {
-              // Force close and reconnect
-              socketRef.current.close();
-              socketRef.current = null;
-              
-              // Reset status and attempt reconnect
-              setConnectionStatus("disconnected");
-              connectWebSocket();
-            } catch (error) {
-              console.error("Error resetting stuck connection:", error);
-              
-              // Last resort - null the reference and force reconnect
-              socketRef.current = null;
-              setConnectionStatus("disconnected");
-              connectWebSocket();
-            }
-          }
-          else if (state !== WebSocket.OPEN) {
-            console.warn(`WebSocket in unexpected state: ${state} - resetting connection`);
-            
-            // Cleanup and reconnect
-            try {
-              socketRef.current.close();
-            } catch (error) {
-              console.error("Error closing connection in watchdog:", error);
-            } finally {
-              socketRef.current = null;
-              setConnectionStatus("disconnected");
-              connectWebSocket();
-            }
-          }
-          else {
-            console.log("Connection watchdog: WebSocket connection is healthy");
-            
-            // Keep checking periodically while connection is active
-            if (isMounted) {
-              setupConnectionWatchdog();
-            }
+          // Still keep the watchdog running
+          if (isMounted) {
+            setupConnectionWatchdog();
           }
         }
-        else if (user && isMounted && connectionStatus !== "connecting") {
-          // No socket ref but we should have one - reconnect
-          console.warn("Connection watchdog: No active WebSocket but user is logged in - reconnecting");
-          connectWebSocket();
-        }
-      }, 15000); // Check every 15 seconds
+      }, 60000); // Reduced frequency to once per minute
     };
     
     // Only attempt connections when logged in
