@@ -102,8 +102,8 @@ export class SpartaObjectStorage {
 
       let thumbnailUrl = null;
 
-      // Create thumbnail if it's an image
-      if (mimeType.startsWith('image/') && !isVideo) { //check for video
+      // Create thumbnail if it's an image and not a video
+      if (mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
         const thumbnailFilename = `thumb-${safeFilename}`;
         const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
 
