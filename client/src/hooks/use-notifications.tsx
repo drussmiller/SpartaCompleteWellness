@@ -46,11 +46,26 @@ export function useNotifications(suppressToasts = false) {
       return;
     }
     
-    // If already connecting, just log but continue (to handle manual reconnection attempts)
+    // Allow manual reconnection even if already connecting
     if (isConnectingRef.current) {
       console.log("WebSocket connection already in progress, but allowing manual reconnection");
+      
+      // Force close any existing connection first
+      if (socketRef.current) {
+        try {
+          socketRef.current.onclose = null; // Prevent onclose handler from firing
+          socketRef.current.close();
+          socketRef.current = null;
+          isConnectingRef.current = false;
+          console.log("Forced close of existing connection for manual reconnect");
+        } catch (err) {
+          console.error("Error forcing close of connection:", err);
+        }
+      }
     }
     
+    // Reset flag and set it again
+    isConnectingRef.current = false;
     // Set connecting flag to prevent multiple connection attempts
     isConnectingRef.current = true;
     
