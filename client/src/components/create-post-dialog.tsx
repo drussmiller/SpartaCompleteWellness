@@ -339,13 +339,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   return;
                                 }
                                 
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  const videoUrl = URL.createObjectURL(file);
-                                  setImagePreview(videoUrl);
-                                  field.onChange(file);
-                                };
-                                reader.readAsDataURL(file);
+                                // For video, directly use the file
+                                const videoUrl = URL.createObjectURL(file);
+                                setImagePreview(videoUrl);
+                                field.onChange(file); // Pass the file directly to form data
                               }
                             }}
                             className="hidden"

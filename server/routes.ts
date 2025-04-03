@@ -1348,12 +1348,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Verify the file exists before proceeding
           const filePath = req.file.path;
           if (fs.existsSync(filePath)) {
+            // Handle video files differently
+            const isVideo = req.file.mimetype.startsWith('video/');
             // Store the file using SpartaObjectStorage
             const fileInfo = await spartaStorage.storeFile(
               filePath,
               req.file.originalname,
               req.file.mimetype,
-              postData.type === 'memory_verse' // Pass flag for video handling
+              isVideo // Pass flag for video handling
             );
             
             imageUrl = fileInfo.url;
