@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, WifiOff, Wifi } from "lucide-react";
+import { ChevronLeft, WifiOff, Wifi, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { useAchievements } from "@/hooks/use-achievements";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -19,9 +20,26 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { connectionStatus } = useNotifications();
+  const { connectionStatus, reconnect } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  
+  // Handle manual WebSocket reconnection
+  const handleReconnect = () => {
+    setIsReconnecting(true);
+    toast({
+      description: "Attempting to reconnect...",
+    });
+    
+    // Call the reconnect function from useNotifications
+    reconnect();
+    
+    // Reset the reconnecting state after a short delay
+    setTimeout(() => {
+      setIsReconnecting(false);
+    }, 2000);
+  };
 
   const updateScheduleMutation = useMutation({
     mutationFn: async ({ time, enabled }: { time: string; enabled: boolean }) => {
@@ -239,10 +257,41 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         <div className="space-y-4">
           <div className="border rounded-md p-4 bg-muted/30">
             <h3 className="text-sm font-medium mb-2">Real-time notifications</h3>
-            <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground">
+                {connectionStatus === "connected" 
+                  ? "You'll receive real-time notifications when you're online."
+                  : "Connect to receive real-time notifications."}
+              </p>
+              
+              {connectionStatus !== "connected" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-8 w-8 ml-2"
+                        onClick={handleReconnect}
+                        disabled={isReconnecting || connectionStatus === "connecting"}
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isReconnecting ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reconnect to notification server</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
               {connectionStatus === "connected" 
-                ? "You'll receive real-time notifications when you're online."
-                : "Connect to receive real-time notifications."}
+                ? "Connection active: You will receive real-time notifications." 
+                : connectionStatus === "connecting"
+                  ? "Connecting to notification server..." 
+                  : "Connection inactive: Click the refresh button to reconnect."}
             </p>
           </div>
 
