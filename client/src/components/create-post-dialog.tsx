@@ -329,9 +329,19 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  setImagePreview(reader.result as string);
+                                if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                                  toast({
+                                    title: "Error",
+                                    description: "Video file is too large. Maximum size is 100MB.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                // For video, we'll use URL.createObjectURL for preview
+                                const videoUrl = URL.createObjectURL(file);
+                                setImagePreview(videoUrl);
+                                // Store the actual file for upload
+                                field.onChange(file);;
                                   field.onChange(reader.result);
                                 };
                                 reader.readAsDataURL(file);
