@@ -3090,21 +3090,58 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add this endpoint before the app.use(router) line
+  // Get current user data
+  router.get("/api/users/me", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      // Query for user data including notification preferences
+      const [userData] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id));
+      
+      if (!userData) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Send back the user data
+      res.json(userData);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   router.post("/api/users/notification-schedule", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      const { notificationTime } = req.body;
+      const { notificationTime, achievementNotificationsEnabled } = req.body;
+      // Define update data with proper typing
+      const updateData: {
+        notificationTime?: string;
+        achievementNotificationsEnabled?: boolean;
+      } = {};
 
-      // Validate time format (HH:mm)
-      if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationTime)) {
-        return res.status(400).json({ message: "Invalid time format. Use HH:mm format." });
+      // Add notification time if provided
+      if (notificationTime !== undefined) {
+        // Validate time format (HH:mm)
+        if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(notificationTime)) {
+          return res.status(400).json({ message: "Invalid time format. Use HH:mm format." });
+        }
+        updateData.notificationTime = notificationTime;
       }
 
-      // Update user's notification time preference
+      // Add achievement notifications enabled setting if provided
+      if (achievementNotificationsEnabled !== undefined) {
+        updateData.achievementNotificationsEnabled = achievementNotificationsEnabled;
+      }
+
+      // Update user notification preferences
       const [updatedUser] = await db
         .update(users)
-        .set({ notificationTime })
+        .set(updateData)
         .where(eq(users.id, req.user.id))
         .returning();
 
