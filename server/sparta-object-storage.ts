@@ -96,10 +96,17 @@ export class SpartaObjectStorage {
       }
 
       // Write the file
-      fs.writeFileSync(filePath, fileBuffer);
+      try {
+        fs.writeFileSync(filePath, fileBuffer);
+        logger.info(`File written successfully to ${filePath}`);
+      } catch (writeError) {
+        logger.error(`Error writing file to ${filePath}:`, writeError);
+        throw writeError;
+      }
 
       // Get file size
       const stats = fs.statSync(filePath);
+      logger.info(`File size: ${stats.size} bytes`);
 
       let thumbnailUrl = null;
 
