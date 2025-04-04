@@ -833,6 +833,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  // Endpoint to check thumbnail status
+  router.get("/api/debug/check-thumbnails", authenticate, async (req, res) => {
+    try {
+      // Only allow admin users to run this operation
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ message: "Unauthorized: Admin access required" });
+      }
+
+      logger.info(`Thumbnail check process initiated by user ${req.user.id}`);
+      
+      // Import the thumbnail check script
+      const { checkThumbnails } = await import('./thumbnail-check');
+      
+      // Run the check process asynchronously
+      res.json({ 
+        message: "Thumbnail check process started",
+        status: "running",
+        startedAt: new Date().toISOString()
+      });
+      
+      // Execute the thumbnail check after sending the response
+      checkThumbnails().then(() => {
+        logger.info('Thumbnail check process completed successfully');
+      }).catch(err => {
+        logger.error('Error in thumbnail check process:', err);
+      });
+    } catch (error) {
+      logger.error('Error initiating thumbnail check:', error);
+      res.status(500).json({
+        message: "Failed to initiate thumbnail check",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Public route to check if a post exists and is accessible
   router.get("/api/check-post/:id", async (req, res) => {
     try {
@@ -890,15 +925,38 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let thumbnailPathFixed = '';
       if (post.mediaUrl) {
         const filename = post.mediaUrl.split('/').pop() || '';
-        thumbnailPath = `./uploads/thumbnails/thumb-${filename}`;
         
-        // Also try absolute path
-        thumbnailPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', `thumb-${filename}`);
+        // Check both formats - with and without thumb- prefix
+        const newFormatThumbnailPath = `./uploads/thumbnails/thumb-${filename}`;
+        const oldFormatThumbnailPath = `./uploads/thumbnails/${filename}`;
+        
+        // Also try absolute paths
+        const newFormatPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', `thumb-${filename}`);
+        const oldFormatPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', filename);
+        
+        // Check if the filename matches the old format pattern
+        const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
+        
+        // For debugging purposes, set thumbnailPath to the actual path we're checking first
+        thumbnailPath = isOldFormatImage ? oldFormatThumbnailPath : newFormatThumbnailPath;
+        thumbnailPathFixed = isOldFormatImage ? oldFormatPathFixed : newFormatPathFixed;
         
         try {
-          thumbnailExists = fs.existsSync(thumbnailPath) || fs.existsSync(thumbnailPathFixed);
+          // Check both paths regardless of the format
+          const newFormatExists = fs.existsSync(newFormatThumbnailPath) || fs.existsSync(newFormatPathFixed);
+          const oldFormatExists = fs.existsSync(oldFormatThumbnailPath) || fs.existsSync(oldFormatPathFixed);
+          
+          thumbnailExists = newFormatExists || oldFormatExists;
+          
+          // Log the results for debugging
           console.log(`Thumbnail check: original path ${thumbnailPath} exists: ${fs.existsSync(thumbnailPath)}`);
           console.log(`Thumbnail check: fixed path ${thumbnailPathFixed} exists: ${fs.existsSync(thumbnailPathFixed)}`);
+          
+          if (isOldFormatImage) {
+            console.log(`Old format image detected. Also checked new format: ${newFormatThumbnailPath} exists: ${fs.existsSync(newFormatThumbnailPath)}`);
+          } else {
+            console.log(`New format image detected. Also checked old format: ${oldFormatThumbnailPath} exists: ${fs.existsSync(oldFormatThumbnailPath)}`);
+          }
         } catch (err) {
           console.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
           logger.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
