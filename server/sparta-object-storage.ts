@@ -75,8 +75,19 @@ export class SpartaObjectStorage {
     path: string;
   }> {
     try {
+      console.log("SpartaObjectStorage.storeFile called", {
+        originalFilename,
+        mimeType,
+        isVideo,
+        isPath: typeof fileData === 'string',
+        fileDataType: typeof fileData,
+        fileDataLength: typeof fileData === 'string' ? fileData.length : fileData.length
+      });
+      
       // Validate file type
       if (!this.allowedTypes.includes(mimeType)) {
+        logger.error(`File type ${mimeType} not allowed`);
+        console.error(`File type ${mimeType} not allowed`);
         throw new Error(`File type ${mimeType} not allowed`);
       }
 
@@ -86,20 +97,39 @@ export class SpartaObjectStorage {
       const fileExt = path.extname(originalFilename);
       const safeFilename = `${timestamp}-${uniqueId}${fileExt}`;
       const filePath = path.join(this.baseDir, safeFilename);
+      console.log("Generated safe filename and path", { 
+        safeFilename, 
+        filePath,
+        baseDir: this.baseDir 
+      });
 
       // Convert string path to buffer if needed
       let fileBuffer: Buffer;
       if (typeof fileData === 'string') {
+        // If fileData is a path to a local file
+        console.log("Reading file from path:", fileData);
+        try {
+          const stats = fs.statSync(fileData);
+          console.log("File stats:", { size: stats.size, isFile: stats.isFile() });
+        } catch (statError) {
+          console.error("Error getting file stats:", statError);
+        }
         fileBuffer = fs.readFileSync(fileData);
+        console.log("File read successfully, buffer size:", fileBuffer.length);
       } else {
+        // If fileData is already a Buffer
+        console.log("Using provided buffer directly, size:", fileData.length);
         fileBuffer = fileData;
       }
 
       // Write the file
       try {
+        console.log(`Attempting to write file to ${filePath}, buffer size: ${fileBuffer.length}`);
         fs.writeFileSync(filePath, fileBuffer);
+        console.log(`File written successfully to ${filePath}`);
         logger.info(`File written successfully to ${filePath}`);
       } catch (writeError) {
+        console.error(`Error writing file to ${filePath}:`, writeError);
         logger.error(`Error writing file to ${filePath}:`, writeError);
         throw writeError;
       }

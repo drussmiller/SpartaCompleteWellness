@@ -104,13 +104,21 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
       try {
+        console.log("Starting post creation for type:", data.type);
         const formData = new FormData();
 
         if ((data.type === 'food' || data.type === 'workout') && (!data.mediaUrl || data.mediaUrl.length === 0)) {
+          console.error(`${data.type} post missing required image`);
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
 
         if (data.mediaUrl && data.mediaUrl.length > 0) {
+          console.log("Media URL found, preparing to upload", { 
+            type: data.type,
+            mediaUrlLength: data.mediaUrl.length,
+            urlPreview: data.mediaUrl.substring(0, 30) + "..."
+          });
+          
           try {
             if (data.type === 'memory_verse') {
               // For memory verse, we need to handle video files
@@ -118,14 +126,25 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 const videoFile = videoInputRef.current.files[0];
                 // Append the actual video file to the form data
                 formData.append("image", videoFile, videoFile.name);
-                console.log("Uploading video file:", videoFile.name, videoFile.type, videoFile.size);
+                console.log("Uploading video file:", {
+                  name: videoFile.name, 
+                  type: videoFile.type, 
+                  size: videoFile.size
+                });
               } else {
+                console.error("Memory verse post missing video file");
                 throw new Error("No video file selected");
               }
             } else {
               // For images, fetch the blob from the data URL
+              console.log("Processing image URL to blob");
               const blob = await fetch(data.mediaUrl).then(r => r.blob());
+              console.log("Blob created from image URL", { 
+                type: blob.type, 
+                size: blob.size 
+              });
               formData.append("image", blob, "image.jpeg");
+              console.log("Image blob appended to form data");
             }
           } catch (error) {
             console.error("Error processing media:", error);
@@ -140,16 +159,36 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
 
-        formData.append("data", JSON.stringify(postData));
+        console.log("Post data prepared:", { 
+          type: postData.type, 
+          contentLength: postData.content.length,
+          hasImage: !!data.mediaUrl 
+        });
 
+        formData.append("data", JSON.stringify(postData));
+        
+        console.log("FormData ready for submission", {
+          formDataKeys: [...formData.keys()],
+          hasImageKey: formData.has('image'),
+          isMultipartFormData: true
+        });
+
+        console.log("Sending POST request to /api/posts");
         const response = await fetch("/api/posts", {
           method: "POST",
           body: formData,
           credentials: "include",
         });
 
+        console.log("Server response received", { 
+          status: response.status, 
+          ok: response.ok,
+          statusText: response.statusText 
+        });
+
         if (!response.ok) {
           const errorData = await response.json();
+          console.error("Server returned error", errorData);
           throw new Error(errorData.message || `Failed to create post: ${response.status}`);
         }
 

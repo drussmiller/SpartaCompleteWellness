@@ -1277,13 +1277,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       'X-Content-Type-Options': 'nosniff'
     });
     
+    console.log("POST /api/posts - Request received", {
+      hasFile: !!req.file,
+      fileDetails: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        path: req.file.path,
+        size: req.file.size
+      } : 'No file uploaded',
+      contentType: req.headers['content-type'],
+      bodyKeys: Object.keys(req.body)
+    });
+    
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
       let postData = req.body;
       if (typeof postData.data === 'string') {
         try {
+          console.log("Parsing JSON from postData.data", { raw: postData.data.substring(0, 100) + '...' });
           postData = JSON.parse(postData.data);
+          console.log("Successfully parsed post data:", { postType: postData.type });
         } catch (parseError) {
+          console.error("Error parsing post data:", parseError);
           logger.error("Error parsing post data:", parseError);
           return res.status(400).json({ message: "Invalid post data format" });
         }
