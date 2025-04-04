@@ -19,7 +19,7 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     // If we're requesting a small thumbnail, return the thumbnail URL
     // For other sizes, return the original to reduce likelihood of 404s
     if (size === 'small') {
-      return `/uploads/thumbnails/${filename}`;
+      return `/uploads/thumbnails/thumb-${filename}`;
     } else {
       // For medium/large sizes or when size isn't specified, use original
       return originalUrl;
@@ -102,17 +102,17 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
   
   // Preload thumbnails immediately
   visiblePosts.forEach(post => {
-    if (post.imageUrl) {
-      preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
+    if (post.mediaUrl) {
+      preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
         // If thumbnail fails, try original
-        preloadImage(post.imageUrl).catch(() => {
+        preloadImage(post.mediaUrl).catch(() => {
           // If original fails, try the fallback
           if (post.type) {
             preloadImage(getFallbackImageUrl(post.type)).catch(() => {
-              console.error('Failed to preload all image options:', post.imageUrl);
+              console.error('Failed to preload all image options:', post.mediaUrl);
             });
           } else {
-            console.error('Failed to preload image:', post.imageUrl);
+            console.error('Failed to preload image:', post.mediaUrl);
           }
         });
       });
@@ -122,12 +122,12 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
   // Then preload the rest with a delay to not block the UI
   setTimeout(() => {
     posts.slice(visibleCount).forEach((post, index) => {
-      if (post.imageUrl) {
+      if (post.mediaUrl) {
         // Stagger loading to prevent network congestion
         setTimeout(() => {
-          preloadImage(getThumbnailUrl(post.imageUrl)).catch(() => {
+          preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
             // Try original next
-            preloadImage(post.imageUrl).catch(() => {
+            preloadImage(post.mediaUrl).catch(() => {
               // Silently try the fallback
               if (post.type) {
                 preloadImage(getFallbackImageUrl(post.type)).catch(() => {
