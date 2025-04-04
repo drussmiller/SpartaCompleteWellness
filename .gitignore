@@ -7,7 +7,6 @@ vite.config.ts.*
 logs/*
 !logs/.gitkeep
 uploads/*
-!uploads/thumbnails
 !uploads/.gitkeep
 
 # Log files and uploads
@@ -15,6 +14,5 @@ logs/*
 !logs/.gitkeep
 uploads/*
 !uploads/.gitkeep
-!uploads/thumbnails
 *.log
 *.log.*
