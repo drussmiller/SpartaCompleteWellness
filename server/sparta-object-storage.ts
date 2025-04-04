@@ -21,9 +21,9 @@ export class SpartaObjectStorage {
    * @param allowedTypes Array of allowed mime types
    */
   constructor(
-    baseDir: string = path.join(process.cwd(), 'uploads'),
-    thumbnailDir: string = path.join(process.cwd(), 'uploads', 'thumbnails'),
-    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'] // Added video types
+    baseDir: string = path.join(process.cwd(), '..', 'uploads'),
+    thumbnailDir: string = path.join(process.cwd(), '..', 'uploads', 'thumbnails'),
+    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'application/octet-stream'] // Added more video types and octet-stream
   ) {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
@@ -84,17 +84,41 @@ export class SpartaObjectStorage {
         fileDataLength: typeof fileData === 'string' ? fileData.length : fileData.length
       });
       
-      // Validate file type
-      if (!this.allowedTypes.includes(mimeType)) {
-        logger.error(`File type ${mimeType} not allowed`);
-        console.error(`File type ${mimeType} not allowed`);
+      // Validate file type with better handling for videos
+      const fileExt = path.extname(originalFilename).toLowerCase();
+      const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+      
+      // Check if it's a video based on file extension or explicitly marked as video
+      const isVideoByExtension = videoExtensions.includes(fileExt);
+      
+      // Either the mime type is in the allowed list OR it's a video file by extension/flag
+      const isAllowed = this.allowedTypes.includes(mimeType) || 
+                        (isVideo && (mimeType.startsWith('video/') || isVideoByExtension));
+      
+      console.log("File validation check:", {
+        mimeType,
+        fileExt,
+        isVideo,
+        isVideoByExtension,
+        isAllowed,
+        allowedTypes: this.allowedTypes
+      });
+      
+      if (!isAllowed) {
+        logger.error(`File type not allowed:`, {
+          mimeType,
+          fileExt,
+          isVideo,
+          originalFilename
+        });
+        console.error(`File type ${mimeType} with extension ${fileExt} not allowed`);
         throw new Error(`File type ${mimeType} not allowed`);
       }
 
       // Generate a unique filename
       const timestamp = Date.now();
       const uniqueId = uuidv4().substring(0, 8);
-      const fileExt = path.extname(originalFilename);
+      // Use the already defined fileExt from above
       const safeFilename = `${timestamp}-${uniqueId}${fileExt}`;
       const filePath = path.join(this.baseDir, safeFilename);
       console.log("Generated safe filename and path", { 
