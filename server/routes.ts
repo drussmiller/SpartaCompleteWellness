@@ -1568,10 +1568,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Verify the file exists before proceeding
           const filePath = req.file.path;
           if (fs.existsSync(filePath)) {
-            // Handle video files differently
-            const isVideo = req.file.mimetype.startsWith('video/');
+            // Handle video files differently - check both mimetype and file extension
+            const originalFilename = req.file.originalname.toLowerCase();
+            const isVideo = req.file.mimetype.startsWith('video/') || 
+                          originalFilename.endsWith('.mov') || 
+                          originalFilename.endsWith('.mp4') ||
+                          originalFilename.endsWith('.webm') ||
+                          (req.body.type === 'memory_verse'); // Memory verse posts are always videos
             
-            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
+            console.log(`Processing media file:`, {
+              originalFilename: req.file.originalname,
+              mimetype: req.file.mimetype,
+              isVideo: isVideo,
+              fileSize: req.file.size,
+              path: req.file.path,
+              postType: req.body.type || 'unknown'
+            });
+            
+            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
             
             // Store the file using SpartaObjectStorage (used for both images and videos)
             const fileInfo = await spartaStorage.storeFile(
