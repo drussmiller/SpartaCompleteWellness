@@ -37,6 +37,7 @@ import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
+import { repairThumbnails } from './thumbnail-repair';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -797,6 +798,38 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error in type distribution endpoint:', error);
       res.status(500).json({
         message: "Failed to fetch type distribution",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Endpoint to trigger thumbnail repair
+  router.get("/api/debug/repair-thumbnails", authenticate, async (req, res) => {
+    try {
+      // Only allow admin users to run this operation
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ message: "Unauthorized: Admin access required" });
+      }
+
+      logger.info(`Thumbnail repair process initiated by user ${req.user.id}`);
+      
+      // Run the repair process asynchronously
+      res.json({ 
+        message: "Thumbnail repair process started",
+        status: "running",
+        startedAt: new Date().toISOString()
+      });
+      
+      // Execute the thumbnail repair after sending the response
+      repairThumbnails().then(() => {
+        logger.info('Thumbnail repair process completed successfully');
+      }).catch(err => {
+        logger.error('Error in thumbnail repair process:', err);
+      });
+    } catch (error) {
+      logger.error('Error initiating thumbnail repair:', error);
+      res.status(500).json({
+        message: "Failed to initiate thumbnail repair",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
