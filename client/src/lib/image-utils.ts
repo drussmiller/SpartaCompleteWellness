@@ -19,7 +19,19 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     // If we're requesting a small thumbnail, return the thumbnail URL
     // For other sizes, return the original to reduce likelihood of 404s
     if (size === 'small') {
-      return `/uploads/thumbnails/thumb-${filename}`;
+      // Check if this is an older image (before April 2025) or a newer one
+      // Older image format: 1742695590858-649008714-image.jpeg (uses timestamp-random-name format)
+      // Newer image format: 1743773848580-c2def441.jpeg (uses timestamp-hash format)
+      
+      const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
+      
+      if (isOldFormatImage) {
+        // Old format - no "thumb-" prefix
+        return `/uploads/thumbnails/${filename}`;
+      } else {
+        // New format - with "thumb-" prefix
+        return `/uploads/thumbnails/thumb-${filename}`;
+      }
     } else {
       // For medium/large sizes or when size isn't specified, use original
       return originalUrl;
