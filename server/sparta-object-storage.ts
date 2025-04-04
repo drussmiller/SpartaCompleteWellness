@@ -143,23 +143,56 @@ export class SpartaObjectStorage {
       // Create thumbnail based on file type
       const thumbnailFilename = `thumb-${safeFilename}`;
       const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
+      
+      console.log(`Preparing to create thumbnail: ${thumbnailFilename}`);
 
       try {
+        // Ensure thumbnail directory exists
+        if (!fs.existsSync(this.thumbnailDir)) {
+          console.log(`Creating thumbnails directory: ${this.thumbnailDir}`);
+          fs.mkdirSync(this.thumbnailDir, { recursive: true });
+        }
+        
         if (mimeType.startsWith('image/')) {
           // Process image thumbnail
+          console.log(`Processing image thumbnail for ${safeFilename}`);
           await this.createThumbnail(filePath, thumbnailPath);
           thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          console.log(`Image thumbnail created at ${thumbnailPath}`);
           logger.info(`Created image thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('video/') || isVideo) {
           // Process video thumbnail
+          console.log(`Processing video thumbnail for ${safeFilename}`);
           await this.createVideoThumbnail(filePath, thumbnailPath);
           thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          console.log(`Video thumbnail created at ${thumbnailPath}`);
           logger.info(`Created video thumbnail for ${safeFilename}`);
         }
+        
+        // Verify that the thumbnail was created
+        if (thumbnailUrl && !fs.existsSync(thumbnailPath)) {
+          console.error(`Thumbnail was not created at ${thumbnailPath} despite no errors`);
+          // Copy the original as a fallback
+          fs.copyFileSync(filePath, thumbnailPath);
+          console.log(`Created fallback thumbnail by copying original file to ${thumbnailPath}`);
+          logger.info(`Created fallback thumbnail for ${safeFilename} by copying original file`);
+        }
       } catch (thumbnailError) {
+        console.error(`Error creating thumbnail for ${safeFilename}:`, thumbnailError);
         logger.error(`Error creating thumbnail for ${safeFilename}:`, thumbnailError);
-        // Continue without thumbnail if there's an error
-        thumbnailUrl = null;
+        
+        // Try a fallback approach - copy the original file as the thumbnail
+        try {
+          console.log(`Attempting to create a fallback thumbnail for ${safeFilename}`);
+          fs.copyFileSync(filePath, thumbnailPath);
+          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          console.log(`Created fallback thumbnail by copying original file to ${thumbnailPath}`);
+          logger.info(`Created fallback thumbnail for ${safeFilename} after error`);
+        } catch (fallbackError) {
+          console.error(`Failed to create fallback thumbnail:`, fallbackError);
+          logger.error(`Failed to create fallback thumbnail:`, fallbackError);
+          thumbnailUrl = null;
+        }
       }
 
       logger.info(`Successfully stored file ${safeFilename}`);
@@ -186,6 +219,22 @@ export class SpartaObjectStorage {
    */
   private async createThumbnail(sourcePath: string, targetPath: string): Promise<void> {
     try {
+      console.log(`Attempting to create thumbnail from ${sourcePath} to ${targetPath}`);
+      
+      // Check if source file exists
+      if (!fs.existsSync(sourcePath)) {
+        console.error(`Source file not found: ${sourcePath}`);
+        logger.error(`Source file not found: ${sourcePath}`);
+        throw new Error(`Source file not found: ${sourcePath}`);
+      }
+      
+      // Make sure the thumbnails directory exists
+      const thumbnailDir = path.dirname(targetPath);
+      if (!fs.existsSync(thumbnailDir)) {
+        console.log(`Creating thumbnails directory: ${thumbnailDir}`);
+        fs.mkdirSync(thumbnailDir, { recursive: true });
+      }
+      
       // Create a thumbnail that's max 600px wide but maintains aspect ratio
       await sharp(sourcePath)
         .resize({
@@ -196,10 +245,31 @@ export class SpartaObjectStorage {
         })
         .toFile(targetPath);
 
+      console.log(`Successfully created thumbnail at ${targetPath}`);
       logger.info(`Created thumbnail at ${targetPath}`);
+      
+      // Verify thumbnail was created
+      if (!fs.existsSync(targetPath)) {
+        console.error(`Thumbnail file was not created at ${targetPath} despite no errors`);
+        logger.error(`Thumbnail file was not created at ${targetPath} despite no errors`);
+        throw new Error('Thumbnail was not created');
+      }
     } catch (error) {
+      console.error('Error creating thumbnail:', error);
       logger.error('Error creating thumbnail:', error instanceof Error ? error : new Error(String(error)));
-      throw new Error('Failed to create thumbnail');
+      
+      // Instead of failing the whole process, we'll log the error and create a basic thumbnail
+      try {
+        console.log('Attempting to create a basic fallback thumbnail');
+        // Simple copy of the original as a fallback
+        fs.copyFileSync(sourcePath, targetPath);
+        console.log(`Created fallback thumbnail by copying original file to ${targetPath}`);
+        logger.info(`Created fallback thumbnail by copying original file to ${targetPath}`);
+      } catch (fallbackError) {
+        console.error('Failed to create fallback thumbnail:', fallbackError);
+        logger.error('Failed to create fallback thumbnail:', fallbackError);
+        throw new Error('Failed to create thumbnail and fallback');
+      }
     }
   }
 
@@ -212,14 +282,63 @@ export class SpartaObjectStorage {
   private async createVideoThumbnail(videoPath: string, targetPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        console.log(`Attempting to create video thumbnail from ${videoPath} to ${targetPath}`);
+        
+        // Check if source file exists
+        if (!fs.existsSync(videoPath)) {
+          const error = new Error(`Source video file not found: ${videoPath}`);
+          console.error(error.message);
+          logger.error(error.message);
+          reject(error);
+          return;
+        }
+        
+        // Make sure the thumbnails directory exists
+        const thumbnailDir = path.dirname(targetPath);
+        if (!fs.existsSync(thumbnailDir)) {
+          console.log(`Creating thumbnails directory: ${thumbnailDir}`);
+          fs.mkdirSync(thumbnailDir, { recursive: true });
+        }
+        
         ffmpeg(videoPath)
           .on('error', (err: Error | undefined) => {
             const errorMessage = err ? err.message : 'Unknown error';
+            console.error(`Error generating video thumbnail: ${errorMessage}`);
             logger.error(`Error generating video thumbnail: ${errorMessage}`);
-            reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
+            
+            // Try to create a basic thumbnail as fallback
+            try {
+              // Use sharp to create a blank thumbnail with text as fallback
+              const textBuffer = Buffer.from('<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#000"/><text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text><circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+              fs.writeFileSync(targetPath, textBuffer);
+              console.log(`Created fallback video thumbnail at ${targetPath}`);
+              logger.info(`Created fallback video thumbnail at ${targetPath}`);
+              resolve(); // Continue even with the fallback
+            } catch (fallbackError) {
+              console.error('Failed to create fallback video thumbnail:', fallbackError);
+              reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
+            }
           })
           .on('end', () => {
+            console.log(`Successfully created video thumbnail at ${targetPath}`);
             logger.info(`Created video thumbnail at ${targetPath}`);
+            
+            // Verify thumbnail was created
+            if (!fs.existsSync(targetPath)) {
+              console.error(`Video thumbnail file was not created at ${targetPath} despite no errors`);
+              logger.error(`Video thumbnail file was not created at ${targetPath} despite no errors`);
+              
+              // Create a fallback
+              try {
+                const textBuffer = Buffer.from('<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#000"/><text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text><circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+                fs.writeFileSync(targetPath, textBuffer);
+                console.log(`Created fallback video thumbnail at ${targetPath} (verification stage)`);
+                logger.info(`Created fallback video thumbnail at ${targetPath} (verification stage)`);
+              } catch (fallbackError) {
+                console.error('Failed to create fallback video thumbnail during verification:', fallbackError);
+              }
+            }
+            
             resolve();
           })
           .screenshots({
@@ -229,8 +348,21 @@ export class SpartaObjectStorage {
             size: '600x?', // Width 600px, height auto-calculated to maintain aspect ratio
           });
       } catch (error) {
+        console.error('Error creating video thumbnail:', error);
         logger.error('Error creating video thumbnail:', error instanceof Error ? error : new Error(String(error)));
-        reject(new Error('Failed to create video thumbnail'));
+        
+        // Try to create a basic thumbnail as fallback
+        try {
+          // Use direct file approach to create a basic thumbnail
+          const textBuffer = Buffer.from('<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#000"/><text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text><circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+          fs.writeFileSync(targetPath, textBuffer);
+          console.log(`Created fallback video thumbnail at ${targetPath} (catch block)`);
+          logger.info(`Created fallback video thumbnail at ${targetPath} (catch block)`);
+          resolve(); // Continue even with the fallback
+        } catch (fallbackError) {
+          console.error('Failed to create fallback video thumbnail in catch block:', fallbackError);
+          reject(new Error('Failed to create video thumbnail and fallback'));
+        }
       }
     });
   }
