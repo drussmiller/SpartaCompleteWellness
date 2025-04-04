@@ -126,10 +126,17 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 const videoFile = videoInputRef.current.files[0];
                 // Append the actual video file to the form data
                 formData.append("image", videoFile, videoFile.name);
-                console.log("Uploading video file:", {
+                console.log("Uploading memory verse video file:", {
                   name: videoFile.name, 
                   type: videoFile.type, 
-                  size: videoFile.size
+                  size: videoFile.size,
+                  formDataEntries: Array.from(formData.entries()).map(entry => {
+                    const [key, value] = entry;
+                    if (key === 'image') {
+                      return [key, `File object: ${(value as File).name}, type: ${(value as File).type}`];
+                    }
+                    return [key, typeof value === 'string' ? value.substring(0, 30) + '...' : '[non-string]'];
+                  })
                 });
               } else {
                 console.error("Memory verse post missing video file");
@@ -168,7 +175,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         formData.append("data", JSON.stringify(postData));
         
         console.log("FormData ready for submission", {
-          formDataKeys: [...formData.keys()],
+          formDataKeys: Array.from(formData.keys()),
           hasImageKey: formData.has('image'),
           isMultipartFormData: true
         });

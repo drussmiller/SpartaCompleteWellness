@@ -162,11 +162,52 @@ export class SpartaObjectStorage {
           logger.info(`Created image thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('video/') || isVideo) {
           // Process video thumbnail
-          console.log(`Processing video thumbnail for ${safeFilename}`);
-          await this.createVideoThumbnail(filePath, thumbnailPath);
-          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
-          console.log(`Video thumbnail created at ${thumbnailPath}`);
-          logger.info(`Created video thumbnail for ${safeFilename}`);
+          console.log(`Processing video thumbnail for ${safeFilename}`, {
+            filePath: filePath,
+            absolutePath: path.resolve(filePath),
+            fileExists: fs.existsSync(filePath),
+            fileSize: fs.existsSync(filePath) ? fs.statSync(filePath).size : 'file not found',
+            mimeType: mimeType,
+            isVideo: isVideo
+          });
+          
+          try {
+            await this.createVideoThumbnail(filePath, thumbnailPath);
+            thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+            console.log(`Video thumbnail created at ${thumbnailPath}`);
+            logger.info(`Created video thumbnail for ${safeFilename}`);
+            
+            // Double-check the thumbnail was created
+            if (fs.existsSync(thumbnailPath)) {
+              console.log(`Verified thumbnail exists at ${thumbnailPath}`);
+            } else {
+              console.warn(`Thumbnail was not found at ${thumbnailPath} after creation attempt`);
+              
+              // Create a simple SVG thumbnail as fallback
+              const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="#000"/>
+                <text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text>
+                <circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+                <polygon points="290,180 290,220 320,200" fill="#fff"/>
+              </svg>`;
+              
+              fs.writeFileSync(thumbnailPath, svgContent);
+              console.log(`Created SVG fallback thumbnail at ${thumbnailPath}`);
+            }
+          } catch (videoThumbError) {
+            console.error(`Error in video thumbnail creation:`, videoThumbError);
+            
+            // Create a simple SVG thumbnail as fallback on error
+            const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100%" height="100%" fill="#000"/>
+              <text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text>
+              <circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+              <polygon points="290,180 290,220 320,200" fill="#fff"/>
+            </svg>`;
+            
+            fs.writeFileSync(thumbnailPath, svgContent);
+            console.log(`Created SVG fallback thumbnail after error at ${thumbnailPath}`);
+          }
         }
         
         // Verify that the thumbnail was created
@@ -284,13 +325,41 @@ export class SpartaObjectStorage {
       try {
         console.log(`Attempting to create video thumbnail from ${videoPath} to ${targetPath}`);
         
-        // Check if source file exists
+        // Check if source file exists with detailed logging
         if (!fs.existsSync(videoPath)) {
           const error = new Error(`Source video file not found: ${videoPath}`);
           console.error(error.message);
           logger.error(error.message);
+          
+          // Check if the directory exists
+          const dir = path.dirname(videoPath);
+          console.log(`Directory exists for video path: ${fs.existsSync(dir)}, path: ${dir}`);
+          
+          // Try to list files in the directory to see what's actually there
+          try {
+            if (fs.existsSync(dir)) {
+              const files = fs.readdirSync(dir);
+              console.log(`Files in directory ${dir}:`, files);
+            }
+          } catch (readDirError) {
+            console.error(`Error listing directory ${dir}:`, readDirError);
+          }
+          
           reject(error);
           return;
+        }
+        
+        // Log file details
+        try {
+          const stats = fs.statSync(videoPath);
+          console.log(`Video file stats:`, {
+            size: stats.size,
+            isFile: stats.isFile(),
+            created: stats.birthtime,
+            absolutePath: path.resolve(videoPath)
+          });
+        } catch (statError) {
+          console.error(`Error getting video file stats: ${statError}`);
         }
         
         // Make sure the thumbnails directory exists

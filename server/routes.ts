@@ -1467,11 +1467,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
         path: req.file.path,
+        destination: req.file.destination,
         size: req.file.size
       } : 'No file uploaded',
       contentType: req.headers['content-type'],
       bodyKeys: Object.keys(req.body)
     });
+    
+    // Extra logging for debugging
+    if (req.file) {
+      try {
+        const stats = fs.statSync(req.file.path);
+        console.log("File stats:", {
+          exists: fs.existsSync(req.file.path),
+          size: stats.size,
+          isFile: stats.isFile(),
+          path: req.file.path,
+          absolutePath: path.resolve(req.file.path)
+        });
+      } catch (statError) {
+        console.error("Error checking file:", statError);
+      }
+    }
     
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
