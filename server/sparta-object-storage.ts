@@ -3,6 +3,7 @@ import path from 'path';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from './logger';
+import ffmpeg from 'fluent-ffmpeg';
 
 /**
  * SpartaObjectStorage provides a unified interface for handling file objects
@@ -102,13 +103,26 @@ export class SpartaObjectStorage {
 
       let thumbnailUrl = null;
 
-      // Create thumbnail if it's an image and not a video
-      if (mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
-        const thumbnailFilename = `thumb-${safeFilename}`;
-        const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
+      // Create thumbnail based on file type
+      const thumbnailFilename = `thumb-${safeFilename}`;
+      const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
 
-        await this.createThumbnail(filePath, thumbnailPath);
-        thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+      try {
+        if (mimeType.startsWith('image/')) {
+          // Process image thumbnail
+          await this.createThumbnail(filePath, thumbnailPath);
+          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          logger.info(`Created image thumbnail for ${safeFilename}`);
+        } else if (mimeType.startsWith('video/') || isVideo) {
+          // Process video thumbnail
+          await this.createVideoThumbnail(filePath, thumbnailPath);
+          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          logger.info(`Created video thumbnail for ${safeFilename}`);
+        }
+      } catch (thumbnailError) {
+        logger.error(`Error creating thumbnail for ${safeFilename}:`, thumbnailError);
+        // Continue without thumbnail if there's an error
+        thumbnailUrl = null;
       }
 
       logger.info(`Successfully stored file ${safeFilename}`);
@@ -150,6 +164,38 @@ export class SpartaObjectStorage {
       logger.error('Error creating thumbnail:', error instanceof Error ? error : new Error(String(error)));
       throw new Error('Failed to create thumbnail');
     }
+  }
+
+  /**
+   * Creates a thumbnail from a video file
+   * @param videoPath Path to source video
+   * @param targetPath Path to save thumbnail
+   * @returns Promise that resolves when thumbnail is created
+   */
+  private async createVideoThumbnail(videoPath: string, targetPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        ffmpeg(videoPath)
+          .on('error', (err: Error | undefined) => {
+            const errorMessage = err ? err.message : 'Unknown error';
+            logger.error(`Error generating video thumbnail: ${errorMessage}`);
+            reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
+          })
+          .on('end', () => {
+            logger.info(`Created video thumbnail at ${targetPath}`);
+            resolve();
+          })
+          .screenshots({
+            timestamps: ['00:00:01.000'], // Take screenshot at 1 second
+            filename: path.basename(targetPath),
+            folder: path.dirname(targetPath),
+            size: '600x?', // Width 600px, height auto-calculated to maintain aspect ratio
+          });
+      } catch (error) {
+        logger.error('Error creating video thumbnail:', error instanceof Error ? error : new Error(String(error)));
+        reject(new Error('Failed to create video thumbnail'));
+      }
+    });
   }
 
   /**
