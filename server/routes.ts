@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   posts,
   notifications,
@@ -49,10 +51,6 @@ const multerStorage = multer.diskStorage({
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
-
-// Make sure upload directory exists
-import fs from 'fs';
-import path from 'path';
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -832,6 +830,100 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         message: "Failed to initiate thumbnail repair",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+  
+  // Public route to check if a post exists and is accessible
+  router.get("/api/check-post/:id", async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+      
+      // Get post from the database
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId));
+        
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      
+      // Also get author details
+      const [author] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, post.userId));
+        
+      // Check if the image exists if there's a mediaUrl
+      let imageExists = false;
+      let imagePath = '';
+      let imagePathFixed = '';
+      
+      // Print full post object for debugging
+      console.log('Post object:', JSON.stringify(post, null, 2));
+      
+      if (post.mediaUrl) {
+        // Try current working directory
+        imagePath = `.${post.mediaUrl}`; // Remove leading slash
+        
+        // Also try absolute path
+        imagePathFixed = path.join(process.cwd(), post.mediaUrl.substring(1)); // Remove leading slash
+        
+        try {
+          imageExists = fs.existsSync(imagePath) || fs.existsSync(imagePathFixed);
+          console.log(`Image check: original path ${imagePath} exists: ${fs.existsSync(imagePath)}`);
+          console.log(`Image check: fixed path ${imagePathFixed} exists: ${fs.existsSync(imagePathFixed)}`);
+        } catch (err) {
+          console.error(`Error checking if file exists at ${imagePath}:`, err);
+          logger.error(`Error checking if file exists at ${imagePath}:`, err);
+        }
+      } else {
+        console.log("No mediaUrl found in the post:", post);
+      }
+      
+      // Check for thumbnail
+      let thumbnailExists = false;
+      let thumbnailPath = '';
+      let thumbnailPathFixed = '';
+      if (post.mediaUrl) {
+        const filename = post.mediaUrl.split('/').pop() || '';
+        thumbnailPath = `./uploads/thumbnails/thumb-${filename}`;
+        
+        // Also try absolute path
+        thumbnailPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', `thumb-${filename}`);
+        
+        try {
+          thumbnailExists = fs.existsSync(thumbnailPath) || fs.existsSync(thumbnailPathFixed);
+          console.log(`Thumbnail check: original path ${thumbnailPath} exists: ${fs.existsSync(thumbnailPath)}`);
+          console.log(`Thumbnail check: fixed path ${thumbnailPathFixed} exists: ${fs.existsSync(thumbnailPathFixed)}`);
+        } catch (err) {
+          console.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
+          logger.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
+        }
+      }
+      
+      return res.json({
+        post,
+        author: author ? {
+          id: author.id,
+          username: author.username,
+          imageUrl: author.imageUrl
+        } : null,
+        files: {
+          imageExists,
+          imagePath,
+          imagePathFixed,
+          thumbnailExists,
+          thumbnailPath,
+          thumbnailPathFixed
+        }
+      });
+    } catch (error) {
+      logger.error(`Error checking post ${req.params.id}:`, error);
+      return res.status(500).json({ message: "Error checking post", error: String(error) });
     }
   });
 
