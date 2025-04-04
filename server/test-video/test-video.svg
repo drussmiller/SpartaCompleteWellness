@@ -1,0 +1,6 @@
+<svg width="640" height="480" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="blue"/>
+        <text x="50%" y="50%" fill="white" text-anchor="middle" font-size="24">Test Video Frame</text>
+        <circle cx="320" cy="240" r="50" stroke="white" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+        <polygon points="310,220 310,260 340,240" fill="white"/>
+      </svg>
