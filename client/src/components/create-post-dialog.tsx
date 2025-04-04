@@ -38,7 +38,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     defaultValues: {
       type: "food",
       content: "",
-      imageUrl: null,
+      mediaUrl: null,
       points: 3,
       postDate: selectedDate
     }
@@ -106,11 +106,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       try {
         const formData = new FormData();
 
-        if ((data.type === 'food' || data.type === 'workout') && (!data.imageUrl || data.imageUrl.length === 0)) {
+        if ((data.type === 'food' || data.type === 'workout') && (!data.mediaUrl || data.mediaUrl.length === 0)) {
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
 
-        if (data.imageUrl && data.imageUrl.length > 0) {
+        if (data.mediaUrl && data.mediaUrl.length > 0) {
           try {
             if (data.type === 'memory_verse') {
               // For memory verse, we need to handle video files
@@ -124,7 +124,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               }
             } else {
               // For images, fetch the blob from the data URL
-              const blob = await fetch(data.imageUrl).then(r => r.blob());
+              const blob = await fetch(data.mediaUrl).then(r => r.blob());
               formData.append("image", blob, "image.jpeg");
             }
           } catch (error) {
@@ -167,7 +167,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         id: Date.now(), 
         type: data.type,
         content: data.content,
-        imageUrl: imagePreview,
+        mediaUrl: imagePreview,
         createdAt: data.postDate || new Date(),
         author: user,
         points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3
@@ -310,7 +310,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
             {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse") && (
               <FormField
                 control={form.control}
-                name="imageUrl"
+                name="mediaUrl"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
