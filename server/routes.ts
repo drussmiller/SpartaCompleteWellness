@@ -1710,26 +1710,37 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           if (fs.existsSync(filePath)) {
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();
-            // Check if it's a memory verse post from JSON data
-            let isMemoryVersePost = false;
-            try {
-              if (typeof postData.data === 'string') {
-                const jsonData = JSON.parse(postData.data);
-                isMemoryVersePost = jsonData.type === 'memory_verse';
-              } else if (postData.type) {
-                isMemoryVersePost = postData.type === 'memory_verse';
-              }
-            } catch (parseError) {
-              console.error("Error parsing post data type:", parseError);
-            }
             
-            // Explicitly set isVideo to true for memory_verse posts
-            const isVideo = req.file.mimetype.startsWith('video/') || 
+            // Simplified detection for memory verse posts
+            const isMemoryVersePost = postData.type === 'memory_verse';
+            
+            // For memory verse posts, make sure we treat it as a video
+            // This is especially important with the simplified UI where users might upload any file type
+            const isVideo = isMemoryVersePost || 
+                          req.file.mimetype.startsWith('video/') || 
                           originalFilename.endsWith('.mov') || 
                           originalFilename.endsWith('.mp4') ||
-                          originalFilename.endsWith('.webm') ||
-                          isMemoryVersePost || // Memory verse posts are always videos
-                          (req.body.type === 'memory_verse');
+                          originalFilename.endsWith('.webm');
+            
+            // For memory verse posts, enforce a consistent file naming pattern 
+            if (isMemoryVersePost) {
+              const fileExt = path.extname(originalFilename) || '.mp4';
+              const newPath = path.join(path.dirname(req.file.path), `memory_verse_${Date.now()}${fileExt}`);
+              
+              try {
+                // Rename the file to follow our convention
+                fs.renameSync(req.file.path, newPath);
+                req.file.path = newPath;
+                req.file.filename = path.basename(newPath);
+                console.log("Renamed memory verse file for consistency:", { 
+                  oldPath: req.file.path,
+                  newPath: newPath
+                });
+              } catch (renameErr) {
+                console.error("Error renaming memory verse file:", renameErr);
+                // Continue with original file if rename fails
+              }
+            }
             
             console.log(`Processing media file:`, {
               originalFilename: req.file.originalname,
