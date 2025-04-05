@@ -166,30 +166,30 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               if (videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
                 const videoFile = videoInputRef.current.files[0];
                 
-                // Create a new File object with a fixed name and the correct MIME type
-                const renamedFile = new File(
-                  [videoFile], 
-                  `memory_verse_${Date.now()}.${videoFile.name.split('.').pop() || 'mp4'}`,
-                  { type: videoFile.type || 'video/mp4' }
-                );
+                // Use the original file directly instead of creating a new one to avoid issues
+                formData.append("image", videoFile);
                 
-                // Append the actual video file to the form data
-                formData.append("image", renamedFile);
+                // Add a special flag indicating this is a memory verse video
+                formData.append("is_memory_verse_video", "true");
                 
-                // Add logging to verify file is being included
+                // Add detailed logging for troubleshooting
                 console.log("Uploading memory verse video file:", {
-                  originalName: videoFile.name,
-                  newName: renamedFile.name,
-                  type: renamedFile.type, 
-                  size: renamedFile.size,
-                  formDataEntries: Array.from(formData.entries()).map(entry => {
-                    const [key, value] = entry;
-                    if (key === 'image') {
-                      return [key, `File object: ${(value as File).name}, type: ${(value as File).type}`];
-                    }
-                    return [key, typeof value === 'string' ? value.substring(0, 30) + '...' : '[non-string]'];
-                  })
+                  fileName: videoFile.name,
+                  fileType: videoFile.type, 
+                  fileSize: videoFile.size,
+                  fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB"
                 });
+                
+                // Show entries in form data
+                const entries = Array.from(formData.entries()).map(entry => {
+                  const [key, value] = entry;
+                  if (value instanceof File) {
+                    return [key, `File: ${value.name} (${value.type}, ${(value.size / 1024).toFixed(2)}KB)`];
+                  }
+                  return [key, typeof value === 'string' ? value : '[non-string]'];
+                });
+                
+                console.log("Form data entries:", Object.fromEntries(entries));
               } else if (!selectedExistingVideo) {
                 console.error("Memory verse post missing video file");
                 throw new Error("No video file selected");
@@ -233,11 +233,22 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         });
 
         console.log("Sending POST request to /api/posts");
+        
         const response = await fetch("/api/posts", {
           method: "POST",
           body: formData,
           credentials: "include",
         });
+        
+        // Add more detailed logging of response
+        console.log(`Response status: ${response.status} ${response.statusText}`);
+        
+        // Log the full response headers for debugging
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+        console.log("Response headers:", responseHeaders);
 
         console.log("Server response received", { 
           status: response.status, 
@@ -257,7 +268,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         throw error;
       }
     },
-    onMutate: async (data) => {
+    onMutate: async (data: CreatePostForm) => {
       await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
       const previousPosts = queryClient.getQueryData(["/api/posts"]);
 
@@ -275,7 +286,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
       return { previousPosts };
     },
-    onSuccess: (newPost) => {
+    onSuccess: (newPost: any) => {
       // Clear all form state and close the dialog
       form.reset();
       setOpen(false);
@@ -304,7 +315,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         description: `Your ${newPost.type.replace('_', ' ')} post was created successfully.`,
       });
     },
-    onError: (error, _, context) => {
+    onError: (error: any, _: any, context: any) => {
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
       console.error("Create post mutation error:", error);
       toast({
@@ -312,7 +323,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         description: error instanceof Error ? error.message : "Failed to create post",
         variant: "destructive",
       });
-    },
+    }
   });
 
   const onSubmit = (data: CreatePostForm) => {
@@ -476,12 +487,24 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 // For video, create a preview and store the file reference
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
+                                
                                 // Important: we need to set the field value to a marker so we know to use the video file
-                                field.onChange("VIDEO_FILE_UPLOAD"); // Use consistent marker with what the server expects
-                                console.log("Video file selected:", {
+                                const marker = "VIDEO_FILE_UPLOAD";
+                                field.onChange(marker);
+                                
+                                // Log detailed information about the selected file
+                                console.log("Memory verse video file selected:", {
                                   name: file.name,
                                   type: file.type,
-                                  size: file.size
+                                  size: file.size,
+                                  sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
+                                  fieldValue: marker
+                                });
+                                
+                                // Show a success toast to confirm selection
+                                toast({
+                                  title: "Video Selected",
+                                  description: `Selected video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`,
                                 });
                               }
                             }}
