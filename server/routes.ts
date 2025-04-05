@@ -1486,6 +1486,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Update the post creation endpoint to ensure correct point assignment
+  // Get memory verse videos for the current user
+  router.get("/api/memory-verse-videos", authenticate, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Fetch memory verse posts with videos
+      const memoryVersePosts = await db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          mediaUrl: posts.mediaUrl,
+          createdAt: posts.createdAt,
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            eq(posts.type, 'memory_verse'),
+            not(isNull(posts.mediaUrl)),
+            isNull(posts.parentId) // Don't include comments
+          )
+        )
+        .orderBy(desc(posts.createdAt));
+      
+      res.json(memoryVersePosts);
+    } catch (error) {
+      logger.error("Error fetching memory verse videos:", error);
+      res.status(500).json({ message: "Error fetching memory verse videos" });
+    }
+  });
+
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     // Set content type early to prevent browser confusion
     res.set({
@@ -1590,9 +1625,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let mediaUrl = null;
       let mediaProcessed = false;
       
+      // Check if we're using an existing memory verse video
+      if (postData.type === 'memory_verse' && req.body.existing_video_id) {
+        try {
+          const existingVideoId = parseInt(req.body.existing_video_id);
+          
+          // Get the existing post to find its media URL
+          const [existingPost] = await db
+            .select({
+              mediaUrl: posts.mediaUrl
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.id, existingVideoId),
+                eq(posts.userId, req.user.id),
+                eq(posts.type, 'memory_verse')
+              )
+            );
+          
+          if (existingPost && existingPost.mediaUrl) {
+            mediaUrl = existingPost.mediaUrl;
+            logger.info(`Re-using existing memory verse video from post ${existingVideoId}`, { mediaUrl });
+          } else {
+            logger.error(`Could not find existing memory verse video with ID ${existingVideoId}`);
+            return res.status(404).json({ message: "The selected memory verse video could not be found" });
+          }
+        } catch (error) {
+          logger.error("Error processing existing video reference:", error);
+          return res.status(500).json({ message: "Error processing the selected memory verse video" });
+        }
+      }
       // Scripture posts shouldn't have images/videos
       // Miscellaneous posts may or may not have images/videos
-      if (postData.type === 'scripture') {
+      else if (postData.type === 'scripture') {
         logger.info('Scripture post created with no media');
         mediaUrl = null;
       } else if (req.file) {
