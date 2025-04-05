@@ -1834,9 +1834,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          // Don't use any fallback image
-          mediaUrl = null;
-          logger.info(`Error with uploaded file for post type: ${postData.type}`);
+          
+          // Detailed error handling based on post type
+          if (postData.type === 'memory_verse') {
+            logger.error(`Memory verse video upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
+            
+            // For memory verse, video is required, so return an error response
+            return res.status(400).json({ 
+              message: "Failed to process memory verse video. Please try again with a different video file.",
+              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing video'
+            });
+          } else if (postData.type === 'food' || postData.type === 'workout') {
+            logger.error(`${postData.type} image upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
+            
+            // For food and workout posts, images are required
+            return res.status(400).json({ 
+              message: `Failed to process ${postData.type} image. Please try again with a different image.`,
+              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing image'
+            });
+          } else {
+            // For other post types, we can continue without media
+            mediaUrl = null;
+            logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
+          }
         }
       } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
         // For miscellaneous posts, media is optional

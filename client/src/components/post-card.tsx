@@ -304,6 +304,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   playsInline
                   muted={false}
                   autoPlay={false}
+                  controlsList="nodownload"
+                  disablePictureInPicture={false}
                   onError={(e) => {
                     console.error("Failed to load memory verse video:", post.mediaUrl);
                     const videoEl = e.target as HTMLVideoElement;

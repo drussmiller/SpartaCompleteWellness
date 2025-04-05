@@ -135,6 +135,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
 
+        // Add explicit validation for memory verse posts
+        if (data.type === 'memory_verse' && (!data.mediaUrl || (data.mediaUrl.length === 0 && !data.mediaUrl.startsWith('EXISTING_VIDEO:')))) {
+          console.error('Memory verse post missing required video');
+          throw new Error('Memory verse posts require a video file');
+        }
+
         // Handle case where an existing memory verse video was selected
         if (data.type === 'memory_verse' && data.mediaUrl && data.mediaUrl.startsWith('EXISTING_VIDEO:')) {
           // Extract the existing video ID
@@ -270,16 +276,33 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       return { previousPosts };
     },
     onSuccess: (newPost) => {
+      // Clear all form state and close the dialog
       form.reset();
       setOpen(false);
       setImagePreview(null);
+      
+      // Clear any file inputs
+      if (videoInputRef.current) {
+        videoInputRef.current.value = "";
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
+      // Update the post data in the cache
       queryClient.setQueryData(["/api/posts"], (old: any[] = []) => {
         return old.map(post => post.id === Date.now() ? newPost : post);
       });
 
+      // Invalidate related queries to refresh counts and stats
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+      
+      // Display success toast
+      toast({
+        title: "Post Created",
+        description: `Your ${newPost.type.replace('_', ' ')} post was created successfully.`,
+      });
     },
     onError: (error, _, context) => {
       queryClient.setQueryData(["/api/posts"], context?.previousPosts);
