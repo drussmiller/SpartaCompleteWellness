@@ -1598,8 +1598,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
             
+            // Verify the stored file exists in the uploads directory
+            const storedFilePath = path.join(process.cwd(), '..', fileInfo.url);
+            if (!fs.existsSync(storedFilePath)) {
+              logger.error(`Stored file not found at expected path: ${storedFilePath}. Original stored at ${fileInfo.path}`);
+              
+              // Copy the file to the correct location if it exists at the incorrect location
+              if (fs.existsSync(fileInfo.path)) {
+                const newDir = path.dirname(storedFilePath);
+                if (!fs.existsSync(newDir)) {
+                  fs.mkdirSync(newDir, { recursive: true });
+                }
+                fs.copyFileSync(fileInfo.path, storedFilePath);
+                logger.info(`Copied file from ${fileInfo.path} to correct location ${storedFilePath}`);
+              }
+            }
+            
             if (isVideo) {
               logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+              logger.info(`Video URL: ${mediaUrl}, should be available at: ${storedFilePath}`);
             } else {
               logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
               logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
