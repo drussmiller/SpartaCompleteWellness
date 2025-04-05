@@ -1711,8 +1711,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();
             
-            // Simplified detection for memory verse posts
-            const isMemoryVersePost = postData.type === 'memory_verse';
+            // Improved detection for memory verse posts
+            const isMemoryVersePost = postData.type === 'memory_verse' || req.body.is_memory_verse_video === 'true';
+            
+            console.log("Memory verse detection:", {
+              typeFromData: postData.type === 'memory_verse',
+              explicitFlag: req.body.is_memory_verse_video === 'true',
+              isMemoryVersePost
+            });
             
             // For memory verse posts, make sure we treat it as a video
             // This is especially important with the simplified UI where users might upload any file type
@@ -1746,7 +1752,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               originalFilename: req.file.originalname,
               mimetype: req.file.mimetype,
               isVideo: isVideo,
-              isMemoryVerse: req.body.type === 'memory_verse',
+              isMemoryVerse: isMemoryVersePost,
+              isMemoryVerseFromType: postData.type === 'memory_verse',
+              isMemoryVerseFromFlag: req.body.is_memory_verse_video === 'true',
               fileSize: req.file.size,
               path: req.file.path,
               postType: req.body.type || 'unknown'
