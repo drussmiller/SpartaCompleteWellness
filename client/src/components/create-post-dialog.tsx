@@ -406,121 +406,31 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch("type") === "memory_verse" ? "Video Recording or Upload" : "Image"}
+                      {form.watch("type") === "memory_verse" ? "Video" : "Image"}
                     </FormLabel>
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
                         <div className="space-y-4">
-                          <div className="grid grid-cols-3 gap-2">
-                            {/* Option to select from library */}
-                            {existingMemoryVerseVideos && existingMemoryVerseVideos.length > 0 && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  // Toggle displaying the library videos dropdown
-                                  const libraryElement = document.getElementById('memory-verse-library');
-                                  if (libraryElement) {
-                                    libraryElement.classList.toggle('hidden');
-                                  }
-                                }}
-                              >
-                                <div className="flex flex-col items-center justify-center text-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-library">
-                                    <path d="m16 6 4 14"></path>
-                                    <path d="M12 6v14"></path>
-                                    <path d="M8 8v12"></path>
-                                    <path d="M4 4v16"></path>
-                                  </svg>
-                                  <span className="text-xs mt-1">Library</span>
-                                </div>
-                              </Button>
-                            )}
-                            
-                            {/* Option to use camera */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                if (videoInputRef.current) {
-                                  videoInputRef.current.setAttribute('capture', 'user');
-                                  videoInputRef.current.click();
-                                }
-                              }}
-                            >
-                              <div className="flex flex-col items-center justify-center text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-video">
-                                  <path d="m22 8-6 4 6 4V8Z"></path>
-                                  <rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect>
-                                </svg>
-                                <span className="text-xs mt-1">Camera</span>
-                              </div>
-                            </Button>
-                            
-                            {/* Option to select file */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                if (videoInputRef.current) {
-                                  videoInputRef.current.removeAttribute('capture');
-                                  videoInputRef.current.click();
-                                }
-                              }}
-                            >
-                              <div className="flex flex-col items-center justify-center text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-video">
-                                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                                  <polyline points="14 2 14 8 20 8"></polyline>
-                                  <path d="m10 11 5 3-5 3v-6Z"></path>
-                                </svg>
-                                <span className="text-xs mt-1">File</span>
-                              </div>
-                            </Button>
-                          </div>
-                          
-                          {/* Library dropdown (hidden by default) */}
-                          {existingMemoryVerseVideos && existingMemoryVerseVideos.length > 0 && (
-                            <div id="memory-verse-library" className="space-y-2 hidden mt-2">
-                              <FormLabel>Select from your previous memory verse videos:</FormLabel>
-                              <Select 
-                                onValueChange={(value) => {
-                                  // Clear file input if user selects an existing video
-                                  if (videoInputRef.current) {
-                                    videoInputRef.current.value = '';
-                                  }
-                                  
-                                  // Find the selected video from the list
-                                  const selectedVideo = existingMemoryVerseVideos.find(v => v.id.toString() === value);
-                                  if (selectedVideo) {
-                                    setSelectedExistingVideo(selectedVideo.mediaUrl);
-                                    setImagePreview(selectedVideo.mediaUrl);
-                                    
-                                    // Set an identifier for the existing video
-                                    field.onChange(`EXISTING_VIDEO:${selectedVideo.id}`);
-                                    
-                                    console.log("Selected existing video:", {
-                                      id: selectedVideo.id,
-                                      url: selectedVideo.mediaUrl,
-                                      content: selectedVideo.content
-                                    });
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select a previous video" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {existingMemoryVerseVideos.map((video) => (
-                                    <SelectItem key={video.id} value={video.id.toString()}>
-                                      {new Date(video.createdAt).toLocaleDateString()} - {video.content.substring(0, 20)}
-                                      {video.content.length > 20 ? '...' : ''}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                          {/* Simplified upload button for memory verse */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full py-8"
+                            onClick={() => {
+                              if (videoInputRef.current) {
+                                videoInputRef.current.click();
+                              }
+                            }}
+                          >
+                            <div className="flex flex-col items-center justify-center text-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-video mb-2">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <path d="m10 11 5 3-5 3v-6Z"></path>
+                              </svg>
+                              <span className="text-sm">Click to upload video</span>
                             </div>
-                          )}
+                          </Button>
                           
                           {/* Hidden video input file */}
                           <Input
@@ -539,9 +449,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   });
                                   return;
                                 }
-                                
-                                // Clear any selected existing video
-                                setSelectedExistingVideo(null);
 
                                 // For video, create a preview and store the file reference
                                 const videoUrl = URL.createObjectURL(file);
