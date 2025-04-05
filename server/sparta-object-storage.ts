@@ -21,13 +21,21 @@ export class SpartaObjectStorage {
    * @param allowedTypes Array of allowed mime types
    */
   constructor(
-    baseDir: string = path.join(process.cwd(), '..', 'uploads'),
-    thumbnailDir: string = path.join(process.cwd(), '..', 'uploads', 'thumbnails'),
+    baseDir: string = path.join(process.cwd(), 'uploads'),
+    thumbnailDir: string = path.join(process.cwd(), 'uploads', 'thumbnails'),
     allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'application/octet-stream'] // Added more video types and octet-stream
   ) {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
+
+    console.log("SpartaObjectStorage initialized with paths:", {
+      baseDir: this.baseDir,
+      thumbnailDir: this.thumbnailDir,
+      cwd: process.cwd(),
+      absoluteBaseDir: path.resolve(this.baseDir),
+      absoluteThumbnailDir: path.resolve(this.thumbnailDir)
+    });
 
     // Ensure directories exist
     this.ensureDirectories();
