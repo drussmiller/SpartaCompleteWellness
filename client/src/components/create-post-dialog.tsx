@@ -27,6 +27,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
@@ -291,6 +292,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       form.reset();
       setOpen(false);
       setImagePreview(null);
+      setVideoThumbnail(null);
       
       // Clear any file inputs
       if (videoInputRef.current) {
@@ -337,6 +339,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       if (!isOpen) {
         form.reset();
         setImagePreview(null);
+        setVideoThumbnail(null);
       }
     }}>
       <DialogTrigger asChild>
@@ -488,6 +491,14 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
                                 
+                                // Generate a thumbnail for the video
+                                generateVideoThumbnail(file).then(thumbnailUrl => {
+                                  if (thumbnailUrl) {
+                                    setVideoThumbnail(thumbnailUrl);
+                                    console.log("Generated video thumbnail");
+                                  }
+                                });
+                                
                                 // Important: we need to set the field value to a marker so we know to use the video file
                                 const marker = "VIDEO_FILE_UPLOAD";
                                 field.onChange(marker);
@@ -561,16 +572,28 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       {imagePreview && (
                         <div className="mt-2">
                           {form.watch("type") === "memory_verse" && imagePreview && (
-                            <video 
-                              src={imagePreview} 
-                              controls
-                              controlsList="nodownload"
-                              className="w-full max-h-60 rounded-md object-contain bg-black"
-                              preload="metadata"
-                              muted={false}
-                              playsInline
-                              autoPlay={false}
-                            />
+                            <>
+                              <video 
+                                src={imagePreview} 
+                                controls
+                                controlsList="nodownload"
+                                className="w-full max-h-60 rounded-md object-contain bg-black"
+                                preload="metadata"
+                                muted={false}
+                                playsInline
+                                autoPlay={false}
+                              />
+                              {videoThumbnail && (
+                                <div className="mt-2">
+                                  <p className="text-sm font-medium mb-1">Video Thumbnail:</p>
+                                  <img 
+                                    src={videoThumbnail}
+                                    alt="Video Thumbnail"
+                                    className="max-h-40 rounded-md border border-gray-300"
+                                  />
+                                </div>
+                              )}
+                            </>
                           )}
                           {form.watch("type") !== "memory_verse" && imagePreview && (
                             <img
@@ -586,6 +609,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             className="mt-2"
                             onClick={() => {
                               setImagePreview(null);
+                              setVideoThumbnail(null);
                               field.onChange(null);
                             }}
                           >
@@ -638,6 +662,74 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       </DialogContent>
     </Dialog>
   );
+}
+
+// Generate a thumbnail from a video file
+async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      // Create a video element
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      
+      // Create a URL for the video file
+      const videoUrl = URL.createObjectURL(videoFile);
+      video.src = videoUrl;
+      
+      // When video metadata is loaded, seek to the middle point
+      video.onloadedmetadata = () => {
+        // Set the current time to 1 second or the middle of the video (whichever is less)
+        video.currentTime = Math.min(1, video.duration / 2);
+      };
+      
+      // When seeking completes, capture the thumbnail
+      video.onseeked = () => {
+        try {
+          // Create a canvas with video dimensions
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          
+          // Draw the current frame to the canvas
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert canvas to data URL
+            const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // Clean up
+            URL.revokeObjectURL(videoUrl);
+            
+            // Return the thumbnail
+            resolve(thumbnailUrl);
+          } else {
+            console.error('Failed to get canvas context');
+            resolve(null);
+          }
+        } catch (error) {
+          console.error('Error generating thumbnail:', error);
+          resolve(null);
+        }
+      };
+      
+      // Handle errors
+      video.onerror = () => {
+        console.error('Error loading video for thumbnail');
+        URL.revokeObjectURL(videoUrl);
+        resolve(null);
+      };
+      
+      // Start loading the video
+      video.load();
+      
+    } catch (error) {
+      console.error('Error generating thumbnail:', error);
+      resolve(null);
+    }
+  });
 }
 
 async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<string> {
