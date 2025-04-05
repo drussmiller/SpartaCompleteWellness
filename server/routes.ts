@@ -1841,6 +1841,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
         // For miscellaneous posts, media is optional
         // For scripture posts, no media
+        // Memory verse posts REQUIRE a video
+        if (postData.type === 'memory_verse') {
+          logger.error(`Memory verse post requires a video but none was uploaded`);
+          return res.status(400).json({ message: "Memory verse posts require a video file." });
+        }
         // For other posts, we previously would use fallbacks, but now we leave them blank
         mediaUrl = null;
         logger.info(`No media uploaded for ${postData.type} post`);

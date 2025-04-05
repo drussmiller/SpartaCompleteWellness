@@ -454,7 +454,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
                                 // Important: we need to set the field value to a marker so we know to use the video file
-                                field.onChange("VIDEO_UPLOAD_MARKER"); // Use a marker instead of the blob URL
+                                field.onChange("VIDEO_FILE_UPLOAD"); // Use consistent marker with what the server expects
                                 console.log("Video file selected:", {
                                   name: file.name,
                                   type: file.type,
@@ -521,6 +521,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               controlsList="nodownload"
                               className="w-full max-h-60 rounded-md object-contain bg-black"
                               preload="metadata"
+                              muted={false}
+                              playsInline
+                              autoPlay={false}
                             />
                           )}
                           {form.watch("type") !== "memory_verse" && imagePreview && (
