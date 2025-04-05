@@ -1,12 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, CalendarIcon, Loader2 } from "lucide-react";
+import { Plus, CalendarIcon, Loader2, Video } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema } from "@shared/schema";
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
@@ -30,8 +31,17 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null); // Added video input ref
+  const videoInputRef = useRef<HTMLInputElement>(null); 
   const queryClient = useQueryClient();
+  const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
+  
+  // Define the type for memory verse video objects
+  type MemoryVerseVideo = {
+    id: number;
+    content: string;
+    mediaUrl: string;
+    createdAt: string;
+  };
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -42,6 +52,19 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       points: 3,
       postDate: selectedDate
     }
+  });
+  
+  // Fetch existing memory verse videos for reuse
+  const { data: existingMemoryVerseVideos, isLoading: loadingVideos } = useQuery<MemoryVerseVideo[]>({
+    queryKey: ['/api/memory-verse-videos'],
+    queryFn: async () => {
+      const response = await fetch('/api/memory-verse-videos');
+      if (!response.ok) {
+        throw new Error('Failed to fetch memory verse videos');
+      }
+      return response.json();
+    },
+    enabled: open && form.watch("type") === "memory_verse" // Only fetch when dialog is open and type is memory_verse
   });
 
   function getRemainingMessage(type: string) {
@@ -112,7 +135,19 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
 
-        if (data.mediaUrl && data.mediaUrl.length > 0) {
+        // Handle case where an existing memory verse video was selected
+        if (data.type === 'memory_verse' && data.mediaUrl && data.mediaUrl.startsWith('EXISTING_VIDEO:')) {
+          // Extract the existing video ID
+          const existingVideoId = data.mediaUrl.replace('EXISTING_VIDEO:', '');
+          console.log("Using existing memory verse video:", { id: existingVideoId });
+          
+          // Include a special field in the post data to indicate we're using an existing video
+          formData.append("existing_video_id", existingVideoId);
+          
+          // We don't need to append any image/video file since we're using an existing one
+        } 
+        // Handle regular media uploads
+        else if (data.mediaUrl && data.mediaUrl.length > 0) {
           console.log("Media URL found, preparing to upload", { 
             type: data.type,
             mediaUrlLength: data.mediaUrl.length,
@@ -149,7 +184,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                     return [key, typeof value === 'string' ? value.substring(0, 30) + '...' : '[non-string]'];
                   })
                 });
-              } else {
+              } else if (!selectedExistingVideo) {
                 console.error("Memory verse post missing video file");
                 throw new Error("No video file selected");
               }
@@ -376,19 +411,66 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
                         <div className="space-y-4">
+                          {/* Option to record a new video */}
                           <Button
                             type="button"
                             onClick={() => videoInputRef.current?.click()}
                             variant="outline"
                             className="w-full"
                           >
-                            Select Video
+                            Record/Upload New Video
                           </Button>
+                          
+                          {/* Option to select from existing videos */}
+                          {existingMemoryVerseVideos && existingMemoryVerseVideos.length > 0 && (
+                            <div className="space-y-2">
+                              <FormLabel>Or select from your existing videos:</FormLabel>
+                              <Select 
+                                onValueChange={(value) => {
+                                  // Clear file input if user selects an existing video
+                                  if (videoInputRef.current) {
+                                    videoInputRef.current.value = '';
+                                  }
+                                  
+                                  // Find the selected video from the list
+                                  const selectedVideo = existingMemoryVerseVideos.find(v => v.id.toString() === value);
+                                  if (selectedVideo) {
+                                    setSelectedExistingVideo(selectedVideo.mediaUrl);
+                                    setImagePreview(selectedVideo.mediaUrl);
+                                    
+                                    // Set an identifier for the existing video
+                                    field.onChange(`EXISTING_VIDEO:${selectedVideo.id}`);
+                                    
+                                    console.log("Selected existing video:", {
+                                      id: selectedVideo.id,
+                                      url: selectedVideo.mediaUrl,
+                                      content: selectedVideo.content
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select a previous video" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {existingMemoryVerseVideos.map((video) => (
+                                    <SelectItem key={video.id} value={video.id.toString()}>
+                                      {new Date(video.createdAt).toLocaleDateString()} - {video.content.substring(0, 20)}
+                                      {video.content.length > 20 ? '...' : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          
+                          {/* Hidden video input file */}
                           <Input
                             type="file"
                             accept="video/*"
                             ref={videoInputRef}
                             capture="user"
+                            className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
@@ -400,6 +482,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   });
                                   return;
                                 }
+                                
+                                // Clear any selected existing video
+                                setSelectedExistingVideo(null);
 
                                 // For video, create a preview and store the file reference
                                 const videoUrl = URL.createObjectURL(file);
@@ -413,7 +498,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 });
                               }
                             }}
-                            className="hidden"
                           />
                         </div>
                       )}
