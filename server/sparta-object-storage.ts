@@ -91,9 +91,16 @@ export class SpartaObjectStorage {
       // Check if it's a video based on file extension or explicitly marked as video
       const isVideoByExtension = videoExtensions.includes(fileExt);
       
+      // Force isVideo true if filename includes memory_verse (helps with type detection)
+      const isMemoryVerse = originalFilename.toLowerCase().includes('memory_verse');
+      if (isMemoryVerse) {
+        isVideo = true;
+        console.log("Detected memory verse video by filename:", originalFilename);
+      }
+      
       // Either the mime type is in the allowed list OR it's a video file by extension/flag
       const isAllowed = this.allowedTypes.includes(mimeType) || 
-                        (isVideo && (mimeType.startsWith('video/') || isVideoByExtension));
+                        (isVideo && (mimeType.startsWith('video/') || isVideoByExtension || isMemoryVerse));
       
       console.log("File validation check:", {
         mimeType,
@@ -192,8 +199,24 @@ export class SpartaObjectStorage {
             fileExists: fs.existsSync(filePath),
             fileSize: fs.existsSync(filePath) ? fs.statSync(filePath).size : 'file not found',
             mimeType: mimeType,
-            isVideo: isVideo
+            isVideo: isVideo,
+            isMemoryVerse: originalFilename.toLowerCase().includes('memory_verse')
           });
+          
+          // For memory verse videos, ensure we preserve the file exactly as is
+          if (originalFilename.toLowerCase().includes('memory_verse')) {
+            console.log("Memory verse video detected, ensuring direct file copy");
+            // Just ensure the file exists in the correct uploads folder
+            const uploadsFilePath = path.join(this.baseDir, safeFilename);
+            if (filePath !== uploadsFilePath && fs.existsSync(filePath)) {
+              try {
+                fs.copyFileSync(filePath, uploadsFilePath);
+                console.log(`Copied memory verse video to proper location: ${uploadsFilePath}`);
+              } catch (copyError) {
+                console.error("Error copying memory verse video:", copyError);
+              }
+            }
+          }
           
           try {
             await this.createVideoThumbnail(filePath, thumbnailPath);
