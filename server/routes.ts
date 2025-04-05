@@ -868,6 +868,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  // Endpoint to repair memory verse videos
+  router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
+    try {
+      // Only allow admin users to run this operation
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ message: "Unauthorized: Admin access required" });
+      }
+
+      logger.info(`Memory verse video repair process initiated by user ${req.user.id}`);
+      
+      // Import the memory verse repair script
+      const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
+      
+      // Run the repair process asynchronously
+      res.json({ 
+        message: "Memory verse repair process started",
+        status: "running",
+        startedAt: new Date().toISOString()
+      });
+      
+      // Execute the repair after sending the response
+      repairMemoryVerseVideos().then(() => {
+        logger.info('Memory verse repair process completed successfully');
+      }).catch(err => {
+        logger.error('Error in memory verse repair process:', err);
+      });
+    } catch (error) {
+      logger.error('Error initiating memory verse repair:', error);
+      res.status(500).json({
+        message: "Failed to initiate memory verse repair",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Public route to check if a post exists and is accessible
   router.get("/api/check-post/:id", async (req, res) => {
     try {
@@ -1570,6 +1605,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           if (fs.existsSync(filePath)) {
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();
+            // Explicitly set isVideo to true for memory_verse posts
             const isVideo = req.file.mimetype.startsWith('video/') || 
                           originalFilename.endsWith('.mov') || 
                           originalFilename.endsWith('.mp4') ||
@@ -1580,6 +1616,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               originalFilename: req.file.originalname,
               mimetype: req.file.mimetype,
               isVideo: isVideo,
+              isMemoryVerse: req.body.type === 'memory_verse',
               fileSize: req.file.size,
               path: req.file.path,
               postType: req.body.type || 'unknown'
@@ -1600,17 +1637,47 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             
             // Verify the stored file exists in the uploads directory
             const storedFilePath = path.join(process.cwd(), '..', fileInfo.url);
-            if (!fs.existsSync(storedFilePath)) {
+            let fileExists = fs.existsSync(storedFilePath);
+            
+            if (!fileExists) {
               logger.error(`Stored file not found at expected path: ${storedFilePath}. Original stored at ${fileInfo.path}`);
               
-              // Copy the file to the correct location if it exists at the incorrect location
-              if (fs.existsSync(fileInfo.path)) {
+              // Try to find the file in different paths
+              const alternativePaths = [
+                fileInfo.path,
+                path.join(process.cwd(), 'uploads', path.basename(fileInfo.url)),
+                path.join(process.cwd(), fileInfo.url),
+                path.join(process.cwd(), '..' + fileInfo.url),
+                path.join(process.cwd(), '..', 'uploads', path.basename(fileInfo.url))
+              ];
+              
+              let sourceFile = null;
+              
+              // Check each alternative path
+              for (const altPath of alternativePaths) {
+                if (fs.existsSync(altPath)) {
+                  logger.info(`Found file at alternative path: ${altPath}`);
+                  sourceFile = altPath;
+                  break;
+                }
+              }
+              
+              // Copy file to correct location if found
+              if (sourceFile) {
                 const newDir = path.dirname(storedFilePath);
                 if (!fs.existsSync(newDir)) {
                   fs.mkdirSync(newDir, { recursive: true });
                 }
-                fs.copyFileSync(fileInfo.path, storedFilePath);
-                logger.info(`Copied file from ${fileInfo.path} to correct location ${storedFilePath}`);
+                
+                try {
+                  fs.copyFileSync(sourceFile, storedFilePath);
+                  logger.info(`Copied file from ${sourceFile} to correct location ${storedFilePath}`);
+                  fileExists = true;
+                } catch (copyErr) {
+                  logger.error(`Failed to copy file: ${copyErr instanceof Error ? copyErr.message : 'Unknown error'}`);
+                }
+              } else {
+                logger.error(`Could not find file in any alternative locations`);
               }
             }
             
