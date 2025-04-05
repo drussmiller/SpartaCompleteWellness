@@ -12,20 +12,31 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     return originalUrl;
   }
   
-  // Handle video files - return original URL for videos since we don't show thumbnails
-  // This list matches common video extensions processed in our backend
-  const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
-  const isVideo = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext));
-  if (isVideo) {
-    return originalUrl;
-  }
-  
   // Handle regular images that need thumbnailing
   if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';
     
-    // If we're requesting a small thumbnail, return the thumbnail URL
-    // For other sizes, return the original to reduce likelihood of 404s
+    // Check if this is a memory verse video (special handling)
+    const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+    
+    // Handle video files differently
+    const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+    const isVideo = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext)) || isMemoryVerse;
+    
+    // For videos, we need to check both with and without thumb- prefix
+    if (isVideo) {
+      // For memory verse videos in particular, always try to get the thumbnail
+      if (isMemoryVerse && size === 'small') {
+        // Try with thumb- prefix first
+        const thumbFilename = `thumb-${filename}`;
+        return `/uploads/thumbnails/${thumbFilename}`;
+      } else {
+        // For other video sizes, just return the original URL
+        return originalUrl;
+      }
+    }
+    
+    // For regular images
     if (size === 'small') {
       // Check if this is an older image (before April 2025) or a newer one
       // Older image format: 1742695590858-649008714-image.jpeg (uses timestamp-random-name format)
