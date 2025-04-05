@@ -13,6 +13,63 @@ import { eq, and } from 'drizzle-orm';
 import { logger } from './logger';
 
 /**
+ * Helper function to find possible file paths for a video file
+ * This tries common patterns and naming conventions used in the app
+ * @param filename The original filename to check
+ * @returns Array of possible file paths
+ */
+function findPossibleVideoFilePaths(filename: string): string[] {
+  // Get current working directory
+  const cwd = process.cwd();
+  const parentDir = path.join(cwd, '..');
+  const uploadsDir = path.join(cwd, 'uploads');
+  const parentUploadsDir = path.join(parentDir, 'uploads');
+  
+  // Common directories to check
+  const directories = [
+    uploadsDir,
+    parentUploadsDir,
+    path.join(uploadsDir, 'videos'),
+    path.join(parentUploadsDir, 'videos'),
+    path.join(uploadsDir, 'memory_verse'),
+    path.join(parentUploadsDir, 'memory_verse'),
+    path.join(uploadsDir, 'temp'),
+    path.join(parentUploadsDir, 'temp')
+  ];
+  
+  // Create additional name variations to try
+  // For example: if the filename is '123-abc.mp4', try 'memory_verse_123-abc.mp4'
+  const nameVariations = [
+    filename,
+    `memory_verse_${filename}`,
+    `memory-verse-${filename}`,
+    `memory_verse/${filename}`,
+    `memory-verse/${filename}`,
+    `mv_${filename}`,
+    filename.replace(/[0-9]+-[a-z0-9]+/, match => `memory_verse_${match}`)
+  ];
+  
+  // Generate all combinations of directories and filenames
+  const possiblePaths: string[] = [];
+  
+  for (const dir of directories) {
+    for (const name of nameVariations) {
+      possiblePaths.push(path.join(dir, name));
+    }
+  }
+  
+  // Check uploads directory at root and common subdirectories
+  const rootUploads = path.join('/', 'uploads');
+  if (fs.existsSync(rootUploads)) {
+    possiblePaths.push(path.join(rootUploads, filename));
+    possiblePaths.push(path.join(rootUploads, 'videos', filename));
+    possiblePaths.push(path.join(rootUploads, 'memory_verse', filename));
+  }
+  
+  return possiblePaths;
+}
+
+/**
  * Locates and fixes memory verse video files
  * 1. Finds all memory verse posts in the database
  * 2. Checks if their video files exist at the expected path
@@ -82,7 +139,12 @@ export async function repairMemoryVerseVideos(): Promise<void> {
           path.join(process.cwd(), '..', 'uploads', filename),
           // Check temp upload directory (where multer puts files initially)
           path.join(process.cwd(), '..', 'uploads', 'temp', filename),
+          // Check with different variations of the post URL pattern
+          ...findPossibleVideoFilePaths(filename),
         ];
+        
+        // Log all paths we're checking
+        logger.info(`Checking alternative paths for memory verse video (${alternativePaths.length} paths)`);
         
         // Find the file in alternative locations
         let sourceFile = null;
@@ -115,12 +177,8 @@ export async function repairMemoryVerseVideos(): Promise<void> {
       }
     }
     
-    logger.info('Memory verse video repair complete', {
-      total: postsWithMedia.length,
-      fixed,
-      notFound,
-      alreadyCorrect
-    });
+    // Log repair statistics
+    logger.info(`Memory verse video repair complete: ${postsWithMedia.length} total, ${fixed} fixed, ${notFound} not found, ${alreadyCorrect} already correct`);
     
     return;
   } catch (error) {
