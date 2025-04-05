@@ -12,6 +12,14 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     return originalUrl;
   }
   
+  // Handle video files - return original URL for videos since we don't show thumbnails
+  // This list matches common video extensions processed in our backend
+  const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+  const isVideo = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext));
+  if (isVideo) {
+    return originalUrl;
+  }
+  
   // Handle regular images that need thumbnailing
   if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';

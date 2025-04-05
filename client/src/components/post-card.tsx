@@ -302,6 +302,36 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   preload="metadata"
                   className="w-full h-full object-contain"
                   playsInline
+                  onError={(e) => {
+                    console.error("Failed to load memory verse video:", post.mediaUrl);
+                    const videoEl = e.target as HTMLVideoElement;
+                    // Try alternative URLs in case the path is wrong
+                    const filename = post.mediaUrl?.split('/').pop();
+                    if (filename) {
+                      // Try different path combinations
+                      const alternativeUrls = [
+                        `/uploads/${filename}`,
+                        `/uploads/videos/${filename}`,
+                      ];
+                      
+                      // Log the attempts for debugging
+                      console.log("Trying alternative URLs for memory verse video:", alternativeUrls);
+                      
+                      // Try each alternative URL
+                      const tryNextUrl = (index: number) => {
+                        if (index < alternativeUrls.length) {
+                          videoEl.src = alternativeUrls[index];
+                          videoEl.onerror = () => {
+                            console.error(`Alternative URL failed: ${alternativeUrls[index]}`);
+                            tryNextUrl(index + 1);
+                          };
+                          videoEl.load();
+                        }
+                      };
+                      
+                      tryNextUrl(0);
+                    }
+                  }}
                 />
               </div>
             ) : (
