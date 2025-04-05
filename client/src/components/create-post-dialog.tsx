@@ -124,12 +124,23 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               // For memory verse, we need to handle video files
               if (videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
                 const videoFile = videoInputRef.current.files[0];
+                
+                // Create a new File object with a fixed name and the correct MIME type
+                const renamedFile = new File(
+                  [videoFile], 
+                  `memory_verse_${Date.now()}.${videoFile.name.split('.').pop() || 'mp4'}`,
+                  { type: videoFile.type || 'video/mp4' }
+                );
+                
                 // Append the actual video file to the form data
-                formData.append("image", videoFile, videoFile.name);
+                formData.append("image", renamedFile);
+                
+                // Add logging to verify file is being included
                 console.log("Uploading memory verse video file:", {
-                  name: videoFile.name, 
-                  type: videoFile.type, 
-                  size: videoFile.size,
+                  originalName: videoFile.name,
+                  newName: renamedFile.name,
+                  type: renamedFile.type, 
+                  size: renamedFile.size,
                   formDataEntries: Array.from(formData.entries()).map(entry => {
                     const [key, value] = entry;
                     if (key === 'image') {
@@ -390,12 +401,16 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   return;
                                 }
 
-                                // For video, create a preview and store the file
+                                // For video, create a preview and store the file reference
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
-                                field.onChange(videoUrl);
-                                // Don't create a separate FormData here - 
-                                // we'll handle the file in the main submission
+                                // Important: we need to set the field value to a marker so we know to use the video file
+                                field.onChange("VIDEO_UPLOAD_MARKER"); // Use a marker instead of the blob URL
+                                console.log("Video file selected:", {
+                                  name: file.name,
+                                  type: file.type,
+                                  size: file.size
+                                });
                               }
                             }}
                             className="hidden"

@@ -1605,12 +1605,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           if (fs.existsSync(filePath)) {
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();
+            // Check if it's a memory verse post from JSON data
+            let isMemoryVersePost = false;
+            try {
+              if (typeof postData.data === 'string') {
+                const jsonData = JSON.parse(postData.data);
+                isMemoryVersePost = jsonData.type === 'memory_verse';
+              } else if (postData.type) {
+                isMemoryVersePost = postData.type === 'memory_verse';
+              }
+            } catch (parseError) {
+              console.error("Error parsing post data type:", parseError);
+            }
+            
             // Explicitly set isVideo to true for memory_verse posts
             const isVideo = req.file.mimetype.startsWith('video/') || 
                           originalFilename.endsWith('.mov') || 
                           originalFilename.endsWith('.mp4') ||
                           originalFilename.endsWith('.webm') ||
-                          (req.body.type === 'memory_verse'); // Memory verse posts are always videos
+                          isMemoryVersePost || // Memory verse posts are always videos
+                          (req.body.type === 'memory_verse');
             
             console.log(`Processing media file:`, {
               originalFilename: req.file.originalname,
