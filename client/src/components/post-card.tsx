@@ -317,6 +317,35 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       // Log the attempts for debugging
                       console.log("Trying alternative URLs for memory verse video:", alternativeUrls);
                       
+                      // Try to fix the thumbnail in the background when video fails to load
+                      // This helps ensure future video display is better
+                      const fixThumbnails = async () => {
+                        try {
+                          console.log("Triggering memory verse thumbnail fix");
+                          
+                          // Create a fetch request to the fix-thumbnails endpoint
+                          // This will execute thumbnail repair in the background
+                          const response = await fetch('/api/memory-verse/fix-thumbnails', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            credentials: 'include',
+                          });
+                          
+                          if (response.ok) {
+                            console.log("Memory verse thumbnail fix initiated");
+                          } else {
+                            console.error("Failed to initiate memory verse thumbnail fix:", await response.text());
+                          }
+                        } catch (error) {
+                          console.error("Error requesting memory verse thumbnail fix:", error);
+                        }
+                      };
+                      
+                      // Start the fix in the background without waiting for it
+                      fixThumbnails();
+                      
                       // Try each alternative URL
                       const tryNextUrl = (index: number) => {
                         if (index < alternativeUrls.length) {

@@ -224,9 +224,14 @@ export class SpartaObjectStorage {
                 console.error("Error copying memory verse video:", copyError);
               }
             }
+            
+            // For memory verse videos, we need to ensure the thumbnail exists
+            // with the proper naming convention and in the proper location
+            console.log(`Ensuring memory verse thumbnail exists with proper naming`);
           }
           
           try {
+            // Create memory verse video thumbnail
             await this.createVideoThumbnail(filePath, thumbnailPath);
             thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
             console.log(`Video thumbnail created at ${thumbnailPath}`);
@@ -235,6 +240,29 @@ export class SpartaObjectStorage {
             // Double-check the thumbnail was created
             if (fs.existsSync(thumbnailPath)) {
               console.log(`Verified thumbnail exists at ${thumbnailPath}`);
+              
+              // Set proper file permissions
+              try {
+                fs.chmodSync(thumbnailPath, 0o644);
+                console.log(`Set proper permissions on thumbnail file: ${thumbnailPath}`);
+              } catch (permErr) {
+                console.error(`Error setting permissions on thumbnail:`, permErr);
+              }
+              
+              // For memory verse videos, always ensure thumbnail is in the standard location
+              if (originalFilename.toLowerCase().includes('memory_verse')) {
+                // Special handling for memory verse videos - create a copy without the thumb- prefix too
+                // This is because some parts of the code might look for thumbnails without the prefix
+                const alternateThumbPath = path.join(this.thumbnailDir, safeFilename);
+                if (!fs.existsSync(alternateThumbPath)) {
+                  try {
+                    fs.copyFileSync(thumbnailPath, alternateThumbPath);
+                    console.log(`Created alternate memory verse thumbnail at ${alternateThumbPath}`);
+                  } catch (copyError) {
+                    console.error(`Error creating alternate memory verse thumbnail:`, copyError);
+                  }
+                }
+              }
             } else {
               console.warn(`Thumbnail was not found at ${thumbnailPath} after creation attempt`);
               
@@ -248,6 +276,17 @@ export class SpartaObjectStorage {
               
               fs.writeFileSync(thumbnailPath, svgContent);
               console.log(`Created SVG fallback thumbnail at ${thumbnailPath}`);
+              
+              // Create a copy without the thumb- prefix for memory verse videos
+              if (originalFilename.toLowerCase().includes('memory_verse')) {
+                const alternateThumbPath = path.join(this.thumbnailDir, safeFilename);
+                try {
+                  fs.writeFileSync(alternateThumbPath, svgContent);
+                  console.log(`Created SVG fallback alternate thumbnail at ${alternateThumbPath}`);
+                } catch (fallbackError) {
+                  console.error(`Failed to create alternate thumbnail:`, fallbackError);
+                }
+              }
             }
           } catch (videoThumbError) {
             console.error(`Error in video thumbnail creation:`, videoThumbError);
@@ -400,8 +439,43 @@ export class SpartaObjectStorage {
             console.error(`Error listing directory ${dir}:`, readDirError);
           }
           
-          reject(error);
-          return;
+          // Try to find the video in alternative locations (especially for memory verse videos)
+          const filename = path.basename(videoPath);
+          const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+          
+          if (isMemoryVerse) {
+            // Look for the file in common alternate locations
+            const alternateLocations = [
+              path.join(process.cwd(), 'uploads', filename),
+              path.join(process.cwd(), 'uploads', 'videos', filename),
+              path.join(process.cwd(), 'uploads', 'memory_verse', filename)
+            ];
+            
+            console.log(`Checking alternate locations for memory verse video: ${filename}`);
+            let foundAlternate = false;
+            
+            for (const alternate of alternateLocations) {
+              console.log(`Checking alternate path: ${alternate}`);
+              if (fs.existsSync(alternate)) {
+                console.log(`Found video at alternate path: ${alternate}`);
+                // Use this path instead
+                videoPath = alternate;
+                foundAlternate = true;
+                break;
+              }
+            }
+            
+            if (foundAlternate) {
+              console.log(`Using alternate video path: ${videoPath}`);
+            } else {
+              console.error(`Could not find video in any alternate locations`);
+              reject(error);
+              return;
+            }
+          } else {
+            reject(error);
+            return;
+          }
         }
         
         // Log file details
@@ -424,6 +498,28 @@ export class SpartaObjectStorage {
           fs.mkdirSync(thumbnailDir, { recursive: true });
         }
         
+        // Special handling for memory verse videos - ensure the path is correct
+        const filename = path.basename(videoPath);
+        const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+        
+        // For memory verse videos, copy the file to uploads directory if needed
+        if (isMemoryVerse) {
+          const uploadsDir = path.join(process.cwd(), 'uploads');
+          const correctPath = path.join(uploadsDir, filename);
+          
+          if (videoPath !== correctPath && fs.existsSync(videoPath)) {
+            try {
+              // Copy to the main uploads directory if it's not already there
+              if (!fs.existsSync(correctPath)) {
+                fs.copyFileSync(videoPath, correctPath);
+                console.log(`Copied memory verse video to correct uploads location: ${correctPath}`);
+              }
+            } catch (copyError) {
+              console.error(`Error copying memory verse video to correct location:`, copyError);
+            }
+          }
+        }
+        
         ffmpeg(videoPath)
           .on('error', (err: Error | undefined) => {
             const errorMessage = err ? err.message : 'Unknown error';
@@ -437,6 +533,17 @@ export class SpartaObjectStorage {
               fs.writeFileSync(targetPath, textBuffer);
               console.log(`Created fallback video thumbnail at ${targetPath}`);
               logger.info(`Created fallback video thumbnail at ${targetPath}`);
+              
+              // Ensure thumbnails directory is accessible with proper permissions
+              try {
+                const thumbnailsDir = path.dirname(targetPath);
+                fs.chmodSync(thumbnailsDir, 0o755);
+                fs.chmodSync(targetPath, 0o644);
+                console.log(`Set proper permissions on thumbnail file and directory`);
+              } catch (permissionError) {
+                console.error(`Error setting permissions:`, permissionError);
+              }
+              
               resolve(); // Continue even with the fallback
             } catch (fallbackError) {
               console.error('Failed to create fallback video thumbnail:', fallbackError);
@@ -461,6 +568,13 @@ export class SpartaObjectStorage {
               } catch (fallbackError) {
                 console.error('Failed to create fallback video thumbnail during verification:', fallbackError);
               }
+            }
+            
+            // Set proper permissions on the thumbnail file
+            try {
+              fs.chmodSync(targetPath, 0o644);
+            } catch (permErr) {
+              console.error(`Error setting permissions on thumbnail:`, permErr);
             }
             
             resolve();
