@@ -218,9 +218,51 @@ export function useNotifications(suppressToasts = false) {
     };
   }, [user, connectWebSocket]);
 
+  // Helper function to fix memory verse thumbnails
+  const fixMemoryVerseThumbnails = useCallback(async () => {
+    try {
+      console.log("Triggering memory verse thumbnail fix");
+      
+      // Create a fetch request to the fix-thumbnails endpoint
+      const response = await fetch('/api/memory-verse/fix-thumbnails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        console.log("Memory verse thumbnail fix initiated");
+        toast({
+          title: "Thumbnail Repair Started",
+          description: "Memory verse video thumbnails are being repaired in the background.",
+        });
+        return true;
+      } else {
+        console.error("Failed to initiate memory verse thumbnail fix:", await response.text());
+        toast({
+          title: "Error",
+          description: "Failed to start memory verse thumbnail repair process.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Error requesting memory verse thumbnail fix:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to the server for memory verse repair.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, [toast]);
+
   return {
     connectionStatus,
     notifications,
-    reconnect: connectWebSocket
+    reconnect: connectWebSocket,
+    fixMemoryVerseThumbnails
   };
 }

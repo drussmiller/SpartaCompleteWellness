@@ -873,7 +873,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
-  // Endpoint to repair memory verse videos
+  // Helper endpoint to fix memory verse thumbnails for existing videos
+  router.post("/api/memory-verse/fix-thumbnails", authenticate, async (req, res) => {
+    try {
+      // Only need to be logged in to repair your own memory verse videos
+      if (!req.user) {
+        return res.status(403).json({ message: "Authentication required" });
+      }
+      
+      logger.info(`Fix memory verse thumbnails requested by user ${req.user.id}`);
+      
+      // Import the repair module
+      const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
+      
+      // Run the repair asynchronously
+      res.json({
+        message: "Memory verse thumbnail repair started",
+        status: "processing"
+      });
+      
+      // Process after sending the response
+      repairMemoryVerseVideos()
+        .then(() => {
+          logger.info(`Memory verse thumbnail repair completed for user ${req.user.id}`);
+        })
+        .catch(error => {
+          logger.error(`Memory verse thumbnail repair failed for user ${req.user.id}:`, error);
+        });
+        
+    } catch (error) {
+      logger.error('Error starting memory verse repair:', error);
+      res.status(500).json({ message: "Failed to start memory verse repair" });
+    }
+  });
+  
+  // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {
       // Only allow admin users to run this operation

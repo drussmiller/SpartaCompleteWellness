@@ -20,7 +20,7 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { connectionStatus, reconnect } = useNotifications();
+  const { connectionStatus, reconnect, fixMemoryVerseThumbnails } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -353,6 +353,19 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                 {testNotificationTimeMutation.isPending 
                   ? "Testing..." 
                   : `Test At My Scheduled Time (${notificationTime})`}
+              </Button>
+
+              {/* Memory verse video fix button for all users */}
+              <Button 
+                variant="outline" 
+                className="w-full mt-2"
+                size="sm"
+                onClick={() => {
+                  // Call the fix memory verse thumbnails function
+                  fixMemoryVerseThumbnails();
+                }}
+              >
+                Repair Memory Verse Videos
               </Button>
               
               {user?.isAdmin && (
