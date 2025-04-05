@@ -41,10 +41,15 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { repairThumbnails } from './thumbnail-repair';
 
-// Configure multer for file uploads
+// Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './uploads/');
+    // Make sure the directory exists
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -1716,7 +1721,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             mediaProcessed = true;
             
             // Verify the stored file exists in the uploads directory
-            const storedFilePath = path.join(process.cwd(), '..', fileInfo.url);
+            const storedFilePath = path.join(process.cwd(), fileInfo.url);
             let fileExists = fs.existsSync(storedFilePath);
             
             if (!fileExists) {
