@@ -1789,17 +1789,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               const newPath = path.join(path.dirname(req.file.path), `memory_verse_${Date.now()}${fileExt}`);
               
               try {
-                // Rename the file to follow our convention
-                fs.renameSync(req.file.path, newPath);
-                req.file.path = newPath;
-                req.file.filename = path.basename(newPath);
-                console.log("Renamed memory verse file for consistency:", { 
-                  oldPath: req.file.path,
-                  newPath: newPath
-                });
-              } catch (renameErr) {
-                console.error("Error renaming memory verse file:", renameErr);
-                // Continue with original file if rename fails
+                // Check if the original file exists
+                if (fs.existsSync(req.file.path)) {
+                  // Copy instead of rename to avoid potential issues with file handles
+                  fs.copyFileSync(req.file.path, newPath);
+                  console.log("Copied memory verse file for consistency:", { 
+                    originalPath: req.file.path,
+                    newPath: newPath
+                  });
+                  
+                  // Only delete the original after successful copy
+                  try {
+                    fs.unlinkSync(req.file.path);
+                    console.log("Removed original file after copying");
+                  } catch (unlinkErr) {
+                    console.error("Could not remove original file after copying:", unlinkErr);
+                    // Non-critical error, we can continue 
+                  }
+                  
+                  req.file.path = newPath;
+                  req.file.filename = path.basename(newPath);
+                } else {
+                  console.error(`Original file does not exist at ${req.file.path}`);
+                  // Try to use the original file info anyway
+                }
+              } catch (copyErr) {
+                console.error("Error copying memory verse file:", copyErr);
+                // Continue with original file if copy fails
               }
             }
             
