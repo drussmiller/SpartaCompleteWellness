@@ -445,13 +445,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               }
                             }}
                           >
-                            <div className="flex flex-col items-center justify-center text-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-video mb-2">
-                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <path d="m10 11 5 3-5 3v-6Z"></path>
-                              </svg>
-                              <span className="text-sm">Click to upload video</span>
+                            <div className="flex flex-col items-center justify-center text-center">                              
+                              <span className="text-sm">Select video</span>
                             </div>
                           </Button>
                           
@@ -557,29 +552,14 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       </FormControl>
                       {imagePreview && (
                         <div className="mt-2">
-                          {form.watch("type") === "memory_verse" && imagePreview && (
-                            <>
-                              <video 
-                                src={imagePreview} 
-                                controls
-                                controlsList="nodownload"
-                                className="w-full max-h-60 rounded-md object-contain bg-black"
-                                preload="metadata"
-                                muted={false}
-                                playsInline
-                                autoPlay={false}
+                          {form.watch("type") === "memory_verse" && videoThumbnail && (
+                            <div className="mt-2">
+                              <img 
+                                src={videoThumbnail}
+                                alt="Video Thumbnail"
+                                className="max-h-40 rounded-md border border-gray-300"
                               />
-                              {videoThumbnail && (
-                                <div className="mt-2">
-                                  <p className="text-sm font-medium mb-1">Video Thumbnail:</p>
-                                  <img 
-                                    src={videoThumbnail}
-                                    alt="Video Thumbnail"
-                                    className="max-h-40 rounded-md border border-gray-300"
-                                  />
-                                </div>
-                              )}
-                            </>
+                            </div>
                           )}
                           {form.watch("type") !== "memory_verse" && imagePreview && (
                             <img

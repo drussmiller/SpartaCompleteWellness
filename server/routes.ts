@@ -2059,16 +2059,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           
           // SQL query to find a post created around the same time as the timestamp
           // Look for posts within 10 seconds of the timestamp
+          // Note: Database column is "created_at" not "createdAt"
           const postsAroundTime = await db
             .select()
             .from(posts)
             .where(
               and(
                 eq(posts.userId, req.user.id),
-                sql`ABS(EXTRACT(EPOCH FROM "createdAt") * 1000 - ${approxTimestamp}) < 10000`
+                sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${approxTimestamp}) < 10000`
               )
             )
-            .orderBy(sql`ABS(EXTRACT(EPOCH FROM "createdAt") * 1000 - ${approxTimestamp})`);
+            .orderBy(sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${approxTimestamp})`);
           
           if (postsAroundTime.length > 0) {
             // Use the closest post
@@ -2239,6 +2240,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           logger.info(`Processing user ${user.id} (${user.username})`);
 
           // Get user's posts from yesterday with detailed logging
+          // Note: Database column is "created_at" not "createdAt"
           const userPostsResult = await db
             .select({
               points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
@@ -2249,8 +2251,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             .where(
               and(
                 eq(posts.userId, user.id),
-                gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today),
+                gte(sql`posts.created_at`, yesterday), // Using SQL template for created_at
+                lt(sql`posts.created_at`, today),      // Using SQL template for created_at
                 isNull(posts.parentId) // Don't count comments
               )
             );
@@ -2287,8 +2289,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               .where(
                 and(
                   eq(posts.userId, user.id),
-                  gte(posts.createdAt, yesterday),
-                  lt(posts.createdAt, today),
+                  gte(sql`posts.created_at`, yesterday), // Using SQL template for created_at
+                  lt(sql`posts.created_at`, today),      // Using SQL template for created_at
                   isNull(posts.parentId) // Don't count comments
                 )
               )
@@ -2635,8 +2637,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
+            gte(sql`posts.created_at`, startOfDay),
+            lt(sql`posts.created_at`, endOfDay),
             isNull(posts.parentId) // Don't count comments in the total
           )
         );
@@ -2653,8 +2655,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
+            gte(sql`posts.created_at`, startOfDay),
+            lt(sql`posts.created_at`, endOfDay),
             isNull(posts.parentId)
           )
         );
