@@ -121,16 +121,18 @@ export class SpartaObjectStorage {
       
       // Force isVideo true if filename includes memory_verse or miscellaneous (helps with type detection)
       const isMemoryVerse = originalFilename.toLowerCase().includes('memory_verse');
-      const isMiscellaneousVideo = originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension;
+      // For miscellaneous, only need either the filename to include 'miscellaneous' OR be a video extension
+      const isMiscellaneousVideo = originalFilename.toLowerCase().includes('miscellaneous') || 
+                                  (mimeType.startsWith('video/') && isVideoByExtension);
       
       if (isMemoryVerse) {
         isVideo = true;
         console.log("Detected memory verse video by filename:", originalFilename);
       }
       
-      if (isMiscellaneousVideo) {
+      if (isMiscellaneousVideo && isVideoByExtension) {
         isVideo = true;
-        console.log("Detected miscellaneous video by filename and extension:", originalFilename);
+        console.log("Detected miscellaneous video by filename and/or extension:", originalFilename);
       }
       
       // Either the mime type is in the allowed list OR it's a video file by extension/flag
@@ -720,7 +722,12 @@ export class SpartaObjectStorage {
       
       // Check if this is a memory verse or miscellaneous video
       const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
-      const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
+      
+      // For miscellaneous, check both the name and the file extension
+      const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+      const fileExt = path.extname(filename).toLowerCase();
+      const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous') || 
+                                  (videoExtensions.includes(fileExt) && !isMemoryVerse);
       
       // List of paths to check for videos
       const pathsToCheck = [filePath];
@@ -796,9 +803,11 @@ export class SpartaObjectStorage {
             const ext = path.extname(filename);
             if (ext && file.endsWith(ext)) {
               // Additional check: created around the same time (if timestamp-based)
-              if (filename.match(/^\d+/) && file.match(/^\d+/)) {
-                const filenameTime = parseInt(filename.match(/^\d+/)[0]);
-                const fileTime = parseInt(file.match(/^\d+/)[0]);
+              const filenameMatch = filename.match(/^\d+/);
+              const fileMatch = file.match(/^\d+/);
+              if (filenameMatch && fileMatch) {
+                const filenameTime = parseInt(filenameMatch[0]);
+                const fileTime = parseInt(fileMatch[0]);
                 
                 // If files were created within 10 seconds of each other
                 if (Math.abs(filenameTime - fileTime) < 10000) {
