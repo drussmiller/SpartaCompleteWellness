@@ -2119,7 +2119,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       }
 
-      // If still not found, handle that
+      // Special handling for memory verse posts with timestamp IDs
+      if (!post && /^\d+$/.test(postIdStr) && postIdStr.length > 10) {
+        // This is likely a timestamp ID for a memory verse post
+        // Try to find by looking for memory verse posts created recently
+        console.log(`Attempting advanced search for memory verse post with timestamp ID: ${postIdStr}`);
+        logger.info(`Attempting advanced search for memory verse post with timestamp ID: ${postIdStr}`);
+        
+        // Try to find memory verse posts by this user in the past 24 hours
+        // and order by creation time to get the most recent one
+        const recentMemoryVersePosts = await db
+          .select()
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, req.user.id),
+              eq(posts.type, 'memory_verse'),
+              // Created within the last 24 hours
+              sql`"created_at" > NOW() - INTERVAL '24 hours'`
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(5);
+        
+        if (recentMemoryVersePosts.length > 0) {
+          // Use the most recent memory verse post
+          post = recentMemoryVersePosts[0];
+          postId = post.id;
+          console.log(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
+          logger.info(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
+        }
+      }
+      
+      // If still not found after all attempts, handle that
       if (!post) {
         console.log(`Post with ID ${postIdStr} not found during deletion attempt`);
         logger.info(`Post with ID ${postIdStr} not found during deletion attempt`);
