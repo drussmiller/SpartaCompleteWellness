@@ -46,14 +46,34 @@ export class SpartaObjectStorage {
    */
   private ensureDirectories(): void {
     try {
-      if (!fs.existsSync(this.baseDir)) {
-        fs.mkdirSync(this.baseDir, { recursive: true });
-        logger.info(`Created base upload directory: ${this.baseDir}`);
-      }
-
-      if (!fs.existsSync(this.thumbnailDir)) {
-        fs.mkdirSync(this.thumbnailDir, { recursive: true });
-        logger.info(`Created thumbnail directory: ${this.thumbnailDir}`);
+      // Array of directories to ensure they exist
+      const dirsToCreate = [
+        // Base directories
+        this.baseDir,
+        this.thumbnailDir,
+        
+        // Special directories for memory verse videos
+        path.join(this.baseDir, 'memory_verse'),
+        path.join(this.thumbnailDir, 'memory_verse'),
+        path.join(process.cwd(), 'uploads', 'memory_verse'),
+        path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse'),
+        
+        // Special directories for miscellaneous videos
+        path.join(this.baseDir, 'miscellaneous'),
+        path.join(this.thumbnailDir, 'miscellaneous'),
+        path.join(process.cwd(), 'uploads', 'miscellaneous'),
+        path.join(process.cwd(), 'uploads', 'thumbnails', 'miscellaneous'),
+        
+        // General video directory
+        path.join(this.baseDir, 'videos')
+      ];
+      
+      // Create each directory if it doesn't exist
+      for (const dir of dirsToCreate) {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+          logger.info(`Created directory: ${dir}`);
+        }
       }
     } catch (error) {
       logger.error('Error ensuring storage directories exist:', error instanceof Error ? error : new Error(String(error)));
@@ -698,18 +718,55 @@ export class SpartaObjectStorage {
       // Try to find the file with multiple approaches
       let foundFile = false;
       
-      // First check the direct path
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-          console.log(`Deleted file ${filename} from direct path`);
-          logger.info(`Deleted file ${filename}`);
-          foundFile = true;
-        } catch (err) {
-          console.error(`Error deleting file at ${filePath}:`, err);
+      // Check if this is a memory verse or miscellaneous video
+      const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+      const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
+      
+      // List of paths to check for videos
+      const pathsToCheck = [filePath];
+      
+      // Add additional paths for special video types
+      if (isMemoryVerse || isMiscellaneousVideo) {
+        console.log(`Detected special video type: ${isMemoryVerse ? 'memory_verse' : 'miscellaneous'}`);
+        
+        // Add standard locations where videos might be stored
+        pathsToCheck.push(
+          path.join(this.baseDir, 'videos', filename),
+          path.join(process.cwd(), 'uploads', filename)
+        );
+        
+        if (isMemoryVerse) {
+          pathsToCheck.push(
+            path.join(this.baseDir, 'memory_verse', filename),
+            path.join(process.cwd(), 'uploads', 'memory_verse', filename)
+          );
         }
-      } else {
-        console.log(`Direct path not found: ${filePath}`);
+        
+        if (isMiscellaneousVideo) {
+          pathsToCheck.push(
+            path.join(this.baseDir, 'miscellaneous', filename),
+            path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
+          );
+        }
+      }
+      
+      // Try all potential paths
+      for (const pathToCheck of pathsToCheck) {
+        if (fs.existsSync(pathToCheck)) {
+          try {
+            fs.unlinkSync(pathToCheck);
+            console.log(`Deleted file ${filename} from path: ${pathToCheck}`);
+            logger.info(`Deleted file ${filename} from path: ${pathToCheck}`);
+            foundFile = true;
+          } catch (err) {
+            console.error(`Error deleting file at ${pathToCheck}:`, err);
+          }
+        }
+      }
+      
+      // If we haven't found the file in any of the specific paths, continue with pattern matching
+      if (!foundFile) {
+        console.log(`File not found in standard paths, trying pattern matching...`);
         
         // Try to find similar files in the uploads directory
         try {
@@ -774,22 +831,58 @@ export class SpartaObjectStorage {
       
       // Try to delete thumbnails regardless of whether we found the original file
       try {
-        // Standard thumbnail with thumb- prefix
-        const thumbnailPath = path.join(this.thumbnailDir, `thumb-${filename}`);
-        if (fs.existsSync(thumbnailPath)) {
-          fs.unlinkSync(thumbnailPath);
-          console.log(`Deleted thumbnail at ${thumbnailPath}`);
-          logger.info(`Deleted thumbnail for ${filename}`);
-          foundFile = true;
+        // List of thumbnail paths to check
+        const thumbnailPathsToCheck = [
+          // Standard thumbnail with thumb- prefix
+          path.join(this.thumbnailDir, `thumb-${filename}`),
+          // Alternate thumbnail without the thumb- prefix
+          path.join(this.thumbnailDir, filename)
+        ];
+        
+        // Add special thumbnail locations for memory verse and miscellaneous videos
+        if (isMemoryVerse || isMiscellaneousVideo) {
+          // For videos, try png and jpg extensions
+          const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
+          thumbnailPathsToCheck.push(
+            path.join(this.thumbnailDir, `${baseFilename}.jpg`),
+            path.join(this.thumbnailDir, `${baseFilename}.png`),
+            path.join(this.thumbnailDir, `thumb-${baseFilename}.jpg`),
+            path.join(this.thumbnailDir, `thumb-${baseFilename}.png`)
+          );
+          
+          // For memory verse videos, check special directories
+          if (isMemoryVerse) {
+            thumbnailPathsToCheck.push(
+              path.join(this.thumbnailDir, 'memory_verse', filename),
+              path.join(this.thumbnailDir, 'memory_verse', `thumb-${filename}`),
+              path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse', filename),
+              path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse', `thumb-${filename}`)
+            );
+          }
+          
+          // For miscellaneous videos, check special directories
+          if (isMiscellaneousVideo) {
+            thumbnailPathsToCheck.push(
+              path.join(this.thumbnailDir, 'miscellaneous', filename),
+              path.join(this.thumbnailDir, 'miscellaneous', `thumb-${filename}`),
+              path.join(process.cwd(), 'uploads', 'thumbnails', 'miscellaneous', filename),
+              path.join(process.cwd(), 'uploads', 'thumbnails', 'miscellaneous', `thumb-${filename}`)
+            );
+          }
         }
         
-        // Also try alternate thumbnail without the thumb- prefix
-        const altThumbnailPath = path.join(this.thumbnailDir, filename);
-        if (fs.existsSync(altThumbnailPath)) {
-          fs.unlinkSync(altThumbnailPath);
-          console.log(`Deleted alternate thumbnail at ${altThumbnailPath}`);
-          logger.info(`Deleted alternate thumbnail for ${filename}`);
-          foundFile = true;
+        // Check and delete all thumbnail paths
+        for (const thumbPath of thumbnailPathsToCheck) {
+          if (fs.existsSync(thumbPath)) {
+            try {
+              fs.unlinkSync(thumbPath);
+              console.log(`Deleted thumbnail at ${thumbPath}`);
+              logger.info(`Deleted thumbnail at ${thumbPath}`);
+              foundFile = true;
+            } catch (err) {
+              console.error(`Error deleting thumbnail at ${thumbPath}:`, err);
+            }
+          }
         }
         
         // For files with timestamps, try to find approximate matches
