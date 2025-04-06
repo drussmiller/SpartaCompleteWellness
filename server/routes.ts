@@ -1580,8 +1580,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         size: req.file.size
       } : 'No file uploaded',
       contentType: req.headers['content-type'],
-      bodyKeys: Object.keys(req.body)
+      bodyKeys: Object.keys(req.body),
+      isMemoryVerseVideo: req.body.is_memory_verse_video === 'true',
+      videoContentType: req.body.video_content_type || null
     });
+    
+    // Enhanced debugging for memory verse videos
+    if (req.body.is_memory_verse_video === 'true') {
+      console.log("Memory verse video upload detected:", {
+        originalname: req.file?.originalname || 'No file',
+        mimetype: req.file?.mimetype || 'No mimetype',
+        reportedContentType: req.body.video_content_type || 'Not specified',
+        fileSize: req.file?.size || 0,
+        path: req.file?.path || 'No path'
+      });
+    }
     
     // Extra logging for debugging
     if (req.file) {
@@ -1717,16 +1730,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             console.log("Memory verse detection:", {
               typeFromData: postData.type === 'memory_verse',
               explicitFlag: req.body.is_memory_verse_video === 'true',
-              isMemoryVersePost
+              isMemoryVersePost,
+              videoContentType: req.body.video_content_type || 'not provided',
+              originalName: req.file.originalname
             });
             
             // For memory verse posts, make sure we treat it as a video
             // This is especially important with the simplified UI where users might upload any file type
             const isVideo = isMemoryVersePost || 
                           req.file.mimetype.startsWith('video/') || 
+                          req.body.video_content_type?.startsWith('video/') ||
                           originalFilename.endsWith('.mov') || 
                           originalFilename.endsWith('.mp4') ||
-                          originalFilename.endsWith('.webm');
+                          originalFilename.endsWith('.webm') ||
+                          originalFilename.endsWith('.avi') ||
+                          originalFilename.endsWith('.mkv');
             
             // For memory verse posts, enforce a consistent file naming pattern 
             if (isMemoryVersePost) {
@@ -1763,10 +1781,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
             
             // Store the file using SpartaObjectStorage (used for both images and videos)
+            // For memory verse videos, we might need to override the mimetype if it's misdetected
+            const effectiveMimeType = isMemoryVersePost && req.body.video_content_type
+              ? req.body.video_content_type // Use client-provided video content type for memory verse
+              : req.file.mimetype;
+            
+            console.log("Using effective mime type for storage:", {
+              original: req.file.mimetype,
+              clientProvided: req.body.video_content_type,
+              effective: effectiveMimeType,
+              isMemoryVerse: isMemoryVersePost
+            });
+              
             const fileInfo = await spartaStorage.storeFile(
               filePath,
               req.file.originalname,
-              req.file.mimetype,
+              effectiveMimeType, // Use potentially corrected mimetype
               isVideo // Pass flag for video handling
             );
             
