@@ -258,11 +258,53 @@ export function useNotifications(suppressToasts = false) {
       return false;
     }
   }, [toast]);
+  
+  // Helper function to fix all thumbnails including miscellaneous videos
+  const fixAllThumbnails = useCallback(async () => {
+    try {
+      console.log("Triggering all thumbnails fix");
+      
+      // Create a fetch request to the general fix-thumbnails endpoint
+      const response = await fetch('/api/fix-thumbnails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        console.log("All thumbnails fix initiated");
+        toast({
+          title: "Thumbnail Repair Started",
+          description: "All post thumbnails are being repaired in the background.",
+        });
+        return true;
+      } else {
+        console.error("Failed to initiate general thumbnail fix:", await response.text());
+        toast({
+          title: "Error",
+          description: "Failed to start thumbnail repair process.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Error requesting thumbnail fix:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to the server for thumbnail repair.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, [toast]);
 
   return {
     connectionStatus,
     notifications,
     reconnect: connectWebSocket,
-    fixMemoryVerseThumbnails
+    fixMemoryVerseThumbnails,
+    fixAllThumbnails
   };
 }

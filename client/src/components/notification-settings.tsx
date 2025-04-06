@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, WifiOff, Wifi, RefreshCw } from "lucide-react";
+import { ChevronLeft, WifiOff, Wifi, RefreshCw, ImageIcon, Film } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -19,10 +19,11 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { connectionStatus, reconnect } = useNotifications();
+  const { connectionStatus, reconnect, fixMemoryVerseThumbnails, fixAllThumbnails } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isFixingThumbnails, setIsFixingThumbnails] = useState(false);
   
   // Handler for manual reconnection
   const handleReconnect = useCallback(() => {
@@ -441,6 +442,76 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                   >
                     Admin: Test Daily Score Check
                   </Button>
+                  
+                  {/* Admin section for thumbnail repairs */}
+                  <div className="mt-4 pt-4 border-t">
+                    <h3 className="text-sm font-medium mb-2">Thumbnail Repair Tools</h3>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        size="sm"
+                        onClick={async () => {
+                          if (isFixingThumbnails) {
+                            toast({
+                              title: "Operation in progress",
+                              description: "A thumbnail repair is already running. Please wait for it to complete."
+                            });
+                            return;
+                          }
+                          
+                          setIsFixingThumbnails(true);
+                          toast({
+                            description: "Starting memory verse thumbnail repair...",
+                          });
+                          
+                          try {
+                            await fixMemoryVerseThumbnails();
+                          } finally {
+                            setTimeout(() => {
+                              setIsFixingThumbnails(false);
+                            }, 2000);
+                          }
+                        }}
+                        disabled={isFixingThumbnails}
+                      >
+                        <Film className="h-4 w-4 mr-2" />
+                        {isFixingThumbnails ? "Repairing..." : "Repair Memory Verse Thumbnails"}
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        size="sm"
+                        onClick={async () => {
+                          if (isFixingThumbnails) {
+                            toast({
+                              title: "Operation in progress",
+                              description: "A thumbnail repair is already running. Please wait for it to complete."
+                            });
+                            return;
+                          }
+                          
+                          setIsFixingThumbnails(true);
+                          toast({
+                            description: "Starting all thumbnails repair...",
+                          });
+                          
+                          try {
+                            await fixAllThumbnails();
+                          } finally {
+                            setTimeout(() => {
+                              setIsFixingThumbnails(false);
+                            }, 2000);
+                          }
+                        }}
+                        disabled={isFixingThumbnails}
+                      >
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                        {isFixingThumbnails ? "Repairing..." : "Repair All Thumbnails"}
+                      </Button>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
