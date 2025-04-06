@@ -558,7 +558,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   variant="outline"
                                   className="w-full"
                                 >
-                                  <Video className="mr-2 h-4 w-4" />
                                   Select Video
                                 </Button>
                               </div>
