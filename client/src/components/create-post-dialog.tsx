@@ -35,6 +35,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const videoInputRef = useRef<HTMLInputElement>(null); 
   const queryClient = useQueryClient();
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
   
   // Define the type for memory verse video objects
   type MemoryVerseVideo = {
@@ -162,26 +163,31 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           });
           
           try {
-            if (data.type === 'memory_verse') {
-              // Handle memory verse videos just like images now
-              if (videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
-                const videoFile = videoInputRef.current.files[0];
-                
-                // Simply append the file to the formData with the 'image' field name
-                // The server will detect that it's a memory verse post based on the type
-                formData.append("image", videoFile);
-                
-                console.log("Uploading memory verse video file:", {
-                  fileName: videoFile.name,
-                  fileType: videoFile.type, 
-                  fileSize: videoFile.size,
-                  fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB"
-                });
-              } else if (!selectedExistingVideo) {
-                console.error("Memory verse post missing video file");
-                throw new Error("No video file selected");
-              }
-            } else {
+            // Handle memory verse and miscellaneous post video uploads
+            if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video')) && 
+                videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
+              const videoFile = videoInputRef.current.files[0];
+              
+              // Simply append the file to the formData with the 'image' field name
+              // The server will detect the post type based on the data.type field
+              formData.append("image", videoFile);
+              
+              console.log(`Uploading ${data.type} video file:`, {
+                fileName: videoFile.name,
+                fileType: videoFile.type, 
+                fileSize: videoFile.size,
+                fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB",
+                postType: data.type
+              });
+            } 
+            // Handle memory verse posts with no video
+            else if (data.type === 'memory_verse' && !selectedExistingVideo) {
+              console.error("Memory verse post missing video file");
+              throw new Error("No video file selected");
+            } 
+            // Handle regular image uploads (including miscellaneous posts with images)
+            else if (data.mediaUrl && data.mediaUrl.length > 0 && 
+                    !(data.type === 'miscellaneous' && selectedMediaType === 'video')) {
               // For images, fetch the blob from the data URL
               console.log("Processing image URL to blob");
               const blob = await fetch(data.mediaUrl).then(r => r.blob());
@@ -511,7 +517,18 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                           <>
                             <Button
                               type="button"
-                              onClick={() => fileInputRef.current?.click()}
+                              onClick={() => {
+                                // If Miscellaneous post and video already selected, show warning
+                                if (form.watch("type") === "miscellaneous" && selectedMediaType === "video") {
+                                  toast({
+                                    title: "Cannot select both image and video",
+                                    description: "Please remove the video first before selecting an image.",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                fileInputRef.current?.click();
+                              }}
                               variant="outline"
                               className="w-full"
                             >
@@ -533,6 +550,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                         const compressed = await compressImage(reader.result as string);
                                         setImagePreview(compressed);
                                         field.onChange(compressed);
+                                        
+                                        // Set media type to image
+                                        if (form.watch("type") === "miscellaneous") {
+                                          setSelectedMediaType("image");
+                                        }
                                       }
                                     } catch (error) {
                                       console.error('Error compressing image:', error);
@@ -554,12 +576,68 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               <div className="mt-3">
                                 <Button
                                   type="button"
-                                  onClick={() => videoInputRef.current?.click()}
+                                  onClick={() => {
+                                    // If Miscellaneous post and image already selected, show warning
+                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image") {
+                                      toast({
+                                        title: "Cannot select both image and video",
+                                        description: "Please remove the image first before selecting a video.",
+                                        variant: "destructive"
+                                      });
+                                      return;
+                                    }
+                                    videoInputRef.current?.click();
+                                  }}
                                   variant="outline"
                                   className="w-full"
                                 >
                                   Select Video
                                 </Button>
+                                
+                                {/* Hidden video input field for miscellaneous posts */}
+                                <Input
+                                  type="file"
+                                  accept="video/*"
+                                  ref={videoInputRef}
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      // Apply the same file size limit as memory verse videos
+                                      if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                                        toast({
+                                          title: "Error",
+                                          description: "Video file is too large. Maximum size is 100MB.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      
+                                      // For video, create a preview and set media type
+                                      const videoUrl = URL.createObjectURL(file);
+                                      setImagePreview(videoUrl);
+                                      setSelectedMediaType("video");
+                                      
+                                      // Generate a thumbnail for the video
+                                      generateVideoThumbnail(file).then(thumbnailUrl => {
+                                        if (thumbnailUrl) {
+                                          setVideoThumbnail(thumbnailUrl);
+                                          console.log("Generated video thumbnail for miscellaneous post");
+                                        }
+                                      });
+                                      
+                                      // Set the field value to a marker so we know to use the video file
+                                      const marker = "VIDEO_FILE_UPLOAD";
+                                      field.onChange(marker);
+                                      
+                                      // Show a success toast to confirm selection
+                                      toast({
+                                        title: "Video Selected",
+                                        description: `Selected video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`,
+                                      });
+                                    }
+                                  }}
+                                />
                               </div>
                             )}
                           </>
@@ -592,6 +670,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               setImagePreview(null);
                               setVideoThumbnail(null);
                               field.onChange(null);
+                              // Reset media type for miscellaneous posts
+                              if (form.watch("type") === "miscellaneous") {
+                                setSelectedMediaType(null);
+                              }
                             }}
                           >
                             Remove {form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && videoThumbnail) ? "Video" : "Image"}
