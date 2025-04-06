@@ -312,6 +312,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       const alternativeUrls = [
                         `/uploads/${filename}`,
                         `/uploads/videos/${filename}`,
+                        `/uploads/memory_verse/${filename}`,
+                        `/uploads/miscellaneous/${filename}`,
                       ];
                       
                       // Log the attempts for debugging

@@ -1783,10 +1783,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                           originalFilename.endsWith('.avi') ||
                           originalFilename.endsWith('.mkv');
             
-            // For memory verse posts, enforce a consistent file naming pattern 
-            if (isMemoryVersePost) {
+            // Handle specialized video types
+            const isMiscellaneousPost = postData.type === 'miscellaneous';
+            
+            // Is this a video post for either memory verse or miscellaneous?
+            if (isMemoryVersePost || (isMiscellaneousPost && isVideo)) {
               const fileExt = path.extname(originalFilename) || '.mp4';
-              const newPath = path.join(path.dirname(req.file.path), `memory_verse_${Date.now()}${fileExt}`);
+              // Create specialized path based on post type
+              const prefix = isMemoryVersePost ? 'memory_verse' : 'miscellaneous';
+              const newPath = path.join(path.dirname(req.file.path), `${prefix}_${Date.now()}${fileExt}`);
               
               try {
                 // Check if the original file exists
