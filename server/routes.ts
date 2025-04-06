@@ -1580,20 +1580,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         size: req.file.size
       } : 'No file uploaded',
       contentType: req.headers['content-type'],
-      bodyKeys: Object.keys(req.body),
-      isMemoryVerseVideo: req.body.is_memory_verse_video === 'true',
-      videoContentType: req.body.video_content_type || null
+      bodyKeys: Object.keys(req.body)
     });
     
-    // Enhanced debugging for memory verse videos
-    if (req.body.is_memory_verse_video === 'true') {
-      console.log("Memory verse video upload detected:", {
-        originalname: req.file?.originalname || 'No file',
-        mimetype: req.file?.mimetype || 'No mimetype',
-        reportedContentType: req.body.video_content_type || 'Not specified',
-        fileSize: req.file?.size || 0,
-        path: req.file?.path || 'No path'
-      });
+    // Check if this is a memory verse post based on the parsed data
+    let isMemoryVersePost = false;
+    if (req.body.data) {
+      try {
+        const parsedData = JSON.parse(req.body.data);
+        isMemoryVersePost = parsedData.type === 'memory_verse';
+        if (isMemoryVersePost) {
+          console.log("Memory verse post detected:", {
+            originalname: req.file?.originalname || 'No file',
+            mimetype: req.file?.mimetype || 'No mimetype',
+            fileSize: req.file?.size || 0,
+            path: req.file?.path || 'No path'
+          });
+        }
+      } catch (e) {
+        // Ignore parsing errors here, it will be handled later
+      }
     }
     
     // Extra logging for debugging
@@ -1758,14 +1764,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();
             
-            // Improved detection for memory verse posts
-            const isMemoryVersePost = postData.type === 'memory_verse' || req.body.is_memory_verse_video === 'true';
+            // Simplified detection for memory verse posts - rely only on the post type
+            const isMemoryVersePost = postData.type === 'memory_verse';
             
             console.log("Memory verse detection:", {
-              typeFromData: postData.type === 'memory_verse',
-              explicitFlag: req.body.is_memory_verse_video === 'true',
               isMemoryVersePost,
-              videoContentType: req.body.video_content_type || 'not provided',
               originalName: req.file.originalname
             });
             
@@ -1805,26 +1808,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               mimetype: req.file.mimetype,
               isVideo: isVideo,
               isMemoryVerse: isMemoryVersePost,
-              isMemoryVerseFromType: postData.type === 'memory_verse',
-              isMemoryVerseFromFlag: req.body.is_memory_verse_video === 'true',
               fileSize: req.file.size,
               path: req.file.path,
-              postType: req.body.type || 'unknown'
+              postType: postData.type || 'unknown'
             });
             
             logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
             
             // Store the file using SpartaObjectStorage (used for both images and videos)
-            // For memory verse videos, we might need to override the mimetype if it's misdetected
-            const effectiveMimeType = isMemoryVersePost && req.body.video_content_type
-              ? req.body.video_content_type // Use client-provided video content type for memory verse
-              : req.file.mimetype;
+            // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
+            let effectiveMimeType = req.file.mimetype;
+            
+            // If it's a memory verse post but mimetype doesn't indicate a video, override it
+            if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
+              effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
+            }
             
             console.log("Using effective mime type for storage:", {
               original: req.file.mimetype,
-              clientProvided: req.body.video_content_type,
               effective: effectiveMimeType,
-              isMemoryVerse: isMemoryVersePost
+              isMemoryVerse: isMemoryVersePost,
+              wasOverridden: effectiveMimeType !== req.file.mimetype
             });
               
             const fileInfo = await spartaStorage.storeFile(

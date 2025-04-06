@@ -163,36 +163,20 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           
           try {
             if (data.type === 'memory_verse') {
-              // For memory verse, we need to handle video files
+              // Handle memory verse videos just like images now
               if (videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
                 const videoFile = videoInputRef.current.files[0];
                 
-                // Use the original file directly instead of creating a new one to avoid issues
-                // Rename the field to "video" to make it clearer on the server side
-                formData.append("image", videoFile, "memory_verse_" + Date.now() + "." + videoFile.name.split('.').pop());
+                // Simply append the file to the formData with the 'image' field name
+                // The server will detect that it's a memory verse post based on the type
+                formData.append("image", videoFile);
                 
-                // Add special flags to help server identify this as a memory verse video
-                formData.append("is_memory_verse_video", "true");
-                formData.append("video_content_type", videoFile.type);
-                
-                // Add detailed logging for troubleshooting
                 console.log("Uploading memory verse video file:", {
                   fileName: videoFile.name,
                   fileType: videoFile.type, 
                   fileSize: videoFile.size,
                   fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB"
                 });
-                
-                // Show entries in form data
-                const entries = Array.from(formData.entries()).map(entry => {
-                  const [key, value] = entry;
-                  if (value instanceof File) {
-                    return [key, `File: ${value.name} (${value.type}, ${(value.size / 1024).toFixed(2)}KB)`];
-                  }
-                  return [key, typeof value === 'string' ? value : '[non-string]'];
-                });
-                
-                console.log("Form data entries:", Object.fromEntries(entries));
               } else if (!selectedExistingVideo) {
                 console.error("Memory verse post missing video file");
                 throw new Error("No video file selected");
