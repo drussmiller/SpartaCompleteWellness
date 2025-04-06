@@ -168,10 +168,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 const videoFile = videoInputRef.current.files[0];
                 
                 // Use the original file directly instead of creating a new one to avoid issues
-                formData.append("image", videoFile);
+                // Rename the field to "video" to make it clearer on the server side
+                formData.append("image", videoFile, "memory_verse_" + Date.now() + "." + videoFile.name.split('.').pop());
                 
-                // Add a special flag indicating this is a memory verse video
+                // Add special flags to help server identify this as a memory verse video
                 formData.append("is_memory_verse_video", "true");
+                formData.append("video_content_type", videoFile.type);
                 
                 // Add detailed logging for troubleshooting
                 console.log("Uploading memory verse video file:", {
