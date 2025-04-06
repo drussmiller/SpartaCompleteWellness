@@ -16,17 +16,19 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
   if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';
     
-    // Check if this is a memory verse video (special handling)
+    // Check if this is a special video type (memory verse or miscellaneous)
     const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+    const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
     
     // Handle video files differently
     const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
-    const isVideo = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext)) || isMemoryVerse;
+    const isVideoExtension = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext));
+    const isVideo = isVideoExtension || isMemoryVerse || isMiscellaneousVideo;
     
     // For videos, we need to check both with and without thumb- prefix
     if (isVideo) {
-      // For memory verse videos in particular, always try to get the thumbnail
-      if (isMemoryVerse && size === 'small') {
+      // For special video types (memory verse and miscellaneous), try to get the thumbnail
+      if ((isMemoryVerse || isMiscellaneousVideo) && size === 'small') {
         // Try with thumb- prefix first
         const thumbFilename = `thumb-${filename}`;
         return `/uploads/thumbnails/${thumbFilename}`;
@@ -84,6 +86,8 @@ export function getFallbackImageUrl(postType: string): string {
   // Normalize type (in case we get variations)
   if (type === 'memory_verse' || type === 'verse') {
     type = 'verse';
+  } else if (type === 'miscellaneous') {
+    type = 'post'; // Use post fallback for miscellaneous
   } else if (!['food', 'workout', 'scripture'].includes(type)) {
     type = 'post'; // Default fallback for any unrecognized type
   }
