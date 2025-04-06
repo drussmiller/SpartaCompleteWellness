@@ -680,7 +680,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       </FormControl>
                       {imagePreview && (
                         <div className="mt-2">
-                          {(form.watch("type") === "memory_verse" || form.watch("type") === "miscellaneous") && videoThumbnail && (
+                          {/* Display video thumbnails for memory verse posts or miscellaneous video posts */}
+                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && videoThumbnail && (
                             <div className="mt-2">
                               <img 
                                 src={videoThumbnail}
@@ -689,7 +690,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               />
                             </div>
                           )}
-                          {form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous" && imagePreview && (
+                          {/* Display regular images for other post types or miscellaneous image posts */}
+                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous") || 
+                            (form.watch("type") === "miscellaneous" && selectedMediaType === "image")) && imagePreview && (
                             <img
                               src={imagePreview}
                               alt="Preview"
