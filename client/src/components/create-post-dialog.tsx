@@ -217,6 +217,21 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           hasImage: !!data.mediaUrl 
         });
 
+        // Add special identifier for miscellaneous post type if it has video
+        if (data.type === 'miscellaneous' && selectedMediaType) {
+          formData.append("selected_media_type", selectedMediaType);
+          
+          // Explicitly add an is_video flag to ensure server-side detection works correctly
+          if (selectedMediaType === "video") {
+            formData.append("is_video", "true");
+          }
+          
+          console.log("Added media type marker for miscellaneous post:", {
+            selectedMediaType,
+            isVideo: selectedMediaType === "video"
+          });
+        }
+        
         formData.append("data", JSON.stringify(postData));
         
         console.log("FormData ready for submission", {
@@ -629,6 +644,16 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                       // Set the field value to a marker so we know to use the video file
                                       const marker = "VIDEO_FILE_UPLOAD";
                                       field.onChange(marker);
+                                      
+                                      // Log detailed information about the selected file
+                                      console.log("Miscellaneous video file selected:", {
+                                        name: file.name,
+                                        type: file.type,
+                                        size: file.size,
+                                        sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
+                                        selectedMediaType: "video",
+                                        fieldValue: marker
+                                      });
                                       
                                       // Show a success toast to confirm selection
                                       toast({

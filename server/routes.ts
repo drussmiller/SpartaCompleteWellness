@@ -1767,24 +1767,48 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             // Simplified detection for memory verse posts - rely only on the post type
             const isMemoryVersePost = postData.type === 'memory_verse';
             
-            console.log("Memory verse detection:", {
+            // Handle specialized types
+            const isMiscellaneousPost = postData.type === 'miscellaneous';
+            
+            console.log("Post type detection:", {
               isMemoryVersePost,
+              isMiscellaneousPost,
               originalName: req.file.originalname
             });
             
-            // For memory verse posts, make sure we treat it as a video
-            // This is especially important with the simplified UI where users might upload any file type
-            const isVideo = isMemoryVersePost || 
-                          req.file.mimetype.startsWith('video/') || 
-                          req.body.video_content_type?.startsWith('video/') ||
-                          originalFilename.endsWith('.mov') || 
-                          originalFilename.endsWith('.mp4') ||
-                          originalFilename.endsWith('.webm') ||
-                          originalFilename.endsWith('.avi') ||
-                          originalFilename.endsWith('.mkv');
+            // Check if this is a video upload based on multiple indicators
+            const isVideoMimetype = req.file.mimetype.startsWith('video/');
+            const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
             
-            // Handle specialized video types
-            const isMiscellaneousPost = postData.type === 'miscellaneous';
+            // For miscellaneous posts, check if explicitly marked as video from client
+            const isMiscellaneousVideo = isMiscellaneousPost && 
+                                       (req.body.is_video === "true" || 
+                                        req.body.selected_media_type === "video" ||
+                                        (req.file && (isVideoMimetype || isVideoExtension)));
+                                        
+            // Combined video detection - for miscellaneous posts, only trust the explicit markers
+            const isVideo = isMemoryVersePost || 
+                          (isMiscellaneousPost ? isMiscellaneousVideo : 
+                           (isVideoMimetype || hasVideoContentType || isVideoExtension));
+                          
+            console.log("Video detection:", {
+              isVideo,
+              isMiscellaneousVideo,
+              isMiscellaneousPost,
+              postType: postData.type,
+              isVideoMimetype,
+              isVideoExtension,
+              hasVideoContentType,
+              mimetype: req.file.mimetype,
+              originalFilename: req.file.originalname,
+              selectedMediaType: req.body.selected_media_type,
+              isVideoFlag: req.body.is_video
+            });
             
             // Is this a video post for either memory verse or miscellaneous?
             if (isMemoryVersePost || (isMiscellaneousPost && isVideo)) {
@@ -1845,11 +1869,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
             }
             
+            // Also handle miscellaneous post videos that might have wrong mime type
+            if (isMiscellaneousPost && isVideo && !effectiveMimeType.startsWith('video/')) {
+              console.log("Correcting miscellaneous video mime type from", effectiveMimeType, "to video/mp4");
+              effectiveMimeType = 'video/mp4';
+            }
+            
             console.log("Using effective mime type for storage:", {
               original: req.file.mimetype,
               effective: effectiveMimeType,
               isMemoryVerse: isMemoryVersePost,
-              wasOverridden: effectiveMimeType !== req.file.mimetype
+              isMiscellaneous: isMiscellaneousPost,
+              isVideo: isVideo,
+              wasOverridden: effectiveMimeType !== req.file.mimetype,
+              fileSize: req.file.size,
+              formDataKeys: Object.keys(req.body || {})
             });
               
             const fileInfo = await spartaStorage.storeFile(
