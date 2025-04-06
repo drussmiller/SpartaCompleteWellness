@@ -446,7 +446,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                             }}
                           >
                             <div className="flex flex-col items-center justify-center text-center">                              
-                              <span className="text-sm">Select video</span>
+                              <span>Select video</span>
                             </div>
                           </Button>
                           
