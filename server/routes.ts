@@ -1719,7 +1719,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const { spartaStorage } = await import('./sparta-object-storage');
           
           // Verify the file exists before proceeding
-          const filePath = req.file.path;
+          let filePath = req.file.path;
+          
+          // Verify the file exists at the path reported by multer
+          if (!fs.existsSync(filePath)) {
+            logger.warn(`File not found at the reported path: ${filePath}, will search for it`);
+            
+            // Try to locate the file using alternative paths
+            const fileName = path.basename(filePath);
+            const possiblePaths = [
+              filePath,
+              path.join(process.cwd(), 'uploads', fileName),
+              path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
+              path.join(path.dirname(filePath), path.basename(req.file.originalname)),
+              path.join('/tmp', fileName)
+            ];
+            
+            let foundPath = null;
+            for (const altPath of possiblePaths) {
+              logger.info(`Checking alternative path: ${altPath}`);
+              if (fs.existsSync(altPath)) {
+                logger.info(`Found file at alternative path: ${altPath}`);
+                foundPath = altPath;
+                break;
+              }
+            }
+            
+            if (foundPath) {
+              filePath = foundPath;
+              logger.info(`Using alternative file path: ${filePath}`);
+            } else {
+              logger.error(`Could not find file at any alternative path for: ${filePath}`);
+            }
+          }
+          
+          // Proceed if the file exists (either at original or alternative path)
           if (fs.existsSync(filePath)) {
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();

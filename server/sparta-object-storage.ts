@@ -147,12 +147,46 @@ export class SpartaObjectStorage {
       if (typeof fileData === 'string') {
         // If fileData is a path to a local file
         console.log("Reading file from path:", fileData);
+        
+        // Check if the file exists at the given path
+        if (!fs.existsSync(fileData)) {
+          console.error(`File not found at path: ${fileData}, checking alternative paths`);
+          
+          // Try to find the file with alternative paths
+          const fileName = path.basename(fileData);
+          const possiblePaths = [
+            fileData,
+            path.join(process.cwd(), 'uploads', fileName),
+            path.join(path.dirname(fileData), path.basename(fileData)),
+            path.join(process.cwd(), fileName),
+            path.join('/tmp', fileName)
+          ];
+          
+          let foundPath = null;
+          for (const altPath of possiblePaths) {
+            console.log(`Checking alternative path: ${altPath}`);
+            if (fs.existsSync(altPath)) {
+              console.log(`Found file at alternative path: ${altPath}`);
+              foundPath = altPath;
+              break;
+            }
+          }
+          
+          if (foundPath) {
+            fileData = foundPath;
+          } else {
+            throw new Error(`Could not find file at any alternative path for: ${fileData}`);
+          }
+        }
+        
         try {
           const stats = fs.statSync(fileData);
           console.log("File stats:", { size: stats.size, isFile: stats.isFile() });
         } catch (statError) {
           console.error("Error getting file stats:", statError);
+          throw statError; // Re-throw to halt processing
         }
+        
         fileBuffer = fs.readFileSync(fileData);
         console.log("File read successfully, buffer size:", fileBuffer.length);
       } else {
