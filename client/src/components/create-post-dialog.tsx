@@ -557,29 +557,14 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       </FormControl>
                       {imagePreview && (
                         <div className="mt-2">
-                          {form.watch("type") === "memory_verse" && imagePreview && (
-                            <>
-                              <video 
-                                src={imagePreview} 
-                                controls
-                                controlsList="nodownload"
-                                className="w-full max-h-60 rounded-md object-contain bg-black"
-                                preload="metadata"
-                                muted={false}
-                                playsInline
-                                autoPlay={false}
+                          {form.watch("type") === "memory_verse" && videoThumbnail && (
+                            <div className="mt-2">
+                              <img 
+                                src={videoThumbnail}
+                                alt="Video Thumbnail"
+                                className="max-h-40 rounded-md border border-gray-300"
                               />
-                              {videoThumbnail && (
-                                <div className="mt-2">
-                                  <p className="text-sm font-medium mb-1">Video Thumbnail:</p>
-                                  <img 
-                                    src={videoThumbnail}
-                                    alt="Video Thumbnail"
-                                    className="max-h-40 rounded-md border border-gray-300"
-                                  />
-                                </div>
-                              )}
-                            </>
+                            </div>
                           )}
                           {form.watch("type") !== "memory_verse" && imagePreview && (
                             <img
