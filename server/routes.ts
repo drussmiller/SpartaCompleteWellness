@@ -2120,35 +2120,68 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       }
 
-      // Special handling for memory verse posts with timestamp IDs
+      // Special handling for posts with timestamp IDs
       if (!post && /^\d+$/.test(postIdStr) && postIdStr.length > 10) {
-        // This is likely a timestamp ID for a memory verse post
-        // Try to find by looking for memory verse posts created recently
-        console.log(`Attempting advanced search for memory verse post with timestamp ID: ${postIdStr}`);
-        logger.info(`Attempting advanced search for memory verse post with timestamp ID: ${postIdStr}`);
+        const timestampValue = parseInt(postIdStr);
+        const approxTimestamp = new Date(timestampValue);
+        const timestampThreshold = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
         
-        // Try to find memory verse posts by this user in the past 24 hours
-        // and order by creation time to get the most recent one
-        const recentMemoryVersePosts = await db
+        // Log the timestamp-based search approach
+        console.log(`Attempting advanced search for post with timestamp ID: ${postIdStr}`);
+        console.log(`Parsed timestamp: ${approxTimestamp.toISOString()}`);
+        logger.info(`Attempting advanced search for post with timestamp ID: ${postIdStr}`);
+        logger.info(`Parsed timestamp: ${approxTimestamp.toISOString()}`);
+        
+        // First, try to find any post by this user with a created_at timestamp close to the ID value
+        // This covers any post type (including miscellaneous posts)
+        const recentPosts = await db
           .select()
           .from(posts)
           .where(
             and(
               eq(posts.userId, req.user.id),
-              eq(posts.type, 'memory_verse'),
               // Created within the last 24 hours
-              sql`"created_at" > NOW() - INTERVAL '24 hours'`
+              sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${timestampValue}) < ${timestampThreshold}`
             )
           )
-          .orderBy(desc(posts.createdAt))
+          .orderBy(sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${timestampValue})`)
           .limit(5);
         
-        if (recentMemoryVersePosts.length > 0) {
-          // Use the most recent memory verse post
-          post = recentMemoryVersePosts[0];
+        if (recentPosts.length > 0) {
+          // Use the post with the closest timestamp to the ID
+          post = recentPosts[0];
           postId = post.id;
-          console.log(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
-          logger.info(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
+          console.log(`Found post by timestamp proximity: ${postId}, type: ${post.type}, created: ${post.createdAt}`);
+          logger.info(`Found post by timestamp proximity: ${postId}, type: ${post.type}, created: ${post.createdAt}`);
+        }
+        
+        // If still not found, try specific handling for memory verse posts
+        if (!post) {
+          console.log(`No posts found by timestamp proximity, trying memory verse specific search`);
+          
+          // Try to find memory verse posts by this user in the past 24 hours
+          // and order by creation time to get the most recent one
+          const recentMemoryVersePosts = await db
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, req.user.id),
+                eq(posts.type, 'memory_verse'),
+                // Created within the last 24 hours
+                sql`"created_at" > NOW() - INTERVAL '24 hours'`
+              )
+            )
+            .orderBy(desc(posts.createdAt))
+            .limit(5);
+          
+          if (recentMemoryVersePosts.length > 0) {
+            // Use the most recent memory verse post
+            post = recentMemoryVersePosts[0];
+            postId = post.id;
+            console.log(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
+            logger.info(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
+          }
         }
       }
       
