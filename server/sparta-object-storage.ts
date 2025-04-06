@@ -154,12 +154,34 @@ export class SpartaObjectStorage {
           
           // Try to find the file with alternative paths
           const fileName = path.basename(fileData);
+          
+          // Find recent files in the uploads directory
+          const uploadsDirPath = path.join(process.cwd(), 'uploads');
+          let allFilesInUploads: string[] = [];
+          try {
+            allFilesInUploads = fs.readdirSync(uploadsDirPath)
+              .filter(file => {
+                const fileStat = fs.statSync(path.join(uploadsDirPath, file));
+                // Look for files created in the last 30 seconds
+                return fileStat.isFile() && 
+                       (Date.now() - fileStat.birthtime.getTime() < 30 * 1000);
+              })
+              .map(file => path.join(uploadsDirPath, file));
+              
+            console.log("Recent files in uploads directory:", allFilesInUploads);
+          } catch (err) {
+            console.error("Error reading uploads directory:", err);
+          }
+          
+          // Standard possible paths
           const possiblePaths = [
             fileData,
             path.join(process.cwd(), 'uploads', fileName),
             path.join(path.dirname(fileData), path.basename(fileData)),
             path.join(process.cwd(), fileName),
-            path.join('/tmp', fileName)
+            path.join('/tmp', fileName),
+            // Add recently uploaded files as potential source paths
+            ...allFilesInUploads
           ];
           
           let foundPath = null;
