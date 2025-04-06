@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,15 +25,60 @@ import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
 
+// Helper function to check if a file URL is likely a video
+function isLikelyVideo(url: string, content?: string | null): boolean {
+  // Normalize content to undefined instead of null
+  const normalizedContent = content === null ? undefined : content;
+  // Check file extension
+  const urlLower = url.toLowerCase();
+  
+  // Common video extensions
+  if (urlLower.endsWith('.mp4') || 
+      urlLower.endsWith('.mov') || 
+      urlLower.endsWith('.webm') || 
+      urlLower.endsWith('.avi') || 
+      urlLower.endsWith('.mkv')) {
+    console.log(`URL ${url} detected as video by extension`);
+    return true;
+  }
+  
+  // Check for [VIDEO] marker in content
+  if (normalizedContent && normalizedContent.includes('[VIDEO]')) {
+    console.log(`Post content contains [VIDEO] marker`);
+    return true;
+  }
+  
+  // Check for video paths in URL
+  if (urlLower.includes('/videos/') || 
+      urlLower.includes('/video/') ||
+      urlLower.includes('/memory_verse/')) {
+    console.log(`URL ${url} detected as video by path pattern`);
+    return true;
+  }
+  
+  return false;
+}
+
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [videoLoadAttempts, setVideoLoadAttempts] = useState(0);
+  const [videoLoadError, setVideoLoadError] = useState<string | null>(null);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
+  
+  // Check if this post should be displayed as a video
+  const shouldShowAsVideo = useMemo(() => {
+    if (post.type === 'memory_verse') return true;
+    if (post.type === 'miscellaneous' && post.mediaUrl) {
+      return isLikelyVideo(post.mediaUrl, post.content || undefined);
+    }
+    return false;
+  }, [post.type, post.mediaUrl, post.content]);
 
   // Query to get weekly points total
   const { data: weekPoints, isLoading: isLoadingWeekPoints } = useQuery({
@@ -290,15 +335,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       {post.mediaUrl && post.type !== 'scripture' && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
-            {(post.type === 'memory_verse' || 
-              (post.type === 'miscellaneous' && 
-               (post.mediaUrl.endsWith('.mp4') || 
-                post.mediaUrl.endsWith('.mov') || 
-                post.mediaUrl.endsWith('.webm') || 
-                post.mediaUrl.endsWith('.avi') || 
-                post.mediaUrl.endsWith('.mkv') ||
-                post.content?.includes('[VIDEO]')))) ? (
+            {shouldShowAsVideo ? (
               <div className="relative w-full">
+                {videoLoadError && (
+                  <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-xs p-1 z-10">
+                    Video loading error (attempt {videoLoadAttempts}) - Trying alternative sources...
+                  </div>
+                )}
                 <video
                   src={post.mediaUrl}
                   controls
@@ -310,7 +353,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   controlsList="nodownload"
                   disablePictureInPicture={false}
                   onError={(e) => {
-                    console.error(`Failed to load ${post.type} video:`, post.mediaUrl);
+                    const errorMsg = `Failed to load ${post.type} video: ${post.mediaUrl}`;
+                    console.error(errorMsg);
+                    setVideoLoadError(errorMsg);
+                    setVideoLoadAttempts(prev => prev + 1);
+                    
                     const videoEl = e.target as HTMLVideoElement;
                     // Try alternative URLs in case the path is wrong
                     const filename = post.mediaUrl?.split('/').pop();
@@ -323,14 +370,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         `/uploads/miscellaneous/${filename}`,
                       ];
                       
-                      // Log the attempts for debugging
-                      console.log(`Trying alternative URLs for ${post.type} video:`, alternativeUrls);
+                      // Add more detailed logging including post ID
+                      console.log(`Trying alternative URLs for ${post.type} video (post ID: ${post.id}):`, {
+                        originalUrl: post.mediaUrl,
+                        alternativeUrls,
+                        filename,
+                        postType: post.type,
+                        contentHasVideoMarker: post.content?.includes('[VIDEO]') || false,
+                        isLikelyVideoResult: post.mediaUrl ? isLikelyVideo(post.mediaUrl, post.content || undefined) : false,
+                        videoLoadAttempts: videoLoadAttempts + 1,
+                      });
                       
                       // Try to fix the thumbnail in the background when video fails to load
                       // This helps ensure future video display is better
                       const fixThumbnails = async () => {
                         try {
-                          console.log(`Triggering ${post.type} thumbnail fix`);
+                          console.log(`Triggering ${post.type} thumbnail fix for post ${post.id}`);
                           
                           // Create a fetch request to the fix-thumbnails endpoint
                           // This will execute thumbnail repair in the background
@@ -344,16 +399,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                             headers: {
                               'Content-Type': 'application/json',
                             },
+                            body: JSON.stringify({ 
+                              mediaUrl: post.mediaUrl,
+                              postId: post.id,
+                              postType: post.type
+                            }),
                             credentials: 'include',
                           });
                           
                           if (response.ok) {
-                            console.log(`${post.type} thumbnail fix initiated`);
+                            console.log(`${post.type} thumbnail fix initiated for post ${post.id}`);
                           } else {
-                            console.error(`Failed to initiate ${post.type} thumbnail fix:`, await response.text());
+                            const errorText = await response.text();
+                            console.error(`Failed to initiate ${post.type} thumbnail fix:`, errorText);
+                            setVideoLoadError(`Failed to fix video: ${errorText}`);
                           }
                         } catch (error) {
                           console.error(`Error requesting ${post.type} thumbnail fix:`, error);
+                          setVideoLoadError(`Error fixing video: ${error instanceof Error ? error.message : String(error)}`);
                         }
                       };
                       
@@ -363,12 +426,23 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       // Try each alternative URL
                       const tryNextUrl = (index: number) => {
                         if (index < alternativeUrls.length) {
+                          const currentAttempt = index + 1;
+                          setVideoLoadAttempts(currentAttempt);
+                          console.log(`Trying URL ${currentAttempt} of ${alternativeUrls.length}: ${alternativeUrls[index]}`);
+                          
                           videoEl.src = alternativeUrls[index];
                           videoEl.onerror = () => {
                             console.error(`Alternative URL failed: ${alternativeUrls[index]}`);
                             tryNextUrl(index + 1);
                           };
+                          videoEl.onloadeddata = () => {
+                            console.log(`Alternative URL succeeded: ${alternativeUrls[index]}`);
+                            setVideoLoadError(null);
+                          };
                           videoEl.load();
+                        } else {
+                          console.error(`All ${alternativeUrls.length} alternative URLs failed for post ${post.id}`);
+                          setVideoLoadError(`Could not load video after trying ${alternativeUrls.length} different paths.`);
                         }
                       };
                       
