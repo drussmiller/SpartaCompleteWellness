@@ -173,11 +173,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
     onSuccess: (deletedPostId) => {
       console.log(`Post ${deletedPostId} deleted successfully`);
-      toast({
-        title: "Success",
-        description: "Post deleted successfully"
-      });
-
+      
       // Get current posts and filter out the deleted one
       const currentPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
       if (currentPosts) {
