@@ -296,7 +296,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 post.mediaUrl.endsWith('.mov') || 
                 post.mediaUrl.endsWith('.webm') || 
                 post.mediaUrl.endsWith('.avi') || 
-                post.mediaUrl.endsWith('.mkv')))) ? (
+                post.mediaUrl.endsWith('.mkv') ||
+                post.content?.includes('[VIDEO]')))) ? (
               <div className="relative w-full">
                 <video
                   src={post.mediaUrl}

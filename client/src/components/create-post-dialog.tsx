@@ -204,9 +204,18 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           }
         }
 
+        // Prepare the content, adding a [VIDEO] marker for miscellaneous videos
+        let content = data.content?.trim() || '';
+        if (data.type === 'miscellaneous' && selectedMediaType === 'video') {
+          // Add a VIDEO marker at the beginning of the content if it doesn't already have one
+          if (!content.includes('[VIDEO]')) {
+            content = content ? `[VIDEO] ${content}` : '[VIDEO]';
+          }
+        }
+        
         const postData = {
           type: data.type,
-          content: data.content?.trim() || '',
+          content: content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
         };
@@ -228,7 +237,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           
           console.log("Added media type marker for miscellaneous post:", {
             selectedMediaType,
-            isVideo: selectedMediaType === "video"
+            isVideo: selectedMediaType === "video",
+            contentWithVideoMarker: postData.content
           });
         }
         
