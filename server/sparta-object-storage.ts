@@ -99,11 +99,18 @@ export class SpartaObjectStorage {
       // Check if it's a video based on file extension or explicitly marked as video
       const isVideoByExtension = videoExtensions.includes(fileExt);
       
-      // Force isVideo true if filename includes memory_verse (helps with type detection)
+      // Force isVideo true if filename includes memory_verse or miscellaneous (helps with type detection)
       const isMemoryVerse = originalFilename.toLowerCase().includes('memory_verse');
+      const isMiscellaneousVideo = originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension;
+      
       if (isMemoryVerse) {
         isVideo = true;
         console.log("Detected memory verse video by filename:", originalFilename);
+      }
+      
+      if (isMiscellaneousVideo) {
+        isVideo = true;
+        console.log("Detected miscellaneous video by filename and extension:", originalFilename);
       }
       
       // Either the mime type is in the allowed list OR it's a video file by extension/flag
@@ -267,23 +274,24 @@ export class SpartaObjectStorage {
             isMemoryVerse: originalFilename.toLowerCase().includes('memory_verse')
           });
           
-          // For memory verse videos, ensure we preserve the file exactly as is
-          if (originalFilename.toLowerCase().includes('memory_verse')) {
-            console.log("Memory verse video detected, ensuring direct file copy");
+          // For memory verse and miscellaneous videos, ensure we preserve the file exactly as is
+          if (originalFilename.toLowerCase().includes('memory_verse') || 
+              (originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension)) {
+            console.log(`${originalFilename.toLowerCase().includes('memory_verse') ? 'Memory verse' : 'Miscellaneous'} video detected, ensuring direct file copy`);
+            
             // Just ensure the file exists in the correct uploads folder
             const uploadsFilePath = path.join(this.baseDir, safeFilename);
             if (filePath !== uploadsFilePath && fs.existsSync(filePath)) {
               try {
                 fs.copyFileSync(filePath, uploadsFilePath);
-                console.log(`Copied memory verse video to proper location: ${uploadsFilePath}`);
+                console.log(`Copied video to proper location: ${uploadsFilePath}`);
               } catch (copyError) {
-                console.error("Error copying memory verse video:", copyError);
+                console.error("Error copying video:", copyError);
               }
             }
             
-            // For memory verse videos, we need to ensure the thumbnail exists
-            // with the proper naming convention and in the proper location
-            console.log(`Ensuring memory verse thumbnail exists with proper naming`);
+            // We need to ensure the thumbnail exists with the proper naming convention and in the proper location
+            console.log(`Ensuring video thumbnail exists with proper naming`);
           }
           
           try {
@@ -305,17 +313,19 @@ export class SpartaObjectStorage {
                 console.error(`Error setting permissions on thumbnail:`, permErr);
               }
               
-              // For memory verse videos, always ensure thumbnail is in the standard location
-              if (originalFilename.toLowerCase().includes('memory_verse')) {
-                // Special handling for memory verse videos - create a copy without the thumb- prefix too
+              // For memory verse and miscellaneous videos, always ensure thumbnail is in the standard location
+              if (originalFilename.toLowerCase().includes('memory_verse') || 
+                  (originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension)) {
+                
+                // Special handling for videos - create a copy without the thumb- prefix too
                 // This is because some parts of the code might look for thumbnails without the prefix
                 const alternateThumbPath = path.join(this.thumbnailDir, safeFilename);
                 if (!fs.existsSync(alternateThumbPath)) {
                   try {
                     fs.copyFileSync(thumbnailPath, alternateThumbPath);
-                    console.log(`Created alternate memory verse thumbnail at ${alternateThumbPath}`);
+                    console.log(`Created alternate video thumbnail at ${alternateThumbPath}`);
                   } catch (copyError) {
-                    console.error(`Error creating alternate memory verse thumbnail:`, copyError);
+                    console.error(`Error creating alternate video thumbnail:`, copyError);
                   }
                 }
               }
@@ -333,8 +343,9 @@ export class SpartaObjectStorage {
               fs.writeFileSync(thumbnailPath, svgContent);
               console.log(`Created SVG fallback thumbnail at ${thumbnailPath}`);
               
-              // Create a copy without the thumb- prefix for memory verse videos
-              if (originalFilename.toLowerCase().includes('memory_verse')) {
+              // Create a copy without the thumb- prefix for memory verse or miscellaneous videos
+              if (originalFilename.toLowerCase().includes('memory_verse') || 
+                  (originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension)) {
                 const alternateThumbPath = path.join(this.thumbnailDir, safeFilename);
                 try {
                   fs.writeFileSync(alternateThumbPath, svgContent);
@@ -495,19 +506,21 @@ export class SpartaObjectStorage {
             console.error(`Error listing directory ${dir}:`, readDirError);
           }
           
-          // Try to find the video in alternative locations (especially for memory verse videos)
+          // Try to find the video in alternative locations (for memory verse or miscellaneous videos)
           const filename = path.basename(videoPath);
           const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+          const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
           
-          if (isMemoryVerse) {
+          if (isMemoryVerse || isMiscellaneousVideo) {
             // Look for the file in common alternate locations
             const alternateLocations = [
               path.join(process.cwd(), 'uploads', filename),
               path.join(process.cwd(), 'uploads', 'videos', filename),
-              path.join(process.cwd(), 'uploads', 'memory_verse', filename)
+              path.join(process.cwd(), 'uploads', 'memory_verse', filename),
+              path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
             ];
             
-            console.log(`Checking alternate locations for memory verse video: ${filename}`);
+            console.log(`Checking alternate locations for ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video: ${filename}`);
             let foundAlternate = false;
             
             for (const alternate of alternateLocations) {
@@ -554,12 +567,13 @@ export class SpartaObjectStorage {
           fs.mkdirSync(thumbnailDir, { recursive: true });
         }
         
-        // Special handling for memory verse videos - ensure the path is correct
+        // Special handling for video types - ensure the path is correct
         const filename = path.basename(videoPath);
         const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+        const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
         
-        // For memory verse videos, copy the file to uploads directory if needed
-        if (isMemoryVerse) {
+        // For memory verse or miscellaneous videos, copy the file to uploads directory if needed
+        if (isMemoryVerse || isMiscellaneousVideo) {
           const uploadsDir = path.join(process.cwd(), 'uploads');
           const correctPath = path.join(uploadsDir, filename);
           
@@ -568,10 +582,10 @@ export class SpartaObjectStorage {
               // Copy to the main uploads directory if it's not already there
               if (!fs.existsSync(correctPath)) {
                 fs.copyFileSync(videoPath, correctPath);
-                console.log(`Copied memory verse video to correct uploads location: ${correctPath}`);
+                console.log(`Copied ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video to correct uploads location: ${correctPath}`);
               }
             } catch (copyError) {
-              console.error(`Error copying memory verse video to correct location:`, copyError);
+              console.error(`Error copying video to correct location:`, copyError);
             }
           }
         }
@@ -715,8 +729,9 @@ export class SpartaObjectStorage {
               }
             }
             
-            // For memory verse files specifically
-            if (filename.includes('memory_verse') && file.includes('memory_verse')) {
+            // For memory verse and miscellaneous video files specifically
+            if ((filename.includes('memory_verse') && file.includes('memory_verse')) ||
+                (filename.includes('miscellaneous') && file.includes('miscellaneous'))) {
               return true;
             }
             
@@ -791,7 +806,9 @@ export class SpartaObjectStorage {
             }
           }
           
-          if (filename.includes('memory_verse') && file.includes('memory_verse')) {
+          // For memory verse and miscellaneous video files specifically in thumbnail directory
+          if ((filename.includes('memory_verse') && file.includes('memory_verse')) ||
+              (filename.includes('miscellaneous') && file.includes('miscellaneous'))) {
             return true;
           }
           
