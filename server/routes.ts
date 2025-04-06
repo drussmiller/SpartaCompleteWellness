@@ -907,6 +907,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  // General endpoint to fix all thumbnails for uploaded files
+  router.post("/api/fix-thumbnails", authenticate, async (req, res) => {
+    try {
+      // Only need to be logged in to repair thumbnails
+      if (!req.user) {
+        return res.status(403).json({ message: "Authentication required" });
+      }
+      
+      logger.info(`Fix all thumbnails requested by user ${req.user.id}`);
+      
+      // Import the repair module
+      const { repairThumbnails } = await import('./thumbnail-repair');
+      
+      // Run the repair asynchronously
+      res.json({
+        message: "Thumbnail repair started",
+        status: "processing"
+      });
+      
+      // Process after sending the response
+      repairThumbnails()
+        .then(() => {
+          logger.info(`Thumbnail repair completed for user ${req.user.id}`);
+        })
+        .catch(error => {
+          logger.error(`Thumbnail repair failed for user ${req.user.id}:`, error);
+        });
+        
+    } catch (error) {
+      logger.error('Error starting thumbnail repair:', error);
+      res.status(500).json({ message: "Failed to start thumbnail repair" });
+    }
+  });
+  
   // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {

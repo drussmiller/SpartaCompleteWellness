@@ -290,7 +290,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       {post.mediaUrl && post.type !== 'scripture' && (
         <div className="w-screen bg-gray-100 -mx-4 relative">
           <div className="min-h-[50vh] max-h-[90vh] w-full flex items-center justify-center py-2">
-            {post.type === 'memory_verse' ? (
+            {(post.type === 'memory_verse' || 
+              (post.type === 'miscellaneous' && 
+               (post.mediaUrl.endsWith('.mp4') || 
+                post.mediaUrl.endsWith('.mov') || 
+                post.mediaUrl.endsWith('.webm') || 
+                post.mediaUrl.endsWith('.avi') || 
+                post.mediaUrl.endsWith('.mkv')))) ? (
               <div className="relative w-full">
                 <video
                   src={post.mediaUrl}
@@ -303,7 +309,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   controlsList="nodownload"
                   disablePictureInPicture={false}
                   onError={(e) => {
-                    console.error("Failed to load memory verse video:", post.mediaUrl);
+                    console.error(`Failed to load ${post.type} video:`, post.mediaUrl);
                     const videoEl = e.target as HTMLVideoElement;
                     // Try alternative URLs in case the path is wrong
                     const filename = post.mediaUrl?.split('/').pop();
@@ -317,17 +323,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       ];
                       
                       // Log the attempts for debugging
-                      console.log("Trying alternative URLs for memory verse video:", alternativeUrls);
+                      console.log(`Trying alternative URLs for ${post.type} video:`, alternativeUrls);
                       
                       // Try to fix the thumbnail in the background when video fails to load
                       // This helps ensure future video display is better
                       const fixThumbnails = async () => {
                         try {
-                          console.log("Triggering memory verse thumbnail fix");
+                          console.log(`Triggering ${post.type} thumbnail fix`);
                           
                           // Create a fetch request to the fix-thumbnails endpoint
                           // This will execute thumbnail repair in the background
-                          const response = await fetch('/api/memory-verse/fix-thumbnails', {
+                          // Use different endpoints based on post type
+                          const endpoint = post.type === 'memory_verse' 
+                            ? '/api/memory-verse/fix-thumbnails'
+                            : '/api/fix-thumbnails';
+                            
+                          const response = await fetch(endpoint, {
                             method: 'POST',
                             headers: {
                               'Content-Type': 'application/json',
@@ -336,12 +347,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                           });
                           
                           if (response.ok) {
-                            console.log("Memory verse thumbnail fix initiated");
+                            console.log(`${post.type} thumbnail fix initiated`);
                           } else {
-                            console.error("Failed to initiate memory verse thumbnail fix:", await response.text());
+                            console.error(`Failed to initiate ${post.type} thumbnail fix:`, await response.text());
                           }
                         } catch (error) {
-                          console.error("Error requesting memory verse thumbnail fix:", error);
+                          console.error(`Error requesting ${post.type} thumbnail fix:`, error);
                         }
                       };
                       
