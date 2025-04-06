@@ -2020,32 +2020,75 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const postIdStr = req.params.id;
 
       // Log the raw post ID for debugging
+      console.log(`Raw post ID from request: ${postIdStr}`);
       logger.info(`Raw post ID from request: ${postIdStr}`);
 
-      // Validate it's a valid number
-      if (!/^\d+$/.test(postIdStr)) {
-        return res.status(400).json({ message: "Invalid post ID format" });
+      let post;
+      let postId;
+
+      // First, try direct numeric ID lookup (for posts created with regular IDs)
+      if (/^\d+$/.test(postIdStr) && postIdStr.length < 10) {
+        // Probably a regular numeric ID
+        postId = parseInt(postIdStr);
+        
+        // Get the post to check ownership
+        [post] = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postId));
       }
 
-      // Convert to numeric ID for database operations
-      const postId = parseInt(postIdStr);
+      // If not found or ID looks like a timestamp (longer numeric string), try to find by timestamp ID
+      if (!post && /^\d+$/.test(postIdStr) && postIdStr.length > 10) {
+        // Timestamp-based ID, likely a newer style post
+        console.log(`Handling timestamp-based ID: ${postIdStr}`);
+        
+        // First try exact match in case it's stored directly
+        [post] = await db
+          .select()
+          .from(posts)
+          .where(sql`CAST(id AS TEXT) = ${postIdStr}`);
+        
+        if (post) {
+          postId = post.id;
+          console.log(`Found post with exact timestamp ID: ${postId}`);
+        } else {
+          // Try to find by created timestamp proximity
+          const approxTimestamp = parseInt(postIdStr);
+          console.log(`Trying to find post with approximate timestamp: ${approxTimestamp}`);
+          
+          // SQL query to find a post created around the same time as the timestamp
+          // Look for posts within 10 seconds of the timestamp
+          const postsAroundTime = await db
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, req.user.id),
+                sql`ABS(EXTRACT(EPOCH FROM "createdAt") * 1000 - ${approxTimestamp}) < 10000`
+              )
+            )
+            .orderBy(sql`ABS(EXTRACT(EPOCH FROM "createdAt") * 1000 - ${approxTimestamp})`);
+          
+          if (postsAroundTime.length > 0) {
+            // Use the closest post
+            post = postsAroundTime[0];
+            postId = post.id;
+            console.log(`Found post by timestamp proximity: ${postId}`);
+          }
+        }
+      }
 
-      // Use Drizzle's built-in query methods which handle parameter binding correctly
-      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
-
-      // Get the post to check ownership
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId));
-
+      // If still not found, handle that
       if (!post) {
-        logger.info(`Post ${postId} not found during deletion attempt`);
+        console.log(`Post with ID ${postIdStr} not found during deletion attempt`);
+        logger.info(`Post with ID ${postIdStr} not found during deletion attempt`);
         return res.status(404).json({ message: "Post not found" });
       }
 
       // Check if user is admin or the post owner
       if (!req.user.isAdmin && post.userId !== req.user.id) {
+        console.log(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
         logger.info(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
@@ -2053,10 +2096,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Delete associated media files if they exist
       if (post.mediaUrl) {
         try {
+          console.log(`Deleting file associated with post: ${post.mediaUrl}`);
           logger.info(`Deleting file associated with post: ${post.mediaUrl}`);
           await spartaStorage.deleteFile(post.mediaUrl);
+          console.log(`Successfully deleted media file for post: ${postId}`);
           logger.info(`Successfully deleted media file for post: ${postId}`);
         } catch (fileError) {
+          console.error(`Error deleting media file for post ${postId}:`, fileError);
           logger.error(`Error deleting media file for post ${postId}:`, fileError);
           // Continue with post deletion even if file deletion fails
         }
@@ -2069,20 +2115,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           await tx
             .delete(reactions)
             .where(eq(reactions.postId, postId));
+          console.log(`Deleted reactions for post ${postId}`);
           logger.info(`Deleted reactions for post ${postId}`);
 
           // Then delete any comments on the post
           await tx
             .delete(posts)
             .where(eq(posts.parentId, postId));
+          console.log(`Deleted comments for post ${postId}`);
           logger.info(`Deleted comments for post ${postId}`);
 
           // Finally delete the post itself
           await tx
             .delete(posts)
             .where(eq(posts.id, postId));
+          console.log(`Post ${postId} successfully deleted`);
           logger.info(`Post ${postId} successfully deleted`);
         } catch (txError) {
+          console.error(`Transaction error while deleting post ${postId}:`, txError);
           logger.error(`Transaction error while deleting post ${postId}:`, txError);
           throw txError; // Re-throw to roll back the transaction
         }
@@ -2093,6 +2143,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         id: postId 
       });
     } catch (error) {
+      console.error("Error deleting post:", error);
       logger.error("Error deleting post:", error);
       return res.status(500).json({
         message: "Failed to delete post",
