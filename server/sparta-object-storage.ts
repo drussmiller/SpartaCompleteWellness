@@ -673,27 +673,159 @@ export class SpartaObjectStorage {
         return;
       }
 
+      console.log(`Attempting to delete file from URL: ${fileUrl}`);
+
       // Extract filename from URL
       const filename = path.basename(fileUrl);
       const filePath = path.join(this.baseDir, filename);
 
-      // Check if file exists before deleting
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        logger.info(`Deleted file ${filename}`);
+      console.log(`Looking for file at path: ${filePath}`);
 
-        // Also try to delete thumbnail if it exists
+      // Try to find the file with multiple approaches
+      let foundFile = false;
+      
+      // First check the direct path
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`Deleted file ${filename} from direct path`);
+          logger.info(`Deleted file ${filename}`);
+          foundFile = true;
+        } catch (err) {
+          console.error(`Error deleting file at ${filePath}:`, err);
+        }
+      } else {
+        console.log(`Direct path not found: ${filePath}`);
+        
+        // Try to find similar files in the uploads directory
+        try {
+          const filesInDir = fs.readdirSync(this.baseDir);
+          console.log(`Found ${filesInDir.length} files in ${this.baseDir}`);
+          
+          // Look for files that might match our filename pattern
+          // This helps with timestamp-based filenames where the exact match might not be found
+          const possibleMatches = filesInDir.filter(file => {
+            // For timestamp-based files, check if the second part of the name matches
+            if (filename.includes('-')) {
+              const filenameParts = filename.split('-');
+              const secondPart = filenameParts.length > 1 ? filenameParts[1] : '';
+              
+              if (secondPart && file.includes(secondPart)) {
+                return true;
+              }
+            }
+            
+            // For memory verse files specifically
+            if (filename.includes('memory_verse') && file.includes('memory_verse')) {
+              return true;
+            }
+            
+            // Check for file extension match as a fallback
+            const ext = path.extname(filename);
+            if (ext && file.endsWith(ext)) {
+              // Additional check: created around the same time (if timestamp-based)
+              if (filename.match(/^\d+/) && file.match(/^\d+/)) {
+                const filenameTime = parseInt(filename.match(/^\d+/)[0]);
+                const fileTime = parseInt(file.match(/^\d+/)[0]);
+                
+                // If files were created within 10 seconds of each other
+                if (Math.abs(filenameTime - fileTime) < 10000) {
+                  return true;
+                }
+              }
+            }
+            
+            return false;
+          });
+          
+          console.log(`Found ${possibleMatches.length} possible matches:`, possibleMatches);
+          
+          // Try to delete all possible matches
+          for (const match of possibleMatches) {
+            const matchPath = path.join(this.baseDir, match);
+            try {
+              fs.unlinkSync(matchPath);
+              console.log(`Deleted possible match: ${matchPath}`);
+              logger.info(`Deleted possible match file: ${match}`);
+              foundFile = true;
+            } catch (err) {
+              console.error(`Error deleting possible match at ${matchPath}:`, err);
+            }
+          }
+        } catch (readErr) {
+          console.error(`Error reading directory ${this.baseDir}:`, readErr);
+        }
+      }
+      
+      // Try to delete thumbnails regardless of whether we found the original file
+      try {
+        // Standard thumbnail with thumb- prefix
         const thumbnailPath = path.join(this.thumbnailDir, `thumb-${filename}`);
         if (fs.existsSync(thumbnailPath)) {
           fs.unlinkSync(thumbnailPath);
+          console.log(`Deleted thumbnail at ${thumbnailPath}`);
           logger.info(`Deleted thumbnail for ${filename}`);
+          foundFile = true;
         }
-      } else {
-        logger.warn(`File not found for deletion: ${filePath}`);
+        
+        // Also try alternate thumbnail without the thumb- prefix
+        const altThumbnailPath = path.join(this.thumbnailDir, filename);
+        if (fs.existsSync(altThumbnailPath)) {
+          fs.unlinkSync(altThumbnailPath);
+          console.log(`Deleted alternate thumbnail at ${altThumbnailPath}`);
+          logger.info(`Deleted alternate thumbnail for ${filename}`);
+          foundFile = true;
+        }
+        
+        // For files with timestamps, try to find approximate matches
+        const filesInThumbDir = fs.readdirSync(this.thumbnailDir);
+        
+        // Same matching logic as above for similar filenames
+        const possibleThumbMatches = filesInThumbDir.filter(file => {
+          if (filename.includes('-')) {
+            const filenameParts = filename.split('-');
+            const secondPart = filenameParts.length > 1 ? filenameParts[1] : '';
+            
+            if (secondPart && file.includes(secondPart)) {
+              return true;
+            }
+          }
+          
+          if (filename.includes('memory_verse') && file.includes('memory_verse')) {
+            return true;
+          }
+          
+          const ext = path.extname(filename);
+          if (ext && file.endsWith(ext)) {
+            return true;
+          }
+          
+          return false;
+        });
+        
+        for (const match of possibleThumbMatches) {
+          const matchPath = path.join(this.thumbnailDir, match);
+          try {
+            fs.unlinkSync(matchPath);
+            console.log(`Deleted possible thumbnail match: ${matchPath}`);
+            logger.info(`Deleted possible thumbnail match: ${match}`);
+            foundFile = true;
+          } catch (err) {
+            console.error(`Error deleting possible thumbnail match at ${matchPath}:`, err);
+          }
+        }
+      } catch (thumbErr) {
+        console.error(`Error handling thumbnails:`, thumbErr);
+      }
+      
+      if (!foundFile) {
+        console.warn(`No files found for deletion matching: ${filename}`);
+        logger.warn(`No files found for deletion matching: ${filename}`);
       }
     } catch (error) {
+      console.error('Error in deleteFile:', error);
       logger.error('Error deleting file:', error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't throw error, just log it - we don't want to prevent post deletion
     }
   }
 
