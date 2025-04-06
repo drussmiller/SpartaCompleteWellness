@@ -429,7 +429,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch("type") === "memory_verse" ? "Video" : "Image"}
+                      {(form.watch("type") === "memory_verse") ? "Video" : 
+                       (form.watch("type") === "miscellaneous") ? "Media" : "Image"}
                     </FormLabel>
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
@@ -547,12 +548,27 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               }}
                               className="hidden"
                             />
+                            
+                            {/* Add Select Video button for Miscellaneous post type */}
+                            {form.watch("type") === "miscellaneous" && (
+                              <div className="mt-3">
+                                <Button
+                                  type="button"
+                                  onClick={() => videoInputRef.current?.click()}
+                                  variant="outline"
+                                  className="w-full"
+                                >
+                                  <Video className="mr-2 h-4 w-4" />
+                                  Select Video
+                                </Button>
+                              </div>
+                            )}
                           </>
                         )}
                       </FormControl>
                       {imagePreview && (
                         <div className="mt-2">
-                          {form.watch("type") === "memory_verse" && videoThumbnail && (
+                          {(form.watch("type") === "memory_verse" || form.watch("type") === "miscellaneous") && videoThumbnail && (
                             <div className="mt-2">
                               <img 
                                 src={videoThumbnail}
@@ -561,7 +577,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               />
                             </div>
                           )}
-                          {form.watch("type") !== "memory_verse" && imagePreview && (
+                          {form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous" && imagePreview && (
                             <img
                               src={imagePreview}
                               alt="Preview"
@@ -579,7 +595,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               field.onChange(null);
                             }}
                           >
-                            Remove {form.watch("type") === "memory_verse" ? "Video" : "Image"}
+                            Remove {form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && videoThumbnail) ? "Video" : "Image"}
                           </Button>
                         </div>
                       )}
