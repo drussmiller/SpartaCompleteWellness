@@ -172,6 +172,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               // The server will detect the post type based on the data.type field
               formData.append("image", videoFile);
               
+              // Explicitly set is_video flag for miscellaneous posts
+              formData.append("is_video", "true");
+              formData.append("selected_media_type", "video");
+              
               console.log(`Uploading ${data.type} video file:`, {
                 fileName: videoFile.name,
                 fileType: videoFile.type, 
@@ -291,7 +295,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         mediaUrl: imagePreview,
         createdAt: data.postDate || new Date(),
         author: user,
-        points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3
+        points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
+        is_video: data.type === "memory_verse" || (data.type === "miscellaneous" && selectedMediaType === "video")
       };
 
       queryClient.setQueryData(["/api/posts"], (old: any[] = []) => [optimisticPost, ...old]);
