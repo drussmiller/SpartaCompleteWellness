@@ -164,11 +164,35 @@ export class SpartaObjectStorage {
       const uniqueId = uuidv4().substring(0, 8);
       // Use the already defined fileExt from above
       const safeFilename = `${timestamp}-${uniqueId}${fileExt}`;
-      const filePath = path.join(this.baseDir, safeFilename);
+      
+      // Determine which directory to use based on original filename and video status
+      let targetDir = this.baseDir;
+      
+      // Re-use the isMemoryVerse variable from above (line 123)
+      // and handle miscellaneous videos similarly
+      const isMemoryVideo = isMemoryVerse && isVideo;
+      const isMiscVideo = originalFilename.toLowerCase().includes('miscellaneous') && isVideo;
+      
+      if (isMemoryVideo) {
+        targetDir = path.join(this.baseDir, 'memory_verse');
+        console.log("Using memory_verse directory for storage:", targetDir);
+      } else if (isMiscVideo) {
+        targetDir = path.join(this.baseDir, 'miscellaneous');
+        console.log("Using miscellaneous directory for storage:", targetDir);
+      }
+      
+      // Ensure the target directory exists
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+        console.log(`Created directory for file: ${targetDir}`);
+      }
+      
+      const filePath = path.join(targetDir, safeFilename);
       console.log("Generated safe filename and path", { 
         safeFilename, 
         filePath,
-        baseDir: this.baseDir 
+        baseDir: this.baseDir,
+        targetDir
       });
 
       // Convert string path to buffer if needed
@@ -421,8 +445,20 @@ export class SpartaObjectStorage {
 
       logger.info(`Successfully stored file ${safeFilename}`);
 
+      // Determine which URL path should be used based on directory structure
+      let urlPath = `/uploads/${safeFilename}`;
+      
+      // Use the same logic as above for directory paths
+      if (isMemoryVideo) {
+        urlPath = `/uploads/memory_verse/${safeFilename}`;
+        console.log("Using memory_verse URL path:", urlPath);
+      } else if (isMiscVideo) {
+        urlPath = `/uploads/miscellaneous/${safeFilename}`;
+        console.log("Using miscellaneous URL path:", urlPath);
+      }
+      
       return {
-        url: `/uploads/${safeFilename}`,
+        url: urlPath,
         thumbnailUrl,
         filename: safeFilename,
         mimeType,
@@ -591,11 +627,11 @@ export class SpartaObjectStorage {
         
         // Special handling for video types - ensure the path is correct
         const filename = path.basename(videoPath);
-        const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
-        const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
+        const isMemoryVerseFilename = filename.toLowerCase().includes('memory_verse');
+        const isMiscellaneousVideoFilename = filename.toLowerCase().includes('miscellaneous');
         
         // For memory verse or miscellaneous videos, copy the file to uploads directory if needed
-        if (isMemoryVerse || isMiscellaneousVideo) {
+        if (isMemoryVerseFilename || isMiscellaneousVideoFilename) {
           const uploadsDir = path.join(process.cwd(), 'uploads');
           const correctPath = path.join(uploadsDir, filename);
           
@@ -604,7 +640,7 @@ export class SpartaObjectStorage {
               // Copy to the main uploads directory if it's not already there
               if (!fs.existsSync(correctPath)) {
                 fs.copyFileSync(videoPath, correctPath);
-                console.log(`Copied ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video to correct uploads location: ${correctPath}`);
+                console.log(`Copied ${isMemoryVerseFilename ? 'memory verse' : 'miscellaneous'} video to correct uploads location: ${correctPath}`);
               }
             } catch (copyError) {
               console.error(`Error copying video to correct location:`, copyError);
