@@ -137,19 +137,23 @@ export function CommentList({ comments, postId }: CommentListProps) {
       }
     },
     onSuccess: (updatedComment) => {
-      // Update comment in the current view immediately
-      const updatedComments = comments.map(comment => 
-        comment.id === updatedComment.id 
-          ? {
+      // Update the comments list immediately
+      queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldComments) => {
+        if (!oldComments) return oldComments;
+        return oldComments.map(comment => {
+          if (comment.id === updatedComment.id) {
+            return {
               ...comment,
               content: updatedComment.content,
               updatedAt: new Date().toISOString()
-            }
-          : comment
-      );
+            };
+          }
+          return comment;
+        });
+      });
 
-      // Force update both cache and current view
-      queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], updatedComments);
+      // Invalidate query to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
 
       // Close edit form and show success message
       setEditingComment(null);
