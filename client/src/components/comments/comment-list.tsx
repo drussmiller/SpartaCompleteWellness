@@ -140,20 +140,20 @@ export function CommentList({ comments, postId }: CommentListProps) {
       // Update the comments list immediately
       queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldComments) => {
         if (!oldComments) return oldComments;
-        return oldComments.map(comment => {
+        
+        const updatedComments = oldComments.map(comment => {
           if (comment.id === updatedComment.id) {
             return {
               ...comment,
-              content: updatedComment.content,
+              ...updatedComment,
               updatedAt: new Date().toISOString()
             };
           }
           return comment;
         });
+        
+        return updatedComments;
       });
-
-      // Invalidate query to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
 
       // Close edit form and show success message
       setEditingComment(null);
