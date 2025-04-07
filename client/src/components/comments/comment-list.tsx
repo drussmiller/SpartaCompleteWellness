@@ -66,22 +66,22 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       return res.json();
     },
     onSuccess: (newReply) => {
-      // Update local state with the new reply
-      // Use a new approach that's compatible with our improved threading
-      const updatedComments = [...comments];
-      
-      // Add the new reply to the comments array
-      updatedComments.push({
-        ...newReply,
-        author: user
+      // Find the parent comment and add the reply to its replies array
+      const updatedComments = comments.map(comment => {
+        if (comment.id === replyingTo) {
+          return {
+            ...comment,
+            replies: [
+              ...(comment.replies || []),
+              { ...newReply, author: user }
+            ]
+          };
+        }
+        return comment;
       });
-      
-      // Update the state with the new comments including the reply
+
       setComments(updatedComments);
-      
-      // Also update the React Query cache to keep it in sync
       queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
-      
       setReplyingTo(null);
       toast({
         description: "Reply added successfully",
