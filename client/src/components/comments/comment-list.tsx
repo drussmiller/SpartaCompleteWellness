@@ -67,17 +67,21 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
     },
     onSuccess: (newReply) => {
       // Update local state with the new reply
-      const updatedComments = comments.map(comment => {
-        if (comment.id === replyingTo) {
-          return {
-            ...comment,
-            replies: [...(comment.replies || []), { ...newReply, author: user }]
-          };
-        }
-        return comment;
+      // Use a new approach that's compatible with our improved threading
+      const updatedComments = [...comments];
+      
+      // Add the new reply to the comments array
+      updatedComments.push({
+        ...newReply,
+        author: user
       });
       
+      // Update the state with the new comments including the reply
       setComments(updatedComments);
+      
+      // Also update the React Query cache to keep it in sync
+      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      
       setReplyingTo(null);
       toast({
         description: "Reply added successfully",
@@ -179,21 +183,34 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
     });
   };
 
-  // Organize comments into threads
-  const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
+  // Organize comments into threads more reliably
+  // First, separate top-level comments and replies
+  const topLevelComments: CommentWithReplies[] = [];
+  const repliesByParentId: Record<number, CommentWithReplies[]> = {};
+
+  // Process all comments first to ensure replies are properly categorized
+  comments.forEach(comment => {
+    const commentWithReplies = { ...comment, replies: [] };
+    
     if (comment.parentId === postId) {
       // This is a top-level comment
-      threads.push({ ...comment, replies: [] });
-    } else {
-      // This is a reply to another comment
-      const parentComment = threads.find(thread => thread.id === comment.parentId);
-      if (parentComment) {
-        parentComment.replies = parentComment.replies || [];
-        parentComment.replies.push({ ...comment, replies: [] });
+      topLevelComments.push(commentWithReplies);
+    } else if (comment.parentId) {
+      // This is a reply to another comment (ensure parentId is not null)
+      if (!repliesByParentId[comment.parentId]) {
+        repliesByParentId[comment.parentId] = [];
       }
+      repliesByParentId[comment.parentId].push(commentWithReplies);
     }
-    return threads;
-  }, []);
+  });
+
+  // Now attach all replies to their parent comments
+  const threadedComments = topLevelComments.map(comment => {
+    if (repliesByParentId[comment.id]) {
+      comment.replies = repliesByParentId[comment.id];
+    }
+    return comment;
+  });
 
   const formatTimeAgo = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
