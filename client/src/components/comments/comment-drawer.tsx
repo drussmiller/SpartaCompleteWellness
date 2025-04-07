@@ -90,7 +90,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         try {
           const data = JSON.parse(responseText);
           console.log("Post data retrieved successfully:", data);
-          
+
           // Process video detection more thoroughly, similar to post-card.tsx
           if (data && data.mediaUrl) {
             // First, check if is_video is already set
@@ -117,7 +117,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                   mediaUrl.includes('/miscellaneous/') ||
                   // Check content for [VIDEO] marker
                   (data.content && data.content.includes('[VIDEO]'));
-                
+
                 data.is_video = isVideo;
                 console.log(`Setting miscellaneous post ${data.id} is_video=${isVideo}`);
               } else {
@@ -125,7 +125,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               }
             }
           }
-          
+
           setOriginalPost(data);
         } catch (jsonError) {
           console.error("JSON parsing error in post response:", jsonError);
@@ -169,7 +169,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               try {
                 const data = JSON.parse(xhr.responseText);
                 console.log("Comments data retrieved:", data);
-                
+
                 // Make sure each comment has is_video property if it has mediaUrl
                 if (Array.isArray(data)) {
                   // Process video detection more thoroughly for comments
@@ -196,7 +196,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                           mediaUrl.includes('/miscellaneous/') ||
                           // Check content for [VIDEO] marker
                           (comment.content && comment.content.includes('[VIDEO]'));
-                        
+
                         return {...comment, is_video: isVideo};
                       } else {
                         return {...comment, is_video: false};
@@ -324,7 +324,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                     mediaUrl.includes('/miscellaneous/') ||
                     // Check content for [VIDEO] marker
                     (comment.content && comment.content.includes('[VIDEO]'));
-                  
+
                   return {...comment, is_video: isVideo};
                 } else {
                   return {...comment, is_video: false};
@@ -362,16 +362,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       >
         <div className="h-full w-full flex flex-col">
           {/* Fixed header bar */}
-          <div className="h-16 border-b bg-background flex-shrink-0">
+          <div className="h-30 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
-            <SheetClose className="absolute top-4 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+            <SheetClose className="absolute top-6 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-2xl" />
               <span className="sr-only">Close</span>
             </SheetClose>
 
             {/* Post author info */}
             {originalPost?.author && (
-              <div className="flex flex-col items-start justify-center h-full ml-14">
+              <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
                     <AvatarImage
