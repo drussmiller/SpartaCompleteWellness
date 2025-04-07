@@ -246,6 +246,29 @@ export function CommentList({ comments, postId }: CommentListProps) {
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
+                
+                {/* Display media if present */}
+                {comment.mediaUrl && !comment.is_video && (
+                  <div className="mt-2">
+                    <img 
+                      src={comment.mediaUrl} 
+                      alt="Comment image" 
+                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                    />
+                  </div>
+                )}
+                {comment.mediaUrl && comment.is_video && (
+                  <div className="mt-2">
+                    <video
+                      src={comment.mediaUrl}
+                      controls
+                      preload="metadata"
+                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                      playsInline
+                    />
+                  </div>
+                )}
+                
                 <div className="mt-2 flex justify-end">
                   <ReactionSummary postId={comment.id} />
                 </div>

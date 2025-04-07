@@ -25,12 +25,23 @@ export function PostView({ post }: PostViewProps) {
             <div className="mt-2 border-t border-gray-200"></div>
           </div>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
-          {post.imageUrl && (
+          {post.mediaUrl && !post.is_video && (
             <div className="mt-2 mb-2">
               <img
-                src={post.imageUrl}
+                src={post.mediaUrl}
                 alt={post.type}
                 className="w-full h-auto object-contain rounded-md"
+              />
+            </div>
+          )}
+          {post.mediaUrl && post.is_video && (
+            <div className="mt-2 mb-2">
+              <video
+                src={post.mediaUrl}
+                controls
+                preload="metadata"
+                className="w-full h-auto object-contain rounded-md"
+                playsInline
               />
             </div>
           )}
