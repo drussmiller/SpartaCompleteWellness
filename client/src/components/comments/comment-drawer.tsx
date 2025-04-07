@@ -331,7 +331,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
 
             {/* Post and comments section */}
             {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-              <div className="px-4 pb-36">
+              <div className="px-4 pb-72">
                 <PostView post={originalPost} />
                 <div className="border-t border-gray-200 my-4"></div>
                 <CommentList comments={comments} postId={postId} />
@@ -340,7 +340,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Fixed comment form at the bottom */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ marginBottom: '70px' }}>
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ marginBottom: '120px' }}>
             <CommentForm
               onSubmit={async (content) => {
                 await createCommentMutation.mutateAsync(content);
