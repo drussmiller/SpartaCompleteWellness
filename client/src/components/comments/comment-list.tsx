@@ -137,35 +137,24 @@ export function CommentList({ comments, postId }: CommentListProps) {
       }
     },
     onSuccess: (updatedComment) => {
-      // Force refetch the comments data to ensure UI is in sync with backend
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
+      // Update the cache immediately with the edited comment
+      const currentComments = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts", postId]);
       
-      // Update the UI immediately with the updated comment data
-      // This ensures UI is updated regardless of whether the query invalidation works
-      const updateCommentsInCache = () => {
-        const commentsQueryKey = ["/api/posts/comments", postId];
-        const currentComments = queryClient.getQueryData<(Post & { author: User })[]>(commentsQueryKey);
+      if (currentComments) {
+        const updatedComments = currentComments.map(comment => {
+          if (comment.id === updatedComment.id) {
+            return { ...comment, content: updatedComment.content };
+          }
+          return comment;
+        });
         
-        if (currentComments) {
-          const updatedComments = currentComments.map(comment => {
-            if (comment.id === updatedComment.id) {
-              // Replace the content with the updated content
-              return { ...comment, content: updatedComment.content };
-            }
-            return comment;
-          });
-          
-          // Update the query cache with our modified comments array
-          queryClient.setQueryData(commentsQueryKey, updatedComments);
-        }
-      };
+        // Update the cache
+        queryClient.setQueryData(["/api/posts", postId], updatedComments);
+      }
+
+      // Invalidate queries to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
       
-      // Update the cache immediately
-      updateCommentsInCache();
-      
-      // Also invalidate related queries
-      // Force refetch comments to update UI
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       toast({
         description: "Comment updated successfully",
       });
