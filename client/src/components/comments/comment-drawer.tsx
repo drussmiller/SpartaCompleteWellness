@@ -362,7 +362,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       >
         <div className="h-full w-full flex flex-col">
           {/* Fixed header bar */}
-          <div className="h-20 border-b bg-background flex-shrink-0">
+          <div className="h-16 border-b bg-background flex-shrink-0">
             {/* Back button */}
             <SheetClose className="absolute top-4 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-2xl" />
