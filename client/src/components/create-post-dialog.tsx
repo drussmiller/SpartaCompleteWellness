@@ -304,6 +304,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       setOpen(false);
       setImagePreview(null);
       setVideoThumbnail(null);
+      setSelectedMediaType(null);
+      setSelectedExistingVideo(null);
       
       // Clear any file inputs
       if (videoInputRef.current) {
@@ -351,6 +353,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         form.reset();
         setImagePreview(null);
         setVideoThumbnail(null);
+        setSelectedMediaType(null);
+        setSelectedExistingVideo(null);
       }
     }}>
       <DialogTrigger asChild>
@@ -424,6 +428,13 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                     <select
                       {...field}
                       className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      onChange={(e) => {
+                        field.onChange(e);
+                        // Reset selected media type when changing post type
+                        setSelectedMediaType(null);
+                        setImagePreview(null);
+                        setVideoThumbnail(null);
+                      }}
                     >
                       <option value="food" disabled={isPostTypeDisabled('food')}>
                         Food {getRemainingMessage('food')}
