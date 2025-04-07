@@ -273,33 +273,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full comment-drawer"
-        style={{ width: '100vw', maxWidth: '100vw' }}
-        onOpenAutoFocus={(e) => {
-          // Prevent default autofocus and handle it ourselves
-          e.preventDefault();
-          // Do nothing here - we'll handle it in the useEffect
-        }}
-        onMouseDown={(e) => {
-          // Prevent losing focus when clicking outside the textarea but inside the drawer
-          if (e.target instanceof HTMLTextAreaElement) {
-            // Allow normal behavior when clicking the textarea itself
-            return;
-          }
-          // For all other elements, prevent default behavior that might steal focus
-          e.preventDefault();
-          // Focus the textarea on next tick
-          setTimeout(() => {
-            const textarea = document.getElementById('comment-textarea');
-            if (textarea) {
-              (textarea as HTMLTextAreaElement).focus();
-            }
-          }, 0);
-        }}
+        className="!w-full !p-0 !max-w-full comment-drawer"
+        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
+        <div className="h-full w-full flex flex-col">
           {/* Fixed header bar */}
-          <div className="h-16 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
+          <div className="h-16 border-b bg-background flex-shrink-0">
             {/* Back button */}
             <SheetClose className="absolute top-4 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-2xl" />
@@ -309,7 +289,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             {/* Post author info */}
             {originalPost?.author && (
               <div className="flex flex-col items-start justify-center h-full ml-14">
-                {/* User info and time */}
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
                     <AvatarImage
@@ -334,50 +313,42 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             )}
           </div>
 
-          {/* Content area - adjust top margin to account for header */}
-          <div className="flex-1 overflow-hidden" bp-8>
+          {/* Content area */}
+          <div className="flex-1 overflow-y-auto pt-2">
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex items-center justify-center p-8">
                 <Loader2 className="w-8 h-8 animate-spin" />
               </div>
             )}
 
             {/* Show errors if any */}
             {(postError || commentsError) && (
-              <div className="flex-1 flex items-center justify-center text-destructive">
+              <div className="flex items-center justify-center p-8 text-destructive">
                 <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
               </div>
             )}
 
-            {/* Post and comments section with scrolling */}
-            {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
-              <>
-                <div className="flex-1 overflow-y-auto h-[calc(100vh-8rem)] space-y-6 w-full max-w-none">
-                  <div className="pt-20 px-4 pb-4">
-                    {originalPost && (
-                      <>
-                        <PostView post={originalPost} />
-                        <div className="border-t border-gray-200 my-4"></div>
-                        <CommentList comments={comments} postId={postId} />
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Fixed comment form at the bottom */}
-                <div className="p-4 border-t bg-background">
-                  <CommentForm
-                    onSubmit={async (content) => {
-                      await createCommentMutation.mutateAsync(content);
-                    }}
-                    isSubmitting={createCommentMutation.isPending}
-                    ref={commentInputRef}
-                    inputRef={commentInputRef}
-                  />
-                </div>
-              </>
+            {/* Post and comments section */}
+            {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
+              <div className="px-4 pb-24">
+                <PostView post={originalPost} />
+                <div className="border-t border-gray-200 my-4"></div>
+                <CommentList comments={comments} postId={postId} />
+              </div>
             )}
+          </div>
+
+          {/* Fixed comment form at the bottom */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background">
+            <CommentForm
+              onSubmit={async (content) => {
+                await createCommentMutation.mutateAsync(content);
+              }}
+              isSubmitting={createCommentMutation.isPending}
+              ref={commentInputRef}
+              inputRef={commentInputRef}
+            />
           </div>
         </div>
       </SheetContent>
