@@ -331,34 +331,34 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             {/* Post and comments section with scrolling */}
             {!isPostLoading && !areCommentsLoading && !postError && !commentsError && (
               <>
-                <div className="flex-1 overflow-y-auto h-[calc(100vh-8rem)] pt-16 space-y-6 w-full max-w-none">
-                  {originalPost && (
-                    <div className="px-4">
-                      <PostView post={originalPost} />
-                      {originalPost.mediaUrl && (
-                        <div className="mt-4 w-full">
-                          {originalPost.is_video ? (
-                            <video 
-                              src={originalPost.mediaUrl}
-                              controls
-                              preload="metadata"
-                              className="w-full h-full object-contain rounded-md"
-                              playsInline
-                            />
-                          ) : (
-                            <img
-                              src={originalPost.mediaUrl}
-                              alt="Post media"
-                              className="w-full h-auto object-contain rounded-md"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="border-t border-gray-200 my-4"></div>
-                  <div className="px-4">
-                    <CommentList comments={comments} postId={postId} />
+                <div className="flex-1 overflow-y-auto h-[calc(100vh-8rem)] space-y-6 w-full max-w-none">
+                  <div className="pt-20 px-4 pb-4">
+                    {originalPost && (
+                      <>
+                        <PostView post={originalPost} />
+                        {originalPost.mediaUrl && (
+                          <div className="mt-4 w-full">
+                            {originalPost.is_video ? (
+                              <video 
+                                src={originalPost.mediaUrl}
+                                controls
+                                preload="metadata"
+                                className="w-full h-full object-contain rounded-md"
+                                playsInline
+                              />
+                            ) : (
+                              <img
+                                src={originalPost.mediaUrl}
+                                alt="Post media"
+                                className="w-full h-auto object-contain rounded-md"
+                              />
+                            )}
+                          </div>
+                        )}
+                        <div className="border-t border-gray-200 my-4"></div>
+                        <CommentList comments={comments} postId={postId} />
+                      </>
+                    )}
                   </div>
                 </div>
 
