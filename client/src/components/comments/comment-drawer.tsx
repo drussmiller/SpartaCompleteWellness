@@ -356,8 +356,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 !max-w-full comment-drawer"
-        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}
+        className="!w-full !p-0 !max-w-full comment-drawer pt-safe"
+        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 16px)' }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="h-full w-full flex flex-col">
