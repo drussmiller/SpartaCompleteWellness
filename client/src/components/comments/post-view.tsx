@@ -13,8 +13,8 @@ interface PostViewProps {
 export function PostView({ post }: PostViewProps) {
   const { count: commentCount } = useCommentCount(post.id);
   return (
-    <Card className="relative w-full rounded-none mx-[-1rem]">
-      <CardContent className="pt-6 px-6">
+    <Card className="relative w-full rounded-md bg-white overflow-hidden">
+      <CardContent className="pt-4 px-4">
         <div className="flex flex-col">
           <div>
             <div className="flex justify-between">
@@ -25,28 +25,34 @@ export function PostView({ post }: PostViewProps) {
             <div className="mt-2 border-t border-gray-200"></div>
           </div>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
+          
+          {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
-            <div className="mt-2 mb-2">
+            <div className="mt-3 mb-3 flex justify-center">
               <img
                 src={post.mediaUrl}
                 alt={post.type}
-                className="w-full h-auto object-contain rounded-md"
+                className="max-w-full h-auto object-contain rounded-md"
               />
             </div>
           )}
+          
+          {/* Show video if present */}
           {post.mediaUrl && post.is_video && (
-            <div className="mt-2 mb-2">
+            <div className="mt-3 mb-3 flex justify-center">
               <video
                 src={post.mediaUrl}
                 controls
                 preload="metadata"
-                className="w-full h-auto object-contain rounded-md"
+                className="max-w-full h-auto object-contain rounded-md"
                 playsInline
               />
             </div>
           )}
-          <div className="border-t border-gray-200"></div>
-          <div className="flex items-center gap-2 py-0.5">
+          
+          <div className="border-t border-gray-200 mt-2"></div>
+          
+          <div className="flex items-center gap-2 py-2">
             <ReactionButton postId={post.id} />
             <Button
               variant="ghost"
@@ -59,10 +65,10 @@ export function PostView({ post }: PostViewProps) {
           </div>
 
           {/* Grey line separator */}
-          <div className="border-t border-gray-200 mt-0.5"></div>
+          <div className="border-t border-gray-200"></div>
 
           {/* Reactions display */}
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center pt-2">
             <ReactionSummary postId={post.id} />
           </div>
         </div>
