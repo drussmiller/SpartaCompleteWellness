@@ -137,19 +137,21 @@ export function CommentList({ comments, postId }: CommentListProps) {
       }
     },
     onSuccess: (updatedComment) => {
-      // Update cache immediately
+      // Update the cache with the new comment content
       queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldData) => {
         if (!oldData) return oldData;
-        return oldData.map(comment => 
-          comment.id === updatedComment.id 
-            ? { ...comment, ...updatedComment }  // Merge all updated fields
-            : comment
-        );
+        return oldData.map(comment => {
+          if (comment.id === updatedComment.id) {
+            return {
+              ...comment,
+              content: updatedComment.content,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return comment;
+        });
       });
 
-      // Ensure UI update by invalidating the query
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      
       // Close edit form and show success message
       setEditingComment(null);
       toast({
