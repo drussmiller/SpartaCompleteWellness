@@ -27,6 +27,10 @@ import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/i
 
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
+  if (!url) {
+    return false;
+  }
+
   // Normalize content to undefined instead of null
   const normalizedContent = content === null ? undefined : content;
   // Check file extension
@@ -51,8 +55,23 @@ function isLikelyVideo(url: string, content?: string | null): boolean {
   // Check for video paths in URL
   if (urlLower.includes('/videos/') || 
       urlLower.includes('/video/') ||
-      urlLower.includes('/memory_verse/')) {
+      urlLower.includes('/memory_verse/') ||
+      urlLower.includes('/miscellaneous/')) {
     console.log(`URL ${url} detected as video by path pattern`);
+    return true;
+  }
+
+  // Explicitly check for uploads folder and common video extensions in the filename
+  const filename = urlLower.split('/').pop() || '';
+  if (
+    urlLower.includes('/uploads/') && 
+    (filename.includes('.mp4') || 
+     filename.includes('.mov') || 
+     filename.includes('.webm') || 
+     filename.includes('.avi') || 
+     filename.includes('.mkv'))
+  ) {
+    console.log(`URL ${url} detected as video by filename inside uploads folder`);
     return true;
   }
   
