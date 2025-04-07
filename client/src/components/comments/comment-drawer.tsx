@@ -90,10 +90,42 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         try {
           const data = JSON.parse(responseText);
           console.log("Post data retrieved successfully:", data);
-          // Make sure we have the is_video flag (default to false if not present)
-          if (data && data.mediaUrl && !('is_video' in data)) {
-            data.is_video = false;
+          
+          // Process video detection more thoroughly, similar to post-card.tsx
+          if (data && data.mediaUrl) {
+            // First, check if is_video is already set
+            if (!('is_video' in data)) {
+              // Memory verse posts should always be displayed as videos
+              if (data.type === 'memory_verse') {
+                data.is_video = true;
+                console.log(`Setting memory verse post ${data.id} is_video=true`);
+              } 
+              // For miscellaneous posts, check for video indicators
+              else if (data.type === 'miscellaneous') {
+                const mediaUrl = data.mediaUrl.toLowerCase();
+                const isVideo = 
+                  // Check file extensions
+                  mediaUrl.endsWith('.mp4') || 
+                  mediaUrl.endsWith('.mov') || 
+                  mediaUrl.endsWith('.webm') || 
+                  mediaUrl.endsWith('.avi') || 
+                  mediaUrl.endsWith('.mkv') ||
+                  // Check for video paths
+                  mediaUrl.includes('/videos/') || 
+                  mediaUrl.includes('/video/') ||
+                  mediaUrl.includes('/memory_verse/') ||
+                  mediaUrl.includes('/miscellaneous/') ||
+                  // Check content for [VIDEO] marker
+                  (data.content && data.content.includes('[VIDEO]'));
+                
+                data.is_video = isVideo;
+                console.log(`Setting miscellaneous post ${data.id} is_video=${isVideo}`);
+              } else {
+                data.is_video = false;
+              }
+            }
           }
+          
           setOriginalPost(data);
         } catch (jsonError) {
           console.error("JSON parsing error in post response:", jsonError);
@@ -140,10 +172,35 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 
                 // Make sure each comment has is_video property if it has mediaUrl
                 if (Array.isArray(data)) {
-                  // Add is_video flag if missing but has mediaUrl
+                  // Process video detection more thoroughly for comments
                   const processedData = data.map(comment => {
                     if (comment.mediaUrl && !('is_video' in comment)) {
-                      return {...comment, is_video: false};
+                      // Memory verse comments should always be displayed as videos
+                      if (comment.type === 'memory_verse') {
+                        return {...comment, is_video: true};
+                      } 
+                      // For miscellaneous comments, check for video indicators
+                      else if (comment.type === 'miscellaneous') {
+                        const mediaUrl = comment.mediaUrl.toLowerCase();
+                        const isVideo = 
+                          // Check file extensions
+                          mediaUrl.endsWith('.mp4') || 
+                          mediaUrl.endsWith('.mov') || 
+                          mediaUrl.endsWith('.webm') || 
+                          mediaUrl.endsWith('.avi') || 
+                          mediaUrl.endsWith('.mkv') ||
+                          // Check for video paths
+                          mediaUrl.includes('/videos/') || 
+                          mediaUrl.includes('/video/') ||
+                          mediaUrl.includes('/memory_verse/') ||
+                          mediaUrl.includes('/miscellaneous/') ||
+                          // Check content for [VIDEO] marker
+                          (comment.content && comment.content.includes('[VIDEO]'));
+                        
+                        return {...comment, is_video: isVideo};
+                      } else {
+                        return {...comment, is_video: false};
+                      }
                     }
                     return comment;
                   });
@@ -243,10 +300,35 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
-            // Add is_video flag if missing but has mediaUrl
+            // Process video detection more thoroughly for comments
             const processedData = data.map(comment => {
               if (comment.mediaUrl && !('is_video' in comment)) {
-                return {...comment, is_video: false};
+                // Memory verse comments should always be displayed as videos
+                if (comment.type === 'memory_verse') {
+                  return {...comment, is_video: true};
+                } 
+                // For miscellaneous comments, check for video indicators
+                else if (comment.type === 'miscellaneous') {
+                  const mediaUrl = comment.mediaUrl.toLowerCase();
+                  const isVideo = 
+                    // Check file extensions
+                    mediaUrl.endsWith('.mp4') || 
+                    mediaUrl.endsWith('.mov') || 
+                    mediaUrl.endsWith('.webm') || 
+                    mediaUrl.endsWith('.avi') || 
+                    mediaUrl.endsWith('.mkv') ||
+                    // Check for video paths
+                    mediaUrl.includes('/videos/') || 
+                    mediaUrl.includes('/video/') ||
+                    mediaUrl.includes('/memory_verse/') ||
+                    mediaUrl.includes('/miscellaneous/') ||
+                    // Check content for [VIDEO] marker
+                    (comment.content && comment.content.includes('[VIDEO]'));
+                  
+                  return {...comment, is_video: isVideo};
+                } else {
+                  return {...comment, is_video: false};
+                }
               }
               return comment;
             });
