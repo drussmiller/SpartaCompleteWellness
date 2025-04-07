@@ -164,9 +164,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
       updateCommentsInCache();
       
       // Also invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      
+      // Force refetch comments to update UI
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       toast({
         description: "Comment updated successfully",
       });
