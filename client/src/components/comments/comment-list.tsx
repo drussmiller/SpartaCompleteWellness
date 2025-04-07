@@ -113,7 +113,8 @@ export function CommentList({ comments, postId }: CommentListProps) {
       try {
         console.log('Attempting to edit comment:', { id, content: content.trim() });
         const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-          content: content.trim()
+          content: content.trim(),
+          type: 'comment'
         });
 
         if (!res.ok) {
