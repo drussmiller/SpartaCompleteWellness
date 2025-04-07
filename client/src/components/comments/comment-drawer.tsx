@@ -333,6 +333,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <>
                 <div className="flex-1 overflow-y-auto h-[calc(100vh-8rem)] pt-16 px-4 space-y-6 w-full max-w-none">
                   {originalPost && <PostView post={originalPost} />}
+                  <div className="border-t border-gray-200 my-4"></div>
                   <CommentList comments={comments} postId={postId} />
                 </div>
 
