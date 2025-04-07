@@ -2051,6 +2051,63 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add this endpoint before the return httpServer statement with improved error handling
+  router.patch("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Get the post ID as a number
+      const postIdStr = req.params.id;
+      const postId = parseInt(postIdStr);
+      
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID format" });
+      }
+
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if the user is the owner of the post
+      if (post.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to update this post" });
+      }
+
+      // Get the content from the request body
+      const { content } = req.body;
+      
+      if (!content || content.trim() === '') {
+        return res.status(400).json({ message: "Content cannot be empty" });
+      }
+
+      // Update only the content field
+      const [updatedPost] = await db
+        .update(posts)
+        .set({ content: content.trim() })
+        .where(eq(posts.id, postId))
+        .returning();
+
+      return res.status(200).json(updatedPost);
+    } catch (error) {
+      logger.error("Error updating post:", error);
+      return res.status(500).json({ 
+        message: "Failed to update post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
