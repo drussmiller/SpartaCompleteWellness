@@ -138,22 +138,17 @@ export function CommentList({ comments, postId }: CommentListProps) {
     },
     onSuccess: (updatedComment) => {
       // Update the cache immediately with the edited comment
-      const currentComments = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts", postId]);
-      
-      if (currentComments) {
-        const updatedComments = currentComments.map(comment => {
-          if (comment.id === updatedComment.id) {
-            return { ...comment, content: updatedComment.content };
-          }
-          return comment;
-        });
-        
-        // Update the cache
-        queryClient.setQueryData(["/api/posts", postId], updatedComments);
-      }
+      queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldData) => {
+        if (!oldData) return oldData;
+        return oldData.map(comment => 
+          comment.id === updatedComment.id 
+            ? { ...comment, content: updatedComment.content }
+            : comment
+        );
+      });
 
-      // Invalidate queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
+      // Force refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       
       toast({
         description: "Comment updated successfully",
