@@ -106,6 +106,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       e.preventDefault();
       if (content.trim() && !isSubmitting) {
         handleSubmit();
+      } else if (!content.trim() && onCancel) {
+        onCancel();
       }
     }
   };
