@@ -31,7 +31,8 @@ type CommentWithReplies = Post & {
   replies?: CommentWithReplies[];
 };
 
-export function CommentList({ comments, postId }: CommentListProps) {
+export function CommentList({ comments: initialComments, postId }: CommentListProps) {
+  const [comments, setComments] = useState(initialComments);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
@@ -51,45 +52,36 @@ export function CommentList({ comments, postId }: CommentListProps) {
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      try {
-        console.log('Attempting to create reply:', {
-          type: "comment",
-          content: content.trim(),
-          parentId: replyingTo,
-          depth: (replyingToComment?.depth ?? 0) + 1
-        });
+      const res = await apiRequest("POST", "/api/posts", {
+        type: "comment",
+        content: content.trim(),
+        parentId: replyingTo,
+        depth: (replyingToComment?.depth ?? 0) + 1
+      });
 
-        // Send comment data directly, not wrapped in data property
-        const res = await apiRequest("POST", "/api/posts", {
-          type: "comment",
-          content: content.trim(),
-          parentId: replyingTo,
-          depth: (replyingToComment?.depth ?? 0) + 1
-        });
-
-        if (!res.ok) {
-          let errorMessage = "Failed to post reply";
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await res.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data = await res.json();
-        console.log('Reply created successfully:', data);
-        return data;
-      } catch (error) {
-        console.error("Error creating reply:", error);
-        throw error instanceof Error ? error : new Error("Failed to post reply");
+      if (!res.ok) {
+        throw new Error("Failed to post reply");
       }
+
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+    onSuccess: (newReply) => {
+      // Update local state with the new reply
+      // Use a new approach that's compatible with our improved threading
+      const updatedComments = [...comments];
+      
+      // Add the new reply to the comments array
+      updatedComments.push({
+        ...newReply,
+        author: user
+      });
+      
+      // Update the state with the new comments including the reply
+      setComments(updatedComments);
+      
+      // Also update the React Query cache to keep it in sync
+      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      
       setReplyingTo(null);
       toast({
         description: "Reply added successfully",
@@ -110,76 +102,40 @@ export function CommentList({ comments, postId }: CommentListProps) {
         throw new Error("Comment content cannot be empty");
       }
 
-      try {
-        console.log('Attempting to edit comment:', { id, content: content.trim() });
-        const res = await fetch(`/api/posts/${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            content: content.trim(),
-            type: 'comment'
-          }),
-          credentials: 'include'
-        });
+      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
+        content: content.trim()
+      });
 
-        if (!res.ok) {
-          let errorMessage = "Failed to update comment";
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await res.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data = await res.json();
-        console.log('Comment updated successfully:', data);
-        return data;
-      } catch (error) {
-        console.error("Error updating comment:", error);
-        throw error instanceof Error ? error : new Error("Failed to update comment");
+      if (!res.ok) {
+        throw new Error("Failed to update comment");
       }
+
+      return res.json();
     },
     onSuccess: (updatedComment) => {
-      // Force refetch the comments data to ensure UI is in sync with backend
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      
-      // Update the UI immediately with the updated comment data
-      // This ensures UI is updated regardless of whether the query invalidation works
-      const updateCommentsInCache = () => {
-        const commentsQueryKey = ["/api/posts/comments", postId];
-        const currentComments = queryClient.getQueryData<(Post & { author: User })[]>(commentsQueryKey);
-        
-        if (currentComments) {
-          const updatedComments = currentComments.map(comment => {
-            if (comment.id === updatedComment.id) {
-              // Replace the content with the updated content
-              return { ...comment, content: updatedComment.content };
-            }
-            return comment;
-          });
-          
-          // Update the query cache with our modified comments array
-          queryClient.setQueryData(commentsQueryKey, updatedComments);
-        }
+      // Update comments recursively including nested replies
+      const updateCommentsRecursively = (commentsList: (Post & { author: User; replies?: (Post & { author: User })[] })[]) => {
+        return commentsList.map(comment => {
+          if (comment.id === updatedComment.id) {
+            return { ...comment, ...updatedComment };
+          }
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: updateCommentsRecursively(comment.replies)
+            };
+          }
+          return comment;
+        });
       };
-      
-      // Update the cache immediately
-      updateCommentsInCache();
-      
-      // Also invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", postId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      
+
+      const updatedComments = updateCommentsRecursively(comments);
+      setComments(updatedComments);
+      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      setEditingComment(null);
       toast({
         description: "Comment updated successfully",
       });
-      setEditingComment(null);
     },
     onError: (error: Error) => {
       console.error("Edit mutation error:", error);
@@ -227,21 +183,34 @@ export function CommentList({ comments, postId }: CommentListProps) {
     });
   };
 
-  // Organize comments into threads
-  const threadedComments = comments.reduce<CommentWithReplies[]>((threads, comment) => {
+  // Organize comments into threads more reliably
+  // First, separate top-level comments and replies
+  const topLevelComments: CommentWithReplies[] = [];
+  const repliesByParentId: Record<number, CommentWithReplies[]> = {};
+
+  // Process all comments first to ensure replies are properly categorized
+  comments.forEach(comment => {
+    const commentWithReplies = { ...comment, replies: [] };
+    
     if (comment.parentId === postId) {
       // This is a top-level comment
-      threads.push({ ...comment, replies: [] });
-    } else {
-      // This is a reply to another comment
-      const parentComment = threads.find(thread => thread.id === comment.parentId);
-      if (parentComment) {
-        parentComment.replies = parentComment.replies || [];
-        parentComment.replies.push({ ...comment, replies: [] });
+      topLevelComments.push(commentWithReplies);
+    } else if (comment.parentId) {
+      // This is a reply to another comment (ensure parentId is not null)
+      if (!repliesByParentId[comment.parentId]) {
+        repliesByParentId[comment.parentId] = [];
       }
+      repliesByParentId[comment.parentId].push(commentWithReplies);
     }
-    return threads;
-  }, []);
+  });
+
+  // Now attach all replies to their parent comments
+  const threadedComments = topLevelComments.map(comment => {
+    if (repliesByParentId[comment.id]) {
+      comment.replies = repliesByParentId[comment.id];
+    }
+    return comment;
+  });
 
   const formatTimeAgo = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
