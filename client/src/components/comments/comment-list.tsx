@@ -122,14 +122,23 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       return res.json();
     },
     onSuccess: (updatedComment) => {
-      // Directly update the comments state
-      const updatedComments = comments.map(comment => 
-        comment.id === updatedComment.id 
-          ? { ...comment, content: updatedComment.content }
-          : comment
-      );
-      
-      // Update both local state and cache
+      // Update comments recursively including nested replies
+      const updateCommentsRecursively = (commentsList: (Post & { author: User; replies?: (Post & { author: User })[] })[]) => {
+        return commentsList.map(comment => {
+          if (comment.id === updatedComment.id) {
+            return { ...comment, ...updatedComment };
+          }
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: updateCommentsRecursively(comment.replies)
+            };
+          }
+          return comment;
+        });
+      };
+
+      const updatedComments = updateCommentsRecursively(comments);
       setComments(updatedComments);
       queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
       setEditingComment(null);
