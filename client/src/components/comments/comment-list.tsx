@@ -31,7 +31,8 @@ type CommentWithReplies = Post & {
   replies?: CommentWithReplies[];
 };
 
-export function CommentList({ comments, postId }: CommentListProps) {
+export function CommentList({ comments: initialComments, postId }: CommentListProps) {
+  const [comments, setComments] = useState(initialComments);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
