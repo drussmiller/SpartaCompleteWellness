@@ -2010,6 +2010,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           type: postData.type,
           content: postData.content?.trim() || '',
           mediaUrl: mediaUrl,
+          is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })

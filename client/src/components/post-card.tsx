@@ -93,11 +93,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   // Check if this post should be displayed as a video
   const shouldShowAsVideo = useMemo(() => {
     if (post.type === 'memory_verse') return true;
+    
+    // For miscellaneous posts, check more aggressively for video markers
     if (post.type === 'miscellaneous' && post.mediaUrl) {
-      return isLikelyVideo(post.mediaUrl, post.content || undefined);
+      // Always check for the is_video flag (set during upload)
+      if (post.is_video) {
+        console.log(`Displaying miscellaneous post ${post.id} as video based on is_video flag`);
+        return true;
+      }
+      
+      // Fall back to URL pattern detection
+      const isVideoByUrl = isLikelyVideo(post.mediaUrl, post.content || undefined);
+      if (isVideoByUrl) {
+        console.log(`Displaying miscellaneous post ${post.id} as video based on URL pattern: ${post.mediaUrl}`);
+        return true;
+      }
     }
     return false;
-  }, [post.type, post.mediaUrl, post.content]);
+  }, [post.type, post.mediaUrl, post.content, post.is_video, post.id]);
 
   // Query to get weekly points total
   const { data: weekPoints, isLoading: isLoadingWeekPoints } = useQuery({

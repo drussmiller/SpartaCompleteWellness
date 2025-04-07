@@ -47,6 +47,7 @@ export const posts = pgTable("posts", {
   type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"] }).notNull(),
   content: text("content"),
   mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
+  is_video: boolean("is_video").default(false), // Flag to explicitly mark video content
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   parentId: integer("parent_id"),
@@ -186,7 +187,8 @@ export const insertPostSchema = createInsertSchema(posts)
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),
-    createdAt: z.string().optional()
+    createdAt: z.string().optional(),
+    is_video: z.boolean().optional().default(false) // Flag for explicitly marking video content
   });
 
 export const insertUserSchema = createInsertSchema(users)
