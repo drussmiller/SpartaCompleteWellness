@@ -137,23 +137,24 @@ export function CommentList({ comments, postId }: CommentListProps) {
       }
     },
     onSuccess: (updatedComment) => {
-      // Update the cache immediately with the edited comment
+      // Update cache immediately
       queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldData) => {
         if (!oldData) return oldData;
         return oldData.map(comment => 
           comment.id === updatedComment.id 
-            ? { ...comment, content: updatedComment.content }
+            ? { ...comment, ...updatedComment }  // Merge all updated fields
             : comment
         );
       });
 
-      // Force refetch to ensure consistency
+      // Ensure UI update by invalidating the query
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       
+      // Close edit form and show success message
+      setEditingComment(null);
       toast({
         description: "Comment updated successfully",
       });
-      setEditingComment(null);
     },
     onError: (error: Error) => {
       console.error("Edit mutation error:", error);
