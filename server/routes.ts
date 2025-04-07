@@ -524,6 +524,60 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Delete a comment
+  router.delete("/api/posts/comments/:commentId", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const commentId = parseInt(req.params.commentId);
+      if (isNaN(commentId)) {
+        return res.status(400).json({ message: "Invalid comment ID" });
+      }
+
+      // Get the comment first to check ownership
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.id, commentId),
+            eq(posts.type, 'comment')
+          )
+        );
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check if user is authorized to delete this comment
+      if (comment.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      }
+
+      // Delete the comment
+      await db
+        .delete(posts)
+        .where(eq(posts.id, commentId));
+
+      // Return success response
+      return res.status(200).json({ 
+        message: "Comment deleted successfully",
+        id: commentId 
+      });
+    } catch (error) {
+      logger.error("Error deleting comment:", error);
+      return res.status(500).json({ 
+        message: "Failed to delete comment",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Create a comment on a post
   router.post("/api/posts/comments", authenticate, async (req, res) => {
     try {
