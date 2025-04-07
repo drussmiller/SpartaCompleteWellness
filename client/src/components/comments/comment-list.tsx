@@ -112,8 +112,17 @@ export function CommentList({ comments, postId }: CommentListProps) {
 
       try {
         console.log('Attempting to edit comment:', { id, content: content.trim() });
-        const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-          content: content.trim()
+        const res = await fetch(`/api/posts/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            content: content.trim(),
+            type: 'comment'
+          }),
+          credentials: 'include'
         });
 
         if (!res.ok) {
