@@ -52,45 +52,32 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      try {
-        console.log('Attempting to create reply:', {
-          type: "comment",
-          content: content.trim(),
-          parentId: replyingTo,
-          depth: (replyingToComment?.depth ?? 0) + 1
-        });
+      const res = await apiRequest("POST", "/api/posts", {
+        type: "comment",
+        content: content.trim(),
+        parentId: replyingTo,
+        depth: (replyingToComment?.depth ?? 0) + 1
+      });
 
-        // Send comment data directly, not wrapped in data property
-        const res = await apiRequest("POST", "/api/posts", {
-          type: "comment",
-          content: content.trim(),
-          parentId: replyingTo,
-          depth: (replyingToComment?.depth ?? 0) + 1
-        });
-
-        if (!res.ok) {
-          let errorMessage = "Failed to post reply";
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await res.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data = await res.json();
-        console.log('Reply created successfully:', data);
-        return data;
-      } catch (error) {
-        console.error("Error creating reply:", error);
-        throw error instanceof Error ? error : new Error("Failed to post reply");
+      if (!res.ok) {
+        throw new Error("Failed to post reply");
       }
+
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+    onSuccess: (newReply) => {
+      // Update local state with the new reply
+      const updatedComments = comments.map(comment => {
+        if (comment.id === replyingTo) {
+          return {
+            ...comment,
+            replies: [...(comment.replies || []), { ...newReply, author: user }]
+          };
+        }
+        return comment;
+      });
+      
+      setComments(updatedComments);
       setReplyingTo(null);
       toast({
         description: "Reply added successfully",
