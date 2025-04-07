@@ -1603,6 +1603,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       'X-Content-Type-Options': 'nosniff'
     });
     
+    // Initialize isVideo variable to be used throughout the route handler
+    let isVideo = false;
+    
     console.log("POST /api/posts - Request received", {
       hasFile: !!req.file,
       fileDetails: req.file ? {
