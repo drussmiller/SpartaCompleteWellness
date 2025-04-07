@@ -137,20 +137,19 @@ export function CommentList({ comments, postId }: CommentListProps) {
       }
     },
     onSuccess: (updatedComment) => {
-      // Immediately update the comment in the UI
-      const updatedComments = comments.map(comment => {
-        if (comment.id === updatedComment.id) {
-          return {
-            ...comment,
-            content: updatedComment.content,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return comment;
+      // Update the cache with optimistic update
+      queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldData) => {
+        if (!oldData) return oldData;
+        return oldData.map(comment => 
+          comment.id === updatedComment.id 
+            ? { 
+                ...comment,
+                content: updatedComment.content,
+                updatedAt: new Date().toISOString()
+              }
+            : comment
+        );
       });
-
-      // Update both the local state and the cache
-      queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], updatedComments);
 
       // Close edit form and show success message
       setEditingComment(null);
