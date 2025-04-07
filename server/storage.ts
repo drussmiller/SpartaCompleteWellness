@@ -210,7 +210,8 @@ export const storage = {
           userId: posts.userId,
           type: posts.type,
           content: posts.content,
-          imageUrl: posts.imageUrl,
+          mediaUrl: posts.mediaUrl, // Updated to mediaUrl to match frontend expectations
+          is_video: posts.is_video, // Added is_video field
           points: posts.points,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
@@ -267,7 +268,8 @@ export const storage = {
           userId: data.userId,
           type: data.type || "comment",
           content: data.content,
-          imageUrl: data.imageUrl,
+          mediaUrl: data.mediaUrl, // Updated field name
+          is_video: data.is_video || false, // Added is_video field with default false
           parentId: data.parentId || null,
           depth: data.depth || 0,
           points: data.points || 1,
@@ -383,7 +385,8 @@ export const storage = {
           userId: posts.userId,
           type: posts.type,
           content: posts.content,
-          imageUrl: posts.imageUrl,
+          mediaUrl: posts.mediaUrl, // Updated to mediaUrl to match frontend expectations
+          is_video: posts.is_video, // Added is_video field
           points: posts.points,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
@@ -412,6 +415,9 @@ export const storage = {
         )
         .orderBy(desc(posts.createdAt));
 
+      // Log the result for debugging
+      logger.debug(`Retrieved ${result.length} comments for post ${postId}`);
+      
       return result;
     } catch (error) {
       logger.error(`Failed to get comments for post ${postId}: ${error}`);
@@ -433,6 +439,8 @@ export const storage = {
           type: "comment",
           content: data.content,
           parentId: data.parentId,
+          mediaUrl: data.mediaUrl || null, // Added mediaUrl field
+          is_video: data.is_video || false, // Added is_video field with default false
           depth: data.depth || 0,
           points: 1,
           createdAt: new Date()
