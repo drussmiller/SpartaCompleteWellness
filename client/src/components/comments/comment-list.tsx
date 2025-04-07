@@ -110,52 +110,27 @@ export function CommentList({ comments, postId }: CommentListProps) {
         throw new Error("Comment content cannot be empty");
       }
 
-      try {
-        console.log('Attempting to edit comment:', { id, content: content.trim() });
-        const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-          content: content.trim()
-        });
-
-        if (!res.ok) {
-          let errorMessage = "Failed to update comment";
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch {
-            const errorText = await res.text().catch(() => null);
-            if (errorText) errorMessage = errorText;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data = await res.json();
-        console.log('Comment updated successfully:', data);
-        return data;
-      } catch (error) {
-        console.error("Error updating comment:", error);
-        throw error instanceof Error ? error : new Error("Failed to update comment");
-      }
-    },
-    onSuccess: (updatedComment) => {
-      // Update the comments list immediately
-      queryClient.setQueryData<(Post & { author: User })[]>(["/api/posts/comments", postId], (oldComments) => {
-        if (!oldComments) return oldComments;
-        
-        const updatedComments = oldComments.map(comment => {
-          if (comment.id === updatedComment.id) {
-            return {
-              ...comment,
-              ...updatedComment,
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return comment;
-        });
-        
-        return updatedComments;
+      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
+        content: content.trim()
       });
 
-      // Close edit form and show success message
+      if (!res.ok) {
+        throw new Error("Failed to update comment");
+      }
+
+      return res.json();
+    },
+    onSuccess: (updatedComment) => {
+      // Directly update the comments state
+      const updatedComments = comments.map(comment => 
+        comment.id === updatedComment.id 
+          ? { ...comment, content: updatedComment.content }
+          : comment
+      );
+      
+      // Update both local state and cache
+      setComments(updatedComments);
+      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
       setEditingComment(null);
       toast({
         description: "Comment updated successfully",
