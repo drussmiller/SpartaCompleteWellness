@@ -156,10 +156,18 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       }
       return res.json();
     },
-    onSuccess: () => {
-      // Invalidate both comments list and comment count
+    onSuccess: (data, commentId) => {
+      // Update UI immediately by removing the deleted comment from the state
+      const updatedComments = comments.filter(comment => comment.id !== commentId);
+      setComments(updatedComments);
+      
+      // Also update the React Query cache to keep it in sync
+      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      
+      // Still invalidate the queries to ensure everything stays in sync with the server
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+      
       toast({
         description: "Comment deleted successfully",
       });
