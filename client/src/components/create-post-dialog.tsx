@@ -204,14 +204,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           }
         }
 
-        // Prepare the content, adding a [VIDEO] marker for miscellaneous videos
+        // Use the content as-is without adding a [VIDEO] marker
         let content = data.content?.trim() || '';
-        if (data.type === 'miscellaneous' && selectedMediaType === 'video') {
-          // Add a VIDEO marker at the beginning of the content if it doesn't already have one
-          if (!content.includes('[VIDEO]')) {
-            content = content ? `[VIDEO] ${content}` : '[VIDEO]';
-          }
-        }
         
         const postData = {
           type: data.type,
