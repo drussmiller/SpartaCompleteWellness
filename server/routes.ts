@@ -4009,31 +4009,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   const httpServer = createServer(app);
 
   // Create WebSocket server on a distinct path
-  // Using a more robust configuration with appropriate error handling
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws',
-    // Additional options for better stability
-    clientTracking: true,
-    perMessageDeflate: {
-      zlibDeflateOptions: {
-        chunkSize: 1024,
-        memLevel: 7,
-        level: 3
-      },
-      zlibInflateOptions: {
-        chunkSize: 10 * 1024
-      },
-      clientNoContextTakeover: true,
-      serverNoContextTakeover: true,
-      threshold: 1024
-    }
-  });
-  
-  // Set up error handling for the WebSocket server
-  wss.on('error', (error) => {
-    console.error('WebSocket Server Error:', error);
-    logger.error('WebSocket Server Error', error);
+    path: '/ws'
   });
 
   // Map to store active client connections by user ID
