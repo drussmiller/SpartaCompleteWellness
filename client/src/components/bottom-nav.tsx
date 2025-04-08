@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Calendar, HelpCircle, Bell, Menu } from "lucide-react";
+import { Home, Calendar, HelpCircle, Bell, Menu, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -40,6 +40,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
       href: "/notifications",
       count: unreadCount 
     },
+    { icon: Clock, label: "Schedule", href: "/notification-schedule" },
   ];
 
   return (
@@ -55,7 +56,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
         // Container styles
         "flex items-center",
         // Mobile layout
-        orientation === "horizontal" && "h-20 justify-around",
+        orientation === "horizontal" && "h-20 justify-around flex-wrap px-1",
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
@@ -66,7 +67,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+              orientation === "horizontal" ? "h-full w-1/6 pb-4" : "w-full py-2",
               // Text styles
               location === href
                 ? "text-primary"
@@ -87,7 +88,7 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
             // Size styles
-            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+            orientation === "horizontal" ? "h-full w-1/6 pb-4" : "w-full py-2",
             // Text styles
             location === "/menu"
               ? "text-primary"
