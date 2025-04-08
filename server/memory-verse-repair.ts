@@ -271,7 +271,11 @@ export async function repairMemoryVerseVideos(): Promise<void> {
 }
 
 // For direct execution from command line
-if (require.main === module) {
+// Using ESM approach instead of CommonJS require.main
+import { fileURLToPath } from 'url';
+const isDirectExecution = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isDirectExecution) {
   repairMemoryVerseVideos()
     .then(() => {
       console.log('Memory verse video repair process completed');
