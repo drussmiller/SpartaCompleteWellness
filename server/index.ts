@@ -354,31 +354,42 @@ app.use('/api', (req, res, next) => {
               host: "0.0.0.0",
               backlog: 100,
             }, async () => {
-              log(`[Server Startup] Server listening on port ${port}`);
-              
-              // Schedule daily checks after server is ready
-              scheduleDailyScoreCheck();
-              
-              // Run video poster fix on startup to ensure all videos have poster files
               try {
+                log(`[Server Startup] Server listening on port ${port}`);
+                
+                // Schedule daily checks after server is ready
+                scheduleDailyScoreCheck();
+                
+                // Run video poster fix on startup to ensure all videos have poster files
                 console.log('[Server Startup] Running automatic video poster fix...');
                 const { fixVideoPosters } = await import('./fix-video-posters');
                 await fixVideoPosters();
                 console.log('[Server Startup] Video poster fix completed successfully');
+                
+                // Keep-alive configuration
+                if (currentServer) {
+                  currentServer.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
+                  currentServer.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
+                }
+                
+                resolve(currentServer!);
               } catch (error) {
-                console.error('[Server Startup] Failed to import or run video poster fix:', error);
+                console.error('[Server Startup] Error during server initialization:', error);
+                reject(error);
               }
-              
-              resolve(currentServer!);
             });
 
-            // Improve error handling
+            // Add error event handler for uncaught server errors
             currentServer.on('error', (err: any) => {
-              console.error('[Server Startup] Server error:', err);
+              console.error('[Server Error]:', err);
               if (err.code === 'EADDRINUSE') {
-                console.error('[Server Startup] Port still in use, retrying...');
-                currentServer?.close();
-                reject(err);
+                killPort(port)
+                  .catch(console.error)
+                  .finally(() => {
+                    console.error('[Server Startup] Port still in use, retrying...');
+                    currentServer?.close();
+                    reject(err);
+                  });
               } else {
                 reject(err);
               }
