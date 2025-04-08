@@ -378,20 +378,16 @@ app.use('/api', (req, res, next) => {
             });
 
             // Add error event handler for uncaught server errors
-            currentServer.on('error', (err) => {
+            currentServer.on('error', (err: any) => {
               console.error('[Server Error]:', err);
               if (err.code === 'EADDRINUSE') {
-                killPort(port).catch(console.error);
-              }
-            });
-
-            // Improve error handling
-            currentServer.on('error', (err: any) => {
-              console.error('[Server Startup] Server error:', err);
-              if (err.code === 'EADDRINUSE') {
-                console.error('[Server Startup] Port still in use, retrying...');
-                currentServer?.close();
-                reject(err);
+                killPort(port)
+                  .catch(console.error)
+                  .finally(() => {
+                    console.error('[Server Startup] Port still in use, retrying...');
+                    currentServer?.close();
+                    reject(err);
+                  });
               } else {
                 reject(err);
               }
