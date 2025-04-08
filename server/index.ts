@@ -323,7 +323,7 @@ app.use('/api', (req, res, next) => {
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
               reject(new Error('Server close timeout'));
-            }, 5000);
+            }, 10000); // Increased timeout to 10 seconds
             
             currentServer?.close(() => {
               clearTimeout(timeout);
@@ -332,48 +332,68 @@ app.use('/api', (req, res, next) => {
             });
           }).catch(err => {
             console.warn('[Server Startup] Error closing server:', err);
+            // Force close any remaining connections
+            try {
+              currentServer?.closeAllConnections();
+            } catch (closeErr) {
+              console.warn('[Server Startup] Error force closing connections:', closeErr);
+            }
             currentServer = null;
           });
           currentServer = null;
         }
 
-        // Wait a moment for port to fully clear
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait longer for port to fully clear
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         console.log('[Server Startup] Starting new server...');
         return new Promise((resolve, reject) => {
-          currentServer = server.listen({
-            port,
-            host: "0.0.0.0",
-          }, async () => {
-            log(`[Server Startup] Server listening on port ${port}`);
-            
-            // Schedule daily checks after server is ready
-            scheduleDailyScoreCheck();
-            
-            // Run video poster fix on startup to ensure all videos have poster files
-            try {
-              console.log('[Server Startup] Running automatic video poster fix...');
-              const { fixVideoPosters } = await import('./fix-video-posters');
-              await fixVideoPosters();
-              console.log('[Server Startup] Video poster fix completed successfully');
-            } catch (error) {
-              console.error('[Server Startup] Failed to import or run video poster fix:', error);
-            }
-            
-            resolve(currentServer!);
-          });
+          try {
+            currentServer = server.listen({
+              port,
+              host: "0.0.0.0",
+              backlog: 100,
+            }, async () => {
+              log(`[Server Startup] Server listening on port ${port}`);
+              
+              // Schedule daily checks after server is ready
+              scheduleDailyScoreCheck();
+              
+              // Run video poster fix on startup to ensure all videos have poster files
+              try {
+                console.log('[Server Startup] Running automatic video poster fix...');
+                const { fixVideoPosters } = await import('./fix-video-posters');
+                await fixVideoPosters();
+                console.log('[Server Startup] Video poster fix completed successfully');
+              } catch (error) {
+                console.error('[Server Startup] Failed to import or run video poster fix:', error);
+              }
+              
+              resolve(currentServer!);
+            });
 
-          currentServer.on('error', (err: any) => {
-            if (err.code === 'EADDRINUSE') {
-              console.error('[Server Startup] Port still in use, retrying...');
-              currentServer?.close();
-              reject(err);
-            } else {
+            // Improve error handling
+            currentServer.on('error', (err: any) => {
               console.error('[Server Startup] Server error:', err);
-              reject(err);
-            }
-          });
+              if (err.code === 'EADDRINUSE') {
+                console.error('[Server Startup] Port still in use, retrying...');
+                currentServer?.close();
+                reject(err);
+              } else {
+                reject(err);
+              }
+            });
+
+            // Add connection tracking
+            currentServer.on('connection', (socket) => {
+              socket.setKeepAlive(true, 60000);
+              socket.setTimeout(120000);
+            });
+
+          } catch (err) {
+            console.error('[Server Startup] Critical error starting server:', err);
+            reject(err);
+          }
         });
 
         return currentServer;
