@@ -42,7 +42,7 @@ export function PostView({ post }: PostViewProps) {
             <div className="mt-3 mb-3 flex justify-center">
               <video
                 src={post.mediaUrl}
-                poster={post.mediaUrl ? post.mediaUrl + '.poster.jpg' : undefined}
+                poster={post.mediaUrl ? post.mediaUrl.replace(/\.[^/.]+$/, '') + '.poster.jpg' : undefined}
                 controls
                 preload="metadata"
                 className="max-w-full h-auto object-contain rounded-md"
