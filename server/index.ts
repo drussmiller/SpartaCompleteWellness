@@ -3,12 +3,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { Server as HttpServer } from "http";
+import { Server as HttpServer, createServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
 import { logger } from "./logger";
 import path from "path";
+import { WebSocketServer } from 'ws'; // Added import for WebSocketServer
 
 const execAsync = promisify(exec);
 
@@ -20,7 +21,7 @@ app.use((req, res, next) => {
   // Set keep-alive header with increased timeout
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Keep-Alive', 'timeout=14400');
-  
+
   // Increase socket timeout and add connection handling
   if (req.socket) {
     req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
@@ -30,7 +31,7 @@ app.use((req, res, next) => {
 
   // Set generous timeouts
   req.setTimeout(serverTimeout);
-  
+
   res.setTimeout(serverTimeout, () => {
     res.status(408).send('Request timeout');
   });
@@ -95,15 +96,15 @@ const scheduleDailyScoreCheck = () => {
   const runDailyCheck = async () => {
     try {
       logger.info('Running daily score check');
-      
+
       // Use relative URL to avoid port binding issues
       const baseUrl = 'http://localhost:5000';
-      
+
       // Run checks for each hour to ensure notifications go out for all users
       // based on their preferred notification times
       for (let hour = 0; hour < 24; hour++) {
         logger.info(`Running check for hour ${hour}`);
-        
+
         const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
           method: 'POST',
           headers: {
@@ -124,7 +125,7 @@ const scheduleDailyScoreCheck = () => {
         const result = await response.json();
         logger.info(`Daily score check completed for hour ${hour}:`, result);
       }
-      
+
       logger.info('Completed daily checks for all hours');
     } catch (error) {
       logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
@@ -138,7 +139,7 @@ const scheduleDailyScoreCheck = () => {
   setTimeout(() => {
     logger.info('Running immediate daily score check for debugging...');
     runDailyCheck();
-    
+
     // Schedule next check for tomorrow
     setTimeout(() => {
       runDailyCheck();
@@ -152,7 +153,7 @@ const scheduleDailyScoreCheck = () => {
     try {
       const currentHour = new Date().getHours();
       logger.info(`Running hourly check for hour ${currentHour}`);
-      
+
       const baseUrl = 'http://localhost:5000';
       const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
         method: 'POST',
@@ -175,7 +176,7 @@ const scheduleDailyScoreCheck = () => {
       logger.error('Error running hourly check:', error instanceof Error ? error : new Error(String(error)));
     }
   };
-  
+
   // Start the hourly check after 60 seconds, then run every hour
   setTimeout(() => {
     runHourlyCheck();
@@ -244,7 +245,7 @@ app.use('/api', (req, res, next) => {
       // Return 404 if file not found
       redirect: false
     }));
-    
+
     // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {
       console.log("[Startup] Setting up Vite...");
@@ -257,7 +258,8 @@ app.use('/api', (req, res, next) => {
     await runMigrations();
 
     // ALWAYS serve the app on port 5000
-    const port = 5000;
+    // Use the port from environment variables or fall back to 5000
+    const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
@@ -330,26 +332,69 @@ app.use('/api', (req, res, next) => {
         }
 
         console.log('[Server Startup] Starting new server...');
-        currentServer = server.listen({
-          port,
-          host: "0.0.0.0",
-        }, async () => {
+        // Create HTTP server with increased timeouts
+        currentServer = createServer(app);
+        currentServer.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
+        currentServer.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
+
+        // Create WebSocket server with improved configuration
+        const wss = new WebSocketServer({
+          server: currentServer,
+          path: '/ws',
+          clientTracking: true,
+          perMessageDeflate: {
+            zlibDeflateOptions: {
+              chunkSize: 1024,
+              memLevel: 7,
+              level: 3
+            },
+            zlibInflateOptions: {
+              chunkSize: 10 * 1024
+            },
+            clientNoContextTakeover: true,
+            serverNoContextTakeover: true,
+            serverMaxWindowBits: 10,
+            concurrencyLimit: 10,
+            threshold: 1024
+          }
+        });
+
+
+        // Set up server error handler
+        currentServer.on('error', (err: any) => {
+          console.error('[Server Error]:', err);
+          if (err.code === 'EADDRINUSE') {
+            console.log('[Server Error] Port in use, attempting cleanup...');
+            killPort(port)
+              .catch(console.error)
+              .finally(() => {
+                console.error('[Server Error] Please try restarting the server');
+                process.exit(1);
+              });
+          }
+        });
+
+        // Add listener for successful startup
+        currentServer.once('listening', async () => {
           log(`[Server Startup] Server listening on port ${port}`);
-          
+
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
-          
-          // Run video poster fix on startup to ensure all videos have poster files
+
+          // Run video poster fix on startup
           try {
             console.log('[Server Startup] Running automatic video poster fix...');
             const { fixVideoPosters } = await import('./fix-video-posters');
-            fixVideoPosters()
-              .then(() => console.log('[Server Startup] Video poster fix completed successfully'))
-              .catch(err => console.error('[Server Startup] Error fixing video posters:', err));
+            await fixVideoPosters();
+            console.log('[Server Startup] Video poster fix completed successfully');
           } catch (error) {
             console.error('[Server Startup] Failed to import or run video poster fix:', error);
           }
         });
+
+        // Explicitly start listening on 0.0.0.0 to allow external access
+        currentServer.listen(port, '0.0.0.0');
+        console.log(`[Server Startup] Called listen() on port ${port} bound to 0.0.0.0`);
 
         return currentServer;
       } catch (error) {
@@ -387,7 +432,8 @@ app.use('/api', (req, res, next) => {
     process.on('SIGINT', gracefulShutdown);
 
     // Start server with enhanced cleanup and retry mechanism
-    await cleanupAndStartServer();
+    const serverInstance = await cleanupAndStartServer();
+    // The server is already listening as part of cleanupAndStartServer
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
