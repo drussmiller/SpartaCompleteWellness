@@ -995,39 +995,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
-  // Endpoint to fix video poster files for mobile thumbnail display
-  router.post("/api/fix-video-posters", authenticate, async (req, res) => {
-    try {
-      // Only need to be logged in to repair video posters
-      if (!req.user) {
-        return res.status(403).json({ message: "Authentication required" });
-      }
-      
-      logger.info(`Fix video posters requested by user ${req.user.id}`);
-      
-      // Import the video poster fix module
-      const { fixVideoPosters } = await import('./fix-video-posters');
-      
-      // Run the repair asynchronously
-      res.json({
-        message: "Video poster repair started",
-        status: "processing"
-      });
-      
-      // Process after sending the response
-      fixVideoPosters()
-        .then(() => {
-          logger.info(`Video poster repair completed for user ${req.user.id}`);
-        })
-        .catch(error => {
-          logger.error(`Video poster repair failed for user ${req.user.id}:`, error);
-        });
-    } catch (error) {
-      logger.error('Error in fix-video-posters route:', error);
-      res.status(500).json({ message: "Failed to start video poster repair" });
-    }
-  });
-  
   // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {

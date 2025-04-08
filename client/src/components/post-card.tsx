@@ -376,7 +376,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 )}
                 <video
                   src={post.mediaUrl}
-                  poster={post.mediaUrl ? post.mediaUrl + '.poster.jpg' : undefined}
+                  poster={getThumbnailUrl(post.mediaUrl, 'medium')}
                   controls
                   preload="metadata"
                   className="w-full h-full object-contain"

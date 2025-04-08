@@ -333,22 +333,10 @@ app.use('/api', (req, res, next) => {
         currentServer = server.listen({
           port,
           host: "0.0.0.0",
-        }, async () => {
+        }, () => {
           log(`[Server Startup] Server listening on port ${port}`);
-          
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
-          
-          // Run video poster fix on startup to ensure all videos have poster files
-          try {
-            console.log('[Server Startup] Running automatic video poster fix...');
-            const { fixVideoPosters } = await import('./fix-video-posters');
-            fixVideoPosters()
-              .then(() => console.log('[Server Startup] Video poster fix completed successfully'))
-              .catch(err => console.error('[Server Startup] Error fixing video posters:', err));
-          } catch (error) {
-            console.error('[Server Startup] Failed to import or run video poster fix:', error);
-          }
         });
 
         return currentServer;
