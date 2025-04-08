@@ -995,39 +995,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
-  // Endpoint to fix video poster files for mobile thumbnail display
-  router.post("/api/fix-video-posters", authenticate, async (req, res) => {
-    try {
-      // Only need to be logged in to repair video posters
-      if (!req.user) {
-        return res.status(403).json({ message: "Authentication required" });
-      }
-      
-      logger.info(`Fix video posters requested by user ${req.user.id}`);
-      
-      // Import the video poster fix module
-      const { fixVideoPosters } = await import('./fix-video-posters');
-      
-      // Run the repair asynchronously
-      res.json({
-        message: "Video poster repair started",
-        status: "processing"
-      });
-      
-      // Process after sending the response
-      fixVideoPosters()
-        .then(() => {
-          logger.info(`Video poster repair completed for user ${req.user.id}`);
-        })
-        .catch(error => {
-          logger.error(`Video poster repair failed for user ${req.user.id}:`, error);
-        });
-    } catch (error) {
-      logger.error('Error in fix-video-posters route:', error);
-      res.status(500).json({ message: "Failed to start video poster repair" });
-    }
-  });
-  
   // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {
@@ -4009,31 +3976,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   const httpServer = createServer(app);
 
   // Create WebSocket server on a distinct path
-  // Using a more robust configuration with appropriate error handling
   const wss = new WebSocketServer({ 
     server: httpServer, 
-    path: '/ws',
-    // Additional options for better stability
-    clientTracking: true,
-    perMessageDeflate: {
-      zlibDeflateOptions: {
-        chunkSize: 1024,
-        memLevel: 7,
-        level: 3
-      },
-      zlibInflateOptions: {
-        chunkSize: 10 * 1024
-      },
-      clientNoContextTakeover: true,
-      serverNoContextTakeover: true,
-      threshold: 1024
-    }
-  });
-  
-  // Set up error handling for the WebSocket server
-  wss.on('error', (error) => {
-    console.error('WebSocket Server Error:', error);
-    logger.error('WebSocket Server Error', error);
+    path: '/ws'
   });
 
   // Map to store active client connections by user ID

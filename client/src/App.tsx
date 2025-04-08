@@ -32,22 +32,6 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
-  // TEMPORARY DEBUG MODE - Skip authentication and show debug page
-  console.log('DEBUG MODE ACTIVE - Skipping authentication');
-  return (
-    <div className="min-h-screen">
-      <div className="md:pl-20" style={{overflowX: 'hidden'}}>
-        <div className="p-4 m-4 bg-yellow-100 rounded-lg">
-          <h1 className="text-2xl font-bold mb-4">Debug Page</h1>
-          <p className="mb-2">This is a temporary debug page to bypass authentication issues.</p>
-          <p>Auth state: {JSON.stringify({ user, isLoading, error })}</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  // NORMAL CODE BELOW - TEMPORARILY DISABLED
-  /*
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -74,7 +58,6 @@ function MainContent() {
   if (!user) {
     return <AuthPage />;
   }
-  */
 
   // If authenticated, show the app with routes
   return (
@@ -82,9 +65,7 @@ function MainContent() {
       {user && <div className="fixed left-0 top-0 z-[51]"><VerticalNav /></div>}
       <div className="md:pl-20" style={{overflowX: 'hidden'}}> {/* Adjusted padding to match new nav width */}
         <Switch>
-          {/* Temporarily redirecting home page to help page for debugging */}
-          <Route path="/" component={HelpPage} />
-          <Route path="/home" component={HomePage} />
+          <Route path="/" component={HomePage} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/notification-settings" component={NotificationSettingsPage} />

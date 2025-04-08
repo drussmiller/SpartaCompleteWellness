@@ -3,13 +3,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { Server as HttpServer, createServer } from "http";
+import { Server as HttpServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
 import { logger } from "./logger";
 import path from "path";
-import { WebSocketServer } from 'ws'; // Added import for WebSocketServer
 
 const execAsync = promisify(exec);
 
@@ -21,7 +20,7 @@ app.use((req, res, next) => {
   // Set keep-alive header with increased timeout
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Keep-Alive', 'timeout=14400');
-
+  
   // Increase socket timeout and add connection handling
   if (req.socket) {
     req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
@@ -31,7 +30,7 @@ app.use((req, res, next) => {
 
   // Set generous timeouts
   req.setTimeout(serverTimeout);
-
+  
   res.setTimeout(serverTimeout, () => {
     res.status(408).send('Request timeout');
   });
@@ -81,97 +80,111 @@ app.use((req, res, next) => {
   next();
 });
 
-// Update the scheduleDailyScoreCheck function with more error handling
+// Update the scheduleDailyScoreCheck function
 const scheduleDailyScoreCheck = () => {
-  try {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 1, 0, 0); // 00:01 AM tomorrow
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 1, 0, 0); // 00:01 AM tomorrow
 
-    const timeUntilCheck = tomorrow.getTime() - now.getTime();
+  const timeUntilCheck = tomorrow.getTime() - now.getTime();
 
-    logger.info('Scheduling next daily score check for:', { timestamp: tomorrow.toISOString() });
+  logger.info('Scheduling next daily score check for:', { timestamp: tomorrow.toISOString() });
 
-    // Run an immediate check if it hasn't been run today, with better error handling
-    const runDailyCheck = async () => {
-      try {
-        logger.info('Running daily score check');
+  // Run an immediate check if it hasn't been run today
+  const runDailyCheck = async () => {
+    try {
+      logger.info('Running daily score check');
+      
+      // Use relative URL to avoid port binding issues
+      const baseUrl = 'http://localhost:5000';
+      
+      // Run checks for each hour to ensure notifications go out for all users
+      // based on their preferred notification times
+      for (let hour = 0; hour < 24; hour++) {
+        logger.info(`Running check for hour ${hour}`);
+        
+        const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            currentHour: hour,
+            // Use current minute for testing
+            currentMinute: now.getMinutes()
+          })
+        });
 
-        // Use the same port as the server is running on
-        const port = process.env.PORT ? process.env.PORT : 3000;
-        const baseUrl = `http://localhost:${port}`;
-
-        // Only run check for current hour to reduce overhead
-        const currentHour = new Date().getHours();
-        logger.info(`Running check for hour ${currentHour}`);
-
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-          
-          const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              currentHour,
-              currentMinute: new Date().getMinutes()
-            }),
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            logger.error(`Failed to run daily score check for hour ${currentHour}: ${response.statusText}`);
-            return;
-          }
-
-          const result = await response.json();
-          logger.info(`Daily score check completed for hour ${currentHour}:`, result);
-        } catch (fetchError) {
-          logger.error(`Error fetching daily score check for hour ${currentHour}:`, 
-            fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
+        if (!response.ok) {
+          logger.error(`Failed to run daily score check for hour ${hour}: ${response.statusText}`);
+          continue; // Try next hour
         }
 
-        logger.info('Completed daily check');
-      } catch (error) {
-        logger.error('Error running daily score check:', 
-          error instanceof Error ? error : new Error(String(error)));
+        const result = await response.json();
+        logger.info(`Daily score check completed for hour ${hour}:`, result);
       }
-    };
+      
+      logger.info('Completed daily checks for all hours');
+    } catch (error) {
+      logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
+      // Schedule a retry in 5 minutes if there's an error
+      setTimeout(runDailyCheck, 5 * 60 * 1000);
+    }
+  };
 
-    // Setup function for scheduling periodic checks
-    const scheduleChecks = () => {
-      // Skip immediate check to reduce startup load
-      // Schedule next check for tomorrow
-      setTimeout(() => {
-        try {
-          runDailyCheck();
-          // Schedule subsequent checks every 24 hours
-          setInterval(() => {
-            try {
-              runDailyCheck();
-            } catch (error) {
-              logger.error('Error in daily check interval:', error);
-            }
-          }, 24 * 60 * 60 * 1000);
-        } catch (error) {
-          logger.error('Error scheduling daily check:', error);
-        }
-      }, timeUntilCheck);
-    };
+  // Run an immediate check during startup for debugging purposes
+  // This helps us verify the notification system quickly
+  setTimeout(() => {
+    logger.info('Running immediate daily score check for debugging...');
+    runDailyCheck();
+    
+    // Schedule next check for tomorrow
+    setTimeout(() => {
+      runDailyCheck();
+      // Schedule subsequent checks every 24 hours
+      setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
+    }, timeUntilCheck);
+  }, 10 * 1000); // Reduced to 10 seconds to check sooner
 
-    // Schedule the daily check
-    scheduleChecks();
+  // Also run a check every hour to catch notifications throughout the day
+  const runHourlyCheck = async () => {
+    try {
+      const currentHour = new Date().getHours();
+      logger.info(`Running hourly check for hour ${currentHour}`);
+      
+      const baseUrl = 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentHour,
+          currentMinute: new Date().getMinutes()
+        })
+      });
 
-    // Log the schedule
-    logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes`);
-  } catch (error) {
-    logger.error('Error in scheduleDailyScoreCheck:', error);
-  }
+      if (!response.ok) {
+        throw new Error(`Failed to run hourly check: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      logger.info(`Hourly check completed for hour ${currentHour}:`, result);
+    } catch (error) {
+      logger.error('Error running hourly check:', error instanceof Error ? error : new Error(String(error)));
+    }
+  };
+  
+  // Start the hourly check after 60 seconds, then run every hour
+  setTimeout(() => {
+    runHourlyCheck();
+    setInterval(runHourlyCheck, 60 * 60 * 1000); // Every hour
+  }, 60 * 1000);
+
+  // Log the schedule
+  logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes and immediate check in 10 seconds`);
+  logger.info('Hourly checks will also run to ensure notifications go out at the correct times');
 };
 
 // Ensure API requests respond with JSON
@@ -231,7 +244,7 @@ app.use('/api', (req, res, next) => {
       // Return 404 if file not found
       redirect: false
     }));
-
+    
     // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {
       console.log("[Startup] Setting up Vite...");
@@ -243,9 +256,8 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // Use Replit's standard port (3000)
-    // This is the only port we should be using to avoid conflicts
-    const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+    // ALWAYS serve the app on port 5000
+    const port = 5000;
 
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
@@ -318,73 +330,14 @@ app.use('/api', (req, res, next) => {
         }
 
         console.log('[Server Startup] Starting new server...');
-        // Create HTTP server with increased timeouts
-        currentServer = createServer(app);
-        currentServer.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
-        currentServer.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
-
-        // WebSocket server is created in routes.ts, we don't need to create it here
-        // This prevents having multiple WebSocket servers trying to bind to the same path
-
-
-        // Set up server error handler
-        currentServer.on('error', (err: any) => {
-          console.error('[Server Error]:', err);
-          if (err.code === 'EADDRINUSE') {
-            console.log('[Server Error] Port in use, attempting cleanup...');
-            killPort(port)
-              .catch(console.error)
-              .finally(() => {
-                console.error('[Server Error] Please try restarting the server');
-                process.exit(1);
-              });
-          }
-        });
-
-        // Add listener for successful startup
-        currentServer.once('listening', async () => {
+        currentServer = server.listen({
+          port,
+          host: "0.0.0.0",
+        }, () => {
           log(`[Server Startup] Server listening on port ${port}`);
-
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
-
-          // Run video poster fix on startup, but don't block server operation
-          setTimeout(async () => {
-            try {
-              console.log('[Server Startup] Running automatic video poster fix...');
-              
-              // Set up a timeout to ensure the function doesn't hang
-              const posterFixPromise = (async () => {
-                try {
-                  const { fixVideoPosters } = await import('./fix-video-posters');
-                  await fixVideoPosters();
-                  return 'success';
-                } catch (importError) {
-                  console.error('[Server Startup] Failed to import or run video poster fix:', importError);
-                  return 'error';
-                }
-              })();
-              
-              // Wait for the fix to complete or timeout after 60 seconds
-              const result = await Promise.race([
-                posterFixPromise,
-                new Promise<string>(resolve => setTimeout(() => resolve('timeout'), 60000))
-              ]);
-              
-              if (result === 'success') {
-                console.log('[Server Startup] Video poster fix completed successfully');
-              } else if (result === 'timeout') {
-                console.warn('[Server Startup] Video poster fix timed out, continuing server operation');
-              }
-            } catch (error) {
-              console.error('[Server Startup] Error during video poster fix:', error);
-            }
-          }, 5000); // Delay by 5 seconds to allow server to stabilize first
         });
-
-        // Explicitly start listening on 0.0.0.0 to allow external access
-        currentServer.listen(port, '0.0.0.0');
-        console.log(`[Server Startup] Called listen() on port ${port} bound to 0.0.0.0`);
 
         return currentServer;
       } catch (error) {
@@ -422,8 +375,7 @@ app.use('/api', (req, res, next) => {
     process.on('SIGINT', gracefulShutdown);
 
     // Start server with enhanced cleanup and retry mechanism
-    const serverInstance = await cleanupAndStartServer();
-    // The server is already listening as part of cleanupAndStartServer
+    await cleanupAndStartServer();
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
