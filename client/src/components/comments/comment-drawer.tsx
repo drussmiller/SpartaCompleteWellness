@@ -397,7 +397,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Content area */}
-          <div className="flex-1 overflow-y-auto pt-2">
+          <div className="flex-1 overflow-y-auto pt-2 pb-32">
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
               <div className="flex items-center justify-center p-8">
@@ -423,7 +423,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Fixed comment form at the bottom */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ marginBottom: '5px' }}>
+          <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}>
             <CommentForm
               onSubmit={async (content) => {
                 await createCommentMutation.mutateAsync(content);
