@@ -255,9 +255,26 @@ export default function App() {
                   <Text style={styles.postType}>{post.type}</Text>
                 </View>
                 <Text style={styles.postContent}>{post.content}</Text>
-                {post.imageUrl && (
-                  <View style={styles.imageContainer}>
-                    <Text>Image: {post.imageUrl}</Text>
+                {post.mediaUrl && (
+                  <View style={styles.mediaContainer}>
+                    {post.is_video ? (
+                      <View style={styles.videoContainer}>
+                        <Image 
+                          source={{ uri: `${API_URL}/uploads/thumbnails/thumb-${post.mediaUrl.split('/').pop()}` }}
+                          style={styles.videoThumbnail}
+                          resizeMode="contain"
+                        />
+                        <View style={styles.playButton}>
+                          <Text style={styles.playIcon}>▶</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: post.mediaUrl }}
+                        style={styles.postImage}
+                        resizeMode="contain"
+                      />
+                    )}
                   </View>
                 )}
                 <View style={styles.postFooter}>
@@ -349,11 +366,40 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 10,
   },
-  imageContainer: {
+  mediaContainer: {
     marginVertical: 10,
-    padding: 10,
     backgroundColor: '#f8f9fa',
     borderRadius: 5,
+    overflow: 'hidden',
+  },
+  videoContainer: {
+    position: 'relative',
+    aspectRatio: 16/9,
+    backgroundColor: '#000',
+  },
+  videoThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  postImage: {
+    width: '100%',
+    aspectRatio: 1,
+  },
+  playButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -25 }, { translateY: -25 }],
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playIcon: {
+    color: '#fff',
+    fontSize: 24,
   },
   postFooter: {
     flexDirection: 'row',

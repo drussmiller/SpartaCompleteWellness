@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Image, X } from "lucide-react";
 
-
-interface CommentFormProps {
-  onSubmit: (content: string) => Promise<void>; 
+interface MessageFormProps {
+  onSubmit: (content: string, imageData: string | null) => Promise<void>;
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -14,48 +12,70 @@ interface CommentFormProps {
   inputRef?: React.RefObject<HTMLTextAreaElement>;
 }
 
-export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
+export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({ 
   onSubmit, 
   isSubmitting, 
-  placeholder = "Enter a comment...",
+  placeholder = "Type a message...",
   defaultValue = "",
   onCancel,
   inputRef
-}: CommentFormProps, ref) => {
+}: MessageFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
+  const [pastedImage, setPastedImage] = useState<string | null>(null);
   const internalRef = useRef<HTMLTextAreaElement>(null);
-  const queryClient = useQueryClient(); // Added useQueryClient hook
-
   const containerRef = useRef<HTMLDivElement>(null);
 
   // This function handles setting up refs for the textarea
-  // Using callback ref to handle all ref assignments
   const setRefs = (element: HTMLTextAreaElement | null) => {
     // Handle forwardRef
     if (typeof ref === 'function') {
       ref(element);
     }
-    // No need to assign to internalRef.current as React will do this automatically
   };
 
   const ensureTextareaFocus = () => {
     // Focus the textarea by ID instead of ref
-    const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
+    const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
     if (textarea) {
       textarea.focus();
-      console.log("Refocusing textarea");
     }
   };
 
   useEffect(() => {
     // Focus the textarea after component mounts
     setTimeout(() => {
-      const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
+      const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
       if (textarea) {
         textarea.focus();
-        console.log("Focus in CommentForm component mount");
       }
     }, 200);
+  }, []);
+
+  // Handle paste events for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setPastedImage(e.target?.result as string);
+            };
+            reader.readAsDataURL(blob);
+          }
+          break;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
   }, []);
 
   // Reset textarea height when content is cleared
@@ -66,7 +86,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   }, [content]);
 
   const resetTextarea = () => {
-    const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
+    const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
     if (textarea) {
       textarea.style.height = '38px';
       const container = textarea.parentElement;
@@ -78,15 +98,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const handleSubmit = async () => {
     try {
-      if (!content.trim()) return;
-      await onSubmit(content);
+      if (!content.trim() && !pastedImage) return;
+      await onSubmit(content, pastedImage);
 
-      // Reset state first
+      // Reset state
       setContent('');
+      setPastedImage(null);
 
       // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
-        const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
+        const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
         if (textarea) {
           textarea.style.height = '38px';
           // Reset both textarea parent and flex-1 container
@@ -97,16 +118,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         }
       });
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      console.error('Error submitting message:', error);
     }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (content.trim() && !isSubmitting) {
+      if ((content.trim() || pastedImage) && !isSubmitting) {
         handleSubmit();
-      } else if (!content.trim() && onCancel) {
+      } else if (!content.trim() && !pastedImage && onCancel) {
         onCancel();
       }
     }
@@ -114,13 +135,31 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-1 w-full"
+      className="flex flex-col gap-2 w-full"
       ref={containerRef}
       onClick={(e) => {
         ensureTextareaFocus();
         e.stopPropagation();
       }}
     >
+      {pastedImage && (
+        <div className="relative inline-block max-w-xs mb-2">
+          <img 
+            src={pastedImage} 
+            alt="Pasted image" 
+            className="max-h-24 max-w-full rounded-lg object-cover"
+          />
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+            onClick={() => setPastedImage(null)}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+      
       <div className="flex items-center">
         <div className="flex-1">
           <Textarea
@@ -138,7 +177,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
             style={{ height: '38px', minHeight: '38px' }}
-            id="comment-textarea"
+            id="message-textarea"
           />
         </div>
         <Button
@@ -146,7 +185,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           size="icon"
           variant="ghost"
           onClick={handleSubmit}
-          disabled={isSubmitting || !content.trim()}
+          disabled={isSubmitting || (!content.trim() && !pastedImage)}
           className="ml-2"
         >
           {isSubmitting ? (
@@ -158,9 +197,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           )}
         </Button>
       </div>
-      
     </div>
   );
 });
 
-CommentForm.displayName = "CommentForm";
+MessageForm.displayName = "MessageForm";
