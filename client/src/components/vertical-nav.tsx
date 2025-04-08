@@ -7,7 +7,8 @@ import {
   Menu,
   Settings, 
   HelpCircle,
-  WifiOff
+  WifiOff,
+  Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -34,6 +35,7 @@ export const VerticalNav = () => {
       path: "/notifications",
       status: connectionStatus !== "connected" ? "offline" : null 
     },
+    { icon: Clock, label: "Schedule", path: "/notification-schedule" },
     { icon: Menu, label: "Menu", path: "/menu" },
   ];
 
