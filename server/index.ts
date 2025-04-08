@@ -320,35 +320,60 @@ app.use('/api', (req, res, next) => {
         // Close existing server if any
         if (currentServer) {
           console.log('[Server Startup] Closing existing server...');
-          await new Promise<void>((resolve) => {
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Server close timeout'));
+            }, 5000);
+            
             currentServer?.close(() => {
+              clearTimeout(timeout);
               console.log('[Server Startup] Existing server closed');
               resolve();
             });
+          }).catch(err => {
+            console.warn('[Server Startup] Error closing server:', err);
+            currentServer = null;
           });
           currentServer = null;
         }
 
+        // Wait a moment for port to fully clear
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         console.log('[Server Startup] Starting new server...');
-        currentServer = server.listen({
-          port,
-          host: "0.0.0.0",
-        }, async () => {
-          log(`[Server Startup] Server listening on port ${port}`);
-          
-          // Schedule daily checks after server is ready
-          scheduleDailyScoreCheck();
-          
-          // Run video poster fix on startup to ensure all videos have poster files
-          try {
-            console.log('[Server Startup] Running automatic video poster fix...');
-            const { fixVideoPosters } = await import('./fix-video-posters');
-            fixVideoPosters()
-              .then(() => console.log('[Server Startup] Video poster fix completed successfully'))
-              .catch(err => console.error('[Server Startup] Error fixing video posters:', err));
-          } catch (error) {
-            console.error('[Server Startup] Failed to import or run video poster fix:', error);
-          }
+        return new Promise((resolve, reject) => {
+          currentServer = server.listen({
+            port,
+            host: "0.0.0.0",
+          }, async () => {
+            log(`[Server Startup] Server listening on port ${port}`);
+            
+            // Schedule daily checks after server is ready
+            scheduleDailyScoreCheck();
+            
+            // Run video poster fix on startup to ensure all videos have poster files
+            try {
+              console.log('[Server Startup] Running automatic video poster fix...');
+              const { fixVideoPosters } = await import('./fix-video-posters');
+              await fixVideoPosters();
+              console.log('[Server Startup] Video poster fix completed successfully');
+            } catch (error) {
+              console.error('[Server Startup] Failed to import or run video poster fix:', error);
+            }
+            
+            resolve(currentServer!);
+          });
+
+          currentServer.on('error', (err: any) => {
+            if (err.code === 'EADDRINUSE') {
+              console.error('[Server Startup] Port still in use, retrying...');
+              currentServer?.close();
+              reject(err);
+            } else {
+              console.error('[Server Startup] Server error:', err);
+              reject(err);
+            }
+          });
         });
 
         return currentServer;
