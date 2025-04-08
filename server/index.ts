@@ -367,8 +367,10 @@ app.use('/api', (req, res, next) => {
                 console.log('[Server Startup] Video poster fix completed successfully');
                 
                 // Keep-alive configuration
-                currentServer?.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
-                currentServer?.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
+                if (currentServer) {
+                  currentServer.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
+                  currentServer.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
+                }
                 
                 resolve(currentServer!);
               } catch (error) {
