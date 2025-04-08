@@ -1,19 +1,33 @@
-import { useState, useEffect, useCallback } from "react";
-import { MessageCircle, ChevronLeft, Send, X } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { MessageCircle, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
+import { MessageForm } from "./message-form";
 
-interface Message extends Post {
+// Custom Message interface that includes both field name variations
+interface Message {
+  id: number;
+  userId: number;
+  type: "food" | "workout" | "scripture" | "memory_verse" | "comment" | "miscellaneous";
+  content: string | null;
+  points: number;
+  createdAt: Date | null;
+  parentId: number | null;
+  depth: number | null;
+  is_video: boolean | null;
+  // Message-specific fields
   sender: User;
   isRead: boolean;
+  // Image URL variants
+  imageUrl?: string;    // For compatibility with existing backend
+  mediaUrl?: string | null;    // New field name used in other parts of the application
 }
 
 export function MessageSlideCard() {
@@ -357,9 +371,10 @@ export function MessageSlideCard() {
                         {message.content && (
                           <p className="break-words">{message.content}</p>
                         )}
-                        {message.imageUrl && (
+                        {/* Check both imageUrl and mediaUrl fields */}
+                        {(message.imageUrl || message.mediaUrl) && (
                           <img
-                            src={message.imageUrl}
+                            src={message.mediaUrl || message.imageUrl}
                             alt="Message image"
                             className="max-w-full rounded mt-2"
                           />
@@ -372,41 +387,19 @@ export function MessageSlideCard() {
 
               {/* Message Input */}
               <div className="p-4 pb-20 border-t bg-background">
-                {pastedImage && (
-                  <div className="relative w-32 h-32 mb-4">
-                    <img
-                      src={pastedImage}
-                      alt="Pasted image"
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                    <button
-                      onClick={() => setPastedImage(null)}
-                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Type a message... (Paste an image with Ctrl+V)"
-                    className="flex-1"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={(!messageText.trim() && !pastedImage) || createMessageMutation.isPending}
-                  >
-                    <Send className="h-5 w-5" />
-                  </Button>
-                </div>
+                {/* Use the MessageForm component instead of the Input + Button */}
+                <MessageForm 
+                  onSubmit={async (content, imageData) => {
+                    // Update messageText and pastedImage before submitting
+                    setMessageText(content);
+                    setPastedImage(imageData || null);
+                    // Wait for state to update and then submit
+                    setTimeout(() => handleSendMessage(), 0);
+                  }}
+                  isSubmitting={createMessageMutation.isPending}
+                  placeholder="Type a message... (Press Shift+Enter for new line)"
+                  defaultValue={messageText}
+                />
               </div>
             </div>
           )}
