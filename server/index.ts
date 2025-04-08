@@ -320,90 +320,34 @@ app.use('/api', (req, res, next) => {
         // Close existing server if any
         if (currentServer) {
           console.log('[Server Startup] Closing existing server...');
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Server close timeout'));
-            }, 10000); // Increased timeout to 10 seconds
-            
+          await new Promise<void>((resolve) => {
             currentServer?.close(() => {
-              clearTimeout(timeout);
               console.log('[Server Startup] Existing server closed');
               resolve();
             });
-          }).catch(err => {
-            console.warn('[Server Startup] Error closing server:', err);
-            // Force close any remaining connections
-            try {
-              currentServer?.closeAllConnections();
-            } catch (closeErr) {
-              console.warn('[Server Startup] Error force closing connections:', closeErr);
-            }
-            currentServer = null;
           });
           currentServer = null;
         }
 
-        // Wait longer for port to fully clear
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
         console.log('[Server Startup] Starting new server...');
-        return new Promise((resolve, reject) => {
+        currentServer = server.listen({
+          port,
+          host: "0.0.0.0",
+        }, async () => {
+          log(`[Server Startup] Server listening on port ${port}`);
+          
+          // Schedule daily checks after server is ready
+          scheduleDailyScoreCheck();
+          
+          // Run video poster fix on startup to ensure all videos have poster files
           try {
-            currentServer = server.listen({
-              port,
-              host: "0.0.0.0",
-              backlog: 100,
-            }, async () => {
-              try {
-                log(`[Server Startup] Server listening on port ${port}`);
-                
-                // Schedule daily checks after server is ready
-                scheduleDailyScoreCheck();
-                
-                // Run video poster fix on startup to ensure all videos have poster files
-                console.log('[Server Startup] Running automatic video poster fix...');
-                const { fixVideoPosters } = await import('./fix-video-posters');
-                await fixVideoPosters();
-                console.log('[Server Startup] Video poster fix completed successfully');
-                
-                // Keep-alive configuration
-                if (currentServer) {
-                  currentServer.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
-                  currentServer.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
-                }
-                
-                resolve(currentServer!);
-              } catch (error) {
-                console.error('[Server Startup] Error during server initialization:', error);
-                reject(error);
-              }
-            });
-
-            // Add error event handler for uncaught server errors
-            currentServer.on('error', (err: any) => {
-              console.error('[Server Error]:', err);
-              if (err.code === 'EADDRINUSE') {
-                killPort(port)
-                  .catch(console.error)
-                  .finally(() => {
-                    console.error('[Server Startup] Port still in use, retrying...');
-                    currentServer?.close();
-                    reject(err);
-                  });
-              } else {
-                reject(err);
-              }
-            });
-
-            // Add connection tracking
-            currentServer.on('connection', (socket) => {
-              socket.setKeepAlive(true, 60000);
-              socket.setTimeout(120000);
-            });
-
-          } catch (err) {
-            console.error('[Server Startup] Critical error starting server:', err);
-            reject(err);
+            console.log('[Server Startup] Running automatic video poster fix...');
+            const { fixVideoPosters } = await import('./fix-video-posters');
+            fixVideoPosters()
+              .then(() => console.log('[Server Startup] Video poster fix completed successfully'))
+              .catch(err => console.error('[Server Startup] Error fixing video posters:', err));
+          } catch (error) {
+            console.error('[Server Startup] Failed to import or run video poster fix:', error);
           }
         });
 

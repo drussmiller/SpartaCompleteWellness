@@ -3961,54 +3961,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Get notification preferences
-  router.get("/api/users/notification-preferences", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
-      // Get user's notification settings
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id));
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Format notification time to HH:MM if it exists
-      const formattedTime = user.notificationTime || "09:00";
-      
-      // Create response object
-      const response = {
-        notificationTime: formattedTime,
-        achievementNotificationsEnabled: user.achievementNotificationsEnabled || false,
-        notificationSettings: {
-          // Default notification settings - in future versions these could be stored in the database
-          food: true,
-          workout: true,
-          scripture: true,
-          memory_verse: true
-        }
-      };
-      
-      res.json(response);
-    } catch (error) {
-      logger.error('Error getting notification preferences:', error);
-      res.status(500).json({
-        message: "Failed to get notification preferences",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Update notification preferences
-  router.post("/api/users/notification-preferences", authenticate, async (req, res) => {
+  router.post("/api/users/notification-schedule", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      const { notificationTime, achievementNotificationsEnabled, notificationSettings } = req.body;
-      
+      const { notificationTime, achievementNotificationsEnabled } = req.body;
       // Define update data with proper typing
       const updateData: {
         notificationTime?: string;
@@ -4035,24 +3992,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .set(updateData)
         .where(eq(users.id, req.user.id))
         .returning();
-      
-      // In future versions, we could store individual notification settings in a separate table
-      // For now, we'll just return them in the response
-      const response = {
-        ...updatedUser,
-        notificationSettings: notificationSettings || {
-          food: true,
-          workout: true,
-          scripture: true,
-          memory_verse: true
-        }
-      };
 
-      res.json(response);
+      res.json(updatedUser);
     } catch (error) {
-      logger.error('Error updating notification preferences:', error);
+      logger.error('Error updating notification schedule:', error);
       res.status(500).json({
-        message: "Failed to update notification preferences",
+        message: "Failed to update notification schedule",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
