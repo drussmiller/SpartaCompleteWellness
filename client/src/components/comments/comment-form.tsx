@@ -158,19 +158,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           )}
         </Button>
       </div>
-      {onCancel && (
-        <div className="flex justify-end mt-2">
-          <Button
-            variant="ghost"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            size="sm"
-            className="h-8"
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
+      
     </div>
   );
 });
