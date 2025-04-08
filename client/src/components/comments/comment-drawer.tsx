@@ -357,14 +357,14 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         side="right" 
         ref={drawerRef}
         className="!w-full !p-0 !max-w-full comment-drawer pt-safe"
-        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 16px)' }}
+        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 30px)' }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="h-full w-full flex flex-col">
           {/* Fixed header bar */}
-          <div className="h-30 border-b bg-background flex-shrink-0 pt-6">
+          <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
-            <SheetClose className="absolute top-6 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+            <SheetClose className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-2xl" />
               <span className="sr-only">Close</span>
             </SheetClose>
@@ -414,7 +414,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
 
             {/* Post and comments section */}
             {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-              <div className="px-4 pb-40">
+              <div className="px-4 pb-40" >
                 <PostView post={originalPost} />
                 <div className="border-t border-gray-200 my-4"></div>
                 <CommentList comments={comments} postId={postId} />
@@ -423,7 +423,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Fixed comment form at the bottom */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ marginBottom: '80px' }}>
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ marginBottom: '5px' }}>
             <CommentForm
               onSubmit={async (content) => {
                 await createCommentMutation.mutateAsync(content);
