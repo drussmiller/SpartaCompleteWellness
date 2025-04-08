@@ -3,12 +3,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { Server as HttpServer } from "http";
+import { Server as HttpServer, createServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
 import { logger } from "./logger";
 import path from "path";
+import { WebSocketServer } from 'ws'; // Added import for WebSocketServer
 
 const execAsync = promisify(exec);
 
@@ -330,10 +331,33 @@ app.use('/api', (req, res, next) => {
         }
 
         console.log('[Server Startup] Starting new server...');
-        currentServer = server.listen({
-          port,
-          host: "0.0.0.0",
+        // Create HTTP server with increased timeouts
+        currentServer = createServer(app);
+        currentServer.keepAliveTimeout = 65000; // Slightly higher than 60 second nginx default
+        currentServer.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
+
+        // Create WebSocket server with improved configuration
+        const wss = new WebSocketServer({
+          server: currentServer,
+          path: '/ws',
+          clientTracking: true,
+          perMessageDeflate: {
+            zlibDeflateOptions: {
+              chunkSize: 1024,
+              memLevel: 7,
+              level: 3
+            },
+            zlibInflateOptions: {
+              chunkSize: 10 * 1024
+            },
+            clientNoContextTakeover: true,
+            serverNoContextTakeover: true,
+            serverMaxWindowBits: 10,
+            concurrencyLimit: 10,
+            threshold: 1024
+          }
         });
+
 
         // Set up server error handler
         currentServer.on('error', (err: any) => {
