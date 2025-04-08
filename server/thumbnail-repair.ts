@@ -75,33 +75,6 @@ async function repairThumbnails() {
       // Use the storage handler to (re)create thumbnails
       await spartaStorage.storeFile(filePath, file, mimeType, isVideo);
       
-      // For videos, create a poster file with .poster.jpg extension
-      if (isVideo) {
-        const posterPath = filePath + '.poster.jpg';
-        if (!fs.existsSync(posterPath)) {
-          try {
-            // Use the thumbnail as the poster source
-            if (fs.existsSync(thumbnailPath)) {
-              fs.copyFileSync(thumbnailPath, posterPath);
-              console.log(`Created poster file at ${posterPath}`);
-            } else {
-              // Try alternate thumbnail path (without thumb- prefix)
-              const altThumbnailPath = path.join(thumbnailsDir, file);
-              if (fs.existsSync(altThumbnailPath)) {
-                fs.copyFileSync(altThumbnailPath, posterPath);
-                console.log(`Created poster file from alternate thumbnail at ${posterPath}`);
-              } else {
-                console.log(`No thumbnail source found for poster file for ${file}`);
-              }
-            }
-          } catch (posterError) {
-            console.error(`Error creating poster file for ${file}:`, posterError);
-          }
-        } else {
-          console.log(`✓ Poster file already exists for ${file}`);
-        }
-      }
-      
       // Verify
       if (fs.existsSync(thumbnailPath)) {
         console.log(`✓ Successfully created thumbnail for ${file}`);
