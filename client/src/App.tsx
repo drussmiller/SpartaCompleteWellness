@@ -69,7 +69,8 @@ function MainContent() {
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/notification-settings" component={NotificationSettingsPage} />
-          <Route path="/notification-schedule" component={NotificationSchedulePage} />
+          {/* Keep for backward compatibility */}
+          <Route path="/notification-schedule" component={NotificationSettingsPage} />
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
