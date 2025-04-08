@@ -374,6 +374,16 @@ export class SpartaObjectStorage {
                     console.error(`Error creating alternate video thumbnail:`, copyError);
                   }
                 }
+                
+                // Additionally create a poster file with .poster.jpg extension
+                // This is specifically for mobile video players that need the poster attribute
+                const posterPath = filePath + '.poster.jpg';
+                try {
+                  fs.copyFileSync(thumbnailPath, posterPath);
+                  console.log(`Created video poster file at ${posterPath}`);
+                } catch (posterError) {
+                  console.error(`Error creating video poster file:`, posterError);
+                }
               }
             } else {
               console.warn(`Thumbnail was not found at ${thumbnailPath} after creation attempt`);
