@@ -80,19 +80,20 @@ export async function fixVideoPosters(): Promise<void> {
     let skippedCount = 0;
     
     for (const post of postsWithMedia) {
-      if (!post.mediaUrl) continue;
+      const mediaUrl = post.mediaUrl;
+      if (!mediaUrl) continue;
       
       // Skip if this isn't a video post
-      if (!isVideoFile(post.mediaUrl)) {
-        logger.debug(`Skipping non-video file: ${post.mediaUrl}`);
+      if (!isVideoFile(mediaUrl)) {
+        logger.debug(`Skipping non-video file: ${mediaUrl}`);
         skippedCount++;
         continue;
       }
       
       // Construct paths
-      const mediaRelativePath = post.mediaUrl.startsWith('/') 
-        ? post.mediaUrl.substring(1) 
-        : post.mediaUrl;
+      const mediaRelativePath = mediaUrl.startsWith('/') 
+        ? mediaUrl.substring(1) 
+        : mediaUrl;
       
       const mediaPath = path.join(process.cwd(), mediaRelativePath);
       
@@ -102,7 +103,7 @@ export async function fixVideoPosters(): Promise<void> {
       
       // Check if poster already exists
       if (await fsExists(posterPath)) {
-        logger.debug(`Poster already exists for ${post.mediaUrl} at ${posterPath}`);
+        logger.debug(`Poster already exists for ${mediaUrl} at ${posterPath}`);
         skippedCount++;
         continue;
       }

@@ -258,7 +258,8 @@ app.use('/api', (req, res, next) => {
     await runMigrations();
 
     // ALWAYS serve the app on port 5000
-    const port = 5000;
+    // Use the port from environment variables or fall back to 5000
+    const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
@@ -391,6 +392,10 @@ app.use('/api', (req, res, next) => {
           }
         });
 
+        // Explicitly start listening on 0.0.0.0 to allow external access
+        currentServer.listen(port, '0.0.0.0');
+        console.log(`[Server Startup] Called listen() on port ${port} bound to 0.0.0.0`);
+
         return currentServer;
       } catch (error) {
         console.error('[Server Error] Error during startup:', error);
@@ -427,7 +432,8 @@ app.use('/api', (req, res, next) => {
     process.on('SIGINT', gracefulShutdown);
 
     // Start server with enhanced cleanup and retry mechanism
-    await cleanupAndStartServer();
+    const serverInstance = await cleanupAndStartServer();
+    // The server is already listening as part of cleanupAndStartServer
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
