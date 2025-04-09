@@ -251,8 +251,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full comment-drawer"
-        style={{ width: '100vw', maxWidth: '100vw' }}
+        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full comment-drawer bg-background"
+        style={{ width: '100vw', maxWidth: '100vw', paddingBottom: '5rem' }}
         onOpenAutoFocus={(e) => {
           // Prevent default autofocus and handle it ourselves
           e.preventDefault();
@@ -337,7 +337,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 </div>
 
                 {/* Fixed comment form at the bottom */}
-                <div className="p-4 border-t bg-background">
+                <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
                   <CommentForm
                     onSubmit={async (content) => {
                       await createCommentMutation.mutateAsync(content);
