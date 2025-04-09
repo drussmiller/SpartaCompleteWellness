@@ -961,6 +961,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  // Endpoint to generate poster images for videos
+  router.post("/api/video/generate-posters", authenticate, async (req, res) => {
+    try {
+      // Only need to be logged in to generate poster images
+      if (!req.user) {
+        return res.status(403).json({ message: "Authentication required" });
+      }
+      
+      const { mediaUrl, postId } = req.body;
+      
+      logger.info(`Video poster generation requested for ${mediaUrl || 'all videos'} by user ${req.user.id}`, { postId });
+      
+      // Import the poster generation module
+      const { processPosterBatch } = await import('./poster-generator');
+      
+      // Run the poster generation asynchronously
+      res.json({
+        message: "Video poster generation started",
+        status: "processing",
+        postId: postId || null
+      });
+      
+      // Process after sending the response
+      processPosterBatch(20, 60000)
+        .then((result) => {
+          logger.info(`Video poster generation completed for user ${req.user.id}`, { ...result });
+        })
+        .catch(error => {
+          logger.error(`Video poster generation failed for user ${req.user.id}:`, error);
+        });
+        
+    } catch (error) {
+      logger.error('Error starting video poster generation:', error);
+      res.status(500).json({ message: "Failed to start video poster generation" });
+    }
+  });
+
   // General endpoint to fix all thumbnails for uploaded files
   router.post("/api/fix-thumbnails", authenticate, async (req, res) => {
     try {

@@ -375,6 +375,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   </div>
                 )}
                 <video
+                  key={`video-${post.id}-${videoLoadAttempts}`}
                   src={post.mediaUrl}
                   poster={getThumbnailUrl(post.mediaUrl, 'medium')}
                   controls
@@ -385,6 +386,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   autoPlay={false}
                   controlsList="nodownload"
                   disablePictureInPicture={false}
+                  onLoadStart={() => {
+                    console.log(`Video onLoadStart for post ${post.id}, using poster: ${getThumbnailUrl(post.mediaUrl, 'medium')}`);
+                  }}
+                  onLoadedMetadata={() => {
+                    console.log(`Video metadata loaded successfully for post ${post.id}`);
+                    // Reset error state if video loads successfully
+                    if (videoLoadError) {
+                      setVideoLoadError(null);
+                    }
+                  }}
                   onError={(e) => {
                     const errorMsg = `Failed to load ${post.type} video: ${post.mediaUrl}`;
                     console.error(errorMsg);
@@ -414,20 +425,38 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         videoLoadAttempts: videoLoadAttempts + 1,
                       });
                       
-                      // Try to fix the thumbnail in the background when video fails to load
-                      // This helps ensure future video display is better
-                      const fixThumbnails = async () => {
+                      // Try to fix the thumbnail and poster in the background when video fails to load
+                      const fixVideoDisplay = async () => {
                         try {
-                          console.log(`Triggering ${post.type} thumbnail fix for post ${post.id}`);
+                          console.log(`Trying to fix video display for post ${post.id}, type ${post.type}`);
                           
-                          // Create a fetch request to the fix-thumbnails endpoint
-                          // This will execute thumbnail repair in the background
-                          // Use different endpoints based on post type
+                          // First, generate the poster image 
+                          // This creates a .poster.jpg file which our updated getThumbnailUrl function will use
+                          const posterResponse = await fetch('/api/video/generate-posters', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                              mediaUrl: post.mediaUrl,
+                              postId: post.id,
+                            }),
+                            credentials: 'include',
+                          });
+                          
+                          if (posterResponse.ok) {
+                            console.log(`Video poster generation initiated for post ${post.id}`);
+                          } else {
+                            const errorText = await posterResponse.text();
+                            console.error(`Failed to generate poster for video:`, errorText);
+                          }
+                          
+                          // Also try to fix any thumbnails as a fallback
                           const endpoint = post.type === 'memory_verse' 
                             ? '/api/memory-verse/fix-thumbnails'
                             : '/api/fix-thumbnails';
                             
-                          const response = await fetch(endpoint, {
+                          const thumbnailResponse = await fetch(endpoint, {
                             method: 'POST',
                             headers: {
                               'Content-Type': 'application/json',
@@ -440,21 +469,30 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                             credentials: 'include',
                           });
                           
-                          if (response.ok) {
+                          if (thumbnailResponse.ok) {
                             console.log(`${post.type} thumbnail fix initiated for post ${post.id}`);
                           } else {
-                            const errorText = await response.text();
+                            const errorText = await thumbnailResponse.text();
                             console.error(`Failed to initiate ${post.type} thumbnail fix:`, errorText);
-                            setVideoLoadError(`Failed to fix video: ${errorText}`);
                           }
+                          
+                          // Let the user know we're trying to fix things
+                          setVideoLoadError(`Working on fixing video display for post ${post.id}...`);
+                          
+                          // After a short delay, try to refresh the video
+                          setTimeout(() => {
+                            // Force React to rerender the video by updating the attempt counter
+                            setVideoLoadAttempts(prev => prev + 1);
+                          }, 3000);
+                          
                         } catch (error) {
-                          console.error(`Error requesting ${post.type} thumbnail fix:`, error);
+                          console.error(`Error requesting video display fixes:`, error);
                           setVideoLoadError(`Error fixing video: ${error instanceof Error ? error.message : String(error)}`);
                         }
                       };
                       
                       // Start the fix in the background without waiting for it
-                      fixThumbnails();
+                      fixVideoDisplay();
                       
                       // Try each alternative URL
                       const tryNextUrl = (index: number) => {

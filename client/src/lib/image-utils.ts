@@ -25,16 +25,27 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     const isVideoExtension = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext));
     const isVideo = isVideoExtension || isMemoryVerse || isMiscellaneousVideo;
     
-    // For videos, we need to check both with and without thumb- prefix
+    // For videos, check for poster image first, then thumbnails
     if (isVideo) {
-      // For special video types (memory verse and miscellaneous), try to get the thumbnail
-      if ((isMemoryVerse || isMiscellaneousVideo) && size === 'small') {
-        // Try with thumb- prefix first
-        const thumbFilename = `thumb-${filename}`;
-        return `/uploads/thumbnails/${thumbFilename}`;
+      // First try looking for a poster image (most reliable)
+      const baseName = filename.substring(0, filename.lastIndexOf('.'));
+      const posterPath = `/uploads/${baseName}.poster.jpg`;
+      
+      // For thumbnails, try both with and without the thumb- prefix
+      const thumbFilename = `thumb-${filename}`;
+      const normalThumbPath = `/uploads/thumbnails/${filename}`;
+      const prefixedThumbPath = `/uploads/thumbnails/${thumbFilename}`;
+      
+      // Return in order of preference: poster image, thumbs, or original
+      if (size === 'medium' || size === 'large') {
+        // For medium/large, prioritize the poster image since it's higher quality
+        return posterPath;
+      } else if (size === 'small') {
+        // For small, try thumbnail first, then poster
+        return prefixedThumbPath;
       } else {
-        // For other video sizes, just return the original URL
-        return originalUrl;
+        // Default fallback
+        return posterPath;
       }
     }
     
