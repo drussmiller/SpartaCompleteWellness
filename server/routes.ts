@@ -5162,5 +5162,47 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   };
 
+  // Add endpoint to process video posters in batches without blocking the main server
+  router.post("/api/process-video-posters", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      logger.info(`Video poster batch processing initiated by admin user ${req.user.id}`);
+      
+      // Get batch parameters from request
+      const batchSize = req.query.batch ? parseInt(req.query.batch as string, 10) : 20;
+      const maxRunTime = req.query.timeout ? parseInt(req.query.timeout as string, 10) : 60000;
+      
+      // Import the generator module
+      const { processPosterBatch } = await import('./poster-generator');
+      
+      // Send initial response that the process has started
+      res.json({ 
+        message: "Video poster processing started",
+        status: "running",
+        batchSize,
+        maxRunTime,
+        startedAt: new Date().toISOString()
+      });
+      
+      // Execute the process after sending the response
+      processPosterBatch(batchSize, maxRunTime)
+        .then((stats) => {
+          logger.info('Video poster processing completed successfully', stats);
+        })
+        .catch(err => {
+          logger.error('Error in video poster processing:', err);
+        });
+    } catch (error) {
+      logger.error('Error initiating video poster processing:', error);
+      res.status(500).json({
+        message: "Failed to initiate video poster processing",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   return httpServer;
 };
