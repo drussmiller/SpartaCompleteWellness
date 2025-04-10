@@ -251,8 +251,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 fixed inset-0 z-[9999] !max-w-full comment-drawer bg-background"
-        style={{ width: '100vw', maxWidth: '100vw', paddingBottom: '5rem' }}
+        className="!w-full !p-0 fixed inset-0 z-[99999] !max-w-full comment-drawer bg-background"
+        style={{ 
+          width: '100vw', 
+          maxWidth: '100vw', 
+          height: '100%',
+          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
+        }}
         onOpenAutoFocus={(e) => {
           // Prevent default autofocus and handle it ourselves
           e.preventDefault();

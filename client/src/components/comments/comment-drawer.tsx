@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
+import { getThumbnailUrl } from "@/lib/image-utils";
 
 interface CommentDrawerProps {
   postId: number;
