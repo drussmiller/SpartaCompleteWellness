@@ -20,7 +20,7 @@ app.use((req, res, next) => {
   // Set keep-alive header with increased timeout
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Keep-Alive', 'timeout=14400');
-  
+
   // Increase socket timeout and add connection handling
   if (req.socket) {
     req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 
   // Set generous timeouts
   req.setTimeout(serverTimeout);
-  
+
   res.setTimeout(serverTimeout, () => {
     res.status(408).send('Request timeout');
   });
@@ -95,15 +95,15 @@ const scheduleDailyScoreCheck = () => {
   const runDailyCheck = async () => {
     try {
       logger.info('Running daily score check');
-      
+
       // Use relative URL to avoid port binding issues
       const baseUrl = 'http://localhost:5000';
-      
+
       // Run checks for each hour to ensure notifications go out for all users
       // based on their preferred notification times
       for (let hour = 0; hour < 24; hour++) {
         logger.info(`Running check for hour ${hour}`);
-        
+
         const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
           method: 'POST',
           headers: {
@@ -124,7 +124,7 @@ const scheduleDailyScoreCheck = () => {
         const result = await response.json();
         logger.info(`Daily score check completed for hour ${hour}:`, result);
       }
-      
+
       logger.info('Completed daily checks for all hours');
     } catch (error) {
       logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
@@ -138,7 +138,7 @@ const scheduleDailyScoreCheck = () => {
   setTimeout(() => {
     logger.info('Running immediate daily score check for debugging...');
     runDailyCheck();
-    
+
     // Schedule next check for tomorrow
     setTimeout(() => {
       runDailyCheck();
@@ -152,7 +152,7 @@ const scheduleDailyScoreCheck = () => {
     try {
       const currentHour = new Date().getHours();
       logger.info(`Running hourly check for hour ${currentHour}`);
-      
+
       const baseUrl = 'http://localhost:5000';
       const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
         method: 'POST',
@@ -175,7 +175,7 @@ const scheduleDailyScoreCheck = () => {
       logger.error('Error running hourly check:', error instanceof Error ? error : new Error(String(error)));
     }
   };
-  
+
   // Start the hourly check after 60 seconds, then run every hour
   setTimeout(() => {
     runHourlyCheck();
@@ -244,7 +244,7 @@ app.use('/api', (req, res, next) => {
       // Return 404 if file not found
       redirect: false
     }));
-    
+
     // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {
       console.log("[Startup] Setting up Vite...");
@@ -317,15 +317,32 @@ app.use('/api', (req, res, next) => {
         // First kill any existing process on the port
         await killPort(port);
 
+        // Add delay after killing port
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         // Close existing server if any
         if (currentServer) {
           console.log('[Server Startup] Closing existing server...');
-          await new Promise<void>((resolve) => {
-            currentServer?.close(() => {
-              console.log('[Server Startup] Existing server closed');
-              resolve();
+          try {
+            await new Promise<void>((resolve, reject) => {
+              currentServer?.close((err) => {
+                if (err) {
+                  console.error('[Server Startup] Error closing server:', err);
+                  reject(err);
+                } else {
+                  console.log('[Server Startup] Existing server closed');
+                  resolve();
+                }
+              });
+              // Force close after 5 seconds
+              setTimeout(() => {
+                console.log('[Server Startup] Force closing server after timeout');
+                resolve();
+              }, 5000);
             });
-          });
+          } catch (err) {
+            console.error('[Server Startup] Failed to close server gracefully:', err);
+          }
           currentServer = null;
         }
 
