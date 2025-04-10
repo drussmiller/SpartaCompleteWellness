@@ -5,6 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
+import { getThumbnailUrl } from "@/lib/image-utils";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -42,11 +43,29 @@ export function PostView({ post }: PostViewProps) {
             <div className="mt-3 mb-3 flex justify-center">
               <video
                 src={post.mediaUrl}
-                poster={post.mediaUrl ? post.mediaUrl.replace(/\.[^.]+$/, '.jpg') : undefined}
+                poster={getThumbnailUrl(post.mediaUrl, 'medium')}
                 controls
                 preload="metadata"
                 className="max-w-full h-auto object-contain rounded-md"
                 playsInline
+                onLoadStart={() => {
+                  console.log(`Comment view: Video loading with poster: ${getThumbnailUrl(post.mediaUrl, 'medium')}`);
+                }}
+                onError={(e) => {
+                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`);
+                  // Try to trigger poster generation
+                  fetch('/api/video/generate-posters', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                      mediaUrl: post.mediaUrl,
+                      postId: post.id,
+                    }),
+                    credentials: 'include',
+                  }).catch(err => console.error("Error requesting poster generation:", err));
+                }}
               />
             </div>
           )}
