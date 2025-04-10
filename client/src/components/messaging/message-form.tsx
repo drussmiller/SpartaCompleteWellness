@@ -15,7 +15,7 @@ interface MessageFormProps {
 export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({ 
   onSubmit, 
   isSubmitting, 
-  placeholder = "Type a message...",
+  placeholder = "Enter a comment",
   defaultValue = "",
   onCancel,
   inputRef
@@ -125,11 +125,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      // Only submit if there's actual content or an image, but never cancel on empty content
       if ((content.trim() || pastedImage) && !isSubmitting) {
         await onSubmit(content, pastedImage);
         setContent('');
         setPastedImage(null);
       }
+      // No else clause here - we don't want to cancel on empty Enter keypress
     }
   };
 
