@@ -390,7 +390,7 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 pb-20 border-t bg-background">
+              <div className="p-4 border-t bg-background fixed bottom-[80px] left-0 right-0 z-[99999]">
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm 
                   onSubmit={async (content, imageData) => {
