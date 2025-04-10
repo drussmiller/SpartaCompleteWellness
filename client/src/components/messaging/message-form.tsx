@@ -160,7 +160,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         </div>
       )}
       
-      <div className="flex items-center" z-200>
+      <div className="flex items-center">
         <div className="flex-1">
           <Textarea
             ref={setRefs} 
