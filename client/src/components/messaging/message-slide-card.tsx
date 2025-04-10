@@ -274,8 +274,11 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 pb-28 z-[9999]`}
-        style={{ height: 'calc(100vh - env(safe-area-inset-bottom))' }}
+        } pt-12 z-[9999]`}
+        style={{ 
+          height: '100%',
+          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
+        }}
       >
         <Card className="h-full rounded-none">
           {/* Header */}
