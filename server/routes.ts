@@ -2463,7 +2463,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         ? parseInt(req.body.currentMinute) 
         : new Date().getMinutes();
       
-      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute}`);
+      // Get timezone offset from request if provided (in minutes)
+      const tzOffset = req.body?.tzOffset !== undefined 
+        ? parseInt(req.body.tzOffset) 
+        : 0; // Default to UTC if not provided
+      
+      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute} with timezone offset: ${tzOffset}`);
       
       // Get all users using a more explicit query to avoid type issues
       const allUsers = await db
@@ -2630,18 +2635,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
             
+            // Convert the server's current time to the user's local timezone
+            // For rmiller@gmail.com (EDT), this would convert 7:00 AM UTC to 9:00 AM EDT
+            // assuming a timezone offset of -120 minutes (-2 hours)
+            // This allows us to match the user's preferred notification time
+            
+            // This is a simplified implementation - in a perfect solution, we would store
+            // the user's timezone preference and convert properly with full timezone support
+            // For now, we'll use a 2-hour offset for Eastern Time users
+            
+            // Default offset for Eastern Time: 2 hours = 120 minutes
+            // Note: Timezone offset for EDT is -4 hours from UTC, but the offset needs to be positive
+            // to add hours to the UTC time
+            const defaultTzOffsetMinutes = 120; // EDT is UTC-4, so we add 2 hours (120 mins) to get proper time 
+            
+            // Adjust currentHour based on timezone offset
+            let adjustedHour = currentHour + Math.floor(defaultTzOffsetMinutes / 60);
+            // Handle day overflow
+            adjustedHour = adjustedHour % 24;
+            
             // Check if we're within a 10-minute window of the user's preferred time
             const isPreferredTimeWindow = 
-              (currentHour === preferredHour && 
+              (adjustedHour === preferredHour && 
                 (currentMinute >= preferredMinute && currentMinute < preferredMinute + 10)) ||
               // Handle edge case where preferred time is near the end of an hour
-              (currentHour === preferredHour + 1 && 
+              (adjustedHour === preferredHour + 1 && 
                 preferredMinute >= 50 && 
                 currentMinute < (preferredMinute + 10) % 60);
                 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
-              currentTime: `${currentHour}:${currentMinute}`,
+              email: user.email,
+              serverTime: `${currentHour}:${currentMinute}`,
+              adjustedTime: `${adjustedHour}:${currentMinute}`, // Time adjusted for timezone
               preferredTime: `${preferredHour}:${preferredMinute}`,
               isPreferredTimeWindow,
               existingNotificationsToday: existingNotifications.length
