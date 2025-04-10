@@ -17,7 +17,7 @@ interface CommentFormProps {
 export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
   onSubmit, 
   isSubmitting, 
-  placeholder = "Enter a comment...",
+  placeholder = "Enter a comment",
   defaultValue = "",
   onCancel,
   inputRef
@@ -106,9 +106,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       e.preventDefault();
       if (content.trim() && !isSubmitting) {
         handleSubmit();
-      } else if (!content.trim() && onCancel) {
-        onCancel();
       }
+      // Removed the cancel-on-empty behavior to avoid accidental cancellations when pressing Enter
     }
   };
 
