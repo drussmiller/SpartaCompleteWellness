@@ -127,8 +127,6 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       e.preventDefault();
       if ((content.trim() || pastedImage) && !isSubmitting) {
         handleSubmit();
-      } else if (!content.trim() && !pastedImage && onCancel) {
-        onCancel();
       }
     }
   };
