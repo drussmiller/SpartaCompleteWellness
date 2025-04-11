@@ -24,17 +24,18 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(
       }
     };
 
-    const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey && !isSubmitting) {
         e.preventDefault();
         if (content.trim() || pastedImage) {
-          try {
-            await onSubmit(content, pastedImage);
-            setContent('');
-            setPastedImage(null);
-          } catch (error) {
-            console.error('Error submitting message:', error);
-          }
+          onSubmit(content, pastedImage)
+            .then(() => {
+              setContent('');
+              setPastedImage(null);
+            })
+            .catch((error) => {
+              console.error('Error submitting message:', error);
+            });
         }
       }
     };
