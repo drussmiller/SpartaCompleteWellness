@@ -126,9 +126,10 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (content.trim() || pastedImage) {
-        await handleSubmit();
+        await onSubmit(content, pastedImage);
+        setContent('');
+        setPastedImage(null);
       }
-      // Do not cancel if content is empty
     }
   };
 
