@@ -48,8 +48,6 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       handleSubmit();
     }
   };
-
-  const handleSubmit = async () => {
     if ((content.trim() || pastedImage) && !isSubmitting) {
       try {
         await onSubmit(content, pastedImage);
