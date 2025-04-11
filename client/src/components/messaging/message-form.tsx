@@ -45,7 +45,11 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      await handleSubmit();
+      if (content.trim() || pastedImage) {
+        await onSubmit(content, pastedImage);
+        setContent('');
+        setPastedImage(null);
+      }
     }
   };
 
