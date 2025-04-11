@@ -399,11 +399,68 @@ export function MessageSlideCard() {
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm 
                   onSubmit={async (content, imageData) => {
-                    // Update messageText and pastedImage before submitting
-                    setMessageText(content);
-                    setPastedImage(imageData || null);
-                    // Wait for state to update and then submit
-                    setTimeout(() => handleSendMessage(), 0);
+                    // Instead of setting state and then calling handleSendMessage separately,
+                    // which causes the first Enter to clear the field but not submit,
+                    // directly call createMessageMutation with the provided values
+                    if (!content.trim() && !imageData) return;
+                    if (!selectedMember) return;
+                    
+                    try {
+                      const formData = new FormData();
+                      
+                      // Add message content if present
+                      if (content.trim()) {
+                        formData.append('content', content.trim());
+                      }
+                      
+                      // Add image if present
+                      if (imageData) {
+                        // Convert base64 to blob
+                        const response = await fetch(imageData);
+                        const blob = await response.blob();
+                        formData.append('image', blob, 'pasted-image.png');
+                      }
+                      
+                      formData.append('recipientId', selectedMember.id.toString());
+                      
+                      // Update state variables with the content and image
+                      setMessageText(content);
+                      setPastedImage(imageData);
+                      
+                      // Submit the message via fetch directly instead of using the mutation
+                      const res = await fetch('/api/messages', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                      });
+                      
+                      if (!res.ok) {
+                        throw new Error("Failed to send message");
+                      }
+                      
+                      const data = await res.json();
+                      
+                      // Clear the form on success
+                      setMessageText("");
+                      setPastedImage(null);
+                      
+                      // Update queries to show the new message
+                      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
+                      
+                      // Show success toast
+                      toast({
+                        description: "Message sent successfully",
+                      });
+                    } catch (error) {
+                      console.error("Error processing message submission:", error);
+                      // Show error toast
+                      toast({
+                        title: "Error sending message",
+                        description: error instanceof Error ? error.message : "An unexpected error occurred",
+                        variant: "destructive"
+                      });
+                    }
                   }}
                   isSubmitting={createMessageMutation.isPending}
                   placeholder="Enter a message"
