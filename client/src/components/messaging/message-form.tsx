@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -25,22 +24,18 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(
       }
     };
 
-    const handleSubmit = async () => {
-      if ((content.trim() || pastedImage) && !isSubmitting) {
-        try {
-          await onSubmit(content, pastedImage);
-          setContent('');
-          setPastedImage(null);
-        } catch (error) {
-          console.error('Error submitting message:', error);
-        }
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        handleSubmit();
+        if (content.trim() || pastedImage) {
+          try {
+            await onSubmit(content, pastedImage);
+            setContent('');
+            setPastedImage(null);
+          } catch (error) {
+            console.error('Error submitting message:', error);
+          }
+        }
       }
     };
 
@@ -110,7 +105,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(
             type="submit"
             size="icon"
             variant="ghost"
-            onClick={() => handleSubmit()}
+            onClick={() => {
+              if (content.trim() || pastedImage) {
+                onSubmit(content, pastedImage);
+                setContent('');
+                setPastedImage(null);
+              }
+            }}
             disabled={isSubmitting || (!content.trim() && !pastedImage)}
             className="ml-2"
           >
