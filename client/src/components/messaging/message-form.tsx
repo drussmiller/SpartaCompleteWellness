@@ -15,43 +15,40 @@ interface MessageFormProps {
 export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({ 
   onSubmit, 
   isSubmitting, 
-  placeholder = "Enter a comment",
+  placeholder = "Enter a message",
   defaultValue = "",
   onCancel,
   inputRef
-}: MessageFormProps, ref) => {
+}, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
-  const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
-    // Handle forwardRef
     if (typeof ref === 'function') {
       ref(element);
     }
   };
 
-  const ensureTextareaFocus = () => {
-    // Focus the textarea by ID instead of ref
-    const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.focus();
+  const handleSubmit = async () => {
+    if ((content.trim() || pastedImage) && !isSubmitting) {
+      try {
+        await onSubmit(content, pastedImage);
+        setContent('');
+        setPastedImage(null);
+      } catch (error) {
+        console.error('Error submitting message:', error);
+      }
     }
   };
 
-  useEffect(() => {
-    // Focus the textarea after component mounts
-    setTimeout(() => {
-      const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
-      }
-    }, 200);
-  }, []);
+  const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      await handleSubmit();
+    }
+  };
 
-  // Handle paste events for images
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -78,77 +75,10 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     };
   }, []);
 
-  // Reset textarea height when content is cleared
-  useEffect(() => {
-    if (content === '') {
-      resetTextarea();
-    }
-  }, [content]);
-
-  const resetTextarea = () => {
-    const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.style.height = '38px';
-      const container = textarea.parentElement;
-      if (container) {
-        container.style.marginTop = '0';
-      }
-    }
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (!content.trim() && !pastedImage) return;
-      await onSubmit(content, pastedImage);
-
-      // Reset state
-      setContent('');
-      setPastedImage(null);
-
-      // Force a re-render to reset the textarea and container
-      requestAnimationFrame(() => {
-        const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
-        if (textarea) {
-          textarea.style.height = '38px';
-          // Reset both textarea parent and flex-1 container
-          const containerElement = textarea.closest('.flex-1');
-          if (containerElement instanceof HTMLElement) {
-            containerElement.style.height = '50px';
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error submitting message:', error);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if ((content.trim() || pastedImage) && !isSubmitting) {
-      try {
-        await onSubmit(content, pastedImage);
-        setContent('');
-        setPastedImage(null);
-      } catch (error) {
-        console.error('Error submitting message:', error);
-      }
-    }
-  };
-
-  const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      await handleSubmit();
-    }
-  };
-
   return (
     <div 
       className="flex flex-col gap-2 w-full"
       ref={containerRef}
-      onClick={(e) => {
-        ensureTextareaFocus();
-        e.stopPropagation();
-      }}
     >
       {pastedImage && (
         <div className="relative inline-block max-w-xs mb-2">
@@ -174,25 +104,18 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             ref={setRefs} 
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = '38px';
-              const newHeight = Math.min(200, target.scrollHeight); // Max height of 200px
-              target.style.height = `${newHeight}px`;
-            }}
             onKeyDown={handleKeyDown}
-            placeholder="Enter a message"
+            placeholder={placeholder}
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
             style={{ height: '38px', minHeight: '38px' }}
-            id="message-textarea"
           />
         </div>
         <Button
           type="submit"
           size="icon"
           variant="ghost"
-          onClick={() => handleSubmit()}
+          onClick={handleSubmit}
           disabled={isSubmitting || (!content.trim() && !pastedImage)}
           className="ml-2"
         >
