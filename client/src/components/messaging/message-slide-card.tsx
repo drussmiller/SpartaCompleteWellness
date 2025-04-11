@@ -406,7 +406,7 @@ export function MessageSlideCard() {
                     setTimeout(() => handleSendMessage(), 0);
                   }}
                   isSubmitting={createMessageMutation.isPending}
-                  placeholder="Enter message"
+                  placeholder="Enter a message"
                   defaultValue={messageText}
                 />
               </div>
