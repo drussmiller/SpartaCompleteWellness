@@ -122,11 +122,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     }
   };
 
-  const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (content.trim() || pastedImage) {
-        await handleSubmit();
+        // Call handleSubmit directly without await to avoid the double-Enter issue
+        // This is because the async nature of the function was causing a delay
+        handleSubmit();
       }
       // Do not cancel if content is empty
     }
@@ -172,7 +174,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               target.style.height = `${newHeight}px`;
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Enter message"
+            placeholder={placeholder}
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
             style={{ height: '38px', minHeight: '38px' }}

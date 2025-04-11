@@ -348,10 +348,10 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col h-[calc(100vh-5rem)] pt-20">
+            <div className="flex flex-col h-[calc(100vh-5rem)]">
               {/* Messages List */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
+              <ScrollArea className="flex-1 p-4 pb-52">
+                <div className="space-y-4 mt-16">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -406,7 +406,7 @@ export function MessageSlideCard() {
                     setTimeout(() => handleSendMessage(), 0);
                   }}
                   isSubmitting={createMessageMutation.isPending}
-                  placeholder="Enter message"
+                  placeholder="Enter a message"
                   defaultValue={messageText}
                 />
               </div>
