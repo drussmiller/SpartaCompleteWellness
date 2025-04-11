@@ -2636,18 +2636,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
             
             // Convert the server's current time to the user's local timezone
-            // For rmiller@gmail.com (EDT), this would convert 7:00 AM UTC to 9:00 AM EDT
-            // assuming a timezone offset of -120 minutes (-2 hours)
+            // For rmiller@gmail.com (CDT), this would convert 4:00 AM UTC to 9:00 AM CDT
+            // assuming a timezone offset of -300 minutes (-5 hours)
             // This allows us to match the user's preferred notification time
             
             // This is a simplified implementation - in a perfect solution, we would store
             // the user's timezone preference and convert properly with full timezone support
-            // For now, we'll use a 2-hour offset for Eastern Time users
+            // For now, we'll use the correct offset for Central Daylight Time users
             
-            // Default offset for Eastern Time: 2 hours = 120 minutes
-            // Note: Timezone offset for EDT is -4 hours from UTC, but the offset needs to be positive
+            // Default offset for Central Time: 5 hours = 300 minutes
+            // Note: Timezone offset for CDT is -5 hours from UTC, but the offset needs to be positive
             // to add hours to the UTC time
-            const defaultTzOffsetMinutes = 120; // EDT is UTC-4, so we add 2 hours (120 mins) to get proper time 
+            const defaultTzOffsetMinutes = 300; // CDT is UTC-5, so we add 5 hours (300 mins) to get proper time 
             
             // Adjust currentHour based on timezone offset
             let adjustedHour = currentHour + Math.floor(defaultTzOffsetMinutes / 60);
