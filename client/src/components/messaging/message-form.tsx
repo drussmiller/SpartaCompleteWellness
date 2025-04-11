@@ -125,13 +125,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Only submit if there's actual content or an image, but never cancel on empty content
       if ((content.trim() || pastedImage) && !isSubmitting) {
-        await onSubmit(content, pastedImage);
-        setContent('');
-        setPastedImage(null);
+        await handleSubmit();
       }
-      // No else clause here - we don't want to cancel on empty Enter keypress
     }
   };
 
@@ -161,7 +157,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
           </Button>
         </div>
       )}
-      
+
       <div className="flex items-center">
         <div className="flex-1">
           <Textarea
@@ -175,7 +171,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               target.style.height = `${newHeight}px`;
             }}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder="Enter message"
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
             style={{ height: '38px', minHeight: '38px' }}
