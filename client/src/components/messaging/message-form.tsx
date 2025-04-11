@@ -122,14 +122,22 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     }
   };
 
-  const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (content.trim() || pastedImage) {
+  const handleSubmit = async () => {
+    if ((content.trim() || pastedImage) && !isSubmitting) {
+      try {
         await onSubmit(content, pastedImage);
         setContent('');
         setPastedImage(null);
+      } catch (error) {
+        console.error('Error submitting message:', error);
       }
+    }
+  };
+
+  const handleKeyDown = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      await handleSubmit();
     }
   };
 
@@ -184,7 +192,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
           type="submit"
           size="icon"
           variant="ghost"
-          onClick={handleSubmit}
+          onClick={() => handleSubmit()}
           disabled={isSubmitting || (!content.trim() && !pastedImage)}
           className="ml-2"
         >
