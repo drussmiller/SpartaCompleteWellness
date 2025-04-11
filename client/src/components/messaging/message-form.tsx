@@ -46,9 +46,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if ((content.trim() || pastedImage) && !isSubmitting) {
-        await onSubmit(content, pastedImage);
-        setContent('');
-        setPastedImage(null);
+        try {
+          await onSubmit(content, pastedImage);
+          setContent('');
+          setPastedImage(null);
+        } catch (error) {
+          console.error('Error submitting message:', error);
+        }
       }
     }
   };
