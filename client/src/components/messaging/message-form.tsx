@@ -173,7 +173,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               target.style.height = `${newHeight}px`;
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Enter message"
+            placeholder="Enter a message"
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
             style={{ height: '38px', minHeight: '38px' }}
