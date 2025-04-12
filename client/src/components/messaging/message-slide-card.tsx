@@ -279,7 +279,7 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[9999]`}
+        } pt-12 z-[99990]`}
         style={{ 
           height: '100%',
           paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
