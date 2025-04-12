@@ -160,14 +160,14 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       // Update UI immediately by removing the deleted comment from the state
       const updatedComments = comments.filter(comment => comment.id !== commentId);
       setComments(updatedComments);
-      
+
       // Also update the React Query cache to keep it in sync
       queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
-      
+
       // Still invalidate the queries to ensure everything stays in sync with the server
       queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
       queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
-      
+
       toast({
         description: "Comment deleted successfully",
       });
@@ -199,7 +199,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
   // Process all comments first to ensure replies are properly categorized
   comments.forEach(comment => {
     const commentWithReplies = { ...comment, replies: [] };
-    
+
     if (comment.parentId === postId) {
       // This is a top-level comment
       topLevelComments.push(commentWithReplies);
@@ -259,7 +259,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
-                
+
                 {/* Display media if present */}
                 {comment.mediaUrl && !comment.is_video && (
                   <div className="mt-2">
@@ -281,7 +281,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
                     />
                   </div>
                 )}
-                
+
                 <div className="mt-2 flex justify-end">
                   <ReactionSummary postId={comment.id} />
                 </div>
@@ -316,7 +316,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
         ))}
 
         {editingComment === comment.id && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100]">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999]"> {/* z-index updated here */}
             <div className="flex items-center mb-2">
               <p className="text-sm text-muted-foreground">
                 Edit comment
@@ -377,7 +377,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[100]">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999]"> {/* z-index updated here */}
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
