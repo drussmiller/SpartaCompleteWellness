@@ -377,7 +377,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ zIndex: 2147483647, transform: 'translateZ(0)' }}>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ position: 'fixed', bottom: '0', zIndex: 2147483647, transform: 'translateZ(0)', height: 'auto', minHeight: '120px' }}>
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
