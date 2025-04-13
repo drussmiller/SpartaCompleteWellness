@@ -38,6 +38,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const [editingComment, setEditingComment] = useState(false);
   const [replyingTo, setReplyingTo] = useState(false);
 
+  // Handle showing/hiding main comment box based on edit/reply state
+  const showMainCommentBox = !editingComment && !replyingTo;
+
   // Focus on the comment input when the drawer opens
   useEffect(() => {
     if (isOpen) {
@@ -428,8 +431,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Fixed comment form at the bottom */}
-          {!editingComment && !replyingTo && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          {showMainCommentBox && (
+            <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', display: showMainCommentBox ? 'block' : 'none' }}>
               <CommentForm
                 onSubmit={async (content) => {
                   await createCommentMutation.mutateAsync(content);
