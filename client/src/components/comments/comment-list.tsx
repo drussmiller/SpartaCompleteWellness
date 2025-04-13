@@ -316,7 +316,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
         ))}
 
         {editingComment === comment.id && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ zIndex: 2147483647 }}>
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999999]">
             <div className="flex items-center mb-2">
               <p className="text-sm text-muted-foreground">
                 Edit comment
@@ -377,7 +377,7 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ zIndex: 2147483647 }}>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999999]">
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}

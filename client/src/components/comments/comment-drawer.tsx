@@ -424,7 +424,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Fixed comment form at the bottom */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 2147483646 }}>
+          <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <CommentForm
               onSubmit={async (content) => {
                 await createCommentMutation.mutateAsync(content);
