@@ -34,6 +34,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const [areCommentsLoading, setAreCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<Error | null>(null);
 
+  // Add state variables for reply and edit modes (assuming these are needed)
+  const [editingComment, setEditingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(false);
+
   // Focus on the comment input when the drawer opens
   useEffect(() => {
     if (isOpen) {
@@ -424,16 +428,17 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           </div>
 
           {/* Fixed comment form at the bottom */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <CommentForm
-              onSubmit={async (content) => {
-                await createCommentMutation.mutateAsync(content);
-              }}
-              isSubmitting={createCommentMutation.isPending}
-              ref={commentInputRef}
-              inputRef={commentInputRef}
-            />
-          </div>
+          {!editingComment && !replyingTo && (
+            <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync(content);
+                }}
+                isSubmitting={createCommentMutation.isPending}
+                inputRef={commentInputRef}
+              />
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
