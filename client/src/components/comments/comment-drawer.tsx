@@ -34,12 +34,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const [areCommentsLoading, setAreCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<Error | null>(null);
 
-  // Add state variables for reply and edit modes (assuming these are needed)
-  const [editingComment, setEditingComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState(false);
+  const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
 
-  // Handle showing/hiding main comment box based on edit/reply state
-  const showMainCommentBox = !editingComment && !replyingTo;
+  // Callback to handle visibility
+  const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
+    setIsCommentBoxVisible(!isEditing && !isReplying);
+  };
 
   // Focus on the comment input when the drawer opens
   useEffect(() => {
@@ -425,13 +425,17 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <div className="px-4 pb-40" >
                 <PostView post={originalPost} />
                 <div className="border-t border-gray-200 my-4"></div>
-                <CommentList comments={comments} postId={postId} />
+                <CommentList 
+                  comments={comments} 
+                  postId={postId} 
+                  onVisibilityChange={handleCommentVisibility}
+                />
               </div>
             )}
           </div>
 
           {/* Fixed comment form at the bottom */}
-          {showMainCommentBox && (
+          {isCommentBoxVisible && (
             <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', display: showMainCommentBox ? 'block' : 'none' }}>
               <CommentForm
                 onSubmit={async (content) => {

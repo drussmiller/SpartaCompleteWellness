@@ -24,6 +24,7 @@ import {
 interface CommentListProps {
   comments: (Post & { author: User })[];
   postId: number;
+  onVisibilityChange?: (isEditing: boolean, isReplying: boolean) => void; // Added prop for visibility callback
 }
 
 type CommentWithReplies = Post & {
@@ -31,7 +32,7 @@ type CommentWithReplies = Post & {
   replies?: CommentWithReplies[];
 };
 
-export function CommentList({ comments: initialComments, postId }: CommentListProps) {
+export function CommentList({ comments: initialComments, postId, onVisibilityChange }: CommentListProps) {
   const [comments, setComments] = useState(initialComments);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
@@ -366,7 +367,8 @@ export function CommentList({ comments: initialComments, postId }: CommentListPr
     if (editingComment && editInputRef.current) {
       editInputRef.current.focus();
     }
-  }, [replyingTo, editingComment]);
+    onVisibilityChange?.(editingComment !== null, replyingTo !== null);
+  }, [replyingTo, editingComment, onVisibilityChange]);
 
   return (
     <>
