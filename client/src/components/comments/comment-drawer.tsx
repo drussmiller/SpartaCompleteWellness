@@ -34,6 +34,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const [areCommentsLoading, setAreCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<Error | null>(null);
 
+  const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
+
+  // Callback to handle visibility
+  const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
+    setIsCommentBoxVisible(!isEditing && !isReplying);
+  };
+
   // Focus on the comment input when the drawer opens
   useEffect(() => {
     if (isOpen) {
@@ -357,7 +364,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[200]"
+        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
         style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 30px)' }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -418,22 +425,27 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <div className="px-4 pb-40" >
                 <PostView post={originalPost} />
                 <div className="border-t border-gray-200 my-4"></div>
-                <CommentList comments={comments} postId={postId} />
+                <CommentList 
+                  comments={comments} 
+                  postId={postId} 
+                  onVisibilityChange={handleCommentVisibility}
+                />
               </div>
             )}
           </div>
 
           {/* Fixed comment form at the bottom */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-background z-50" style={{ marginBottom: '1px' }}>
-            <CommentForm
-              onSubmit={async (content) => {
-                await createCommentMutation.mutateAsync(content);
-              }}
-              isSubmitting={createCommentMutation.isPending}
-              ref={commentInputRef}
-              inputRef={commentInputRef}
-            />
-          </div>
+          {isCommentBoxVisible && (
+            <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync(content);
+                }}
+                isSubmitting={createCommentMutation.isPending}
+                inputRef={commentInputRef}
+              />
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

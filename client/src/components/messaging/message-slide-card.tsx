@@ -279,7 +279,7 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[9999]`}
+        } pt-12 z-[99990]`}
         style={{ 
           height: '100%',
           paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
@@ -395,7 +395,7 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-background fixed bottom-[80px] left-0 right-0 z-[99999]">
+              <div className="p-4 border-t bg-background fixed bottom-[80px] left-0 right-0 z-[999999]">
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm 
                   onSubmit={async (content, imageData) => {
