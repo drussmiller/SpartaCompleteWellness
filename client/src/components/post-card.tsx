@@ -360,7 +360,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       <div className="px-4">
         {post.content && (
-          <p className="text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
+          <p className="text-base mb-4 whitespace-pre-wrap">{post.content}</p>
         )}
       </div>
 
