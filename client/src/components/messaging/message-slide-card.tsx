@@ -256,7 +256,7 @@ export function MessageSlideCard() {
     <>
       <Button
         size="icon"
-        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2 relative"
+        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2 relative font-sans"
         onClick={() => {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
@@ -264,12 +264,7 @@ export function MessageSlideCard() {
       >
         <MessageCircle className="h-4 w-4 text-black font-extrabold" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-            {unreadCount}
-          </span>
-        )}
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-sm font-sans">
             {unreadCount}
           </span>
         )}
@@ -404,15 +399,15 @@ export function MessageSlideCard() {
                     // directly call createMessageMutation with the provided values
                     if (!content.trim() && !imageData) return;
                     if (!selectedMember) return;
-                    
+
                     try {
                       const formData = new FormData();
-                      
+
                       // Add message content if present
                       if (content.trim()) {
                         formData.append('content', content.trim());
                       }
-                      
+
                       // Add image if present
                       if (imageData) {
                         // Convert base64 to blob
@@ -420,34 +415,34 @@ export function MessageSlideCard() {
                         const blob = await response.blob();
                         formData.append('image', blob, 'pasted-image.png');
                       }
-                      
+
                       formData.append('recipientId', selectedMember.id.toString());
-                      
+
                       // Update state variables with the content and image
                       setMessageText(content);
                       setPastedImage(imageData);
-                      
+
                       // Submit the message via fetch directly instead of using the mutation
                       const res = await fetch('/api/messages', {
                         method: 'POST',
                         body: formData,
                         credentials: 'include'
                       });
-                      
+
                       if (!res.ok) {
                         throw new Error("Failed to send message");
                       }
-                      
+
                       const data = await res.json();
-                      
+
                       // Clear the form on success
                       setMessageText("");
                       setPastedImage(null);
-                      
+
                       // Update queries to show the new message
                       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
                       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
-                      
+
                       // Show success toast
                       toast({
                         description: "Message sent successfully",
