@@ -128,7 +128,7 @@ export default function NotificationsPage() {
     return (
       <AppLayout>
         {/* Fixed title bar */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="sticky top-0 z-50 bg-background border-b border-border text-lg">
           <div className="px-6 py-4">
             <h1 className="text-xl font-bold">Notifications</h1>
           </div>
@@ -143,13 +143,13 @@ export default function NotificationsPage() {
   return (
     <AppLayout>
       {/* Fixed title bar */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="sticky top-0 z-50 bg-background border-b border-border text-lg">
         <div className="px-6 py-4">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </div>
 
-      <main className="p-4 pb-24 space-y-4 max-w-3xl mx-auto w-full">
+      <main className="p-4 pb-24 space-y-4 max-w-3xl mx-auto w-full text-lg">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -160,13 +160,13 @@ export default function NotificationsPage() {
             {notifications.map((notification) => (
               <Card key={notification.id} className="relative">
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-1">
                     <div className="flex-1">
                       <h3 className="font-medium">{notification.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-lg text-muted-foreground mt-1">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-sm text-muted-foreground mt-2">
                         {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number' 
   ? new Date(notification.createdAt).toLocaleString() 
   : 'Unknown date'}

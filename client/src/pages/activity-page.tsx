@@ -135,7 +135,7 @@ export default function ActivityPage() {
                       <h2 className="text-xl font-bold mb-4">{field.title}</h2>
                     )}
                     <div 
-                      className="rich-text-content prose-sm" 
+                      className="rich-text-content prose-sm  text-lg" 
                       dangerouslySetInnerHTML={{ 
                         __html: field.content 
                       }}

@@ -2,7 +2,14 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, WifiOff, Wifi, RefreshCw, ImageIcon, Film } from "lucide-react";
+import {
+  ChevronLeft,
+  WifiOff,
+  Wifi,
+  RefreshCw,
+  ImageIcon,
+  Film,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -19,29 +26,34 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { connectionStatus, reconnect, fixMemoryVerseThumbnails, fixAllThumbnails } = useNotifications();
+  const {
+    connectionStatus,
+    reconnect,
+    fixMemoryVerseThumbnails,
+    fixAllThumbnails,
+  } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [isFixingThumbnails, setIsFixingThumbnails] = useState(false);
-  
+
   // Handler for manual reconnection
   const handleReconnect = useCallback(() => {
     if (connectionStatus === "connecting") {
       toast({
-        description: "Connection attempt already in progress..."
+        description: "Connection attempt already in progress...",
       });
       return;
     }
-    
+
     setIsReconnecting(true);
     toast({
-      description: "Attempting to reconnect to notification service..."
+      description: "Attempting to reconnect to notification service...",
     });
-    
+
     // Attempt reconnection
     reconnect();
-    
+
     // Reset reconnecting state after delay
     setTimeout(() => {
       setIsReconnecting(false);
@@ -50,9 +62,13 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
   const updateScheduleMutation = useMutation({
     mutationFn: async (time: string) => {
-      const response = await apiRequest("POST", "/api/users/notification-schedule", {
-        notificationTime: time
-      });
+      const response = await apiRequest(
+        "POST",
+        "/api/users/notification-schedule",
+        {
+          notificationTime: time,
+        },
+      );
       if (!response.ok) {
         throw new Error("Failed to update notification schedule");
       }
@@ -75,37 +91,50 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const handleSave = () => {
     updateScheduleMutation.mutate(notificationTime);
   };
-  
+
   const testNotificationTimeMutation = useMutation({
     mutationFn: async () => {
       try {
         // Extract hour and minute from notification time
-        const [hour, minute] = notificationTime.split(':').map(Number);
-        
+        const [hour, minute] = notificationTime.split(":").map(Number);
+
         // Validate time values
-        if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-          throw new Error("Invalid notification time. Please use the format HH:MM.");
+        if (
+          isNaN(hour) ||
+          isNaN(minute) ||
+          hour < 0 ||
+          hour > 23 ||
+          minute < 0 ||
+          minute > 59
+        ) {
+          throw new Error(
+            "Invalid notification time. Please use the format HH:MM.",
+          );
         }
-        
+
         // Set timeout to prevent hanging requests
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-        
+
         // Track request start time for logging/debugging
         const requestStartTime = Date.now();
-        console.log(`Starting notification test request at ${new Date().toISOString()}`);
-        
+        console.log(
+          `Starting notification test request at ${new Date().toISOString()}`,
+        );
+
         try {
           const response = await fetch(
-            `/api/test-notification?hour=${hour}&minute=${minute}`, 
-            { signal: controller.signal }
+            `/api/test-notification?hour=${hour}&minute=${minute}`,
+            { signal: controller.signal },
           );
-          
+
           const requestDuration = Date.now() - requestStartTime;
-          console.log(`Notification test request completed in ${requestDuration}ms`);
-          
+          console.log(
+            `Notification test request completed in ${requestDuration}ms`,
+          );
+
           clearTimeout(timeoutId);
-          
+
           if (!response.ok) {
             // Try to get detailed error information if available
             let errorMessage = "Failed to test notification time";
@@ -119,7 +148,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             }
             throw new Error(errorMessage);
           }
-          
+
           return response.json();
         } catch (fetchError) {
           // Make sure to clear timeout if fetch fails
@@ -129,12 +158,21 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       } catch (err) {
         // Handle different error types with customized messages
         if (err instanceof Error) {
-          if (err.name === 'AbortError') {
-            console.warn("Notification test request timed out after 15 seconds");
-            throw new Error("Request timed out. The notification test may still be processing in the background.");
-          } else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+          if (err.name === "AbortError") {
+            console.warn(
+              "Notification test request timed out after 15 seconds",
+            );
+            throw new Error(
+              "Request timed out. The notification test may still be processing in the background.",
+            );
+          } else if (
+            err.name === "TypeError" &&
+            err.message.includes("Failed to fetch")
+          ) {
             console.error("Network error during notification test:", err);
-            throw new Error("Network error. Please check your connection and try again.");
+            throw new Error(
+              "Network error. Please check your connection and try again.",
+            );
           }
         }
         console.error("Error in notification test:", err);
@@ -154,7 +192,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           description: `No notifications sent. Your notification time ${notificationTime} doesn't match the test time.`,
         });
       }
-      
+
       // Add a slight delay to prevent UI issues after notification test
       setTimeout(() => {
         // Refresh notifications to ensure we're showing the latest
@@ -178,21 +216,30 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     switch (connectionStatus) {
       case "connected":
         return (
-          <Badge variant="outline" className="ml-auto flex items-center gap-1 bg-green-50 text-green-700 border-green-200">
+          <Badge
+            variant="outline"
+            className="ml-auto flex items-center gap-1 bg-green-50 text-green-700 border-green-200 text-sm"
+          >
             <Wifi className="h-3 w-3" />
             <span>Connected</span>
           </Badge>
         );
       case "connecting":
         return (
-          <Badge variant="outline" className="ml-auto flex items-center gap-1 bg-yellow-50 text-yellow-700 border-yellow-200">
+          <Badge
+            variant="outline"
+            className="ml-auto flex items-center gap-1 bg-yellow-50 text-yellow-700 border-yellow-200 text-sm"
+          >
             <Wifi className="h-3 w-3" />
             <span>Connecting...</span>
           </Badge>
         );
       case "disconnected":
         return (
-          <Badge variant="outline" className="ml-auto flex items-center gap-1 bg-red-50 text-red-700 border-red-200">
+          <Badge
+            variant="outline"
+            className="ml-auto flex items-center gap-1 bg-red-50 text-red-700 border-red-200 text-sm"
+          >
             <WifiOff className="h-3 w-3" />
             <span>Offline</span>
           </Badge>
@@ -220,82 +267,103 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       <div className="p-6 space-y-6 pb-24 overflow-y-auto">
         {/* Achievement notification toggle */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">Achievement Notifications</h3>
+          <h3 className="text-lg font-medium">Achievement Notifications</h3>
           <div className="flex items-center justify-between">
-            <Label htmlFor="achievement-notifications" className="text-sm text-muted-foreground">
+            <Label
+              htmlFor="achievement-notifications"
+              className="text-lg text-muted-foreground"
+            >
               Show achievement popups
             </Label>
-            <Switch 
+            <Switch
               id="achievement-notifications"
               checked={notificationsEnabled}
               onCheckedChange={setNotificationsEnabled}
             />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {notificationsEnabled 
-              ? 'Achievement notifications are enabled. You will see popups when you earn achievements.' 
-              : 'Achievement notifications are disabled. You will still earn achievements but will not see popups.'}
+          <p className="text-base text-muted-foreground mt-1">
+            {notificationsEnabled
+              ? "Achievement notifications are enabled. You will see popups when you earn achievements."
+              : "Achievement notifications are disabled. You will still earn achievements but will not see popups."}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notification-time">Daily Notification Time</Label>
+          <Label htmlFor="notification-time" className="text-lg">
+            Daily Notification Time
+          </Label>
           <Input
             id="notification-time"
             type="time"
+            className="text-lg"
             value={notificationTime}
             onChange={(e) => setNotificationTime(e.target.value)}
           />
           <p className="text-sm text-muted-foreground">
             You will receive notifications at this time:
           </p>
-          <ul className="list-disc pl-6 space-y-2 text-sm text-muted-foreground">
-            <li>Tuesday through Sunday: If you haven't posted all 3 meals the previous day</li>
-            <li>Tuesday through Saturday: If you haven't posted your workout the previous day (up to 5 workouts per week)</li>
-            <li>Monday through Sunday: If you haven't posted your scripture reading the previous day</li>
+          <ul className="list-disc pl-6 space-y-2 text-base text-muted-foreground">
+            <li>
+              Tuesday through Sunday: If you haven't posted all 3 meals the
+              previous day
+            </li>
+            <li>
+              Tuesday through Saturday: If you haven't posted your workout the
+              previous day (up to 5 workouts per week)
+            </li>
+            <li>
+              Monday through Sunday: If you haven't posted your scripture
+              reading the previous day
+            </li>
             <li>Sunday: If you haven't posted your memory verse on Saturday</li>
           </ul>
         </div>
 
         <div className="space-y-4">
           <div className="border rounded-md p-4 bg-muted/30">
-            <h3 className="text-sm font-medium mb-2">Real-time notifications</h3>
+            <h3 className="text-lg font-medium mb-2">
+              Real-time notifications
+            </h3>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {connectionStatus === "connected" 
+              <p className="text-base text-muted-foreground">
+                {connectionStatus === "connected"
                   ? "You'll receive real-time notifications when you're online."
                   : "Connect to receive real-time notifications."}
               </p>
-              
+
               {connectionStatus !== "connected" && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="ml-2"
                   onClick={handleReconnect}
                   disabled={isReconnecting || connectionStatus === "connecting"}
                 >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${isReconnecting || connectionStatus === "connecting" ? "animate-spin" : ""}`} />
-                  {connectionStatus === "connecting" ? "Connecting..." : "Reconnect"}
+                  <RefreshCw
+                    className={`h-4 w-4 mr-1 ${isReconnecting || connectionStatus === "connecting" ? "animate-spin" : ""}`}
+                  />
+                  {connectionStatus === "connecting"
+                    ? "Connecting..."
+                    : "Reconnect"}
                 </Button>
               )}
             </div>
           </div>
 
-          <Button 
+          <Button
             className="w-full"
             onClick={handleSave}
             disabled={updateScheduleMutation.isPending}
           >
             Save Settings
           </Button>
-          
+
           {/* Debug button for testing notifications */}
           <div className="mt-4 pt-4 border-t">
             <h3 className="text-sm font-medium mb-2">Test Notifications</h3>
             <div className="space-y-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 size="sm"
                 onClick={() => {
@@ -303,16 +371,17 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                   if (testNotificationTimeMutation.isPending) {
                     toast({
                       title: "Test in progress",
-                      description: "Please wait for the current test to complete."
+                      description:
+                        "Please wait for the current test to complete.",
                     });
                     return;
                   }
-                  
+
                   // Provide user feedback immediately
                   toast({
                     description: "Starting notification test...",
                   });
-                  
+
                   // Use a try-catch block to handle any synchronous errors
                   try {
                     // The mutation's async errors will be handled by the onError callback
@@ -321,64 +390,76 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                       onSettled: () => {
                         // Force update notification list regardless of outcome
                         setTimeout(() => {
-                          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["/api/notifications"],
+                          });
+                          queryClient.invalidateQueries({
+                            queryKey: ["/api/notifications/unread"],
+                          });
                         }, 1000);
-                      }
+                      },
                     });
                   } catch (error) {
                     console.error("Error triggering test notification:", error);
                     toast({
                       title: "Error",
-                      description: "Failed to send test notification. Please try again.",
-                      variant: "destructive"
+                      description:
+                        "Failed to send test notification. Please try again.",
+                      variant: "destructive",
                     });
                   }
                 }}
                 disabled={testNotificationTimeMutation.isPending}
               >
-                {testNotificationTimeMutation.isPending 
-                  ? "Testing..." 
+                {testNotificationTimeMutation.isPending
+                  ? "Testing..."
                   : `Test At My Scheduled Time (${notificationTime})`}
               </Button>
-              
+
               {user?.isAdmin && (
                 <>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full"
                     size="sm"
                     onClick={async () => {
                       if (!user) return;
-                      
+
                       try {
                         // Get the browser's timezone offset in minutes
                         const tzOffset = new Date().getTimezoneOffset();
-                        
+
                         toast({
                           title: "Testing notifications",
                           description: "Sending a test notification request...",
                         });
-                        
+
                         // Track request start time for logging/debugging
                         const requestStartTime = Date.now();
-                        console.log(`Starting daily score check at ${new Date().toISOString()}`);
-                        
+                        console.log(
+                          `Starting daily score check at ${new Date().toISOString()}`,
+                        );
+
                         // Set timeout to prevent hanging requests
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-                        
+                        const timeoutId = setTimeout(
+                          () => controller.abort(),
+                          15000,
+                        ); // 15 second timeout
+
                         try {
                           const response = await fetch(
                             `/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`,
-                            { signal: controller.signal }
+                            { signal: controller.signal },
                           );
-                          
+
                           const requestDuration = Date.now() - requestStartTime;
-                          console.log(`Daily score check completed in ${requestDuration}ms`);
-                          
+                          console.log(
+                            `Daily score check completed in ${requestDuration}ms`,
+                          );
+
                           clearTimeout(timeoutId);
-                          
+
                           if (!response.ok) {
                             // Try to get detailed error information if available
                             let errorMessage = `Failed to send test notification: ${response.status} ${response.statusText}`;
@@ -386,23 +467,28 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                               const errorData = await response.json();
                               errorMessage = errorData.message || errorMessage;
                             } catch (parseError) {
-                              console.error("Error parsing error response:", parseError);
+                              console.error(
+                                "Error parsing error response:",
+                                parseError,
+                              );
                             }
                             throw new Error(errorMessage);
                           }
-                          
+
                           const data = await response.json();
-                          
+
                           toast({
                             description: "Test notification sent successfully!",
                           });
-                          
+
                           console.log("Test notification response:", data);
-                          
+
                           // Add a slight delay to prevent UI issues after notification test
                           setTimeout(() => {
                             // Refresh notifications to ensure we're showing the latest
-                            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+                            queryClient.invalidateQueries({
+                              queryKey: ["/api/notifications"],
+                            });
                           }, 500);
                         } catch (fetchError) {
                           // Make sure to clear timeout if fetch fails
@@ -412,59 +498,76 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                       } catch (err) {
                         // Handle different error types with customized messages
                         if (err instanceof Error) {
-                          if (err.name === 'AbortError') {
-                            console.error("Daily score check request timed out after 15 seconds");
+                          if (err.name === "AbortError") {
+                            console.error(
+                              "Daily score check request timed out after 15 seconds",
+                            );
                             toast({
                               title: "Request Timed Out",
-                              description: "The request took too long, but the notification might still be processing in the background.",
-                              variant: "destructive"
+                              description:
+                                "The request took too long, but the notification might still be processing in the background.",
+                              variant: "destructive",
                             });
                             return;
-                          } else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
-                            console.error("Network error during daily score check:", err);
+                          } else if (
+                            err.name === "TypeError" &&
+                            err.message.includes("Failed to fetch")
+                          ) {
+                            console.error(
+                              "Network error during daily score check:",
+                              err,
+                            );
                             toast({
                               title: "Network Error",
-                              description: "Please check your connection and try again.",
-                              variant: "destructive"
+                              description:
+                                "Please check your connection and try again.",
+                              variant: "destructive",
                             });
                             return;
                           }
                         }
-                        
+
                         console.error("Error sending test notification:", err);
                         toast({
                           title: "Error",
-                          description: err instanceof Error ? err.message : "Failed to send test notification",
-                          variant: "destructive"
+                          description:
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to send test notification",
+                          variant: "destructive",
                         });
                       }
                     }}
                   >
                     Admin: Test Daily Score Check
                   </Button>
-                  
+
                   {/* Admin section for thumbnail repairs */}
                   <div className="mt-4 pt-4 border-t">
-                    <h3 className="text-sm font-medium mb-2">Thumbnail Repair Tools</h3>
+                    <h3 className="text-sm font-medium mb-2">
+                      Thumbnail Repair Tools
+                    </h3>
                     <div className="space-y-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="w-full"
                         size="sm"
                         onClick={async () => {
                           if (isFixingThumbnails) {
                             toast({
                               title: "Operation in progress",
-                              description: "A thumbnail repair is already running. Please wait for it to complete."
+                              description:
+                                "A thumbnail repair is already running. Please wait for it to complete.",
                             });
                             return;
                           }
-                          
+
                           setIsFixingThumbnails(true);
                           toast({
-                            description: "Starting memory verse thumbnail repair...",
+                            description:
+                              "Starting memory verse thumbnail repair...",
                           });
-                          
+
                           try {
                             await fixMemoryVerseThumbnails();
                           } finally {
@@ -476,27 +579,30 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                         disabled={isFixingThumbnails}
                       >
                         <Film className="h-4 w-4 mr-2" />
-                        {isFixingThumbnails ? "Repairing..." : "Repair Memory Verse Thumbnails"}
+                        {isFixingThumbnails
+                          ? "Repairing..."
+                          : "Repair Memory Verse Thumbnails"}
                       </Button>
-                      
-                      <Button 
-                        variant="outline" 
+
+                      <Button
+                        variant="outline"
                         className="w-full"
                         size="sm"
                         onClick={async () => {
                           if (isFixingThumbnails) {
                             toast({
                               title: "Operation in progress",
-                              description: "A thumbnail repair is already running. Please wait for it to complete."
+                              description:
+                                "A thumbnail repair is already running. Please wait for it to complete.",
                             });
                             return;
                           }
-                          
+
                           setIsFixingThumbnails(true);
                           toast({
                             description: "Starting all thumbnails repair...",
                           });
-                          
+
                           try {
                             await fixAllThumbnails();
                           } finally {
@@ -508,7 +614,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                         disabled={isFixingThumbnails}
                       >
                         <ImageIcon className="h-4 w-4 mr-2" />
-                        {isFixingThumbnails ? "Repairing..." : "Repair All Thumbnails"}
+                        {isFixingThumbnails
+                          ? "Repairing..."
+                          : "Repair All Thumbnails"}
                       </Button>
                     </div>
                   </div>

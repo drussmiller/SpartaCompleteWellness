@@ -244,21 +244,21 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               </div>
               <div className="flex-1">
                 <h2 className="text-xl font-semibold">{user?.username}</h2>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <p className="text-lg text-muted-foreground">{user?.email}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent>
-              <h3 className="text-lg font-semibold mb-4">Program Details</h3>
+              <h3 className="text-xl font-semibold mb-4">Program Details</h3>
               <div className="space-y-3">
                 {user?.teamId ? (
                   <>
                     {user.programStart ? (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Program Start (Day One)</span>
+                          <span className="text-lg text-muted-foreground">Program Start (Day One)</span>
                           <span className="text-sm font-medium">
                             {format(new Date(user.programStart), 'PPP')}
                           </span>
@@ -266,24 +266,24 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                         {user.weekInfo && (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">Current Week</span>
-                              <span className="text-sm font-medium">Week {user.weekInfo.week}</span>
+                              <span className="text-lg text-muted-foreground">Current Week</span>
+                              <span className="text-lg font-medium">Week {user.weekInfo.week}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">Current Day</span>
-                              <span className="text-sm font-medium">Day {user.weekInfo.day}</span>
+                              <span className="text-lg text-muted-foreground">Current Day</span>
+                              <span className="text-lg font-medium">Day {user.weekInfo.day}</span>
                             </div>
                           </>
                         )}
                       </>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-lg text-muted-foreground">
                         Your program will start on the first Monday after joining a team
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-lg text-muted-foreground">
                     Join a team to start your program
                   </p>
                 )}
@@ -294,10 +294,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           <Card>
             <CardContent>
               <h3 className="text-lg font-semibold mb-4">My Stats</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground">Daily Total</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-base text-muted-foreground">Daily Total</div>
+                  <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -307,8 +307,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 </div>
                 
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground">Week Total</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-base text-muted-foreground">Week Total</div>
+                  <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -318,8 +318,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 </div>
                 
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground">Monthly Avg</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-base text-muted-foreground">Monthly Avg</div>
+                  <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -343,9 +343,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       name="weight"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Weight (lbs)</FormLabel>
+                          <FormLabel className="text-lg">Weight (lbs)</FormLabel>
                           <FormControl>
                             <Input
+                              className="text-base"
                               type="number"
                               placeholder="Enter weight"
                               value={field.value || ''}
@@ -360,9 +361,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       name="waist"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Waist (inches)</FormLabel>
+                          <FormLabel className="text-lg">Waist (inches)</FormLabel>
                           <FormControl>
                             <Input
+                              className="text-base"
                               type="number"
                               placeholder="Enter waist"
                               value={field.value || ''}
@@ -391,8 +393,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 <p className="text-sm text-destructive">Failed to load measurements</p>
               ) : !measurements?.length ? (
                 <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground">No measurements recorded yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Record your measurements to track your progress</p>
+                  <p className="text-base text-muted-foreground">No measurements recorded yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Record your measurements to track your progress</p>
                 </div>
               ) : (
                 <>

@@ -106,8 +106,8 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         ) : (
           <Tabs defaultValue="team" className="w-full">
             <TabsList className="w-full mb-4">
-              <TabsTrigger value="team" className="flex-1">My Team</TabsTrigger>
-              <TabsTrigger value="all" className="flex-1">All Teams</TabsTrigger>
+              <TabsTrigger value="team" className="flex-1 text-base">My Team</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1 text-base">All Teams</TabsTrigger>
             </TabsList>
 
             <TabsContent value="team">
