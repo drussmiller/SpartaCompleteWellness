@@ -5,18 +5,18 @@
 
 @layer base {
   html {
-    font-size: 18px;
+    font-size: 20px;
   }
   
   @media (min-width: 768px) {
     html {
-      font-size: 20px;
+      font-size: 22px;
     }
   }
 
   @media (min-width: 1024px) {
     html {
-      font-size: 22px;
+      font-size: 24px;
     }
   }
 }
