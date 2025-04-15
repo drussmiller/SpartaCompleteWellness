@@ -5,14 +5,6 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
-      fontSize: {
-        'base': '1.25rem',
-        'lg': '1.375rem',
-        'xl': '1.5rem',
-        '2xl': '1.75rem',
-        '3xl': '2rem',
-        '4xl': '2.25rem',
-      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
