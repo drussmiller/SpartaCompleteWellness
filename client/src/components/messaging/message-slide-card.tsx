@@ -256,15 +256,15 @@ export function MessageSlideCard() {
     <>
       <Button
         size="icon"
-        className="h-8 w-8 bg-gray-200 hover:bg-gray-300 ml-2 relative font-sans text-xs"
+        className="h-6 w-6 bg-gray-200 hover:bg-gray-300 ml-2 relative font-sans text-[10px]"
         onClick={() => {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
         }}
       >
-        <MessageCircle className="h-4 w-4 text-black font-extrabold" />
+        <MessageCircle className="h-3 w-3 text-black font-extrabold" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-sans">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 flex items-center justify-center text-[8px] font-sans">
             {unreadCount}
           </span>
         )}
