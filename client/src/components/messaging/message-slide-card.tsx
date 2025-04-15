@@ -256,7 +256,7 @@ export function MessageSlideCard() {
     <>
       <Button
         size="icon"
-        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2 relative font-sans"
+        className="h-8 w-8 bg-gray-200 hover:bg-gray-300 ml-2 relative font-sans text-xs"
         onClick={() => {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
@@ -264,7 +264,7 @@ export function MessageSlideCard() {
       >
         <MessageCircle className="h-4 w-4 text-black font-extrabold" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-sm font-sans">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-sans">
             {unreadCount}
           </span>
         )}
