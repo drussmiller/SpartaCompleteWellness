@@ -91,13 +91,15 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 pt-16">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-8">
+    <div className="min-h-screen pb-20 lg:pb-0 pt-28">
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <header className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
+        <div className="p-4">
           <h1 className="text-xl font-bold pl-0">Daily Activity</h1>
         </div>
       </header>
-
       <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
         <div className="flex items-center justify-center gap-4">
           <Button

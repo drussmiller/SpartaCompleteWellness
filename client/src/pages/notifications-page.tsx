@@ -143,8 +143,11 @@ export default function NotificationsPage() {
   return (
     <AppLayout>
       {/* Fixed title bar */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border text-lg">
-        <div className="px-6 py-4">
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
+        <div className="p-4">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </div>
@@ -156,10 +159,10 @@ export default function NotificationsPage() {
             <p className="mt-4 text-lg font-medium">No new notifications</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2 p-2">
             {notifications.map((notification) => (
               <Card key={notification.id} className="relative">
-                <CardContent className="p-4">
+                <CardContent className="p-2">
                   <div className="flex items-start justify-between gap-1">
                     <div className="flex-1">
                       <h3 className="font-medium">{notification.title}</h3>

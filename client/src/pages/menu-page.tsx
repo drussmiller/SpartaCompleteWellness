@@ -23,8 +23,15 @@ export default function MenuPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col p-6 space-y-6">
-        <h1 className="text-xl font-bold">Menu</h1>
+      <div className="flex flex-col p-6">
+        <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+          {/* This div is an empty spacer, which you can style as necessary */}
+        </div>
+        <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
+          <div className="p-4">
+            <h1 className="text-xl font-bold">Menu</h1>
+          </div>
+        </div>
 
         {/* Navigation Section */}
         <div className="w-full space-y-2">
