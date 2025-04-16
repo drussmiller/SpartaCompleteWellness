@@ -72,11 +72,11 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
 
                   <div className="aspect-w-16 aspect-h-9 mb-8">
                     <iframe
-                      src="https://www.youtube.com/embed/zTidZXChF7w"
+                      src="https://www.youtube.com/embed/zTidZXChF7w?rel=0&modestbranding=1"
                       title="Sparta Support Video"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                      className="w-full rounded-lg shadow-lg"
+                      className="w-full h-[300px] rounded-lg shadow-lg"
                     ></iframe>
                   </div>
 
