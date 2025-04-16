@@ -84,7 +84,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
                       src="/SupportSparta.png" 
                       alt="Support Sparta QR Code" 
                       className="max-w-[250px] rounded-md shadow-lg cursor-pointer"
-                      onClick={() => window.open("https://donate.sparta.team", "_blank")}
+                      onClick={() => window.open("https://donorbox.org/sparta-complete-wellness-sponsorship-donation", "_blank")}
                     />
                   </div>
                 </div>
