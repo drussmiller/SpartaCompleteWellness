@@ -83,7 +83,8 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
                     <img 
                       src="/SupportSparta.png" 
                       alt="Support Sparta QR Code" 
-                      className="max-w-[250px] rounded-md shadow-lg"
+                      className="max-w-[250px] rounded-md shadow-lg cursor-pointer"
+                      onClick={() => window.open("https://donate.sparta.team", "_blank")}
                     />
                   </div>
                 </div>
