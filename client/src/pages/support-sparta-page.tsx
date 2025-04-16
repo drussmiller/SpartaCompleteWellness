@@ -68,7 +68,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
 
               <div className="flex justify-center my-8">
                 <img 
-                  src="/attached_assets/SupportSparta.png" 
+                  src="/SupportSparta.png" 
                   alt="Support Sparta QR Code" 
                   className="max-w-[250px] rounded-md shadow-lg"
                 />

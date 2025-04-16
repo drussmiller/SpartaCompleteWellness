@@ -18,6 +18,7 @@ export default function MenuPage() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [, navigate] = useLocation();
 
   if (!user) return null;
@@ -84,6 +85,19 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
               <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          
+          {/* Support Sparta */}
+          <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Heart className="mr-2 h-5 w-5" />
+                Support Sparta
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />
             </SheetContent>
           </Sheet>
 
