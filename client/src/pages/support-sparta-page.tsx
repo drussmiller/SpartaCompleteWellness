@@ -69,52 +69,22 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
                     for everyone in our community to grow stronger together.
                   </p>
 
+                  <div className="aspect-w-16 aspect-h-9 mb-8">
+                    <iframe
+                      src="https://www.youtube.com/embed/zTidZXChF7w"
+                      title="Sparta Support Video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full rounded-lg shadow-lg"
+                    ></iframe>
+                  </div>
+
                   <div className="flex justify-center my-8">
                     <img 
                       src="/SupportSparta.png" 
                       alt="Support Sparta QR Code" 
                       className="max-w-[250px] rounded-md shadow-lg"
                     />
-                  </div>
-                </div>
-
-                <div className="bg-muted p-6 rounded-lg">
-                  <h3 className="font-bold text-lg mb-2">Your Support Matters</h3>
-                  <ul className="space-y-2 list-disc pl-5">
-                    <li>Provide scholarships for those in financial need</li>
-                    <li>Upgrade facilities and equipment</li>
-                    <li>Expand programs to reach more community members</li>
-                    <li>Host special events that bring us together</li>
-                  </ul>
-                </div>
-
-                <div className="pt-4">
-                  <h3 className="font-bold text-lg mb-2">Ways to Support</h3>
-                  <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-medium">One-Time Donation</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Scan the QR code above to make a quick one-time donation of any amount.
-                      </p>
-                    </div>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-medium">Monthly Support</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Become a monthly supporter to help us plan long-term projects and programs.
-                      </p>
-                    </div>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-medium">Volunteer Your Time</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Contribute your skills and time to help with events, coaching, and administration.
-                      </p>
-                    </div>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-medium">Equipment Donations</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Donate new or gently used sporting equipment to help our athletes train.
-                      </p>
-                    </div>
                   </div>
                 </div>
               </CardContent>
