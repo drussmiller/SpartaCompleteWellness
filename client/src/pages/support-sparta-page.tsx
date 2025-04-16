@@ -18,6 +18,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose);
+  const [showDonation, setShowDonation] = useState(false);
 
   if (!user) {
     return null;
@@ -84,9 +85,24 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
                       src="/SupportSparta.png" 
                       alt="Support Sparta QR Code" 
                       className="max-w-[250px] rounded-md shadow-lg cursor-pointer"
-                      onClick={() => window.open("https://donorbox.org/sparta-complete-wellness-sponsorship-donation", "_blank")}
+                      onClick={() => setShowDonation(true)}
                     />
                   </div>
+                  
+                  {showDonation && (
+                    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+                      <div className="p-4 border-b flex justify-between items-center">
+                        <h2 className="font-semibold">Make a Donation</h2>
+                        <Button variant="ghost" size="sm" onClick={() => setShowDonation(false)}>
+                          Close
+                        </Button>
+                      </div>
+                      <iframe
+                        src="https://donorbox.org/sparta-complete-wellness-sponsorship-donation"
+                        className="w-full flex-1"
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </ScrollArea>
