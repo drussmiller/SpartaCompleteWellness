@@ -90,7 +90,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
                   </div>
                   
                   {showDonation && (
-                    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+                    <div className="fixed inset-0 bg-background z-50 flex flex-col pt-12">
                       <div className="p-4 border-b flex justify-between items-center">
                         <h2 className="font-semibold">Make a Donation</h2>
                         <Button variant="ghost" size="sm" onClick={() => setShowDonation(false)}>
