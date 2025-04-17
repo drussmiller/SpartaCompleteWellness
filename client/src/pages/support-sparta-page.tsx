@@ -55,20 +55,9 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
       <main className="flex-1 overflow-y-auto pt-32 pb-24">
         <div className="container py-6 max-w-4xl mx-auto">
           <Card className="flex flex-col">
-            <CardHeader className="flex-shrink-0">
-              <CardTitle className="text-2xl text-center">Support Our Mission</CardTitle>
-              <CardDescription className="text-center text-lg">
-                Help us continue building a stronger community
-              </CardDescription>
-            </CardHeader>
-            
             <ScrollArea className="flex-1">
               <CardContent className="space-y-6">
                 <div className="text-center mb-4">
-                  <p className="mb-4">
-                    Your generosity helps us provide resources, equipment, and opportunities 
-                    for everyone in our community to grow stronger together.
-                  </p>
 
                   <div className="aspect-w-16 aspect-h-9 mb-8">
                     <iframe
@@ -90,7 +79,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
                   </div>
                   
                   {showDonation && (
-                    <div className="fixed inset-0 bg-background z-50 flex flex-col pt-12">
+                    <div className="fixed inset-0 bg-background z-500 flex flex-col pt-28">
                       <div className="p-4 border-b flex justify-between items-center">
                         <h2 className="font-semibold">Make a Donation</h2>
                         <Button variant="ghost" size="sm" onClick={() => setShowDonation(false)}>
