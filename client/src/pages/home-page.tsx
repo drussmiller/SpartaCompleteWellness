@@ -125,7 +125,11 @@ export default function HomePage() {
                 onClick={handlePrayerRequestsClick}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 2.2 12 6l-5-3.8c-1-.75-2 0-2 1.2v12.3C5 17.7 6.3 19 8.3 19c.7 0 1.4-.3 2-1L12 17l1.7 1c.5.7 1.3 1 2 1 2 0 3.3-1.3 3.3-3.3v-12.3c0-1.2-1-1.95-2-1.2z"/>
+                  <path d="M7 11v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8" />
+                  <path d="M8 5V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" />
+                  <path d="M10 10V4" />
+                  <path d="M14 10V4" />
+                  <path d="M17 11a5 5 0 0 0-10 0" />
                 </svg>
               </Button>
             </div>
