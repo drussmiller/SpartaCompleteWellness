@@ -1,10 +1,55 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useEffect } from 'react';
 
 export function useCommentCount(postId: number) {
   const [count, setCount] = useState(0);
   const prevCountRef = useRef(0);
+  const queryClient = useQueryClient();
+
+  // Subscribe to comment events using a custom event listener
+  useEffect(() => {
+    if (!postId) return;
+
+    // Define the function that will handle comment count updates
+    const handleCommentCountUpdate = (event: CustomEvent) => {
+      if (event.detail && event.detail.postId === postId) {
+        // If we have a direct count update, use it
+        if (typeof event.detail.count === 'number') {
+          setCount(event.detail.count);
+          prevCountRef.current = event.detail.count;
+          
+          // Also update the query cache for consistency
+          queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { 
+            count: event.detail.count 
+          });
+          
+          console.log(`Updated comment count for post ${postId} to ${event.detail.count} from event`);
+        } 
+        // If we just have an increment signal, increment the current count
+        else if (event.detail.increment) {
+          const newCount = prevCountRef.current + 1;
+          setCount(newCount);
+          prevCountRef.current = newCount;
+          
+          // Also update the query cache for consistency
+          queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { 
+            count: newCount 
+          });
+          
+          console.log(`Incremented comment count for post ${postId} to ${newCount} from event`);
+        }
+      }
+    };
+
+    // Add the event listener
+    window.addEventListener('commentCountUpdate', handleCommentCountUpdate as EventListener);
+
+    // Clean up the event listener on unmount
+    return () => {
+      window.removeEventListener('commentCountUpdate', handleCommentCountUpdate as EventListener);
+    };
+  }, [postId, queryClient]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [`/api/posts/comments/${postId}/count`],
@@ -59,25 +104,44 @@ export function useCommentCount(postId: number) {
     placeholderData: prevData => prevData,
     // Enable automatic refetching on window focus
     refetchOnWindowFocus: true,
-    // Poll for updates every 30 seconds
-    refetchInterval: 30000,
+    // Poll for updates more frequently
+    refetchInterval: 15000, // 15 seconds
     // Always refetch when component mounts
     refetchOnMount: true,
     // Disable request during SSR
     enabled: typeof window !== 'undefined' && !!postId
   });
 
-  // Only update the count state if the count has changed
+  // Only update the count state if the count has changed from query data
   useEffect(() => {
-    if (data?.count !== prevCountRef.current) {
-      setCount(data?.count ?? 0);
-      prevCountRef.current = data?.count ?? 0;
+    if (data?.count !== undefined && data?.count !== prevCountRef.current) {
+      setCount(data.count);
+      prevCountRef.current = data.count;
+      console.log(`Updated comment count for post ${postId} to ${data.count} from query`);
     }
-  }, [data]);
+  }, [data, postId]);
 
   return {
     count: count,
     isLoading,
-    error
+    error,
+    // Add a manual increment function that components can call directly
+    incrementCount: () => {
+      const newCount = prevCountRef.current + 1;
+      setCount(newCount);
+      prevCountRef.current = newCount;
+      
+      // Update the query cache
+      queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { 
+        count: newCount 
+      });
+      
+      // Dispatch an event so other components with the same postId can update
+      window.dispatchEvent(new CustomEvent('commentCountUpdate', {
+        detail: { postId, count: newCount }
+      }));
+      
+      console.log(`Manually incremented comment count for post ${postId} to ${newCount}`);
+    }
   };
 }

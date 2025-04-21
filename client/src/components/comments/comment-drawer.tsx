@@ -350,51 +350,50 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .finally(() => setAreCommentsLoading(false));
       }
 
-      // 2. Use the QueryClient to invalidate ALL related queries
+      // 2. Use the QueryClient to update comment counts and invalidate ALL related queries
       if (postId) {
-        // First manually update the comment count in the cache for immediate UI feedback
-        const previousCountData = queryClient.getQueryData([`/api/posts/comments/${postId}/count`]);
-        if (previousCountData && typeof previousCountData === 'object' && 'count' in previousCountData) {
-          // Increment the count by 1 immediately
-          const newCount = (previousCountData.count || 0) + 1;
-          console.log(`Setting comment count to ${newCount} for post ${postId} (was ${previousCountData.count})`);
-          
-          // Update the cache directly
-          queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { count: newCount });
-        }
+        // Dispatch a global event to update comment counts in all components
+        window.dispatchEvent(new CustomEvent('commentCountUpdate', {
+          detail: { 
+            postId,
+            increment: true
+          }
+        }));
         
-        // Define the list of queries to invalidate
+        console.log(`Dispatched commentCountUpdate event for post ${postId}`);
+        
+        // Define the list of queries to invalidate immediately
         const queryKeysToInvalidate = [
-          // Comment count query - used by useCommentCount hook
-          [`/api/posts/comments/${postId}/count`],
-          
-          // Comments list query - used in multiple places
+          // Comments list query - used in the drawer itself
           [`/api/posts/comments/${postId}`],
           
           // Post details query - used when viewing post details
           [`/api/posts/${postId}`],
           
-          // All specific post queries
+          // All posts queries that might show this post
           ['/api/posts', 'team-posts'],
           ['/api/posts/prayer-requests']
         ];
         
-        // Invalidate each query individually with a log
+        // Invalidate each query individually
         queryKeysToInvalidate.forEach(queryKey => {
           console.log(`Invalidating query: ${queryKey.join('/')}`);
-          // Specific invalidation with exact key
           queryClient.invalidateQueries({ queryKey, exact: false });
         });
         
-        // Also invalidate all posts-related queries using a more general approach
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const queryKeyString = Array.isArray(query.queryKey) ? query.queryKey.join('/') : String(query.queryKey);
-            console.log(`Checking query for invalidation: ${queryKeyString}`);
-            // Match any queries related to posts, including comment counts
-            return queryKeyString.includes('/api/posts');
-          },
-        });
+        // Schedule a delayed full invalidation for consistency
+        setTimeout(() => {
+          // Also invalidate all posts-related queries using a more general approach
+          queryClient.invalidateQueries({
+            predicate: (query) => {
+              const queryKeyString = Array.isArray(query.queryKey) ? query.queryKey.join('/') : String(query.queryKey);
+              // Match any queries related to posts
+              return queryKeyString.includes('/api/posts');
+            },
+          });
+          
+          console.log(`Delayed full cache invalidation completed for post ${postId}`);
+        }, 500);  // 500ms delay to ensure the UI is updated first
         
         console.log(`All comment-related queries invalidated for post ${postId}`);
       }
