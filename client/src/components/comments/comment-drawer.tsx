@@ -347,6 +347,24 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .finally(() => setAreCommentsLoading(false));
       }
 
+      // Also invalidate the comment count query to update the count in the UI
+      if (postId) {
+        try {
+          // Import queryClient directly from React Query (already available in the file)
+          const queryClient = useQueryClient();
+          
+          // Invalidate the comment count query for this post
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+          
+          // Also invalidate the post details query in case it includes comment count
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/${postId}`] });
+          
+          console.log(`Invalidated comment count query for post ${postId}`);
+        } catch (error) {
+          console.error("Error invalidating comment count query:", error);
+        }
+      }
+
       toast({
         description: "Comment posted successfully",
       });
