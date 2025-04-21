@@ -107,7 +107,7 @@ export default function HomePage() {
             </div>
             
             {/* Navigation Buttons */}
-            <div className="flex justify-between mt-4 mb-2 px-6">
+            <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
                 variant="default" 
                 className="flex-1 mr-2 bg-primary text-primary-foreground h-10 text-sm font-medium"
@@ -142,7 +142,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-32 mb-20">
+              <main className="mt-28 mb-20">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (

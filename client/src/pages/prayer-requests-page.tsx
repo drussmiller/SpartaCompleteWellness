@@ -89,7 +89,7 @@ export default function PrayerRequestsPage() {
             </div>
             
             {/* Navigation Buttons */}
-            <div className="flex justify-between mt-4 mb-2 px-6">
+            <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
                 variant="outline" 
                 onClick={handleTeamClick}
@@ -124,7 +124,7 @@ export default function PrayerRequestsPage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-32 mb-20"> {/* Adjusted for the smaller nav buttons */}
+              <main className="mt-28 mb-20"> {/* Adjusted for the smaller nav buttons and closer positioning */}
                 <div className="space-y-2">
                   {prayerRequests?.length > 0 ? (
                     prayerRequests.map((post: Post, index: number) => (
