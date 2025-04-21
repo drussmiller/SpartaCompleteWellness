@@ -337,6 +337,13 @@ export function CreatePostDialog({
       queryClient.setQueryData(["/api/posts"], (old: any[] = []) => {
         return old.map(post => post.id === Date.now() ? newPost : post);
       });
+      
+      // Also update prayer requests cache if this is a prayer post
+      if (newPost.type === "prayer") {
+        queryClient.setQueryData(["/api/posts/prayer-requests"], (old: any[] = []) => {
+          return [newPost, ...old];
+        });
+      }
 
       // Invalidate related queries to refresh counts and stats
       queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });

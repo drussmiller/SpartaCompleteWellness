@@ -54,7 +54,7 @@ export default function HomePage() {
   const { data: posts = [], isLoading, error } = useQuery({
     queryKey: ["/api/posts"],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/posts?page=1&limit=50`);
+      const response = await apiRequest("GET", `/api/posts?page=1&limit=50&exclude=prayer`);
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
