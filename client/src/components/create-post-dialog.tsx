@@ -468,12 +468,7 @@ export function CreatePostDialog({
                         <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
                           Memory Verse {getRemainingMessage('memory_verse')}
                         </option>
-                        {/* Only show Prayer Request option if we're on the Team page (defaultType is not "prayer") */}
-                        {defaultType !== "prayer" && (
-                          <option value="prayer">
-                            Prayer Request
-                          </option>
-                        )}
+                        {/* Remove Prayer Request option entirely - will be handled on its own page */}
                         <option value="miscellaneous">
                           Miscellaneous {getRemainingMessage('miscellaneous')}
                         </option>
