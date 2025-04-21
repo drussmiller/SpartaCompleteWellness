@@ -93,26 +93,15 @@ export default function PrayerRequestsPage() {
               <Button 
                 variant="outline" 
                 onClick={handleTeamClick}
-                className="flex-1 mr-2 h-10"
+                className="flex-1 mr-2 h-10 text-sm font-medium"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
+                Team
               </Button>
               <Button 
                 variant="default"
-                className="flex-1 ml-2 bg-primary text-primary-foreground h-10"
+                className="flex-1 ml-2 bg-primary text-primary-foreground h-10 text-sm font-medium"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 11v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8" />
-                  <path d="M8 5V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" />
-                  <path d="M10 10V4" />
-                  <path d="M14 10V4" />
-                  <path d="M17 11a5 5 0 0 0-10 0" />
-                </svg>
+                Prayer Requests
               </Button>
             </div>
           </div>
