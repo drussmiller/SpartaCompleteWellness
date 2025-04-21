@@ -11,32 +11,14 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
-import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 
-const MOBILE_BREAKPOINT = 768;
-
-const mobileScrollStyles = {
-  minHeight: '100vh',
-  WebkitOverflowScrolling: 'touch',
-  scrollBehavior: 'smooth',
-  overscrollBehavior: 'auto',
-  touchAction: 'pan-y pinch-zoom',
-  WebkitTapHighlightColor: 'transparent',
-  paddingBottom: '60px',
-  position: 'relative',
-  overflowX: 'hidden',
-  WebkitTransform: 'translate3d(0,0,0)',
-  WebkitBackfaceVisibility: 'hidden',
-  WebkitPerspective: '1000',
-} as const;
-
-export default function HomePage() {
+export default function PrayerRequestsPage() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
-  const { remaining, counts, refetch: refetchLimits } = usePostLimits();
+  const { remaining, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef(1);
   const [_, navigate] = useLocation();
 
   // Only refetch post limits when needed
@@ -51,12 +33,12 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
-  const { data: posts = [], isLoading, error } = useQuery({
-    queryKey: ["/api/posts"],
+  const { data: prayerRequests = [], isLoading, error } = useQuery({
+    queryKey: ["/api/posts/prayer-requests"],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/posts?page=1&limit=50`);
+      const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch posts: ${response.status}`);
+        throw new Error(`Failed to fetch prayer requests: ${response.status}`);
       }
       return response.json();
     },
@@ -65,8 +47,8 @@ export default function HomePage() {
     staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
 
-  const handlePrayerRequestsClick = () => {
-    navigate('/prayer-requests');
+  const handleTeamClick = () => {
+    navigate('/');
   };
 
   if (error) {
@@ -74,7 +56,7 @@ export default function HomePage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center text-destructive">
-            <h2 className="text-xl font-bold mb-2">Error loading posts</h2>
+            <h2 className="text-xl font-bold mb-2">Error loading prayer requests</h2>
             <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
           </div>
         </div>
@@ -101,7 +83,7 @@ export default function HomePage() {
                 />
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} />
+                <CreatePostDialog remaining={remaining} initialType="prayer" />
                 <MessageSlideCard />
               </div>
             </div>
@@ -109,15 +91,15 @@ export default function HomePage() {
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-4 mb-2 px-6">
               <Button 
-                variant="default" 
-                className="flex-1 mr-2 bg-primary text-primary-foreground"
+                variant="outline" 
+                onClick={handleTeamClick}
+                className="flex-1 mr-2"
               >
                 Team
               </Button>
               <Button 
-                variant="outline"
-                className="flex-1 ml-2"
-                onClick={handlePrayerRequestsClick}
+                variant="default"
+                className="flex-1 ml-2 bg-primary text-primary-foreground"
               >
                 Prayer Requests
               </Button>
@@ -142,20 +124,20 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-32 mb-20">
+              <main className="mt-44 mb-20"> {/* Adjusted for the additional nav buttons */}
                 <div className="space-y-2">
-                  {posts?.length > 0 ? (
-                    posts.map((post: Post, index: number) => (
+                  {prayerRequests?.length > 0 ? (
+                    prayerRequests.map((post: Post, index: number) => (
                       <div key={post.id}>
                         <ErrorBoundary>
                           <PostCard post={post} />
                         </ErrorBoundary>
-                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                        {index < prayerRequests.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
                       </div>
                     ))
                   ) : !isLoading ? (
                     <div className="text-center text-muted-foreground py-8">
-                      No posts yet. Be the first to share!
+                      No prayer requests yet. Share one to get started!
                     </div>
                   ) : null}
 
