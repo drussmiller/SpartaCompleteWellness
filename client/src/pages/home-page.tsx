@@ -101,7 +101,7 @@ export default function HomePage() {
                 />
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} initialType="prayer" />
+                <CreatePostDialog remaining={remaining} />
                 <MessageSlideCard />
               </div>
             </div>
