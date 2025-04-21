@@ -44,7 +44,7 @@ export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"] }).notNull(),
+  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"] }).notNull(),
   content: text("content"),
   mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
   is_video: boolean("is_video").default(false), // Flag to explicitly mark video content
@@ -183,7 +183,7 @@ export const insertPostSchema = createInsertSchema(posts)
   .extend({
     content: z.string().nullable(),
     mediaUrl: z.string().nullable(), // Updated from imageUrl to mediaUrl
-    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"]),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),

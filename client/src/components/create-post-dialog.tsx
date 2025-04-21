@@ -23,7 +23,13 @@ type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
 };
 
-export function CreatePostDialog({ remaining: propRemaining }: { remaining: Record<string, number> }) {
+export function CreatePostDialog({ 
+  remaining: propRemaining, 
+  initialType = "food" 
+}: { 
+  remaining: Record<string, number>;
+  initialType?: string;
+}) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -48,10 +54,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
-      type: "food",
+      type: initialType,
       content: "",
       mediaUrl: null,
-      points: 3,
+      points: initialType === "prayer" ? 0 : initialType === "memory_verse" ? 10 : 3,
       postDate: selectedDate
     }
   });
@@ -453,6 +459,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                       <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
                         Memory Verse {getRemainingMessage('memory_verse')}
                       </option>
+                      <option value="prayer">
+                        Prayer Request
+                      </option>
                       <option value="miscellaneous">
                         Miscellaneous {getRemainingMessage('miscellaneous')}
                       </option>
@@ -463,7 +472,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               )}
             />
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse") && (
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer") && (
               <FormField
                 control={form.control}
                 name="mediaUrl"
@@ -471,7 +480,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                   <FormItem>
                     <FormLabel>
                       {(form.watch("type") === "memory_verse") ? "Video" : 
-                       (form.watch("type") === "miscellaneous") ? "Media" : "Image"}
+                       (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
                     </FormLabel>
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
@@ -606,8 +615,8 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               className="hidden"
                             />
                             
-                            {/* Add Select Video button for Miscellaneous post type */}
-                            {form.watch("type") === "miscellaneous" && (
+                            {/* Add Select Video button for Miscellaneous and Prayer Request post types */}
+                            {(form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
                               <div className="mt-3">
                                 <Button
                                   type="button"
