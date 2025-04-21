@@ -80,7 +80,8 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     workout: 0,
     scripture: 0,
     memory_verse: 0,
-    miscellaneous: 0 // Added miscellaneous post type
+    miscellaneous: 0, // Added miscellaneous post type
+    prayer: 0 // Added prayer requests
   };
 
   const defaultCanPost = {
@@ -88,7 +89,8 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     workout: true,
     scripture: true,
     memory_verse: selectedDate.getDay() === 6,
-    miscellaneous: true // Added miscellaneous post type
+    miscellaneous: true, // Added miscellaneous post type
+    prayer: true // Always allow prayer requests
   };
 
   const defaultRemaining = {
@@ -96,7 +98,8 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     workout: 1,
     scripture: 1,
     memory_verse: selectedDate.getDay() === 6 ? 1 : 0,
-    miscellaneous: Infinity // Added miscellaneous post type; unlimited
+    miscellaneous: Infinity, // Added miscellaneous post type; unlimited
+    prayer: Infinity // Unlimited prayer requests
   };
 
   // Check if we have valid data from the API before using defaults
@@ -109,14 +112,16 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     workout: counts.workout < 1,
     scripture: counts.scripture < 1,
     memory_verse: memoryVerseWeekCount === 0,
-    miscellaneous: true // Always allow miscellaneous posts
+    miscellaneous: true, // Always allow miscellaneous posts
+    prayer: true // Always allow prayer requests
   };
   const remaining = {
     food: Math.max(0, 3 - counts.food),
     workout: Math.max(0, 1 - counts.workout),
     scripture: Math.max(0, 1 - counts.scripture),
     memory_verse: (selectedDate.getDay() === 6) ? Math.max(0, 1 - counts.memory_verse) : 0,
-    miscellaneous: null // No limit
+    miscellaneous: null, // No limit
+    prayer: null // No limit for prayer requests
   };
 
   // Force a clean fetch of the data when the hook is used
