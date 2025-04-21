@@ -3,7 +3,7 @@ import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
 import { Post, User } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft } from "lucide-react";
@@ -347,22 +347,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .finally(() => setAreCommentsLoading(false));
       }
 
-      // Also invalidate the comment count query to update the count in the UI
+      // Invalidate queries to update the comment count in the UI
       if (postId) {
-        try {
-          // Import queryClient directly from React Query (already available in the file)
-          const queryClient = useQueryClient();
-          
-          // Invalidate the comment count query for this post
-          queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
-          
-          // Also invalidate the post details query in case it includes comment count
-          queryClient.invalidateQueries({ queryKey: [`/api/posts/${postId}`] });
-          
-          console.log(`Invalidated comment count query for post ${postId}`);
-        } catch (error) {
-          console.error("Error invalidating comment count query:", error);
-        }
+        // The queryClient is already imported at the top of the file
+        // Invalidate the comment count query for this post
+        queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+        
+        // Also invalidate the post details query in case it includes comment count
+        queryClient.invalidateQueries({ queryKey: [`/api/posts/${postId}`] });
+        
+        console.log(`Invalidated comment count query for post ${postId}`);
       }
 
       toast({
