@@ -99,7 +99,7 @@ export default function PrayerRequestsPage() {
               </Button>
               <Button 
                 variant="default"
-                className="flex-1 ml-2 bg-primary text-primary-foreground h-10 text-sm font-medium"
+                className="flex-1 ml-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
               >
                 Prayer Requests
               </Button>
