@@ -296,8 +296,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         throw error;
       }
     },
-    onSuccess: () => {
-      // Manually reload comments
+    onSuccess: (newComment) => {
+      console.log('Comment created successfully:', newComment);
+      
+      // 1. Update local comments state immediately
       if (isOpen && postId) {
         setAreCommentsLoading(true);
         fetch(`/api/posts/comments/${postId}`, {
@@ -308,6 +310,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
+            console.log(`Fetched ${data.length} comments after creating new one`);
             // Process video detection more thoroughly for comments
             const processedData = data.map(comment => {
               if (comment.mediaUrl && !('is_video' in comment)) {
@@ -347,16 +350,37 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .finally(() => setAreCommentsLoading(false));
       }
 
-      // Invalidate queries to update the comment count in the UI
+      // 2. Use the QueryClient to invalidate ALL related queries
       if (postId) {
-        // The queryClient is already imported at the top of the file
-        // Invalidate the comment count query for this post
-        queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+        const queryKeysToInvalidate = [
+          // Comment count query - used by useCommentCount hook
+          [`/api/posts/comments/${postId}/count`],
+          
+          // Comments list query - used in multiple places
+          [`/api/posts/comments/${postId}`],
+          
+          // Post details query - used when viewing post details
+          [`/api/posts/${postId}`],
+          
+          // All posts queries that might show this post
+          ['/api/posts']
+        ];
         
-        // Also invalidate the post details query in case it includes comment count
-        queryClient.invalidateQueries({ queryKey: [`/api/posts/${postId}`] });
+        // If this is a comment on a prayer post, also invalidate prayer requests
+        if (originalPost?.type === 'prayer') {
+          queryKeysToInvalidate.push(['/api/posts/prayer-requests']);
+        }
         
-        console.log(`Invalidated comment count query for post ${postId}`);
+        // Invalidate each query individually with a log
+        queryKeysToInvalidate.forEach(queryKey => {
+          console.log(`Invalidating query: ${queryKey.join('/')}`);
+          queryClient.invalidateQueries({ queryKey });
+        });
+        
+        // Force additional global query invalidation to ensure all UI components update
+        queryClient.invalidateQueries();
+        
+        console.log(`All comment-related queries invalidated for post ${postId}`);
       }
 
       toast({
