@@ -274,34 +274,39 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     });
   };
 
-  // Organize comments into threads more reliably
-  // First, separate top-level comments and replies
-  const topLevelComments: CommentWithReplies[] = [];
-  const repliesByParentId: Record<number, CommentWithReplies[]> = {};
-
-  // Process all comments first to ensure replies are properly categorized
+  // Organize comments into a proper hierarchical thread structure
+  // with support for replies at any depth
+  
+  // First, prepare all comments with empty replies array
+  const commentMap: Record<number, CommentWithReplies> = {};
   comments.forEach(comment => {
-    const commentWithReplies = { ...comment, replies: [] };
+    commentMap[comment.id] = { ...comment, replies: [] };
+  });
 
+  // Separate top-level comments and organize replies
+  const topLevelComments: CommentWithReplies[] = [];
+  
+  // Process and organize all comments
+  comments.forEach(comment => {
+    const commentWithReplies = commentMap[comment.id];
+    
     if (comment.parentId === postId) {
-      // This is a top-level comment
+      // This is a top-level comment directly replying to the post
       topLevelComments.push(commentWithReplies);
+    } else if (comment.parentId && commentMap[comment.parentId]) {
+      // This is a reply to another comment
+      // Add it to its parent's replies array
+      commentMap[comment.parentId].replies.push(commentWithReplies);
     } else if (comment.parentId) {
-      // This is a reply to another comment (ensure parentId is not null)
-      if (!repliesByParentId[comment.parentId]) {
-        repliesByParentId[comment.parentId] = [];
-      }
-      repliesByParentId[comment.parentId].push(commentWithReplies);
+      // Missing parent (could be a reply to a deleted comment)
+      // Handle as top-level for graceful degradation
+      console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
+      topLevelComments.push(commentWithReplies);
     }
   });
 
-  // Now attach all replies to their parent comments
-  const threadedComments = topLevelComments.map(comment => {
-    if (repliesByParentId[comment.id]) {
-      comment.replies = repliesByParentId[comment.id];
-    }
-    return comment;
-  });
+  // Final threaded comments structure
+  const threadedComments = topLevelComments;
 
   const formatTimeAgo = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
