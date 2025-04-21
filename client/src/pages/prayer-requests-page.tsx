@@ -124,7 +124,7 @@ export default function PrayerRequestsPage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-28 mb-20"> {/* Adjusted for the smaller nav buttons and closer positioning */}
+              <main className="mt-32 pt-8 mb-20"> {/* Extra padding for larger fixed panel */}
                 <div className="space-y-2">
                   {prayerRequests?.length > 0 ? (
                     prayerRequests.map((post: Post, index: number) => (
