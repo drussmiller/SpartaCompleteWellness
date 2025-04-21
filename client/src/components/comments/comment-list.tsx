@@ -53,36 +53,50 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
+      // Use the specific comments endpoint instead of general posts endpoint
+      const res = await apiRequest("POST", "/api/posts/comments", {
         content: content.trim(),
         parentId: replyingTo,
         depth: (replyingToComment?.depth ?? 0) + 1
       });
 
       if (!res.ok) {
+        console.error("Failed to post reply:", await res.text());
         throw new Error("Failed to post reply");
       }
 
       return res.json();
     },
     onSuccess: (newReply) => {
-      // Find the parent comment and add the reply to its replies array
-      const updatedComments = comments.map(comment => {
-        if (comment.id === replyingTo) {
-          return {
-            ...comment,
-            replies: [
-              ...(comment.replies || []),
-              { ...newReply, author: user }
-            ]
-          };
+      console.log("Reply created successfully:", newReply);
+      
+      // After successfully creating the reply, fetch all comments again to ensure everything is in sync
+      // This is more reliable than trying to manually update the local comment structure
+      fetch(`/api/posts/comments/${postId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error refreshing comments: ${res.status}`);
         }
-        return comment;
+        return res.json();
+      })
+      .then(refreshedComments => {
+        if (Array.isArray(refreshedComments)) {
+          console.log(`Refreshed ${refreshedComments.length} comments after creating reply`);
+          setComments(refreshedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
+          
+          // Also invalidate the comment count query to update the UI
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+        }
+      })
+      .catch(err => {
+        console.error("Error refreshing comments after reply:", err);
       });
-
-      setComments(updatedComments);
-      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      
       setReplyingTo(null);
       toast({
         description: "Reply added successfully",
@@ -90,6 +104,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     },
     onError: (error: Error) => {
       console.error("Reply mutation error:", error);
+      // Add more detailed logging for easier debugging
+      console.error(`Reply to comment ID ${replyingTo}, depth: ${replyingToComment?.depth ?? 0 + 1}`);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post reply",
@@ -114,25 +130,32 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       return res.json();
     },
     onSuccess: (updatedComment) => {
-      // Update comments recursively including nested replies
-      const updateCommentsRecursively = (commentsList: (Post & { author: User; replies?: (Post & { author: User })[] })[]) => {
-        return commentsList.map(comment => {
-          if (comment.id === updatedComment.id) {
-            return { ...comment, ...updatedComment };
-          }
-          if (comment.replies) {
-            return {
-              ...comment,
-              replies: updateCommentsRecursively(comment.replies)
-            };
-          }
-          return comment;
-        });
-      };
-
-      const updatedComments = updateCommentsRecursively(comments);
-      setComments(updatedComments);
-      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      console.log("Comment edited successfully:", updatedComment);
+      
+      // After successfully editing the comment, fetch all comments again to ensure everything is in sync
+      // This is more reliable than trying to manually update the local comment structure
+      fetch(`/api/posts/comments/${postId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error refreshing comments: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(refreshedComments => {
+        if (Array.isArray(refreshedComments)) {
+          console.log(`Refreshed ${refreshedComments.length} comments after editing comment ${updatedComment.id}`);
+          setComments(refreshedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
+        }
+      })
+      .catch(err => {
+        console.error("Error refreshing comments after edit:", err);
+      });
+      
       setEditingComment(null);
       toast({
         description: "Comment updated successfully",
@@ -158,16 +181,34 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       return res.json();
     },
     onSuccess: (data, commentId) => {
-      // Update UI immediately by removing the deleted comment from the state
-      const updatedComments = comments.filter(comment => comment.id !== commentId);
-      setComments(updatedComments);
-
-      // Also update the React Query cache to keep it in sync
-      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
-
-      // Still invalidate the queries to ensure everything stays in sync with the server
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+      console.log("Comment deleted successfully:", commentId);
+      
+      // After successfully deleting the comment, fetch all comments again to ensure everything is in sync
+      // This is more reliable than trying to manually update the local comment structure
+      fetch(`/api/posts/comments/${postId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error refreshing comments: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(refreshedComments => {
+        if (Array.isArray(refreshedComments)) {
+          console.log(`Refreshed ${refreshedComments.length} comments after deleting comment ${commentId}`);
+          setComments(refreshedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
+          
+          // Also invalidate the comment count query to update the UI
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+        }
+      })
+      .catch(err => {
+        console.error("Error refreshing comments after delete:", err);
+      });
 
       toast({
         description: "Comment deleted successfully",
