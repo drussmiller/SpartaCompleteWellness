@@ -275,6 +275,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
+    const isReplying = replyingTo === comment.id;
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -340,13 +341,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               <Button
                 variant="ghost"
                 size="sm"
-                className="p-1 h-7 text-sm text-muted-foreground hover:text-foreground"
+                className={`p-1 h-7 text-sm ${isReplying ? 'bg-gray-200 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setReplyingTo(comment.id);
+                  // Toggle reply state if clicked on the same comment
+                  setReplyingTo(isReplying ? null : comment.id);
                 }}
               >
-                Reply
+                {isReplying ? 'Cancel Reply' : 'Reply'}
               </Button>
             </div>
           </div>
@@ -436,7 +438,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
           <CommentForm
             onSubmit={async (content) => {
-              await createReplyMutation.mutateAsync(content);
+              try {
+                await createReplyMutation.mutateAsync(content);
+                // Reset the form by clearing the input (comment form will handle this)
+                if (replyInputRef.current) {
+                  replyInputRef.current.value = '';
+                }
+              } catch (error) {
+                console.error("Error submitting reply:", error);
+              }
             }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
