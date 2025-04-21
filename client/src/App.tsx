@@ -25,6 +25,7 @@ import NotificationSchedulePage from "@/pages/notification-schedule-page"; // Ke
 import { LeaderboardPage } from "@/pages/leaderboard-page"; // Import the leaderboard page
 import { DebugApi } from "./debug-api"; // Import our debug component
 import { AchievementsContainer } from "@/components/achievements/achievements-container";
+import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the prayer requests page
 
 
 // Separate auth-dependent rendering
@@ -75,6 +76,7 @@ function MainContent() {
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
           <Route path="/leaderboard" component={() => <LeaderboardPage />} />
+          <Route path="/prayer-requests" component={PrayerRequestsPage} />
           <Route path="/debug" component={() => <DebugApi />} />
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           <Route path="*">Not found</Route>
