@@ -591,7 +591,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Validate request body
       const { content, parentId, depth = 0 } = req.body;
 
-      logger.info('Creating comment with data:', {
+      logger.info('Creating comment/reply with data:', {
         userId: req.user.id, 
         parentId, 
         contentLength: content ? content.length : 0,
@@ -610,6 +610,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Set JSON content type on error
         res.set('Content-Type', 'application/json');
         return res.status(400).json({ message: "Invalid parent post ID" });
+      }
+
+      // Check if parent post exists
+      try {
+        const parentPost = await db.select().from(posts).where(eq(posts.id, parentIdNum)).limit(1);
+        if (!parentPost || parentPost.length === 0) {
+          logger.error(`Parent post with ID ${parentIdNum} not found.`);
+          return res.status(404).json({ message: `Parent post with ID ${parentIdNum} not found` });
+        }
+        logger.info(`Found parent post: ID ${parentPost[0].id}, type: ${parentPost[0].type}`);
+      } catch (error) {
+        logger.error(`Error checking parent post ${parentIdNum}:`, error);
       }
 
       const comment = await storage.createComment({
@@ -889,6 +901,47 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({
         message: "Failed to initiate thumbnail repair",
         error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Debug endpoint to analyze comment structure
+  router.get("/api/debug/comment-structure", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      // Get a sample post with its comments to analyze structure
+      const postId = parseInt(req.query.postId as string) || 400;
+      
+      const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+      const comments = await storage.getPostComments(postId);
+      
+      // Return debug information about the comment structure
+      return res.json({
+        post: post[0] || null,
+        comments,
+        commentCount: comments.length,
+        topLevelComments: comments.filter(c => c.parentId === postId).length,
+        replyComments: comments.filter(c => c.parentId !== postId).length,
+        commentTypes: comments.reduce((acc, comment) => {
+          if (!acc[comment.type]) acc[comment.type] = 0;
+          acc[comment.type]++;
+          return acc;
+        }, {} as Record<string, number>),
+        depthAnalysis: comments.reduce((acc, comment) => {
+          const depth = comment.depth || 0;
+          if (!acc[depth]) acc[depth] = 0;
+          acc[depth]++;
+          return acc;
+        }, {} as Record<number, number>)
+      });
+    } catch (error) {
+      logger.error('Error in debug endpoint:', error);
+      return res.status(500).json({ 
+        message: "Debug endpoint error",
+        error: error instanceof Error ? error.message : "Unknown error" 
       });
     }
   });
