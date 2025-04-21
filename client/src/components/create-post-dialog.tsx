@@ -25,10 +25,14 @@ type CreatePostForm = z.infer<typeof insertPostSchema> & {
 
 export function CreatePostDialog({ 
   remaining: propRemaining, 
-  initialType = "food" 
+  initialType = "food",
+  defaultType = null,
+  hideTypeField = false
 }: { 
   remaining: Record<string, number>;
   initialType?: string;
+  defaultType?: string | null;
+  hideTypeField?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
@@ -51,13 +55,16 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
+  // Use defaultType if provided, otherwise use initialType
+  const actualType = defaultType || initialType;
+  
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
-      type: initialType,
+      type: actualType,
       content: "",
       mediaUrl: null,
-      points: initialType === "prayer" ? 0 : initialType === "memory_verse" ? 10 : 3,
+      points: actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
       postDate: selectedDate
     }
   });
@@ -429,48 +436,54 @@ export function CreatePostDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <FormControl>
-                    <select
-                      {...field}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2"
-                      onChange={(e) => {
-                        field.onChange(e);
-                        // Reset selected media type when changing post type
-                        setSelectedMediaType(null);
-                        setImagePreview(null);
-                        setVideoThumbnail(null);
-                      }}
-                    >
-                      <option value="food" disabled={isPostTypeDisabled('food')}>
-                        Food {getRemainingMessage('food')}
-                      </option>
-                      <option value="workout" disabled={isPostTypeDisabled('workout')}>
-                        Workout {getRemainingMessage('workout')}
-                      </option>
-                      <option value="scripture" disabled={isPostTypeDisabled('scripture')}>
-                        Scripture {getRemainingMessage('scripture')}
-                      </option>
-                      <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
-                        Memory Verse {getRemainingMessage('memory_verse')}
-                      </option>
-                      <option value="prayer">
-                        Prayer Request
-                      </option>
-                      <option value="miscellaneous">
-                        Miscellaneous {getRemainingMessage('miscellaneous')}
-                      </option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Only show Type field if hideTypeField is false */}
+            {!hideTypeField && (
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset selected media type when changing post type
+                          setSelectedMediaType(null);
+                          setImagePreview(null);
+                          setVideoThumbnail(null);
+                        }}
+                      >
+                        <option value="food" disabled={isPostTypeDisabled('food')}>
+                          Food {getRemainingMessage('food')}
+                        </option>
+                        <option value="workout" disabled={isPostTypeDisabled('workout')}>
+                          Workout {getRemainingMessage('workout')}
+                        </option>
+                        <option value="scripture" disabled={isPostTypeDisabled('scripture')}>
+                          Scripture {getRemainingMessage('scripture')}
+                        </option>
+                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
+                          Memory Verse {getRemainingMessage('memory_verse')}
+                        </option>
+                        {/* Only show Prayer Request option if we're on the Team page (defaultType is not "prayer") */}
+                        {defaultType !== "prayer" && (
+                          <option value="prayer">
+                            Prayer Request
+                          </option>
+                        )}
+                        <option value="miscellaneous">
+                          Miscellaneous {getRemainingMessage('miscellaneous')}
+                        </option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer") && (
               <FormField
