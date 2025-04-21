@@ -52,13 +52,17 @@ export default function HomePage() {
   }, [user, refetchLimits]);
 
   const { data: posts = [], isLoading, error } = useQuery({
-    queryKey: ["/api/posts"],
+    queryKey: ["/api/posts", "team-posts"],
     queryFn: async () => {
+      // Make sure to exclude prayer posts from Team page
       const response = await apiRequest("GET", `/api/posts?page=1&limit=50&exclude=prayer`);
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Double-check to filter out any prayer posts that might have slipped through
+      return data.filter(post => post.type !== 'prayer');
     },
     enabled: !!user,
     refetchOnWindowFocus: true,

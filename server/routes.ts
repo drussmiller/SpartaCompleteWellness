@@ -1783,6 +1783,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         case 'memory_verse':
           points = 10; // 10 points for memory verse
           break;
+        case 'prayer':
+          points = 0; // 0 points for prayer requests
+          break;
         case 'miscellaneous':
         default:
           points = 0;
