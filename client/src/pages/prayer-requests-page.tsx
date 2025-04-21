@@ -83,7 +83,7 @@ export default function PrayerRequestsPage() {
                 />
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} initialType="prayer" />
+                <CreatePostDialog remaining={remaining} defaultType="prayer" hideTypeField={true} />
                 <MessageSlideCard />
               </div>
             </div>
