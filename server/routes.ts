@@ -1807,11 +1807,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
 
+        // Get points from postData or default to 1 point for comments
+        const commentPoints = postData.points !== undefined ? postData.points : 1;
+        
+        // Log the points assignment for comments
+        console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
+        
         const post = await storage.createComment({
           userId: req.user.id,
           content: postData.content.trim(),
           parentId: postData.parentId,
-          depth: postData.depth || 0
+          depth: postData.depth || 0,
+          points: commentPoints // Include points value here
         });
         return res.status(201).json(post);
       }
