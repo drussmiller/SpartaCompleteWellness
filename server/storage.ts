@@ -442,7 +442,7 @@ export const storage = {
           mediaUrl: data.mediaUrl || null, // Added mediaUrl field
           is_video: data.is_video || false, // Added is_video field with default false
           depth: data.depth || 0,
-          points: 1,
+          points: data.points !== undefined ? data.points : 0, // Use provided points or default to 0
           createdAt: new Date()
         })
         .returning();

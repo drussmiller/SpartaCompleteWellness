@@ -617,7 +617,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         content,
         parentId: parentIdNum,
         depth,
-        type: 'comment' // Explicitly set type for comments
+        type: 'comment', // Explicitly set type for comments
+        points: 0 // Explicitly set 0 points for comments
       });
 
       // Return the created comment with author information
@@ -1806,9 +1807,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           logger.error("Missing parentId for comment");
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
-
-        // Get points from postData or default to 1 point for comments
-        const commentPoints = postData.points !== undefined ? postData.points : 1;
+        
+        // Comments should have 0 points
+        const commentPoints = 0;
         
         // Log the points assignment for comments
         console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
@@ -1818,7 +1819,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           content: postData.content.trim(),
           parentId: postData.parentId,
           depth: postData.depth || 0,
-          points: commentPoints // Include points value here
+          points: commentPoints // Always set to 0 points for comments
         });
         return res.status(201).json(post);
       }
