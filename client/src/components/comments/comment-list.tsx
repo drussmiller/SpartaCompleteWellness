@@ -70,6 +70,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     onSuccess: (newReply) => {
       console.log("Reply created successfully:", newReply);
       
+      // Store the current reply target before clearing the state
+      const repliedToCommentId = replyingTo;
+      
+      // Clear the reply state BEFORE fetching new comments
+      // This is crucial for allowing multiple replies
+      setReplyingTo(null);
+      
       // After successfully creating the reply, fetch all comments again to ensure everything is in sync
       // This is more reliable than trying to manually update the local comment structure
       fetch(`/api/posts/comments/${postId}`, {
@@ -85,21 +92,34 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       })
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
-          console.log(`Refreshed ${refreshedComments.length} comments after creating reply`);
+          console.log(`Refreshed ${refreshedComments.length} comments after creating reply to comment ${repliedToCommentId}`);
           setComments(refreshedComments);
           queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
           
           // Also invalidate the comment count query to update the UI
           queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+          
+          // Show toast with option to reply again to the same comment
+          toast({
+            description: 
+              <div className="flex flex-col">
+                <div>Reply added successfully</div>
+                <button 
+                  className="text-xs text-primary hover:underline text-left mt-1"
+                  onClick={() => {
+                    console.log("Setting reply to:", repliedToCommentId);
+                    setReplyingTo(repliedToCommentId);
+                  }}
+                >
+                  Reply again to this comment
+                </button>
+              </div>,
+            duration: 5000,
+          });
         }
       })
       .catch(err => {
         console.error("Error refreshing comments after reply:", err);
-      });
-      
-      setReplyingTo(null);
-      toast({
-        description: "Reply added successfully",
       });
     },
     onError: (error: Error) => {
@@ -438,9 +458,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
           <CommentForm
             onSubmit={async (content) => {
+              console.log("Submitting reply with content:", content);
               try {
                 await createReplyMutation.mutateAsync(content);
-                // Reset the form by clearing the input (comment form will handle this)
+                // Reset the form manually by clearing the input directly
                 if (replyInputRef.current) {
                   replyInputRef.current.value = '';
                 }
@@ -452,6 +473,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
             onCancel={() => setReplyingTo(null)}
+            key={`reply-form-${replyingTo}`} // Add a key to force recreation when replyingTo changes
           />
         </div>
       )}
