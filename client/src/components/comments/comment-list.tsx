@@ -66,7 +66,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         credentials: "include", // Important for sending cookies
         body: JSON.stringify({
           content: content.trim(),
-          parentId: replyingTo,
+          // Ensure parentId is a proper integer value that won't exceed PostgreSQL's integer limit
+          parentId: typeof replyingTo === 'string' 
+            ? (replyingTo.length > 10 ? parseInt(replyingTo.substring(0, 9)) : parseInt(replyingTo)) 
+            : (typeof replyingTo === 'number' && replyingTo > 2147483647)
+              ? parseInt(String(replyingTo).substring(0, 9)) 
+              : replyingTo,
           depth: (replyingToComment?.depth ?? 0) + 1,
           type: "comment", // Explicitly set type
           points: 0 // Explicitly set points to 0

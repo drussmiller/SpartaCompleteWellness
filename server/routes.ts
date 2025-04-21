@@ -664,6 +664,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Debug endpoint for safe post ID conversion
+  router.get("/api/debug/safe-id/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      
+      // Check for potentially problematic ID values (like JS timestamps)
+      const originalId = parseInt(id);
+      let safeId = originalId;
+      
+      // Handle potential integer overflow from JavaScript timestamps
+      if (safeId && !isNaN(safeId) && safeId > 2147483647) {
+        // PostgreSQL integer type range is -2,147,483,648 to 2,147,483,647
+        // If we have a JavaScript timestamp (13 digits), convert it to a safe integer
+        const idStr = String(safeId);
+        if (idStr.length > 10) {
+          safeId = parseInt(idStr.substring(0, 9));
+        }
+      }
+      
+      return res.json({
+        originalId,
+        safeId,
+        isLarge: originalId > 2147483647,
+        isSafe: safeId <= 2147483647,
+        message: originalId === safeId 
+          ? "ID is already within PostgreSQL integer range" 
+          : "ID was converted to stay within PostgreSQL integer range"
+      });
+    } catch (error) {
+      logger.error("Error in safe-id conversion debug endpoint:", error);
+      return res.status(500).json({ error: "Failed to process ID" });
+    }
+  });
+
   // Debug endpoint for posts - unprotected for testing
   router.get("/api/debug/posts", async (req, res) => {
     try {

@@ -431,6 +431,25 @@ export const storage = {
       if (!data.userId || !data.content || !data.parentId) {
         throw new Error("Missing required fields for comment");
       }
+      
+      // Check for potentially problematic parent ID values (like JS timestamps)
+      let safeParentId = data.parentId;
+      
+      // Handle potential integer overflow from JavaScript timestamps
+      if (safeParentId && typeof safeParentId === 'number' && safeParentId > 2147483647) {
+        // PostgreSQL integer type range is -2,147,483,648 to 2,147,483,647
+        // If we have a JavaScript timestamp (13 digits), convert it to a safe integer
+        const parentIdStr = String(safeParentId);
+        if (parentIdStr.length > 10) {
+          safeParentId = parseInt(parentIdStr.substring(0, 9));
+          logger.debug(`Converted large parentId ${data.parentId} to safe value ${safeParentId}`);
+        }
+      }
+
+      // Log the conversion for debugging
+      if (safeParentId !== data.parentId) {
+        logger.info(`Converted parentId from ${data.parentId} to ${safeParentId} to prevent integer overflow`);
+      }
 
       const [comment] = await db
         .insert(posts)
@@ -438,7 +457,7 @@ export const storage = {
           userId: data.userId,
           type: "comment",
           content: data.content,
-          parentId: data.parentId,
+          parentId: safeParentId, // Use the safe parentId
           mediaUrl: data.mediaUrl || null, // Added mediaUrl field
           is_video: data.is_video || false, // Added is_video field with default false
           depth: data.depth || 0,
