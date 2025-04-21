@@ -53,19 +53,35 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      // Use the specific comments endpoint instead of general posts endpoint
-      const res = await apiRequest("POST", "/api/posts/comments", {
-        content: content.trim(),
-        parentId: replyingTo,
-        depth: (replyingToComment?.depth ?? 0) + 1
+      console.log(`Creating reply to comment #${replyingTo} with depth ${(replyingToComment?.depth ?? 0) + 1}`);
+      console.log(`Parent comment:`, replyingToComment);
+
+      // Use fetch directly instead of apiRequest to have more control and visibility
+      const res = await fetch("/api/posts/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        credentials: "include", // Important for sending cookies
+        body: JSON.stringify({
+          content: content.trim(),
+          parentId: replyingTo,
+          depth: (replyingToComment?.depth ?? 0) + 1,
+          type: "comment", // Explicitly set type
+          points: 0 // Explicitly set points to 0
+        })
       });
 
       if (!res.ok) {
-        console.error("Failed to post reply:", await res.text());
-        throw new Error("Failed to post reply");
+        const errorText = await res.text();
+        console.error("Failed to post reply:", errorText);
+        throw new Error(`Failed to post reply: ${errorText}`);
       }
 
-      return res.json();
+      const json = await res.json();
+      console.log("Reply created on server:", json);
+      return json;
     },
     onSuccess: (newReply) => {
       console.log("Reply created successfully:", newReply);
