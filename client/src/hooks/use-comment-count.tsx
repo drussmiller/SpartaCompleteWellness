@@ -55,8 +55,8 @@ export function useCommentCount(postId: number) {
     retry: 1,
     // Lower staleTime for more frequent updates
     staleTime: 5000, // 5 seconds
-    // Use previous data if available
-    keepPreviousData: true,
+    // We use placeholderData instead of keepPreviousData in React Query v5
+    placeholderData: prevData => prevData,
     // Enable automatic refetching on window focus
     refetchOnWindowFocus: true,
     // Poll for updates every 30 seconds

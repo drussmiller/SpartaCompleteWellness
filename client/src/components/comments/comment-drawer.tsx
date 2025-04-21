@@ -374,11 +374,21 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         // Invalidate each query individually with a log
         queryKeysToInvalidate.forEach(queryKey => {
           console.log(`Invalidating query: ${queryKey.join('/')}`);
-          queryClient.invalidateQueries({ queryKey });
+          // Specific invalidation with exact key
+          queryClient.invalidateQueries({ queryKey, exact: false });
         });
         
-        // Force additional global query invalidation to ensure all UI components update
-        queryClient.invalidateQueries();
+        // Also invalidate all posts-related queries using a more general approach
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const queryKeyString = query.queryKey.join('/');
+            console.log(`Checking query: ${queryKeyString}`);
+            // Match any queries related to posts, including comment counts
+            return queryKeyString.includes('/api/posts') || 
+                   queryKeyString.includes('/comments') || 
+                   queryKeyString.includes('/count');
+          },
+        });
         
         console.log(`All comment-related queries invalidated for post ${postId}`);
       }
