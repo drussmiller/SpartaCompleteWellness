@@ -263,19 +263,37 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     onSuccess: (deletedPostId) => {
       console.log(`Post ${deletedPostId} deleted successfully`);
       
-      // Get current posts and filter out the deleted one
-      const currentPosts = queryClient.getQueryData<(Post & { author: User })[]>(["/api/posts"]);
-      if (currentPosts) {
-        const filteredPosts = currentPosts.filter(p => p.id !== deletedPostId);
-        console.log(`Filtered posts: ${currentPosts.length} -> ${filteredPosts.length}`);
-        queryClient.setQueryData(
-          ["/api/posts"],
-          filteredPosts
-        );
+      // Update all possible query keys/caches where this post might appear
+      const updateQueryCache = (queryKey: any[]) => {
+        const currentPosts = queryClient.getQueryData<(Post & { author?: User })[]>(queryKey);
+        if (currentPosts) {
+          const filteredPosts = currentPosts.filter(p => p.id !== deletedPostId);
+          console.log(`Updated ${queryKey.join('/')} cache: ${currentPosts.length} -> ${filteredPosts.length}`);
+          queryClient.setQueryData(queryKey, filteredPosts);
+        }
+      };
+      
+      // Update all relevant query caches
+      const queryKeysToUpdate = [
+        ["/api/posts"],
+        [`/api/posts/${post.type}`]
+      ];
+      
+      // If this is a prayer post, also update the prayer requests cache
+      if (post.type === "prayer") {
+        queryKeysToUpdate.push(["/api/posts/prayer-requests"]);
       }
+      
+      // Update each query cache
+      queryKeysToUpdate.forEach(updateQueryCache);
 
       // Force immediate refetch to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      
+      // If this was a prayer post, also invalidate the prayer requests cache
+      if (post.type === "prayer") {
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
+      }
     },
     onError: (error) => {
       console.error("Error deleting post:", error);
@@ -297,23 +315,53 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     );
   };
 
+  // Prepare safe author data to prevent "Unknown User" issues
+  const authorData = useMemo(() => {
+    // If post.author exists and has at least an id or username, use it
+    if (post.author && (post.author.id || post.author.username)) {
+      return post.author;
+    }
+    
+    // If post.userId exists but no author object, we'll use a fallback
+    if (post.userId) {
+      return {
+        id: post.userId,
+        username: 'User', // A more neutral fallback than "Unknown User"
+        imageUrl: null
+      };
+    }
+    
+    // Ultimate fallback - shouldn't happen with proper data
+    return {
+      id: 0,
+      username: 'User',
+      imageUrl: null
+    };
+  }, [post.author, post.userId]);
+
+  // Get a display name that won't be "Unknown User"
+  const displayName = authorData.username || `User ${authorData.id}`;
+  
+  // Safe avatar seed that won't be undefined
+  const avatarSeed = authorData.username || `user-${authorData.id}`;
+
   return (
     <div className="border-y border-gray-200 bg-white w-full">
       <div className="flex flex-row items-center w-full p-4 bg-background">
         <div className="flex items-center gap-4 flex-1">
           <Avatar>
             <AvatarImage
-              key={`avatar-${post.author?.id}-${avatarKey}`}
-              src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`}
+              key={`avatar-${authorData.id}-${avatarKey}`}
+              src={authorData.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${avatarSeed}`}
             />
-            <AvatarFallback>{post.author?.username ? post.author.username[0].toUpperCase() : '?'}</AvatarFallback>
+            <AvatarFallback>{displayName[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-semibold">{post.author?.username || 'Unknown User'}</p>
+              <p className="font-semibold">{displayName}</p>
               <span className="text-xs text-muted-foreground">
                 {(() => {
-                  const diff = Date.now() - new Date(post.createdAt!).getTime();
+                  const diff = Date.now() - new Date(post.createdAt || Date.now()).getTime();
                   const hours = Math.floor(diff / (1000 * 60 * 60));
                   if (hours < 24) return `${hours}h`;
                   return `${Math.floor(hours / 24)}d`;
