@@ -24,7 +24,7 @@ export function useCommentCount(postId: number) {
           }
         };
 
-        const res = await apiRequest("GET", `/api/posts/comments/${postId}`, undefined, requestOptions);
+        const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
           console.warn(`Comment count request for post ${postId} failed with status ${res.status}`);
           return { count: 0 };
@@ -51,16 +51,18 @@ export function useCommentCount(postId: number) {
         return { count: 0 };
       }
     },
-    // Don't retry too aggressively
+    // Always retry at least once
     retry: 1,
-    // Cache results longer to reduce request frequency
-    staleTime: 120000, // 2 minutes
+    // Lower staleTime for more frequent updates
+    staleTime: 5000, // 5 seconds
     // Use previous data if available
     keepPreviousData: true,
-    // Disable all automatic refetching
-    refetchOnWindowFocus: false,
-    refetchInterval: false,
-    refetchOnMount: "if-stale",
+    // Enable automatic refetching on window focus
+    refetchOnWindowFocus: true,
+    // Poll for updates every 30 seconds
+    refetchInterval: 30000,
+    // Always refetch when component mounts
+    refetchOnMount: true,
     // Disable request during SSR
     enabled: typeof window !== 'undefined' && !!postId
   });

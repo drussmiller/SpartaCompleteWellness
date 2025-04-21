@@ -226,6 +226,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     enabled: !!post.author?.id // Only run query if author ID exists
   });
 
+  // Use comment count hook with a key that will force refresh
   const { count: commentCount } = useCommentCount(post.id);
 
   const deletePostMutation = useMutation({
