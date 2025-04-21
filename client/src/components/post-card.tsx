@@ -114,9 +114,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   // Query to get weekly points total
   const { data: weekPoints, isLoading: isLoadingWeekPoints } = useQuery({
-    queryKey: ["/api/posts/points/weekly", post.author.id],
+    queryKey: ["/api/posts/points/weekly", post.author?.id],
     queryFn: async () => {
       try {
+        // Check if author exists
+        if (!post.author?.id) {
+          return 0;
+        }
+        
         // Get the week that contains this post's date
         const postDate = new Date(post.createdAt || new Date());
 
@@ -142,18 +147,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         const total = posts.reduce((sum: number, p: any) => sum + (p.points || 0), 0);
         return total;
       } catch (error) {
-        console.error(`Error fetching weekly points for user ${post.author.id}:`, error);
+        console.error(`Error fetching weekly points for user ${post.author?.id}:`, error);
         return 0;
       }
     },
     staleTime: 60000, // Cache for 1 minute
-    retry: 1
+    retry: 1,
+    enabled: !!post.author?.id // Only run query if author ID exists
   });
 
   const { data: dayPoints, isLoading: isLoadingPoints, error: pointsError } = useQuery({
-    queryKey: ["/api/points/daily", post.createdAt, post.author.id],
+    queryKey: ["/api/points/daily", post.createdAt, post.author?.id],
     queryFn: async () => {
       try {
+        // Check if author exists
+        if (!post.author?.id) {
+          return 0;
+        }
+        
         // Make sure we have a valid date to work with
         if (!post.createdAt) {
           console.error("Post createdAt is undefined or null", post);
@@ -211,7 +222,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       }
     },
     staleTime: 60000, // Cache for 1 minute to ensure more frequent updates
-    retry: 2
+    retry: 2,
+    enabled: !!post.author?.id // Only run query if author ID exists
   });
 
   const { count: commentCount } = useCommentCount(post.id);
@@ -294,11 +306,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               key={`avatar-${post.author?.id}-${avatarKey}`}
               src={post.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${post.author?.username}`}
             />
-            <AvatarFallback>{post.author.username[0].toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{post.author?.username ? post.author.username[0].toUpperCase() : '?'}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-semibold">{post.author.username}</p>
+              <p className="font-semibold">{post.author?.username || 'Unknown User'}</p>
               <span className="text-xs text-muted-foreground">
                 {(() => {
                   const diff = Date.now() - new Date(post.createdAt!).getTime();
