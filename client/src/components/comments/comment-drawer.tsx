@@ -352,6 +352,18 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
 
       // 2. Use the QueryClient to invalidate ALL related queries
       if (postId) {
+        // First manually update the comment count in the cache for immediate UI feedback
+        const previousCountData = queryClient.getQueryData([`/api/posts/comments/${postId}/count`]);
+        if (previousCountData && typeof previousCountData === 'object' && 'count' in previousCountData) {
+          // Increment the count by 1 immediately
+          const newCount = (previousCountData.count || 0) + 1;
+          console.log(`Setting comment count to ${newCount} for post ${postId} (was ${previousCountData.count})`);
+          
+          // Update the cache directly
+          queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { count: newCount });
+        }
+        
+        // Define the list of queries to invalidate
         const queryKeysToInvalidate = [
           // Comment count query - used by useCommentCount hook
           [`/api/posts/comments/${postId}/count`],
@@ -362,14 +374,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           // Post details query - used when viewing post details
           [`/api/posts/${postId}`],
           
-          // All posts queries that might show this post
-          ['/api/posts']
+          // All specific post queries
+          ['/api/posts', 'team-posts'],
+          ['/api/posts/prayer-requests']
         ];
-        
-        // If this is a comment on a prayer post, also invalidate prayer requests
-        if (originalPost?.type === 'prayer') {
-          queryKeysToInvalidate.push(['/api/posts/prayer-requests']);
-        }
         
         // Invalidate each query individually with a log
         queryKeysToInvalidate.forEach(queryKey => {
@@ -381,12 +389,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         // Also invalidate all posts-related queries using a more general approach
         queryClient.invalidateQueries({
           predicate: (query) => {
-            const queryKeyString = query.queryKey.join('/');
-            console.log(`Checking query: ${queryKeyString}`);
+            const queryKeyString = Array.isArray(query.queryKey) ? query.queryKey.join('/') : String(query.queryKey);
+            console.log(`Checking query for invalidation: ${queryKeyString}`);
             // Match any queries related to posts, including comment counts
-            return queryKeyString.includes('/api/posts') || 
-                   queryKeyString.includes('/comments') || 
-                   queryKeyString.includes('/count');
+            return queryKeyString.includes('/api/posts');
           },
         });
         
