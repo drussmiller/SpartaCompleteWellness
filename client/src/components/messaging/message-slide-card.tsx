@@ -403,7 +403,7 @@ export function MessageSlideCard() {
               <div className="p-4 border-t bg-background fixed bottom-[80px] left-0 right-0 z-[999999]">
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm 
-                  onSubmit={async (content, imageData) => {
+                  onSubmit={async (content, imageData, isVideo = false) => {
                     // Instead of setting state and then calling handleSendMessage separately,
                     // which causes the first Enter to clear the field but not submit,
                     // directly call createMessageMutation with the provided values
@@ -424,6 +424,11 @@ export function MessageSlideCard() {
                         const response = await fetch(imageData);
                         const blob = await response.blob();
                         formData.append('image', blob, 'pasted-image.png');
+                        
+                        // Add isVideo flag to indicate if this is a video
+                        if (isVideo) {
+                          formData.append('is_video', 'true');
+                        }
                       }
                       
                       formData.append('recipientId', selectedMember.id.toString());

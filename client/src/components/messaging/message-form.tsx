@@ -26,6 +26,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const [selectedFile, setSelectedFile] = useState<File | null>(null); // Added state for selected file
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
@@ -101,7 +102,10 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const handleSubmit = async () => {
     try {
       if (!content.trim() && !pastedImage) return;
-      await onSubmit(content, pastedImage);
+      
+      // Pass the isVideo flag if it's a video file
+      const isVideo = selectedFile?.type.startsWith('video/') || false;
+      await onSubmit(content, pastedImage, isVideo);
 
       // Reset state
       setContent('');
