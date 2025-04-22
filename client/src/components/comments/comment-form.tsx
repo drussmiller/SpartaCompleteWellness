@@ -80,8 +80,15 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const handleSubmit = async () => {
     try {
-      if (!content.trim()) return;
-      await onSubmit(content, selectedFile || undefined);
+      if (!content.trim() && !selectedFile) return;
+
+      const formData = new FormData();
+      formData.append('content', content);
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
+
+      await onSubmit(content, selectedFile);
 
       // Reset state first
       setContent('');
@@ -136,9 +143,19 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             const file = e.target.files?.[0];
             if (file) {
               setSelectedFile(file);
+              // Optional: Show a toast notification that file was selected
+              toast({
+                description: `Selected file: ${file.name}`,
+                duration: 2000,
+              });
             }
           }}
         />
+        {selectedFile && (
+          <span className="text-xs text-muted-foreground">
+            {selectedFile.name}
+          </span>
+        )}
         <Button
           type="button"
           variant="ghost"
