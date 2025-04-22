@@ -14,6 +14,7 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
     // Get the user's last prayer request view timestamp
+    logger.info(`Fetching prayer request view timestamp for user ${req.user.id}`);
     const [user] = await db
       .select({ lastPrayerRequestView: users.lastPrayerRequestView })
       .from(users)

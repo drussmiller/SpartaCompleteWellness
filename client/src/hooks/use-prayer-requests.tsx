@@ -8,7 +8,7 @@ export function usePrayerRequests() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  
   // Fetch unread prayer request count
   const fetchUnreadCount = async () => {
     if (!isAuthenticated) {
@@ -19,6 +19,8 @@ export function usePrayerRequests() {
 
     try {
       setLoading(true);
+      console.log(`Fetching prayer request count for user ${user?.id}`);
+      
       const response = await fetch('/api/prayer-requests/unread', {
         credentials: 'include'
       });
@@ -28,6 +30,7 @@ export function usePrayerRequests() {
       }
 
       const data = await response.json();
+      console.log(`Received prayer request count: ${data.unreadCount} for user ${user?.id}`);
       setUnreadCount(data.unreadCount || 0);
       setError(null);
     } catch (err) {
@@ -43,6 +46,7 @@ export function usePrayerRequests() {
     if (!isAuthenticated || unreadCount === 0) return;
 
     try {
+      console.log(`Marking prayer requests as viewed for user ${user?.id}`);
       const response = await fetch('/api/prayer-requests/mark-viewed', {
         method: 'POST',
         headers: {
@@ -57,6 +61,7 @@ export function usePrayerRequests() {
 
       // Reset count after successful update
       setUnreadCount(0);
+      console.log(`Prayer requests marked as viewed for user ${user?.id}`);
     } catch (err) {
       console.error('Error marking prayer requests as viewed:', err);
     }
@@ -64,13 +69,14 @@ export function usePrayerRequests() {
 
   // Fetch unread count on mount and when auth state changes
   useEffect(() => {
+    console.log(`Auth state changed, isAuthenticated: ${isAuthenticated}, userId: ${user?.id}`);
     if (isAuthenticated) {
       fetchUnreadCount();
     } else {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.id]); // Add user?.id to dependencies to refetch when user changes
 
   return {
     unreadCount,
