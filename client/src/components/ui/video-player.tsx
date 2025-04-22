@@ -31,7 +31,9 @@ export function VideoPlayer({
   const [duration, setDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [generatedPoster, setGeneratedPoster] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Show controls when mouse moves over the video
@@ -100,6 +102,32 @@ export function VideoPlayer({
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
+  // Generate thumbnail from video
+  const generateThumbnail = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) return;
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw the current frame to the canvas
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to data URL
+      try {
+        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setGeneratedPoster(thumbnailUrl);
+        console.log("Generated video thumbnail");
+      } catch (error) {
+        console.error("Error generating thumbnail:", error);
+      }
+    }
+  };
+
   // Add event listeners
   useEffect(() => {
     const video = videoRef.current;
@@ -110,13 +138,31 @@ export function VideoPlayer({
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      
+      // Set the current time to a very small value to load the first frame
+      if (!poster) {
+        video.currentTime = 0.1;
+      }
+    };
+    
+    const handleSeeked = () => {
+      // Generate thumbnail when video has seeked to the specified time
+      if (!poster) {
+        generateThumbnail();
+      }
       setLoading(false);
       if (onLoad) onLoad();
     };
+    
     const handleLoadedData = () => {
+      if (!poster) {
+        // Try to generate thumbnail right away as well
+        generateThumbnail();
+      }
       setLoading(false);
       if (onLoad) onLoad();
     };
+    
     const handleError = (e: Event) => {
       console.error("Video error:", e);
       setLoading(false);
@@ -127,6 +173,7 @@ export function VideoPlayer({
     video.addEventListener('pause', handlePause);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('seeked', handleSeeked);
     video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('error', handleError);
 
@@ -135,6 +182,7 @@ export function VideoPlayer({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('error', handleError);
       
@@ -142,7 +190,7 @@ export function VideoPlayer({
         clearTimeout(controlsTimeoutRef.current);
       }
     };
-  }, [onLoad, onError]);
+  }, [onLoad, onError, poster]);
 
   return (
     <div 
@@ -154,10 +202,16 @@ export function VideoPlayer({
         }
       }}
     >
+      {/* Hidden canvas for thumbnail generation */}
+      <canvas 
+        ref={canvasRef}
+        style={{ display: 'none' }}
+      />
+      
       <video
         ref={videoRef}
         src={src}
-        poster={poster}
+        poster={poster || generatedPoster || undefined}
         preload={preload}
         playsInline={playsInline}
         className="w-full h-full object-contain"
