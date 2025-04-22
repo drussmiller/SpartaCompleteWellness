@@ -25,6 +25,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null); // Added state for video thumbnail
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient(); 
@@ -80,13 +81,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       const formData = new FormData();
       formData.append('content', content);
       if (selectedFile) {
-        formData.append('image', selectedFile);  // Using 'image' to match the server's multer config
+        formData.append('file', selectedFile);  // Using 'file' to be more general
       }
 
       await onSubmit(content, selectedFile || undefined);
 
       setContent('');
       setSelectedFile(null);
+      setVideoThumbnail(null); // Clear thumbnail after submit
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -134,8 +136,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 className="max-h-24 max-w-full rounded-lg object-cover"
               />
             ) : selectedFile.type.startsWith('video/') ? (
-              <video 
-                src={URL.createObjectURL(selectedFile)}
+              <img 
+                src={videoThumbnail || ''} // Display thumbnail if available
+                alt="Video Thumbnail" 
                 className="max-h-24 max-w-full rounded-lg object-cover"
               />
             ) : (
@@ -150,6 +153,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedFile(null);
+                setVideoThumbnail(null); // Clear thumbnail when removing file
                 if (fileInputRef.current) {
                   fileInputRef.current.value = '';
                 }
@@ -169,11 +173,48 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
+              if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                toast({
+                  title: "Error",
+                  description: "File is too large. Maximum size is 100MB.",
+                  variant: "destructive",
+                });
+                return;
+              }
+
               setSelectedFile(file);
-              toast({
-                description: `Selected file: ${file.name}`,
-                duration: 2000,
-              });
+
+              // Handle video files
+              if (file.type.startsWith('video/')) {
+                const url = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                video.src = url;
+                video.onloadeddata = () => {
+                  video.currentTime = 0;
+                  video.onseeked = () => {
+                    // Create canvas and draw video frame
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(video, 0, 0);
+
+                    // Convert to data URL for thumbnail
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg');
+                    const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
+                    setVideoThumbnail(thumbnailUrl);
+                    toast({
+                      description: videoDetails,
+                      duration: 2000,
+                    });
+                  };
+                };
+              } else {
+                toast({
+                  description: `Selected file: ${file.name}`,
+                  duration: 2000,
+                });
+              }
             }
           }}
         />

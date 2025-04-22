@@ -22,6 +22,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 }: MessageFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // Added state for selected file
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +105,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       // Reset state
       setContent('');
       setPastedImage(null);
+      setSelectedFile(null); // Reset selected file
 
       // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
@@ -153,12 +155,41 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) {
-            if (file.type.startsWith('image/')) {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                setPastedImage(e.target?.result as string);
+            if (file.size > 100 * 1024 * 1024) { // 100MB limit
+              toast({
+                title: "Error",
+                description: "File is too large. Maximum size is 100MB.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            setSelectedFile(file);
+            const url = URL.createObjectURL(file);
+
+            // Handle video files
+            if (file.type.startsWith('video/')) {
+              // Create video element for thumbnail generation
+              const video = document.createElement('video');
+              video.src = url;
+              video.onloadeddata = () => {
+                video.currentTime = 0;
+                video.onseeked = () => {
+                  // Create canvas and draw video frame
+                  const canvas = document.createElement('canvas');
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  const ctx = canvas.getContext('2d');
+                  ctx?.drawImage(video, 0, 0);
+
+                  // Convert to data URL for thumbnail
+                  const thumbnailUrl = canvas.toDataURL('image/jpeg');
+                  setPastedImage(thumbnailUrl);
+                };
               };
-              reader.readAsDataURL(file);
+            } else {
+              // Handle images normally
+              setPastedImage(url);
             }
           }
         }}
