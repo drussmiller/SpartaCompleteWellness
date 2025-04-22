@@ -189,6 +189,16 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               };
             } else {
               // Handle images normally
+              if (file.type.startsWith('video/')) {
+                if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                  toast({
+                    title: "Error",
+                    description: "Video file is too large. Maximum size is 100MB.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+              }
               setPastedImage(url);
             }
           }

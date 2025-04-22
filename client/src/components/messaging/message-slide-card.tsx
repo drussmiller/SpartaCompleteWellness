@@ -375,13 +375,23 @@ export function MessageSlideCard() {
                         {message.content && (
                           <p className="break-words">{message.content}</p>
                         )}
-                        {/* Check both imageUrl and mediaUrl fields */}
+                        {/* Handle both images and videos */}
                         {(message.imageUrl || message.mediaUrl) && (
-                          <img
-                            src={message.mediaUrl || message.imageUrl}
-                            alt="Message image"
-                            className="max-w-full rounded mt-2"
-                          />
+                          message.is_video ? (
+                            <video
+                              src={message.mediaUrl || message.imageUrl}
+                              controls
+                              preload="metadata"
+                              className="max-w-full rounded mt-2"
+                              playsInline
+                            />
+                          ) : (
+                            <img
+                              src={message.mediaUrl || message.imageUrl}
+                              alt="Message image"
+                              className="max-w-full rounded mt-2"
+                            />
+                          )
                         )}
                       </div>
                     </div>
