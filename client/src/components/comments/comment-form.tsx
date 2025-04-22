@@ -80,7 +80,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       const formData = new FormData();
       formData.append('content', content);
       if (selectedFile) {
-        formData.append('file', selectedFile);
+        formData.append('image', selectedFile);  // Using 'image' to match the server's multer config
       }
 
       await onSubmit(content, selectedFile || undefined);
