@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "r
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Image, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface MessageFormProps {
-  onSubmit: (content: string, imageData: string | null) => Promise<void>;
+  onSubmit: (content: string, imageData: string | null, isVideo?: boolean) => Promise<void>;
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
