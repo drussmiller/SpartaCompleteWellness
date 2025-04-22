@@ -41,6 +41,9 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { repairThumbnails } from './thumbnail-repair';
 import { prayerRoutes } from './prayer-routes';
+// Consolidated message routes have been moved to message-routes.ts
+// Note: There are duplicate message handlers in this file around lines 3348 and 3979
+// However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
 import { messageRouter } from './message-routes';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
