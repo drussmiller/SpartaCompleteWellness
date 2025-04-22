@@ -98,13 +98,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
           // Sort comments by creation date (oldest first)
-          refreshedComments.sort((a, b) => {
+          const sortedComments = [...refreshedComments].sort((a, b) => {
             const dateA = new Date(a.createdAt || 0);
             const dateB = new Date(b.createdAt || 0);
             return dateA.getTime() - dateB.getTime();
           });
-          setComments(refreshedComments);
-          queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
+          setComments(sortedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
           queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
           toast({
             description: 
@@ -165,13 +165,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
           // Sort comments by creation date (oldest first)
-          refreshedComments.sort((a, b) => {
+          const sortedComments = [...refreshedComments].sort((a, b) => {
             const dateA = new Date(a.createdAt || 0);
             const dateB = new Date(b.createdAt || 0);
             return dateA.getTime() - dateB.getTime();
           });
-          setComments(refreshedComments);
-          queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
+          setComments(sortedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
         }
       })
       .catch(err => {
@@ -217,13 +217,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
           // Sort comments by creation date (oldest first)
-          refreshedComments.sort((a, b) => {
+          const sortedComments = [...refreshedComments].sort((a, b) => {
             const dateA = new Date(a.createdAt || 0);
             const dateB = new Date(b.createdAt || 0);
             return dateA.getTime() - dateB.getTime();
           });
-          setComments(refreshedComments);
-          queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
+          setComments(sortedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
           queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
         }
       })
