@@ -247,7 +247,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       // Append file if provided
       if (file) {
         console.log("Appending file to comment:", file.name, file.type);
-        formData.append('file', file);
+        formData.append('image', file); // Using 'image' instead of 'file' to match the server's multer config
       }
 
       try {

@@ -83,7 +83,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         formData.append('file', selectedFile);
       }
 
-      await onSubmit(content, selectedFile);
+      await onSubmit(content, selectedFile || undefined);
 
       setContent('');
       setSelectedFile(null);
