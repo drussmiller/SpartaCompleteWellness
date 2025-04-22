@@ -134,6 +134,8 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div 
       className="flex flex-col gap-2 w-full"
@@ -143,6 +145,24 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         e.stopPropagation();
       }}
     >
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                setPastedImage(e.target?.result as string);
+              };
+              reader.readAsDataURL(file);
+            }
+          }
+        }}
+      />
       {pastedImage && (
         <div className="relative inline-block max-w-xs mb-2">
           <img 
@@ -162,6 +182,21 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       )}
 
       <div className="flex items-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex-shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
+            <path d="M16 5V2" />
+            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+            <path d="M9 9h.01" />
+            <path d="M15 9h.01" />
+          </svg>
+        </Button>
         <div className="flex-1">
           <Textarea
             ref={setRefs} 
