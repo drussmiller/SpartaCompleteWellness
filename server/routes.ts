@@ -1905,12 +1905,98 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Log the points assignment for comments
         console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
         
+        // Process media file if present for comments too
+        let commentMediaUrl = null;
+        
+        // Check if we have a file upload with the comment
+        if (req.file) {
+          try {
+            // Use SpartaObjectStorage for file handling
+            const { spartaStorage } = await import('./sparta-object-storage');
+            
+            // Verify the file exists before proceeding
+            let filePath = req.file.path;
+            
+            // Verify the file exists at the path reported by multer
+            if (!fs.existsSync(filePath)) {
+              logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
+              
+              // Try to locate the file using alternative paths
+              const fileName = path.basename(filePath);
+              const possiblePaths = [
+                filePath,
+                path.join(process.cwd(), 'uploads', fileName),
+                path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
+                path.join(path.dirname(filePath), path.basename(req.file.originalname)),
+                path.join('/tmp', fileName)
+              ];
+              
+              let foundPath = null;
+              for (const altPath of possiblePaths) {
+                logger.info(`Checking alternative path: ${altPath}`);
+                if (fs.existsSync(altPath)) {
+                  logger.info(`Found file at alternative path: ${altPath}`);
+                  foundPath = altPath;
+                  break;
+                }
+              }
+              
+              if (foundPath) {
+                filePath = foundPath;
+                logger.info(`Using alternative file path: ${filePath}`);
+              } else {
+                logger.error(`Could not find file at any alternative path for: ${filePath}`);
+              }
+            }
+            
+            // Proceed if the file exists (either at original or alternative path)
+            if (fs.existsSync(filePath)) {
+              const originalFilename = req.file.originalname.toLowerCase();
+              
+              // Check if this is a video upload based on multiple indicators
+              const isVideoMimetype = req.file.mimetype.startsWith('video/');
+              const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                     originalFilename.endsWith('.mp4') ||
+                                     originalFilename.endsWith('.webm') ||
+                                     originalFilename.endsWith('.avi') ||
+                                     originalFilename.endsWith('.mkv');
+              
+              // Final video determination
+              const isVideo = isVideoMimetype || isVideoExtension;
+              
+              // Store the file using SpartaObjectStorage
+              console.log(`Processing comment media file:`, {
+                originalFilename: req.file.originalname,
+                mimetype: req.file.mimetype,
+                isVideo: isVideo,
+                fileSize: req.file.size
+              });
+              
+              logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
+              
+              const fileInfo = await spartaStorage.storeFile(
+                filePath,
+                req.file.originalname,
+                req.file.mimetype,
+                isVideo
+              );
+              
+              commentMediaUrl = fileInfo.url;
+              console.log(`Stored comment media file:`, { url: commentMediaUrl });
+            }
+          } catch (error) {
+            logger.error("Error processing comment media file:", error);
+            // Continue with comment creation even if media processing fails
+          }
+        }
+        
         const post = await storage.createComment({
           userId: req.user.id,
           content: postData.content.trim(),
           parentId: postData.parentId,
           depth: postData.depth || 0,
-          points: commentPoints // Always set to 0 points for comments
+          points: commentPoints, // Always set to 0 points for comments
+          mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
         });
         return res.status(201).json(post);
       }
