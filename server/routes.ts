@@ -41,6 +41,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { repairThumbnails } from './thumbnail-repair';
 import { prayerRoutes } from './prayer-routes';
+import { messageRouter } from './message-routes';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({
@@ -86,6 +87,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Register prayer routes
   router.use(prayerRoutes);
+  
+  // Register message routes
+  router.use(messageRouter);
 
   // Add CORS headers for all requests
   router.use((req, res, next) => {
