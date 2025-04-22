@@ -40,6 +40,7 @@ import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { repairThumbnails } from './thumbnail-repair';
+import { prayerRoutes } from './prayer-routes';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({
