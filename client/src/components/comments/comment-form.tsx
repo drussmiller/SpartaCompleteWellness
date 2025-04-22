@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 
@@ -152,9 +152,38 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           }}
         />
         {selectedFile && (
-          <span className="text-xs text-muted-foreground">
-            {selectedFile.name}
-          </span>
+          <div className="relative inline-block max-w-xs mb-2">
+            {selectedFile.type.startsWith('image/') ? (
+              <img 
+                src={URL.createObjectURL(selectedFile)} 
+                alt="Selected image" 
+                className="max-h-24 max-w-full rounded-lg object-cover"
+              />
+            ) : selectedFile.type.startsWith('video/') ? (
+              <video 
+                src={URL.createObjectURL(selectedFile)}
+                className="max-h-24 max-w-full rounded-lg object-cover"
+              />
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {selectedFile.name}
+              </span>
+            )}
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedFile(null);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
         )}
         <Button
           type="button"
