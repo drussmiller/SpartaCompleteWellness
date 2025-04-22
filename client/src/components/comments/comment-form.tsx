@@ -26,22 +26,17 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient(); // Added useQueryClient hook
+  const queryClient = useQueryClient(); 
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // This function handles setting up refs for the textarea
-  // Using callback ref to handle all ref assignments
   const setRefs = (element: HTMLTextAreaElement | null) => {
-    // Handle forwardRef
     if (typeof ref === 'function') {
       ref(element);
     }
-    // No need to assign to internalRef.current as React will do this automatically
   };
 
   const ensureTextareaFocus = () => {
-    // Focus the textarea by ID instead of ref
     const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
     if (textarea) {
       textarea.focus();
@@ -50,7 +45,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // Focus the textarea after component mounts
     setTimeout(() => {
       const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
       if (textarea) {
@@ -60,7 +54,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }, 200);
   }, []);
 
-  // Reset textarea height when content is cleared
   useEffect(() => {
     if (content === '') {
       resetTextarea();
@@ -90,19 +83,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
       await onSubmit(content, selectedFile);
 
-      // Reset state first
       setContent('');
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
 
-      // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
         const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
         if (textarea) {
           textarea.style.height = '38px';
-          // Reset both textarea parent and flex-1 container
           const containerElement = textarea.closest('.flex-1');
           if (containerElement instanceof HTMLElement) {
             containerElement.style.height = '50px';
@@ -120,7 +110,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       if (content.trim() && !isSubmitting) {
         handleSubmit();
       }
-      // Removed the cancel-on-empty behavior to avoid accidental cancellations when pressing Enter
     }
   };
 
@@ -133,7 +122,41 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex flex-col gap-2">
+      {selectedFile && (
+        <div className="mb-2">
+          {selectedFile.type.startsWith('image/') ? (
+            <img 
+              src={URL.createObjectURL(selectedFile)} 
+              alt="Selected image" 
+              className="max-h-24 max-w-full rounded-lg object-cover"
+            />
+          ) : selectedFile.type.startsWith('video/') ? (
+            <video 
+              src={URL.createObjectURL(selectedFile)}
+              className="max-h-24 max-w-full rounded-lg object-cover"
+            />
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              {selectedFile.name}
+            </span>
+          )}
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedFile(null);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+      <div className="flex gap-2 items-center">
         <input
           type="file"
           ref={fileInputRef}
@@ -143,7 +166,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             const file = e.target.files?.[0];
             if (file) {
               setSelectedFile(file);
-              // Optional: Show a toast notification that file was selected
               toast({
                 description: `Selected file: ${file.name}`,
                 duration: 2000,
@@ -151,40 +173,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             }
           }}
         />
-        {selectedFile && (
-          <div className="relative inline-block max-w-xs mb-2">
-            {selectedFile.type.startsWith('image/') ? (
-              <img 
-                src={URL.createObjectURL(selectedFile)} 
-                alt="Selected image" 
-                className="max-h-24 max-w-full rounded-lg object-cover"
-              />
-            ) : selectedFile.type.startsWith('video/') ? (
-              <video 
-                src={URL.createObjectURL(selectedFile)}
-                className="max-h-24 max-w-full rounded-lg object-cover"
-              />
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                {selectedFile.name}
-              </span>
-            )}
-            <Button
-              variant="destructive"
-              size="icon"
-              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedFile(null);
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = '';
-                }
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
         <Button
           type="button"
           variant="ghost"
@@ -208,7 +196,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = '38px';
-              const newHeight = Math.min(200, target.scrollHeight); // Max height of 200px
+              const newHeight = Math.min(200, target.scrollHeight); 
               target.style.height = `${newHeight}px`;
             }}
             onKeyDown={handleKeyDown}
@@ -236,7 +224,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           )}
         </Button>
       </div>
-      
+
     </div>
   );
 });
