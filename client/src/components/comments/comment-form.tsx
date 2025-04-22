@@ -124,36 +124,38 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     >
       {selectedFile && (
         <div className="mb-2">
-          {selectedFile.type.startsWith('image/') ? (
-            <img 
-              src={URL.createObjectURL(selectedFile)} 
-              alt="Selected image" 
-              className="max-h-24 max-w-full rounded-lg object-cover"
-            />
-          ) : selectedFile.type.startsWith('video/') ? (
-            <video 
-              src={URL.createObjectURL(selectedFile)}
-              className="max-h-24 max-w-full rounded-lg object-cover"
-            />
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              {selectedFile.name}
-            </span>
-          )}
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedFile(null);
-              if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-              }
-            }}
-          >
-            <X className="h-3 w-3" />
-          </Button>
+          <div className="relative inline-flex items-start gap-2">
+            {selectedFile.type.startsWith('image/') ? (
+              <img 
+                src={URL.createObjectURL(selectedFile)} 
+                alt="Selected image" 
+                className="max-h-24 max-w-full rounded-lg object-cover"
+              />
+            ) : selectedFile.type.startsWith('video/') ? (
+              <video 
+                src={URL.createObjectURL(selectedFile)}
+                className="max-h-24 max-w-full rounded-lg object-cover"
+              />
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {selectedFile.name}
+              </span>
+            )}
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-6 w-6 rounded-full flex-shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedFile(null);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       )}
       <div className="flex gap-2 items-center">
