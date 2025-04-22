@@ -234,24 +234,26 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   }, [isOpen, postId]);
 
   const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const data = {
-        type: "comment",
-        content: content.trim(),
-        parentId: postId,
-        points: 1
-      };
-
-      console.log(`Creating comment for post ${postId}...`, data);
+    mutationFn: async ({ content, file }: { content: string, file?: File }) => {
+      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file });
+      
+      // Use FormData to handle both text and file uploads
+      const formData = new FormData();
+      formData.append('type', 'comment');
+      formData.append('content', content.trim());
+      formData.append('parentId', postId.toString());
+      formData.append('points', '1');
+      
+      // Append file if provided
+      if (file) {
+        console.log("Appending file to comment:", file.name, file.type);
+        formData.append('file', file);
+      }
 
       try {
         const res = await fetch('/api/posts', {
           method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data),
+          body: formData,
           credentials: 'include'
         });
 
@@ -465,8 +467,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           {isCommentBoxVisible && (
             <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
-                onSubmit={async (content) => {
-                  await createCommentMutation.mutateAsync(content);
+                onSubmit={async (content, file) => {
+                  await createCommentMutation.mutateAsync({ content, file });
                 }}
                 isSubmitting={createCommentMutation.isPending}
                 inputRef={commentInputRef}

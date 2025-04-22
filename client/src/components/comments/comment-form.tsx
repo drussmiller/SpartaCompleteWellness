@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface CommentFormProps {
@@ -27,6 +28,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient(); 
+  const { toast } = useToast();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
