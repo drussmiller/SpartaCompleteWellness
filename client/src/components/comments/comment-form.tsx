@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 
 interface CommentFormProps {
-  onSubmit: (content: string) => Promise<void>; 
+  onSubmit: (content: string, file?: File) => Promise<void>; 
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -23,7 +23,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   inputRef
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const internalRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient(); // Added useQueryClient hook
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,10 +81,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const handleSubmit = async () => {
     try {
       if (!content.trim()) return;
-      await onSubmit(content);
+      await onSubmit(content, selectedFile || undefined);
 
       // Reset state first
       setContent('');
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
       // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
@@ -120,7 +126,34 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         e.stopPropagation();
       }}
     >
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              setSelectedFile(file);
+            }
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex-shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
+            <path d="M16 5V2" />
+            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+            <path d="M9 9h.01" />
+            <path d="M15 9h.01" />
+          </svg>
+        </Button>
         <div className="flex-1">
           <Textarea
             ref={setRefs} 

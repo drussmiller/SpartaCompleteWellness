@@ -49,33 +49,26 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
   const createReplyMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (data: { content: string; file?: File }) => {
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      console.log(`Creating reply to comment #${replyingTo} with depth ${(replyingToComment?.depth ?? 0) + 1}`);
-      console.log(`Parent comment:`, replyingToComment);
+      const formData = new FormData();
+      formData.append('data', JSON.stringify({
+        content: data.content.trim(),
+        parentId: replyingTo,
+        depth: (replyingToComment?.depth ?? 0) + 1,
+        type: "comment",
+        points: 0
+      }));
+      if (data.file) {
+        formData.append('file', data.file);
+      }
 
-      // Use fetch directly instead of apiRequest to have more control and visibility
       const res = await fetch("/api/posts/comments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        credentials: "include", // Important for sending cookies
-        body: JSON.stringify({
-          content: content.trim(),
-          // Ensure parentId is a proper integer value that won't exceed PostgreSQL's integer limit
-          parentId: typeof replyingTo === 'string' 
-            ? (replyingTo.length > 10 ? parseInt(replyingTo.substring(0, 9)) : parseInt(replyingTo)) 
-            : (typeof replyingTo === 'number' && replyingTo > 2147483647)
-              ? parseInt(String(replyingTo).substring(0, 9)) 
-              : replyingTo,
-          depth: (replyingToComment?.depth ?? 0) + 1,
-          type: "comment", // Explicitly set type
-          points: 0 // Explicitly set points to 0
-        })
+        body: formData,
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -85,21 +78,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       }
 
       const json = await res.json();
-      console.log("Reply created on server:", json);
       return json;
     },
     onSuccess: (newReply) => {
-      console.log("Reply created successfully:", newReply);
-      
-      // Store the current reply target before clearing the state
       const repliedToCommentId = replyingTo;
-      
-      // Clear the reply state BEFORE fetching new comments
-      // This is crucial for allowing multiple replies
       setReplyingTo(null);
-      
-      // After successfully creating the reply, fetch all comments again to ensure everything is in sync
-      // This is more reliable than trying to manually update the local comment structure
+
       fetch(`/api/posts/comments/${postId}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -113,24 +97,16 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       })
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
-          console.log(`Refreshed ${refreshedComments.length} comments after creating reply to comment ${repliedToCommentId}`);
           setComments(refreshedComments);
           queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
-          
-          // Also invalidate the comment count query to update the UI
           queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
-          
-          // Show toast with option to reply again to the same comment
           toast({
             description: 
               <div className="flex flex-col">
                 <div>Reply added successfully</div>
                 <button 
                   className="text-xs text-primary hover:underline text-left mt-1"
-                  onClick={() => {
-                    console.log("Setting reply to:", repliedToCommentId);
-                    setReplyingTo(repliedToCommentId);
-                  }}
+                  onClick={() => setReplyingTo(repliedToCommentId)}
                 >
                   Reply again to this comment
                 </button>
@@ -145,8 +121,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     },
     onError: (error: Error) => {
       console.error("Reply mutation error:", error);
-      // Add more detailed logging for easier debugging
-      console.error(`Reply to comment ID ${replyingTo}, depth: ${replyingToComment?.depth ?? 0 + 1}`);
       toast({
         variant: "destructive",
         description: error.message || "Failed to post reply",
@@ -171,10 +145,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       return res.json();
     },
     onSuccess: (updatedComment) => {
-      console.log("Comment edited successfully:", updatedComment);
-      
-      // After successfully editing the comment, fetch all comments again to ensure everything is in sync
-      // This is more reliable than trying to manually update the local comment structure
       fetch(`/api/posts/comments/${postId}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -188,7 +158,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       })
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
-          console.log(`Refreshed ${refreshedComments.length} comments after editing comment ${updatedComment.id}`);
           setComments(refreshedComments);
           queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
         }
@@ -196,7 +165,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       .catch(err => {
         console.error("Error refreshing comments after edit:", err);
       });
-      
+
       setEditingComment(null);
       toast({
         description: "Comment updated successfully",
@@ -222,10 +191,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       return res.json();
     },
     onSuccess: (data, commentId) => {
-      console.log("Comment deleted successfully:", commentId);
-      
-      // After successfully deleting the comment, fetch all comments again to ensure everything is in sync
-      // This is more reliable than trying to manually update the local comment structure
       fetch(`/api/posts/comments/${postId}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -239,11 +204,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       })
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
-          console.log(`Refreshed ${refreshedComments.length} comments after deleting comment ${commentId}`);
           setComments(refreshedComments);
           queryClient.setQueryData(["/api/posts/comments", postId], refreshedComments);
-          
-          // Also invalidate the comment count query to update the UI
           queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
         }
       })
@@ -274,38 +236,26 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     });
   };
 
-  // Organize comments into a proper hierarchical thread structure
-  // with support for replies at any depth
-  
-  // First, prepare all comments with empty replies array
   const commentMap: Record<number, CommentWithReplies> = {};
   comments.forEach(comment => {
     commentMap[comment.id] = { ...comment, replies: [] };
   });
 
-  // Separate top-level comments and organize replies
   const topLevelComments: CommentWithReplies[] = [];
-  
-  // Process and organize all comments
+
   comments.forEach(comment => {
     const commentWithReplies = commentMap[comment.id];
-    
+
     if (comment.parentId === postId) {
-      // This is a top-level comment directly replying to the post
       topLevelComments.push(commentWithReplies);
     } else if (comment.parentId && commentMap[comment.parentId]) {
-      // This is a reply to another comment
-      // Add it to its parent's replies array
       commentMap[comment.parentId].replies.push(commentWithReplies);
     } else if (comment.parentId) {
-      // Missing parent (could be a reply to a deleted comment)
-      // Handle as top-level for graceful degradation
       console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
       topLevelComments.push(commentWithReplies);
     }
   });
 
-  // Final threaded comments structure
   const threadedComments = topLevelComments;
 
   const formatTimeAgo = (dateString: string | Date) => {
@@ -390,7 +340,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 className={`p-1 h-7 text-sm ${isReplying ? 'bg-gray-200 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Toggle reply state if clicked on the same comment
                   setReplyingTo(isReplying ? null : comment.id);
                 }}
               >
@@ -400,7 +349,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
         </div>
 
-        {/* Show replies */}
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
@@ -435,7 +383,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     );
   };
 
-  // Find the selected comment data including nested replies
   const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
     for (const comment of comments) {
       if (comment.id === selectedComment) return comment;
@@ -483,23 +430,17 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             </Button>
           </div>
           <CommentForm
-            onSubmit={async (content) => {
-              console.log("Submitting reply with content:", content);
-              try {
-                await createReplyMutation.mutateAsync(content);
-                // Reset the form manually by clearing the input directly
-                if (replyInputRef.current) {
-                  replyInputRef.current.value = '';
-                }
-              } catch (error) {
-                console.error("Error submitting reply:", error);
+            onSubmit={async (data) => {
+              await createReplyMutation.mutateAsync(data);
+              if (replyInputRef.current) {
+                replyInputRef.current.value = '';
               }
             }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
             onCancel={() => setReplyingTo(null)}
-            key={`reply-form-${replyingTo}`} // Add a key to force recreation when replyingTo changes
+            key={`reply-form-${replyingTo}`}
           />
         </div>
       )}
