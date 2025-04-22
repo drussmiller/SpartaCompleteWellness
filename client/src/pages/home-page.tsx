@@ -71,7 +71,7 @@ export default function HomePage() {
   });
 
   // Import usePrayerRequests hook to mark prayer requests as viewed
-  const { markAsViewed } = usePrayerRequests();
+  const { markAsViewed, unreadCount: prayerRequestCount } = usePrayerRequests();
 
   const handlePrayerRequestsClick = () => {
     // Mark prayer requests as viewed before navigating
@@ -129,7 +129,14 @@ export default function HomePage() {
                 className="flex-1 ml-2 h-10 text-sm font-medium"
                 onClick={handlePrayerRequestsClick}
               >
-                Prayer Requests
+                <div className="relative">
+                  Prayer Requests
+                  {prayerRequestCount > 0 && (
+                    <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {prayerRequestCount > 99 ? '99+' : prayerRequestCount}
+                    </div>
+                  )}
+                </div>
               </Button>
             </div>
           </div>
