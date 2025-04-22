@@ -12,6 +12,7 @@ import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
+import { VideoPlayer } from "@/components/ui/video-player";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -329,12 +330,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 )}
                 {comment.mediaUrl && comment.is_video && (
                   <div className="mt-2">
-                    <video
+                    <VideoPlayer
                       src={comment.mediaUrl}
-                      controls
-                      preload="metadata"
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                      playsInline
+                      onError={(error) => console.error("Error loading comment video:", error)}
                     />
                   </div>
                 )}

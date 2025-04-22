@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
 import { MessageForm } from "./message-form";
+import { VideoPlayer } from "@/components/ui/video-player";
 
 // Custom Message interface that includes both field name variations
 interface Message {
@@ -378,12 +379,10 @@ export function MessageSlideCard() {
                         {/* Handle both images and videos */}
                         {(message.imageUrl || message.mediaUrl) && (
                           message.is_video ? (
-                            <video
+                            <VideoPlayer
                               src={message.mediaUrl || message.imageUrl}
-                              controls
-                              preload="metadata"
                               className="max-w-full rounded mt-2"
-                              playsInline
+                              onError={(error) => console.error("Error loading message video:", error)}
                             />
                           ) : (
                             <img
