@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { usePrayerRequests } from "@/hooks/use-prayer-requests";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -69,7 +70,12 @@ export default function HomePage() {
     staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
 
+  // Import usePrayerRequests hook to mark prayer requests as viewed
+  const { markAsViewed } = usePrayerRequests();
+
   const handlePrayerRequestsClick = () => {
+    // Mark prayer requests as viewed before navigating
+    markAsViewed();
     navigate('/prayer-requests');
   };
 
