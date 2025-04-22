@@ -7,11 +7,13 @@ import {
   Menu,
   Settings, 
   HelpCircle,
-  WifiOff
+  WifiOff,
+  Heart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
+import { usePrayerRequests } from "@/hooks/use-prayer-requests";
 import { 
   Tooltip,
   TooltipContent,
@@ -23,6 +25,7 @@ export const VerticalNav = () => {
   const [location] = useLocation();
   const { user } = useAuth();
   const { connectionStatus } = useNotifications();
+  const { unreadCount: prayerRequestCount } = usePrayerRequests();
 
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
@@ -33,6 +36,12 @@ export const VerticalNav = () => {
       label: "Notifications", 
       path: "/notifications",
       status: connectionStatus !== "connected" ? "offline" : null 
+    },
+    { 
+      icon: Heart, 
+      label: "Prayer", 
+      path: "/prayer-requests",
+      count: prayerRequestCount || 0
     },
     { icon: Menu, label: "Menu", path: "/menu" },
   ];
@@ -59,6 +68,11 @@ export const VerticalNav = () => {
                       <WifiOff className="h-2 w-2 text-white" />
                     </div>
                   )}
+                  {item.count > 0 && (
+                    <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 border border-background flex items-center justify-center">
+                      <span className="text-white text-[8px] font-bold">{item.count > 99 ? '99+' : item.count}</span>
+                    </div>
+                  )}
                 </div>
                 <span className="text-xs mt-1">{item.label}</span>
               </AnchorLink>
@@ -66,6 +80,8 @@ export const VerticalNav = () => {
             <TooltipContent>
               {item.status === "offline" ? (
                 <p>Notification service offline - click to manage</p>
+              ) : item.count > 0 ? (
+                <p>{item.count} new prayer request{item.count !== 1 ? 's' : ''}</p>
               ) : (
                 <p>{item.label}</p>
               )}

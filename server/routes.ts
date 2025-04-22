@@ -83,6 +83,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Add request logging middleware
   router.use(requestLogger);
+  
+  // Register prayer routes
+  router.use(prayerRoutes);
 
   // Add CORS headers for all requests
   router.use((req, res, next) => {
