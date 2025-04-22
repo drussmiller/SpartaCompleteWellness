@@ -189,26 +189,45 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 const url = URL.createObjectURL(file);
                 const video = document.createElement('video');
                 video.src = url;
-                video.onloadeddata = () => {
-                  video.currentTime = 0;
-                  video.onseeked = () => {
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
+                
+                // When the video loads, set the current time to the first frame
+                video.onloadedmetadata = () => {
+                  video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
+                };
+                
+                // When the video has seeked to the requested time, capture the frame
+                video.onseeked = () => {
+                  try {
                     // Create canvas and draw video frame
                     const canvas = document.createElement('canvas');
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(video, 0, 0);
-
-                    // Convert to data URL for thumbnail
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg');
-                    const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
-                    setVideoThumbnail(thumbnailUrl);
-                    toast({
-                      description: videoDetails,
-                      duration: 2000,
-                    });
-                  };
+                    if (ctx) {
+                      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                      
+                      // Convert to data URL for thumbnail
+                      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                      setVideoThumbnail(thumbnailUrl);
+                      console.log("Generated video thumbnail in comment form");
+                      
+                      // Show file details to user
+                      const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
+                      toast({
+                        description: videoDetails,
+                        duration: 2000,
+                      });
+                    }
+                  } catch (error) {
+                    console.error("Error generating thumbnail:", error);
+                  }
                 };
+                
+                // Start loading the video
+                video.load();
               } else {
                 toast({
                   description: `Selected file: ${file.name}`,

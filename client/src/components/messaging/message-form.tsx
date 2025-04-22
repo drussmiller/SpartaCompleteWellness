@@ -172,39 +172,59 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             setSelectedFile(file);
             const url = URL.createObjectURL(file);
 
-            // Handle video files
+            // Handle media files
             if (file.type.startsWith('video/')) {
               // Create video element for thumbnail generation
               const video = document.createElement('video');
               video.src = url;
-              video.onloadeddata = () => {
-                video.currentTime = 0;
-                video.onseeked = () => {
+              video.preload = 'metadata';
+              video.muted = true;
+              video.playsInline = true;
+              
+              // When the video loads, set the current time to the first frame
+              video.onloadedmetadata = () => {
+                video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
+              };
+              
+              // When the video has seeked to the requested time, capture the frame
+              video.onseeked = () => {
+                try {
                   // Create canvas and draw video frame
                   const canvas = document.createElement('canvas');
                   canvas.width = video.videoWidth;
                   canvas.height = video.videoHeight;
                   const ctx = canvas.getContext('2d');
-                  ctx?.drawImage(video, 0, 0);
-
-                  // Convert to data URL for thumbnail
-                  const thumbnailUrl = canvas.toDataURL('image/jpeg');
-                  setPastedImage(thumbnailUrl);
-                };
+                  if (ctx) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert to data URL for thumbnail
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    setPastedImage(thumbnailUrl);
+                    console.log("Generated video thumbnail in message form");
+                    
+                    // Show toast with video details
+                    const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
+                    toast({
+                      description: videoDetails,
+                      duration: 2000,
+                    });
+                  }
+                } catch (error) {
+                  console.error("Error generating thumbnail:", error);
+                }
               };
+              
+              // Start loading the video
+              video.load();
             } else {
               // Handle images normally
-              if (file.type.startsWith('video/')) {
-                if (file.size > 100 * 1024 * 1024) { // 100MB limit
-                  toast({
-                    title: "Error",
-                    description: "Video file is too large. Maximum size is 100MB.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-              }
               setPastedImage(url);
+              
+              // Show toast with file details
+              toast({
+                description: `Selected file: ${file.name}`,
+                duration: 2000,
+              });
             }
           }
         }}
