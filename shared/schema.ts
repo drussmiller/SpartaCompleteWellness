@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
+  lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
 });
 
 export const teams = pgTable("teams", {
