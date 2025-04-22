@@ -13,13 +13,23 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { usePrayerRequests } from "@/hooks/use-prayer-requests";
 
 export default function PrayerRequestsPage() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { remaining, refetch: refetchLimits } = usePostLimits();
+  const { markAsViewed } = usePrayerRequests();
   const loadingRef = useRef<HTMLDivElement>(null);
   const [_, navigate] = useLocation();
+
+  // Mark prayer requests as viewed when page loads
+  useEffect(() => {
+    if (user) {
+      console.log("Prayer Requests Page: Marking prayer requests as viewed");
+      markAsViewed();
+    }
+  }, [user, markAsViewed]);
 
   // Only refetch post limits when needed
   useEffect(() => {

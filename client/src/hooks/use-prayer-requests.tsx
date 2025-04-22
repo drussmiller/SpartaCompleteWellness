@@ -66,6 +66,9 @@ export function usePrayerRequests() {
       console.error('Error marking prayer requests as viewed:', err);
     }
   };
+  
+  // Should only be called when specifically navigating to the prayer requests page
+  // Not on any page navigation
 
   // Fetch unread count on mount and when auth state changes
   useEffect(() => {
