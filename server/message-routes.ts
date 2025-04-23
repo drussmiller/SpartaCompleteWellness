@@ -9,7 +9,7 @@ import { authenticate } from './auth';
 import multer from 'multer';
 import { db } from './db';
 import { messages, users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { logger } from './logger';
 
 // Configure upload middleware
@@ -81,9 +81,15 @@ messageRouter.get("/api/messages/unread/count", authenticate, async (req, res) =
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
     // Count unread messages for this user
-    const result = await db.select().from(messages)
-      .where(eq(messages.recipientId, req.user.id))
-      .where(eq(messages.isRead, false));
+    const result = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.recipientId, req.user.id),
+          eq(messages.isRead, false)
+        )
+      );
 
     const unreadCount = result.length;
     console.log(`Found ${unreadCount} unread messages for user ${req.user.id}`);
@@ -108,8 +114,12 @@ messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, re
         senderId: messages.senderId,
       })
       .from(messages)
-      .where(eq(messages.recipientId, req.user.id))
-      .where(eq(messages.isRead, false));
+      .where(
+        and(
+          eq(messages.recipientId, req.user.id),
+          eq(messages.isRead, false)
+        )
+      );
     
     // Group by sender
     const senderCounts = {};
@@ -164,8 +174,10 @@ messageRouter.post("/api/messages/read", authenticate, async (req, res) => {
       .update(messages)
       .set({ isRead: true })
       .where(
-        eq(messages.recipientId, req.user.id),
-        eq(messages.senderId, parseInt(senderId)),
+        and(
+          eq(messages.recipientId, req.user.id),
+          eq(messages.senderId, parseInt(senderId))
+        )
       );
 
     return res.json({ success: true });
@@ -192,24 +204,23 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
     }
 
     // Get all messages between these two users
-    const rawMessages = await db
+    const messageQuery = db
       .select()
-      .from(messages)
+      .from(messages);
+    
+    // Add the WHERE conditions using SQL string method to avoid issue with the builder
+    const rawMessages = await messageQuery
       .where(
-        // Either messages sent by current user to the other user
-        // or messages sent by the other user to the current user
-        (builder) => 
-          builder
-            .where((subBuilder) => 
-              subBuilder
-                .where(eq(messages.senderId, req.user.id))
-                .where(eq(messages.recipientId, otherUserId))
-            )
-            .orWhere((subBuilder) => 
-              subBuilder
-                .where(eq(messages.senderId, otherUserId))
-                .where(eq(messages.recipientId, req.user.id))
-            )
+        or(
+          and(
+            eq(messages.senderId, req.user.id),
+            eq(messages.recipientId, otherUserId)
+          ),
+          and(
+            eq(messages.senderId, otherUserId),
+            eq(messages.recipientId, req.user.id)
+          )
+        )
       )
       .orderBy(messages.createdAt);
     
