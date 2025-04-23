@@ -110,148 +110,30 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           isVideo: isVideoFlag
         });
         
-        // For video files, direct file handling instead of using SpartaObjectStorage
-        if (isVideoFlag) {
-          try {
-            // Use the proper extension from the original filename or fallback to mimetype detection
-            let originalExtension = '';
-            
-            // First try to get the extension from the original filename
-            if (req.file.originalname.includes('.')) {
-              originalExtension = path.extname(req.file.originalname).toLowerCase();
-              console.log(`Found extension ${originalExtension} from original filename ${req.file.originalname}`);
-            } 
-            // If that fails, try to determine from mimetype
-            else if (req.file.mimetype.includes('mp4')) {
-              originalExtension = '.mp4';
-              console.log(`Determined extension ${originalExtension} from mimetype ${req.file.mimetype}`);
-            } else if (req.file.mimetype.includes('quicktime') || req.file.mimetype.includes('mov')) {
-              originalExtension = '.mov';
-              console.log(`Determined extension ${originalExtension} from mimetype ${req.file.mimetype}`);
-            } else {
-              // Default to .mp4 if we can't determine
-              originalExtension = '.mp4';
-              console.log(`Using default extension ${originalExtension} - could not determine from name or mimetype`);
-            }
-            
-            // Inspect the temp file to see what we're working with
-            let fileData = null;
-            try {
-              if (fs.existsSync(req.file.path)) {
-                const fileStats = fs.statSync(req.file.path);
-                const fileSizeInBytes = fileStats.size;
-                const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
-                
-                console.log(`Temp file stats:`, {
-                  path: req.file.path,
-                  size: `${fileSizeInMB.toFixed(2)}MB`,
-                  exists: true,
-                  isFile: fileStats.isFile()
-                });
-                
-                // Read the first few bytes to check the file header
-                const buffer = Buffer.alloc(16);
-                const fd = fs.openSync(req.file.path, 'r');
-                fs.readSync(fd, buffer, 0, 16, 0);
-                fs.closeSync(fd);
-                
-                console.log('File header (hex):', buffer.toString('hex'));
-              } else {
-                console.log('Temp file does not exist:', req.file.path);
-              }
-            } catch (inspectError) {
-              console.error('Error inspecting temp file:', inspectError);
-            }
-            
-            // Create a truly unique filename with timestamp, random component and the extension
-            const uniqueTimestamp = Date.now();
-            const uniqueId = Math.round(Math.random() * 1e9);
-            const videoFilename = `message-video-${uniqueTimestamp}-${uniqueId}${originalExtension}`;
-            
-            // Define the destination path in uploads
-            const videoDestPath = path.join(process.cwd(), 'uploads', videoFilename);
-            
-            console.log('Processing video message with DIRECT FILE HANDLING:', {
-              originalFilename: req.file.originalname,
-              originalMimetype: req.file.mimetype,
-              tempPath: req.file.path,
-              destPath: videoDestPath,
-              fileExists: fs.existsSync(req.file.path),
-              fileSize: fs.existsSync(req.file.path) ? fs.statSync(req.file.path).size : 'unknown',
-              extension: originalExtension
-            });
-            
-            // Create a readable stream from the temp file and pipe it to the destination
-            // This might be more reliable than copyFileSync for some cases
-            const readStream = fs.createReadStream(req.file.path);
-            const writeStream = fs.createWriteStream(videoDestPath);
-            
-            // Return a promise that resolves when the copy is complete
-            await new Promise((resolve, reject) => {
-              readStream.on('error', (err) => {
-                console.error('Error reading from temp file:', err);
-                reject(err);
-              });
-              
-              writeStream.on('error', (err) => {
-                console.error('Error writing to destination file:', err);
-                reject(err);
-              });
-              
-              writeStream.on('finish', () => {
-                console.log('File copy stream completed successfully');
-                resolve(null);
-              });
-              
-              readStream.pipe(writeStream);
-            });
-            
-            // Verify the copy was successful
-            if (fs.existsSync(videoDestPath)) {
-              const newFileStats = fs.statSync(videoDestPath);
-              console.log(`Video file copied successfully to ${videoDestPath}, size: ${newFileStats.size} bytes`);
-              
-              // Set the mediaUrl to the path of the copied file
-              mediaUrl = `/uploads/${videoFilename}`;
-            } else {
-              console.error(`Video file was not copied successfully to ${videoDestPath}`);
-              throw new Error('Failed to copy video file');
-            }
-            
-            // Create a simple thumbnail if needed
-            const thumbnailFilename = `thumb-${videoFilename.replace(originalExtension, '.jpg')}`;
-            const thumbnailPath = path.join(process.cwd(), 'uploads', 'thumbnails', thumbnailFilename);
-            
-            // Ensure thumbnails directory exists
-            const thumbnailDir = path.dirname(thumbnailPath);
-            if (!fs.existsSync(thumbnailDir)) {
-              fs.mkdirSync(thumbnailDir, { recursive: true });
-            }
-            
-            // We won't attempt to create video thumbnail here to avoid complexity
-            // Instead, create a simple placeholder with sharp
-            try {
-              // Simple SVG placeholder for video thumbnail
-              const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-                <rect width="100%" height="100%" fill="#000"/>
-                <text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Message</text>
-                <circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
-                <polygon points="290,180 290,220 320,200" fill="#fff"/>
-              </svg>`;
-                
-              fs.writeFileSync(thumbnailPath, svgContent);
-              console.log(`Created placeholder thumbnail at ${thumbnailPath}`);
-            } catch (thumbErr) {
-              console.error('Error creating video thumbnail:', thumbErr);
-            }
-          } catch (error) {
-            console.error('Error in direct video file handling:', error);
-            throw error;
-          }
-        } else {
-          // For regular images, we can still use the multer path
-          mediaUrl = `/uploads/${req.file.filename}`;
-        }
+        // Determine if this is a video based on multiple indicators
+        const isVideoMimetype = req.file.mimetype.startsWith('video/');
+        const isVideoExtension = req.file.originalname.toLowerCase().endsWith('.mov') || 
+                               req.file.originalname.toLowerCase().endsWith('.mp4') ||
+                               req.file.originalname.toLowerCase().endsWith('.webm') ||
+                               req.file.originalname.toLowerCase().endsWith('.avi') ||
+                               req.file.originalname.toLowerCase().endsWith('.mkv');
+        
+        // Final video determination - use the flag from the form data or the file characteristics
+        const isVideo = isVideoFlag || isVideoMimetype || isVideoExtension;
+        
+        logger.info(`Processing message media file with SpartaObjectStorage: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
+        
+        // Store the file using SpartaObjectStorage - same approach that works for comment media
+        const fileInfo = await spartaStorage.storeFile(
+          req.file.path,
+          req.file.originalname,
+          req.file.mimetype,
+          isVideo // Pass the isVideo flag to ensure proper handling
+        );
+        
+        // Set the mediaUrl from the stored file info
+        mediaUrl = fileInfo.url;
+        console.log(`Stored message media file:`, { url: mediaUrl, isVideo });
       } catch (fileError) {
         console.error('Error processing media file for message:', fileError);
         logger.error('Error processing media file for message:', fileError);
