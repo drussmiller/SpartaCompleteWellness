@@ -7,20 +7,64 @@
 import express, { Request, Response } from 'express';
 import { authenticate } from './auth';
 import multer from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
 import { db } from './db';
 import { messages, users } from '@shared/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { logger } from './logger';
+import { spartaStorage } from './sparta-object-storage';
 
-// Configure upload middleware
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure improved upload middleware to handle videos properly
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, './uploads/');
+    // Store in uploads directory
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  },
+    
+    // Check if it's a video based on is_video flag in the request or file mimetype
+    let isVideo = false;
+    
+    // Check from formdata
+    if (req.body && req.body.is_video === 'true') {
+      isVideo = true;
+    }
+    
+    // Also check based on mimetype or file extension
+    const videoMimeTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/mov'];
+    const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+    const fileExt = path.extname(file.originalname).toLowerCase();
+    
+    if (videoMimeTypes.includes(file.mimetype) || videoExtensions.includes(fileExt)) {
+      isVideo = true;
+    }
+    
+    console.log('Message file upload info:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      isVideo,
+      isVideoFromFormData: req.body?.is_video === 'true',
+      fileExt
+    });
+    
+    // Use appropriate extension
+    if (isVideo) {
+      // For videos, preserve the original extension or default to .mp4
+      const fileExtension = fileExt || '.mp4';
+      cb(null, `${uniqueSuffix}-message-video${fileExtension}`);
+    } else {
+      // For images
+      cb(null, `${uniqueSuffix}-${file.originalname}`);
+    }
+  }
 });
 
 const upload = multer({ storage });
@@ -53,21 +97,66 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
       isVideoFlag = true;
     }
 
-    // Create message
+    let mediaUrl = null;
+    
+    // Process file if present using SpartaObjectStorage
+    if (req.file) {
+      try {
+        console.log('Processing message media file:', {
+          filename: req.file.filename,
+          originalname: req.file.originalname,
+          path: req.file.path,
+          mimetype: req.file.mimetype,
+          isVideo: isVideoFlag
+        });
+        
+        // For video files, we'll use SpartaObjectStorage which handles thumbnails correctly
+        if (isVideoFlag) {
+          // Generate a filename that indicates this is for messaging
+          const messageVideoFilename = `message-video-${Date.now()}-${path.basename(req.file.originalname)}`;
+          
+          // Use SpartaObjectStorage for proper video handling
+          const storedFile = await spartaStorage.storeFile(
+            req.file.path, // Path to the temp file
+            messageVideoFilename, // A descriptive filename
+            req.file.mimetype, // The detected mimetype
+            true // Mark as video explicitly
+          );
+          
+          console.log('Successfully stored video file using SpartaObjectStorage:', {
+            url: storedFile.url,
+            thumbnailUrl: storedFile.thumbnailUrl,
+            isVideo: true
+          });
+          
+          // Use the URL returned by spartaStorage
+          mediaUrl = storedFile.url;
+        } else {
+          // For regular images, we can still use the multer path
+          mediaUrl = `/uploads/${req.file.filename}`;
+        }
+      } catch (fileError) {
+        console.error('Error processing media file for message:', fileError);
+        logger.error('Error processing media file for message:', fileError);
+        // Continue without the file if there's an error
+      }
+    }
+
+    // Create message with the properly processed media URL
     const [message] = await db
       .insert(messages)
       .values({
         senderId: req.user.id,
         recipientId: parseInt(recipientId),
         content: content || null,
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+        imageUrl: mediaUrl,
         isRead: false,
         is_video: isVideoFlag,
       })
       .returning();
 
     // Log and respond
-    logger.info(`Message sent from user ${req.user.id} to ${recipientId}`);
+    logger.info(`Message sent from user ${req.user.id} to ${recipientId} (hasMedia: ${!!mediaUrl}, isVideo: ${isVideoFlag})`);
     return res.status(201).json(message);
   } catch (error) {
     logger.error("Error sending message:", error);
