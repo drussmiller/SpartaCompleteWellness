@@ -110,42 +110,71 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           isVideo: isVideoFlag
         });
         
-        // For video files, we'll use SpartaObjectStorage which handles thumbnails correctly
+        // For video files, direct file handling instead of using SpartaObjectStorage
         if (isVideoFlag) {
-          // Generate a filename that indicates this is for messaging and preserves the file extension
-          const originalExtension = path.extname(req.file.originalname).toLowerCase() || 
+          try {
+            // Determine the appropriate extension
+            const originalExtension = path.extname(req.file.originalname).toLowerCase() || 
                                   (req.file.mimetype.includes('mp4') ? '.mp4' : 
                                    req.file.mimetype.includes('quicktime') ? '.mov' : '.mp4');
-          
-          const messageVideoFilename = `message-video-${Date.now()}-${path.basename(req.file.path)}${originalExtension}`;
-          
-          console.log('Processing message video with detailed info:', {
-            originalFilename: req.file.originalname,
-            tempPath: req.file.path,
-            mimetype: req.file.mimetype,
-            generatedFilename: messageVideoFilename,
-            fileSize: fs.existsSync(req.file.path) ? fs.statSync(req.file.path).size : 'unknown'
-          });
-          
-          // Use SpartaObjectStorage for proper video handling
-          const storedFile = await spartaStorage.storeFile(
-            req.file.path, // Path to the temp file
-            messageVideoFilename, // A descriptive filename with extension
-            req.file.mimetype, // The detected mimetype
-            true // Mark as video explicitly
-          );
-          
-          console.log('Successfully stored video file using SpartaObjectStorage:', {
-            url: storedFile.url,
-            thumbnailUrl: storedFile.thumbnailUrl,
-            originalFilename: req.file.originalname,
-            storedFilename: storedFile.filename,
-            mimetype: storedFile.mimeType,
-            isVideo: true
-          });
-          
-          // Use the URL returned by spartaStorage
-          mediaUrl = storedFile.url;
+            
+            // Create a unique filename with the correct extension
+            const uniqueTimestamp = Date.now();
+            const uniqueId = Math.round(Math.random() * 1e9);
+            const videoFilename = `message-video-${uniqueTimestamp}-${uniqueId}${originalExtension}`;
+            
+            // Define the destination path in uploads
+            const videoDestPath = path.join(process.cwd(), 'uploads', videoFilename);
+            
+            console.log('Processing video message with DIRECT FILE HANDLING:', {
+              originalFilename: req.file.originalname,
+              originalMimetype: req.file.mimetype,
+              tempPath: req.file.path,
+              destPath: videoDestPath,
+              fileExists: fs.existsSync(req.file.path),
+              fileSize: fs.existsSync(req.file.path) ? fs.statSync(req.file.path).size : 'unknown'
+            });
+            
+            // Simple file copy instead of using the storage system
+            fs.copyFileSync(req.file.path, videoDestPath);
+            
+            // Verify the copy was successful
+            const newFileStats = fs.statSync(videoDestPath);
+            console.log(`Video file copied successfully to ${videoDestPath}, size: ${newFileStats.size} bytes`);
+            
+            // Set the mediaUrl to the path of the copied file
+            mediaUrl = `/uploads/${videoFilename}`;
+            
+            // Create a simple thumbnail if needed
+            const thumbnailFilename = `thumb-${videoFilename.replace(originalExtension, '.jpg')}`;
+            const thumbnailPath = path.join(process.cwd(), 'uploads', 'thumbnails', thumbnailFilename);
+            
+            // Ensure thumbnails directory exists
+            const thumbnailDir = path.dirname(thumbnailPath);
+            if (!fs.existsSync(thumbnailDir)) {
+              fs.mkdirSync(thumbnailDir, { recursive: true });
+            }
+            
+            // We won't attempt to create video thumbnail here to avoid complexity
+            // Instead, create a simple placeholder with sharp
+            try {
+              // Simple SVG placeholder for video thumbnail
+              const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="#000"/>
+                <text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Message</text>
+                <circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
+                <polygon points="290,180 290,220 320,200" fill="#fff"/>
+              </svg>`;
+                
+              fs.writeFileSync(thumbnailPath, svgContent);
+              console.log(`Created placeholder thumbnail at ${thumbnailPath}`);
+            } catch (thumbErr) {
+              console.error('Error creating video thumbnail:', thumbErr);
+            }
+          } catch (error) {
+            console.error('Error in direct video file handling:', error);
+            throw error;
+          }
         } else {
           // For regular images, we can still use the multer path
           mediaUrl = `/uploads/${req.file.filename}`;
