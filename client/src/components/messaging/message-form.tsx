@@ -24,6 +24,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const [content, setContent] = useState(defaultValue);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null); // Added state for selected file
+  const [isVideo, setIsVideo] = useState<boolean>(false); // Add state to track if the current file is a video
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -203,6 +204,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
             // Handle media files
             if (file.type.startsWith('video/')) {
+              // Set the isVideo state to true
+              setIsVideo(true);
+              
               // Create video element for thumbnail generation
               const video = document.createElement('video');
               video.src = url;
@@ -213,7 +217,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               // Store the original video file in global window object for later use
               // This is needed to preserve the actual video file when sending
               (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = file;
-              console.log('Stored original video file in window object:', file.name, file.type, file.size);
+              console.log('Stored original video file in window object:', file.name, file.type, file.size, 'isVideo state set to true');
               
               // When the video loads, set the current time to the first frame
               video.onloadedmetadata = () => {
@@ -254,6 +258,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               // Handle images normally
               setPastedImage(url);
               
+              // Reset isVideo state to false for images
+              setIsVideo(false);
+              
               // Show toast with file details
               toast({
                 description: `Selected file: ${file.name}`,
@@ -274,7 +281,15 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             variant="destructive"
             size="icon"
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-            onClick={() => setPastedImage(null)}
+            onClick={() => {
+              setPastedImage(null);
+              setIsVideo(false);
+              // Also clear the global stored video file
+              if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+                console.log("Clearing original video file when removing preview");
+                (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
+              }
+            }}
           >
             <X className="h-3 w-3" />
           </Button>
