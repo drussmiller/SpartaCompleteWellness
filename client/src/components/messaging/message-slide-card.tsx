@@ -264,10 +264,28 @@ export function MessageSlideCard() {
           // Convert base64 to blob
           const response = await fetch(pastedImage);
           const blob = await response.blob();
-          formData.append('image', blob, 'pasted-image.png');
+          
+          // Determine file extension by checking if it's a video
+          const fileName = isVideoFile ? 'video-message.mp4' : 'pasted-image.png';
+          
+          // Attach the file with the proper name
+          formData.append('image', blob, fileName);
+          
+          // Important! Add the is_video flag if this is a video file
+          if (isVideoFile) {
+            console.log('Sending message with video flag set to true');
+            formData.append('is_video', 'true');
+          }
         }
 
         formData.append('recipientId', selectedMember.id.toString());
+
+        console.log('Sending message formData:', {
+          recipientId: selectedMember.id,
+          hasContent: !!messageText.trim(),
+          hasImage: !!pastedImage,
+          isVideo: isVideoFile
+        });
 
         const res = await fetch('/api/messages', {
           method: 'POST',
