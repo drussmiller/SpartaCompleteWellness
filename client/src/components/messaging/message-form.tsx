@@ -179,7 +179,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               video.src = url;
               video.preload = 'metadata';
               video.muted = true;
-              video.playsInline = true;
+              video.playsInLine = true;
+              
+              // Store the original video file in global window object for later use
+              // This is needed to preserve the actual video file when sending
+              (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = file;
+              console.log('Stored original video file in window object:', file.name, file.type, file.size);
               
               // When the video loads, set the current time to the first frame
               video.onloadedmetadata = () => {
