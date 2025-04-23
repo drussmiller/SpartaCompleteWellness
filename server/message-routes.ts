@@ -75,7 +75,90 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
   }
 });
 
-// Get messages between users
+// Get unread message count - MORE SPECIFIC ROUTE FIRST
+messageRouter.get("/api/messages/unread/count", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    // Count unread messages for this user
+    const [result] = await db
+      .select({
+        count: db.fn.count(messages.id),
+      })
+      .from(messages)
+      .where(
+        eq(messages.recipientId, req.user.id),
+        eq(messages.isRead, false)
+      );
+
+    const unreadCount = Number(result?.count || 0);
+    return res.json({ unreadCount });
+  } catch (error) {
+    logger.error("Error counting unread messages:", error);
+    return res.status(500).json({ message: "Failed to count unread messages" });
+  }
+});
+
+// Get unread messages by sender - MORE SPECIFIC ROUTE SECOND
+messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    // Get count of unread messages grouped by sender
+    const result = await db
+      .select({
+        senderId: messages.senderId,
+        count: db.fn.count(messages.id),
+        sender: {
+          id: users.id,
+          username: users.username,
+          preferredName: users.preferredName,
+          avatar: users.avatar,
+        },
+      })
+      .from(messages)
+      .leftJoin(users, eq(messages.senderId, users.id))
+      .where(
+        eq(messages.recipientId, req.user.id),
+        eq(messages.isRead, false)
+      )
+      .groupBy(messages.senderId, users.id, users.username, users.preferredName, users.avatar);
+
+    return res.json(result);
+  } catch (error) {
+    logger.error("Error fetching unread messages by sender:", error);
+    return res.status(500).json({ message: "Failed to fetch unread messages by sender" });
+  }
+});
+
+// Mark messages as read
+messageRouter.post("/api/messages/read", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    
+    const { senderId } = req.body;
+    
+    if (!senderId) {
+      return res.status(400).json({ message: "Sender ID is required" });
+    }
+
+    // Mark all messages from this sender as read
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(
+        eq(messages.recipientId, req.user.id),
+        eq(messages.senderId, parseInt(senderId)),
+      );
+
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error("Error marking messages as read:", error);
+    return res.status(500).json({ message: "Failed to mark messages as read" });
+  }
+});
+
+// Get messages between users - GENERIC ROUTE LAST
 messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -117,88 +200,5 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
   } catch (error) {
     logger.error("Error fetching messages:", error);
     return res.status(500).json({ message: "Failed to fetch messages" });
-  }
-});
-
-// Get unread message count
-messageRouter.get("/api/messages/unread/count", authenticate, async (req, res) => {
-  try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-    // Count unread messages for this user
-    const [result] = await db
-      .select({
-        count: db.fn.count(messages.id),
-      })
-      .from(messages)
-      .where(
-        eq(messages.recipientId, req.user.id),
-        eq(messages.isRead, false)
-      );
-
-    const unreadCount = Number(result?.count || 0);
-    return res.json({ unreadCount });
-  } catch (error) {
-    logger.error("Error counting unread messages:", error);
-    return res.status(500).json({ message: "Failed to count unread messages" });
-  }
-});
-
-// Mark messages as read
-messageRouter.post("/api/messages/read", authenticate, async (req, res) => {
-  try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    
-    const { senderId } = req.body;
-    
-    if (!senderId) {
-      return res.status(400).json({ message: "Sender ID is required" });
-    }
-
-    // Mark all messages from this sender as read
-    await db
-      .update(messages)
-      .set({ isRead: true })
-      .where(
-        eq(messages.recipientId, req.user.id),
-        eq(messages.senderId, parseInt(senderId)),
-      );
-
-    return res.json({ success: true });
-  } catch (error) {
-    logger.error("Error marking messages as read:", error);
-    return res.status(500).json({ message: "Failed to mark messages as read" });
-  }
-});
-
-// Get unread messages by sender
-messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
-  try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-    // Get count of unread messages grouped by sender
-    const result = await db
-      .select({
-        senderId: messages.senderId,
-        count: db.fn.count(messages.id),
-        sender: {
-          id: users.id,
-          username: users.username,
-          preferredName: users.preferredName,
-          avatar: users.avatar,
-        },
-      })
-      .from(messages)
-      .leftJoin(users, eq(messages.senderId, users.id))
-      .where(
-        eq(messages.recipientId, req.user.id),
-        eq(messages.isRead, false)
-      )
-      .groupBy(messages.senderId, users.id, users.username, users.preferredName, users.avatar);
-
-    return res.json(result);
-  } catch (error) {
-    logger.error("Error fetching unread messages by sender:", error);
-    return res.status(500).json({ message: "Failed to fetch unread messages by sender" });
   }
 });
