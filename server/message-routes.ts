@@ -9,7 +9,7 @@ import { authenticate } from './auth';
 import multer from 'multer';
 import { db } from './db';
 import { messages, users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { logger } from './logger';
 
 // Configure upload middleware
@@ -126,17 +126,18 @@ messageRouter.get("/api/messages/unread/count", authenticate, async (req, res) =
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
     // Count unread messages for this user
-    const [result] = await db
+    const result = await db
       .select({
-        count: db.fn.count(messages.id),
+        count: sql<number>`count(*)::integer`,
       })
       .from(messages)
-      .where(
+      .where(and(
         eq(messages.recipientId, req.user.id),
         eq(messages.isRead, false)
-      );
+      ));
 
-    const unreadCount = Number(result?.count || 0);
+    // Make sure we get a result
+    const unreadCount = result && result[0] ? Number(result[0].count) : 0;
     return res.json({ unreadCount });
   } catch (error) {
     logger.error("Error counting unread messages:", error);
@@ -159,10 +160,10 @@ messageRouter.post("/api/messages/read", authenticate, async (req, res) => {
     await db
       .update(messages)
       .set({ isRead: true })
-      .where(
+      .where(and(
         eq(messages.recipientId, req.user.id),
         eq(messages.senderId, parseInt(senderId)),
-      );
+      ));
 
     return res.json({ success: true });
   } catch (error) {
@@ -180,7 +181,7 @@ messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, re
     const result = await db
       .select({
         senderId: messages.senderId,
-        count: db.fn.count(messages.id),
+        count: sql<number>`count(*)::integer`,
         sender: {
           id: users.id,
           username: users.username,
@@ -196,7 +197,8 @@ messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, re
       )
       .groupBy(messages.senderId, users.id, users.username, users.preferredName, users.avatar);
 
-    return res.json(result);
+    // Ensure proper response formatting
+    return res.json(result || []);
   } catch (error) {
     logger.error("Error fetching unread messages by sender:", error);
     return res.status(500).json({ message: "Failed to fetch unread messages by sender" });
