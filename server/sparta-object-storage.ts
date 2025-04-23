@@ -125,14 +125,23 @@ export class SpartaObjectStorage {
       const isMiscellaneousVideo = originalFilename.toLowerCase().includes('miscellaneous') || 
                                   (mimeType.startsWith('video/') && isVideoByExtension);
       
-      if (isMemoryVerse) {
+      // Always prioritize the passed isVideo flag if it's explicitly true
+      if (isVideo) {
+        console.log("Using explicit isVideo=true flag from caller");
+      } else if (isMemoryVerse) {
         isVideo = true;
         console.log("Detected memory verse video by filename:", originalFilename);
-      }
-      
-      if (isMiscellaneousVideo && isVideoByExtension) {
+      } else if (isMiscellaneousVideo && isVideoByExtension) {
         isVideo = true;
         console.log("Detected miscellaneous video by filename and/or extension:", originalFilename);
+      } else if (mimeType.startsWith('video/') || isVideoByExtension) {
+        // If file has video mime type or video extension, mark it as video
+        isVideo = true;
+        console.log("Detected video by MIME type or extension:", mimeType, fileExt);
+      } else if (originalFilename.toLowerCase().includes('video-message')) {
+        // Special case for video messages which might have incorrect mime types
+        isVideo = true;
+        console.log("Detected video-message by filename:", originalFilename);
       }
       
       // Either the mime type is in the allowed list OR it's a video file by extension/flag

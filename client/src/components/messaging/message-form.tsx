@@ -179,7 +179,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               video.src = url;
               video.preload = 'metadata';
               video.muted = true;
-              video.playsInLine = true;
+              video.playsInline = true;
               
               // Store the original video file in global window object for later use
               // This is needed to preserve the actual video file when sending

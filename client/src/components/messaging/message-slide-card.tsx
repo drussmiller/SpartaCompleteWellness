@@ -292,11 +292,14 @@ export function MessageSlideCard() {
             
             // Determine file extension based on mimetype
             let videoExt = '.mp4'; // Default extension
-            if (window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4')) {
+            let mimeType = window._SPARTA_ORIGINAL_VIDEO_FILE.type;
+            
+            if (mimeType.includes('mp4')) {
               videoExt = '.mp4';
-            } else if (window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') || 
-                      window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mov')) {
+            } else if (mimeType.includes('quicktime') || mimeType.includes('mov')) {
               videoExt = '.mov';
+              // Force it to be recognized as QuickTime/MOV
+              mimeType = 'video/quicktime';
             } else if (window._SPARTA_ORIGINAL_VIDEO_FILE.name) {
               // Use the original file extension if available
               const origExt = window._SPARTA_ORIGINAL_VIDEO_FILE.name.split('.').pop();
@@ -308,30 +311,53 @@ export function MessageSlideCard() {
             const uniqueFilename = `video-message-${timestamp}${videoExt}`;
             console.log('Sending video with filename:', uniqueFilename);
             
-            // Important: Clone the original file with a new name to preserve the correct extension
-            // This prevents the blob from being saved with the wrong type
-            const videoFile = new File(
-              [window._SPARTA_ORIGINAL_VIDEO_FILE], 
-              uniqueFilename, 
-              { 
-                type: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
-                lastModified: window._SPARTA_ORIGINAL_VIDEO_FILE.lastModified 
-              }
-            );
+            // Create a fresh blob from the file content to ensure proper typing
+            const fileReader = new FileReader();
             
-            // Attach renamed video file
-            formData.append('image', videoFile);
+            // We need to wrap the file processing in a promise to ensure it completes before moving on
+            const processedFile = await new Promise<File>((resolve) => {
+              fileReader.onloadend = () => {
+                // Create a new blob with explicit video MIME type
+                const videoBlob = new Blob([fileReader.result as ArrayBuffer], { type: mimeType });
+                
+                // Create a new file with the proper name and MIME type
+                const newVideoFile = new File([videoBlob], uniqueFilename, { 
+                  type: mimeType,
+                  lastModified: window._SPARTA_ORIGINAL_VIDEO_FILE?.lastModified || Date.now()
+                });
+                
+                resolve(newVideoFile);
+              };
+              
+              // Start reading the file - use null check to avoid error
+              if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
+                fileReader.readAsArrayBuffer(window._SPARTA_ORIGINAL_VIDEO_FILE);
+              } else {
+                // If for some reason the original file is missing, reject with an error
+                console.error('Original video file is missing');
+                // Create a fallback empty file with the right MIME type
+                const fallbackFile = new File([], uniqueFilename, { type: mimeType });
+                resolve(fallbackFile);
+              }
+            });
+            
+            // Attach processed video file with corrected metadata
+            formData.append('image', processedFile);
             
             // Set the is_video flag explicitly 
             console.log('Sending message with video flag set to true');
             formData.append('is_video', 'true');
             
+            // Add the video extension as an explicit field to help server-side processing
+            formData.append('video_extension', videoExt.substring(1)); // Remove the dot
+            
             // DEBUG: Add extra debugging info about the file
             console.log('Video file details:', {
               originalName: window._SPARTA_ORIGINAL_VIDEO_FILE.name,
-              size: window._SPARTA_ORIGINAL_VIDEO_FILE.size,
-              type: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
-              lastModified: window._SPARTA_ORIGINAL_VIDEO_FILE.lastModified,
+              originalType: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
+              size: processedFile.size,
+              newType: processedFile.type,
+              lastModified: processedFile.lastModified,
               generatedName: uniqueFilename
             });
           } else {

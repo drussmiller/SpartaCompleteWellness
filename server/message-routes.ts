@@ -97,6 +97,13 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
       isVideoFlag = true;
     }
 
+    // If we received a video_extension parameter, this is definitely a video
+    const videoExtension = req.body.video_extension;
+    if (videoExtension) {
+      isVideoFlag = true;
+      console.log(`Received explicit video_extension parameter: ${videoExtension}`);
+    }
+
     let mediaUrl = null;
     
     // Process file if present using SpartaObjectStorage
@@ -107,7 +114,8 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           originalname: req.file.originalname,
           path: req.file.path,
           mimetype: req.file.mimetype,
-          isVideo: isVideoFlag
+          isVideo: isVideoFlag,
+          videoExtension
         });
         
         // Determine if this is a video based on multiple indicators
@@ -116,18 +124,34 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
                                req.file.originalname.toLowerCase().endsWith('.mp4') ||
                                req.file.originalname.toLowerCase().endsWith('.webm') ||
                                req.file.originalname.toLowerCase().endsWith('.avi') ||
-                               req.file.originalname.toLowerCase().endsWith('.mkv');
+                               req.file.originalname.toLowerCase().endsWith('.mkv') ||
+                               (typeof videoExtension === 'string' && videoExtension.length > 0);
         
         // Final video determination - use the flag from the form data or the file characteristics
         const isVideo = isVideoFlag || isVideoMimetype || isVideoExtension;
         
-        logger.info(`Processing message media file with SpartaObjectStorage: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
+        // If this is a video but the MIME type doesn't reflect it, fix the MIME type
+        let mimeType = req.file.mimetype;
+        if (isVideo && !isVideoMimetype) {
+          if (videoExtension === 'mov' || req.file.originalname.toLowerCase().endsWith('.mov')) {
+            mimeType = 'video/quicktime';
+            console.log('Correcting MIME type to video/quicktime for MOV file');
+          } else if (videoExtension === 'mp4' || req.file.originalname.toLowerCase().endsWith('.mp4')) {
+            mimeType = 'video/mp4';
+            console.log('Correcting MIME type to video/mp4 for MP4 file');
+          } else {
+            mimeType = 'video/mp4'; // Default to mp4 if we can't determine the type
+            console.log('Using default video/mp4 MIME type for unknown video format');
+          }
+        }
+        
+        logger.info(`Processing message media file with SpartaObjectStorage: ${req.file.originalname}, type: ${mimeType}, isVideo: ${isVideo}`);
         
         // Store the file using SpartaObjectStorage - same approach that works for comment media
         const fileInfo = await spartaStorage.storeFile(
           req.file.path,
           req.file.originalname,
-          req.file.mimetype,
+          mimeType,
           isVideo // Pass the isVideo flag to ensure proper handling
         );
         
