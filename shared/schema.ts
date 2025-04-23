@@ -143,6 +143,7 @@ export const messages = pgTable("messages", {
   imageUrl: text("image_url"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  is_video: boolean("is_video").default(false),
 });
 
 // Add relations for messages
@@ -167,6 +168,7 @@ export const insertMessageSchema = createInsertSchema(messages)
   .extend({
     content: z.string().optional(),
     imageUrl: z.string().optional(),
+    is_video: z.boolean().optional().default(false),
   });
 
 // Add types
