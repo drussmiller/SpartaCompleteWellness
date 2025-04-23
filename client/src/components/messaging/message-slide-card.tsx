@@ -290,16 +290,39 @@ export function MessageSlideCard() {
             // If we have a video file, use the original video file, not the thumbnail
             console.log('Using ORIGINAL video file for upload with type:', window._SPARTA_ORIGINAL_VIDEO_FILE.type);
             
-            // Use original video file from our global stash with proper extension
-            const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' : 
-                            window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
+            // Determine file extension based on mimetype
+            let videoExt = '.mp4'; // Default extension
+            if (window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4')) {
+              videoExt = '.mp4';
+            } else if (window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') || 
+                      window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mov')) {
+              videoExt = '.mov';
+            } else if (window._SPARTA_ORIGINAL_VIDEO_FILE.name) {
+              // Use the original file extension if available
+              const origExt = window._SPARTA_ORIGINAL_VIDEO_FILE.name.split('.').pop();
+              if (origExt) videoExt = `.${origExt}`;
+            }
+            
+            // Create a unique filename with the right extension
+            const timestamp = Date.now();
+            const uniqueFilename = `video-message-${timestamp}${videoExt}`;
+            console.log('Sending video with filename:', uniqueFilename);
             
             // Attach original video with proper extension
-            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
+            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, uniqueFilename);
             
-            // Set the is_video flag
+            // Set the is_video flag explicitly
             console.log('Sending message with video flag set to true');
             formData.append('is_video', 'true');
+            
+            // DEBUG: Add extra debugging info about the file
+            console.log('Video file details:', {
+              originalName: window._SPARTA_ORIGINAL_VIDEO_FILE.name,
+              size: window._SPARTA_ORIGINAL_VIDEO_FILE.size,
+              type: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
+              lastModified: window._SPARTA_ORIGINAL_VIDEO_FILE.lastModified,
+              generatedName: uniqueFilename
+            });
           } else {
             // Normal image case - convert base64 to blob
             const response = await fetch(pastedImage);

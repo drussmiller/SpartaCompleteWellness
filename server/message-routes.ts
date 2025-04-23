@@ -113,12 +113,57 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         // For video files, direct file handling instead of using SpartaObjectStorage
         if (isVideoFlag) {
           try {
-            // Determine the appropriate extension
-            const originalExtension = path.extname(req.file.originalname).toLowerCase() || 
-                                  (req.file.mimetype.includes('mp4') ? '.mp4' : 
-                                   req.file.mimetype.includes('quicktime') ? '.mov' : '.mp4');
+            // Use the proper extension from the original filename or fallback to mimetype detection
+            let originalExtension = '';
             
-            // Create a unique filename with the correct extension
+            // First try to get the extension from the original filename
+            if (req.file.originalname.includes('.')) {
+              originalExtension = path.extname(req.file.originalname).toLowerCase();
+              console.log(`Found extension ${originalExtension} from original filename ${req.file.originalname}`);
+            } 
+            // If that fails, try to determine from mimetype
+            else if (req.file.mimetype.includes('mp4')) {
+              originalExtension = '.mp4';
+              console.log(`Determined extension ${originalExtension} from mimetype ${req.file.mimetype}`);
+            } else if (req.file.mimetype.includes('quicktime') || req.file.mimetype.includes('mov')) {
+              originalExtension = '.mov';
+              console.log(`Determined extension ${originalExtension} from mimetype ${req.file.mimetype}`);
+            } else {
+              // Default to .mp4 if we can't determine
+              originalExtension = '.mp4';
+              console.log(`Using default extension ${originalExtension} - could not determine from name or mimetype`);
+            }
+            
+            // Inspect the temp file to see what we're working with
+            let fileData = null;
+            try {
+              if (fs.existsSync(req.file.path)) {
+                const fileStats = fs.statSync(req.file.path);
+                const fileSizeInBytes = fileStats.size;
+                const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
+                
+                console.log(`Temp file stats:`, {
+                  path: req.file.path,
+                  size: `${fileSizeInMB.toFixed(2)}MB`,
+                  exists: true,
+                  isFile: fileStats.isFile()
+                });
+                
+                // Read the first few bytes to check the file header
+                const buffer = Buffer.alloc(16);
+                const fd = fs.openSync(req.file.path, 'r');
+                fs.readSync(fd, buffer, 0, 16, 0);
+                fs.closeSync(fd);
+                
+                console.log('File header (hex):', buffer.toString('hex'));
+              } else {
+                console.log('Temp file does not exist:', req.file.path);
+              }
+            } catch (inspectError) {
+              console.error('Error inspecting temp file:', inspectError);
+            }
+            
+            // Create a truly unique filename with timestamp, random component and the extension
             const uniqueTimestamp = Date.now();
             const uniqueId = Math.round(Math.random() * 1e9);
             const videoFilename = `message-video-${uniqueTimestamp}-${uniqueId}${originalExtension}`;
@@ -132,18 +177,46 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
               tempPath: req.file.path,
               destPath: videoDestPath,
               fileExists: fs.existsSync(req.file.path),
-              fileSize: fs.existsSync(req.file.path) ? fs.statSync(req.file.path).size : 'unknown'
+              fileSize: fs.existsSync(req.file.path) ? fs.statSync(req.file.path).size : 'unknown',
+              extension: originalExtension
             });
             
-            // Simple file copy instead of using the storage system
-            fs.copyFileSync(req.file.path, videoDestPath);
+            // Create a readable stream from the temp file and pipe it to the destination
+            // This might be more reliable than copyFileSync for some cases
+            const readStream = fs.createReadStream(req.file.path);
+            const writeStream = fs.createWriteStream(videoDestPath);
+            
+            // Return a promise that resolves when the copy is complete
+            await new Promise((resolve, reject) => {
+              readStream.on('error', (err) => {
+                console.error('Error reading from temp file:', err);
+                reject(err);
+              });
+              
+              writeStream.on('error', (err) => {
+                console.error('Error writing to destination file:', err);
+                reject(err);
+              });
+              
+              writeStream.on('finish', () => {
+                console.log('File copy stream completed successfully');
+                resolve(null);
+              });
+              
+              readStream.pipe(writeStream);
+            });
             
             // Verify the copy was successful
-            const newFileStats = fs.statSync(videoDestPath);
-            console.log(`Video file copied successfully to ${videoDestPath}, size: ${newFileStats.size} bytes`);
-            
-            // Set the mediaUrl to the path of the copied file
-            mediaUrl = `/uploads/${videoFilename}`;
+            if (fs.existsSync(videoDestPath)) {
+              const newFileStats = fs.statSync(videoDestPath);
+              console.log(`Video file copied successfully to ${videoDestPath}, size: ${newFileStats.size} bytes`);
+              
+              // Set the mediaUrl to the path of the copied file
+              mediaUrl = `/uploads/${videoFilename}`;
+            } else {
+              console.error(`Video file was not copied successfully to ${videoDestPath}`);
+              throw new Error('Failed to copy video file');
+            }
             
             // Create a simple thumbnail if needed
             const thumbnailFilename = `thumb-${videoFilename.replace(originalExtension, '.jpg')}`;
