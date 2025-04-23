@@ -37,6 +37,7 @@ export function MessageSlideCard() {
   const [messageText, setMessageText] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
+  const [isVideoFile, setIsVideoFile] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -186,11 +187,53 @@ export function MessageSlideCard() {
       if (items[i].type.indexOf('image') !== -1) {
         const blob = items[i].getAsFile();
         if (blob) {
+          setIsVideoFile(false); // Reset video flag on paste
           const reader = new FileReader();
           reader.onload = (e) => {
             setPastedImage(e.target?.result as string);
           };
           reader.readAsDataURL(blob);
+        }
+        break;
+      } else if (items[i].type.indexOf('video') !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          setIsVideoFile(true); // Set video flag for video file
+          // Create a URL for the video
+          const url = URL.createObjectURL(blob);
+          
+          // Create video element for thumbnail
+          const video = document.createElement('video');
+          video.src = url;
+          video.preload = 'metadata';
+          video.muted = true;
+          video.playsInline = true;
+          
+          // Generate thumbnail when metadata is loaded
+          video.onloadedmetadata = () => {
+            video.currentTime = 0.1;
+          };
+          
+          video.onseeked = () => {
+            try {
+              // Create canvas and draw video frame
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                // Save the thumbnail
+                const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                setPastedImage(thumbnailUrl);
+                console.log("Generated video thumbnail from pasted video");
+              }
+            } catch (error) {
+              console.error("Error generating thumbnail from pasted video:", error);
+            }
+          };
+          
+          video.load();
         }
         break;
       }
@@ -436,11 +479,14 @@ export function MessageSlideCard() {
                         // Convert base64 to blob
                         const response = await fetch(imageData);
                         const blob = await response.blob();
-                        formData.append('image', blob, 'pasted-image.png');
+                        
+                        // For videos, use proper filename extension to help server detection
+                        const fileExtension = isVideo || isVideoFile ? '.mp4' : '.png';
+                        formData.append('image', blob, `message-file${fileExtension}`);
                         
                         // Add isVideo flag to indicate if this is a video
                         // The server expects this as a string 'true'/'false' since FormData can only contain strings
-                        formData.append('is_video', isVideo ? 'true' : 'false');
+                        formData.append('is_video', (isVideo || isVideoFile) ? 'true' : 'false');
                       }
                       
                       formData.append('recipientId', selectedMember.id.toString());
