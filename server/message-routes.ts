@@ -112,13 +112,25 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         
         // For video files, we'll use SpartaObjectStorage which handles thumbnails correctly
         if (isVideoFlag) {
-          // Generate a filename that indicates this is for messaging
-          const messageVideoFilename = `message-video-${Date.now()}-${path.basename(req.file.originalname)}`;
+          // Generate a filename that indicates this is for messaging and preserves the file extension
+          const originalExtension = path.extname(req.file.originalname).toLowerCase() || 
+                                  (req.file.mimetype.includes('mp4') ? '.mp4' : 
+                                   req.file.mimetype.includes('quicktime') ? '.mov' : '.mp4');
+          
+          const messageVideoFilename = `message-video-${Date.now()}-${path.basename(req.file.path)}${originalExtension}`;
+          
+          console.log('Processing message video with detailed info:', {
+            originalFilename: req.file.originalname,
+            tempPath: req.file.path,
+            mimetype: req.file.mimetype,
+            generatedFilename: messageVideoFilename,
+            fileSize: fs.existsSync(req.file.path) ? fs.statSync(req.file.path).size : 'unknown'
+          });
           
           // Use SpartaObjectStorage for proper video handling
           const storedFile = await spartaStorage.storeFile(
             req.file.path, // Path to the temp file
-            messageVideoFilename, // A descriptive filename
+            messageVideoFilename, // A descriptive filename with extension
             req.file.mimetype, // The detected mimetype
             true // Mark as video explicitly
           );
@@ -126,6 +138,9 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           console.log('Successfully stored video file using SpartaObjectStorage:', {
             url: storedFile.url,
             thumbnailUrl: storedFile.thumbnailUrl,
+            originalFilename: req.file.originalname,
+            storedFilename: storedFile.filename,
+            mimetype: storedFile.mimeType,
             isVideo: true
           });
           
