@@ -87,11 +87,25 @@ export function MessageSlideCard() {
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch messages");
+          console.error('Response not OK:', response.status, response.statusText);
+          throw new Error(`Failed to fetch messages: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
         console.log('Messages response:', data);
+        console.log('Messages count:', data.length);
+        if (data.length > 0) {
+          console.log('First message sample:', {
+            id: data[0].id,
+            content: data[0].content,
+            senderId: data[0].senderId,
+            recipientId: data[0].recipientId,
+            hasImage: !!data[0].imageUrl || !!data[0].mediaUrl,
+            is_video: data[0].is_video,
+            createdAt: data[0].createdAt,
+            sender: data[0].sender
+          });
+        }
         return data;
       } catch (error) {
         console.error("Error fetching messages:", error);

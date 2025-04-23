@@ -190,7 +190,10 @@ messageRouter.post("/api/messages/read", authenticate, async (req, res) => {
 // Get messages between users - GENERIC ROUTE LAST
 messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    if (!req.user) {
+      console.log('Unauthorized request to get messages - no user in request');
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     const otherUserId = parseInt(req.params.userId);
     
@@ -208,6 +211,10 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
       .select()
       .from(messages);
     
+    console.log(`Building query for messages where: 
+      (senderId=${req.user.id} AND recipientId=${otherUserId}) OR 
+      (senderId=${otherUserId} AND recipientId=${req.user.id})`);
+    
     // Add the WHERE conditions using SQL string method to avoid issue with the builder
     const rawMessages = await messageQuery
       .where(
@@ -224,6 +231,19 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
       )
       .orderBy(messages.createdAt);
     
+    console.log(`Raw query returned ${rawMessages.length} messages`);
+    if (rawMessages.length > 0) {
+      console.log('Sample first message:', JSON.stringify({
+        id: rawMessages[0].id,
+        senderId: rawMessages[0].senderId,
+        recipientId: rawMessages[0].recipientId,
+        content: rawMessages[0].content?.substring(0, 20) + (rawMessages[0].content?.length > 20 ? '...' : ''),
+        hasImage: !!rawMessages[0].imageUrl,
+        is_video: rawMessages[0].is_video,
+        createdAt: rawMessages[0].createdAt
+      }));
+    }
+    
     // Get sender details for each message
     const messageList = [];
     for (const msg of rawMessages) {
@@ -238,6 +258,7 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
           false;
       }
       
+      console.log(`Getting sender info for message ${msg.id} from user ${msg.senderId}`);
       const [senderInfo] = await db
         .select({
           id: users.id,
@@ -247,15 +268,21 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
         })
         .from(users)
         .where(eq(users.id, msg.senderId));
+      
+      if (!senderInfo) {
+        console.log(`WARNING: No sender info found for user ${msg.senderId}`);
+      } else {
+        console.log(`Found sender: ${senderInfo.username} (${senderInfo.id})`);
+      }
         
       messageList.push({
         ...msg,
         is_video: isVideo,
-        sender: senderInfo
+        sender: senderInfo || { id: msg.senderId, username: 'Unknown User' }
       });
     }
     
-    console.log(`Found ${messageList.length} messages`);
+    console.log(`Found ${messageList.length} messages with sender info`);
     return res.json(messageList);
   } catch (error) {
     console.error("DETAILED ERROR fetching messages:", error);
