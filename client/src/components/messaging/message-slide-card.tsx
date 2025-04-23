@@ -12,6 +12,18 @@ import { Post, User } from "@shared/schema";
 import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 
+// Extend the Window interface to include our custom property
+declare global {
+  interface Window {
+    _SPARTA_ORIGINAL_VIDEO_FILE: File | null;
+  }
+}
+
+// Initialize the custom property
+if (typeof window !== 'undefined') {
+  window._SPARTA_ORIGINAL_VIDEO_FILE = null;
+}
+
 // Custom Message interface that includes both field name variations
 interface Message {
   id: number;
@@ -198,11 +210,18 @@ export function MessageSlideCard() {
       } else if (items[i].type.indexOf('video') !== -1) {
         const blob = items[i].getAsFile();
         if (blob) {
+          // Store the original video file
           setIsVideoFile(true); // Set video flag for video file
+          console.log("Video detected with type:", blob.type);
+          
+          // IMPORTANT: Store the original file in a state variable we can access later
+          // We need to save this as a special property to reference later
+          window._SPARTA_ORIGINAL_VIDEO_FILE = blob;
+          
           // Create a URL for the video
           const url = URL.createObjectURL(blob);
           
-          // Create video element for thumbnail
+          // For thumbnail preview only
           const video = document.createElement('video');
           video.src = url;
           video.preload = 'metadata';
@@ -216,17 +235,23 @@ export function MessageSlideCard() {
           
           video.onseeked = () => {
             try {
-              // Create canvas and draw video frame
+              // Create canvas and draw video frame for PREVIEW only
               const canvas = document.createElement('canvas');
               canvas.width = video.videoWidth;
               canvas.height = video.videoHeight;
               const ctx = canvas.getContext('2d');
               if (ctx) {
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                // Save the thumbnail
+                // Save the thumbnail just for display
                 const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
                 setPastedImage(thumbnailUrl);
-                console.log("Generated video thumbnail from pasted video");
+                console.log("Generated video thumbnail for preview only");
+                
+                // Display toast to confirm video is attached
+                toast({
+                  description: `Video attached (${(blob.size / (1024 * 1024)).toFixed(2)}MB)`,
+                  duration: 2000,
+                });
               }
             } catch (error) {
               console.error("Error generating thumbnail from pasted video:", error);
@@ -259,22 +284,32 @@ export function MessageSlideCard() {
           formData.append('content', messageText.trim());
         }
 
-        // Add image if present
+        // Add image/video if present
         if (pastedImage) {
-          // Convert base64 to blob
-          const response = await fetch(pastedImage);
-          const blob = await response.blob();
-          
-          // Determine file extension by checking if it's a video
-          const fileName = isVideoFile ? 'video-message.mp4' : 'pasted-image.png';
-          
-          // Attach the file with the proper name
-          formData.append('image', blob, fileName);
-          
-          // Important! Add the is_video flag if this is a video file
-          if (isVideoFile) {
+          if (isVideoFile && window._SPARTA_ORIGINAL_VIDEO_FILE) {
+            // If we have a video file, use the original video file, not the thumbnail
+            console.log('Using ORIGINAL video file for upload with type:', window._SPARTA_ORIGINAL_VIDEO_FILE.type);
+            
+            // Use original video file from our global stash with proper extension
+            const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' : 
+                            window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
+            
+            // Attach original video with proper extension
+            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
+            
+            // Set the is_video flag
             console.log('Sending message with video flag set to true');
             formData.append('is_video', 'true');
+          } else {
+            // Normal image case - convert base64 to blob
+            const response = await fetch(pastedImage);
+            const blob = await response.blob();
+            
+            // Attach image file with .png extension
+            formData.append('image', blob, 'pasted-image.png');
+            
+            // Add is_video flag as false explicitly
+            formData.append('is_video', 'false');
           }
         }
 
@@ -308,8 +343,18 @@ export function MessageSlideCard() {
       // Invalidate both messages and unread count queries
       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
+      
+      // Clean up stored states
       setMessageText("");
       setPastedImage(null);
+      setIsVideoFile(false);
+      
+      // Clear the stored video file
+      if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
+        console.log("Clearing stored video file after successful send");
+        window._SPARTA_ORIGINAL_VIDEO_FILE = null;
+      }
+      
       toast({
         description: "Message sent successfully",
       });
@@ -492,19 +537,31 @@ export function MessageSlideCard() {
                         formData.append('content', content.trim());
                       }
                       
-                      // Add image if present
+                      // Add image/video if present
                       if (imageData) {
-                        // Convert base64 to blob
-                        const response = await fetch(imageData);
-                        const blob = await response.blob();
-                        
-                        // For videos, use proper filename extension to help server detection
-                        const fileExtension = isVideo || isVideoFile ? '.mp4' : '.png';
-                        formData.append('image', blob, `message-file${fileExtension}`);
-                        
-                        // Add isVideo flag to indicate if this is a video
-                        // The server expects this as a string 'true'/'false' since FormData can only contain strings
-                        formData.append('is_video', (isVideo || isVideoFile) ? 'true' : 'false');
+                        // Check if we have a saved video file to use
+                        if ((isVideo || isVideoFile) && window._SPARTA_ORIGINAL_VIDEO_FILE) {
+                          // Use the original video file we saved
+                          console.log('MessageForm using original video file for upload with type:', 
+                                     window._SPARTA_ORIGINAL_VIDEO_FILE.type);
+                          
+                          // Determine appropriate extension based on MIME type
+                          const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' : 
+                                        window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
+                          
+                          // Attach the video with proper extension
+                          formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
+                          
+                          // Set is_video flag
+                          formData.append('is_video', 'true');
+                        } else {
+                          // Standard image handling
+                          const response = await fetch(imageData);
+                          const blob = await response.blob();
+                          
+                          formData.append('image', blob, 'pasted-image.png');
+                          formData.append('is_video', 'false');
+                        }
                       }
                       
                       formData.append('recipientId', selectedMember.id.toString());
@@ -529,6 +586,13 @@ export function MessageSlideCard() {
                       // Clear the form on success
                       setMessageText("");
                       setPastedImage(null);
+                      setIsVideoFile(false);
+                      
+                      // Clear the stored video file
+                      if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
+                        console.log("Clearing stored video file after successful send");
+                        window._SPARTA_ORIGINAL_VIDEO_FILE = null;
+                      }
                       
                       // Update queries to show the new message
                       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
