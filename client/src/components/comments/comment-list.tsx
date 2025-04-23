@@ -34,7 +34,14 @@ type CommentWithReplies = Post & {
 };
 
 export function CommentList({ comments: initialComments, postId, onVisibilityChange }: CommentListProps) {
-  const [comments, setComments] = useState(initialComments);
+  // Sort the initial comments by creation date (oldest first)
+  const sortedInitialComments = [...initialComments].sort((a, b) => {
+    const dateA = new Date(a.createdAt || 0);
+    const dateB = new Date(b.createdAt || 0);
+    return dateA.getTime() - dateB.getTime();
+  });
+  
+  const [comments, setComments] = useState(sortedInitialComments);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
