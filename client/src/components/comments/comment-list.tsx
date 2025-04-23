@@ -58,33 +58,40 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       formData.append('data', JSON.stringify({
         content: data.content.trim(),
         parentId: replyingTo,
-        depth: (replyingToComment?.depth ?? 0) + 1,
-        type: "comment",
-        points: 0
+        postId: postId,
+        type: 'comment'
       }));
+
       if (data.file) {
-        formData.append('file', data.file);
+        formData.append('image', data.file);
       }
 
-      const res = await fetch("/api/posts/comments", {
-        method: "POST",
+      const res = await fetch('/api/posts/comments', {
+        method: 'POST',
         body: formData,
-        credentials: "include",
+        credentials: 'include'
       });
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Failed to post reply:", errorText);
-        throw new Error(`Failed to post reply: ${errorText}`);
+        throw new Error(errorText || "Failed to post reply");
       }
 
-      const json = await res.json();
-      return json;
+      return res.json();
     },
-    onSuccess: (newReply) => {
+    onSuccess: (_data, _variables, context) => {
+      // Extract the parentCommentId from context (if needed)
       const repliedToCommentId = replyingTo;
-      setReplyingTo(null);
 
+      // Reset states
+      setReplyingTo(null);
+      
+      // Signal to parent that we're no longer replying
+      if (onVisibilityChange) {
+        onVisibilityChange(false, false);
+      }
+
+      // Refresh comments to include the new reply
       fetch(`/api/posts/comments/${postId}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -98,11 +105,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       })
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
-          // Sort comments by creation date (oldest first)
+          // Sort comments by creation date (oldest first to display newest at bottom)
           const sortedComments = [...refreshedComments].sort((a, b) => {
             const dateA = new Date(a.createdAt || 0);
             const dateB = new Date(b.createdAt || 0);
-            return dateA.getTime() - dateB.getTime();
+            return dateA.getTime() - dateB.getTime(); // Keep ascending order to show newest at bottom
           });
           setComments(sortedComments);
           queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
@@ -138,54 +145,44 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const editCommentMutation = useMutation({
     mutationFn: async ({ id, content }: { id: number; content: string }) => {
       if (!content.trim()) {
-        throw new Error("Comment content cannot be empty");
+        throw new Error("Comment cannot be empty");
       }
-
-      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        content: content.trim()
+      
+      const res = await fetch(`/api/posts/comments/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+        credentials: 'include'
       });
-
+      
       if (!res.ok) {
-        throw new Error("Failed to update comment");
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to update comment");
       }
-
+      
       return res.json();
     },
-    onSuccess: (updatedComment) => {
-      fetch(`/api/posts/comments/${postId}`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        credentials: 'include'
-      })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Error refreshing comments: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(refreshedComments => {
-        if (Array.isArray(refreshedComments)) {
-          // Sort comments by creation date (oldest first)
-          const sortedComments = [...refreshedComments].sort((a, b) => {
-            const dateA = new Date(a.createdAt || 0);
-            const dateB = new Date(b.createdAt || 0);
-            return dateA.getTime() - dateB.getTime();
-          });
-          setComments(sortedComments);
-          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
-        }
-      })
-      .catch(err => {
-        console.error("Error refreshing comments after edit:", err);
-      });
-
+    onSuccess: (data) => {
+      // Update the comments state with the edited comment
+      const updatedComments = comments.map(comment => 
+        comment.id === data.id ? { ...comment, content: data.content } : comment
+      );
+      
+      setComments(updatedComments);
       setEditingComment(null);
+      
+      // Signal to parent that we're no longer editing
+      if (onVisibilityChange) {
+        onVisibilityChange(false, false);
+      }
+      
       toast({
         description: "Comment updated successfully",
       });
     },
     onError: (error: Error) => {
-      console.error("Edit mutation error:", error);
       toast({
         variant: "destructive",
         description: error.message || "Failed to update comment",
@@ -195,8 +192,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: number) => {
-      if (!user?.id) throw new Error("You must be logged in to delete a comment");
-      const res = await apiRequest("DELETE", `/api/posts/comments/${commentId}`);
+      const res = await fetch(`/api/posts/comments/${commentId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(errorText || "Failed to delete comment");
@@ -217,11 +217,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       })
       .then(refreshedComments => {
         if (Array.isArray(refreshedComments)) {
-          // Sort comments by creation date (oldest first)
+          // Sort comments by creation date (oldest first to display newest at bottom)
           const sortedComments = [...refreshedComments].sort((a, b) => {
             const dateA = new Date(a.createdAt || 0);
             const dateB = new Date(b.createdAt || 0);
-            return dateA.getTime() - dateB.getTime();
+            return dateA.getTime() - dateB.getTime(); // Keep ascending order to show newest at bottom
           });
           setComments(sortedComments);
           queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
@@ -248,266 +248,203 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     },
   });
 
-  const handleCopyComment = (content: string) => {
-    navigator.clipboard.writeText(content);
-    toast({
-      description: "Comment copied to clipboard",
-    });
-  };
+  // Find the comment we're editing
+  const editingCommentObj = comments.find(c => c.id === editingComment);
 
-  const commentMap: Record<number, CommentWithReplies> = {};
-  comments.forEach(comment => {
-    commentMap[comment.id] = { ...comment, replies: [] };
-  });
-
-  const topLevelComments: CommentWithReplies[] = [];
-
-  comments.forEach(comment => {
-    const commentWithReplies = commentMap[comment.id];
-
-    if (comment.parentId === postId) {
-      topLevelComments.push(commentWithReplies);
-    } else if (comment.parentId && commentMap[comment.parentId]) {
-      commentMap[comment.parentId].replies.push(commentWithReplies);
-    } else if (comment.parentId) {
-      console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
-      topLevelComments.push(commentWithReplies);
+  // This effect is for handling showing/hiding the form when replying or editing
+  useEffect(() => {
+    if (onVisibilityChange) {
+      onVisibilityChange(Boolean(editingComment), Boolean(replyingTo));
     }
-  });
+  }, [editingComment, replyingTo, onVisibilityChange]);
 
-  const threadedComments = topLevelComments;
-
-  const formatTimeAgo = (dateString: string | Date) => {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 24) {
-      return `${diffInHours}h`;
-    }
-    return `${Math.floor(diffInHours / 24)}d`;
-  };
-
-  const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
-    const isOwnComment = user?.id === comment.author?.id;
-    const isReplying = replyingTo === comment.id;
-
-    return (
-      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-        <div className="flex items-start gap-4">
-          <Avatar>
-            <AvatarImage
-              src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
-            />
-            <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 flex flex-col gap-2">
-            <Card
-              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
-              onClick={() => {
-                setSelectedComment(comment.id);
-                setIsActionsOpen(true);
-              }}
-            >
-              {depth > 0 && (
-                <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
-              )}
-              <CardContent className="pt-3 px-4 pb-3">
-                <div className="flex justify-between">
-                  <p className="font-medium">{comment.author?.username}</p>
-                </div>
-                <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
-
-                {/* Display media if present */}
-                {comment.mediaUrl && !comment.is_video && (
-                  <div className="mt-2">
-                    <img 
-                      src={comment.mediaUrl} 
-                      alt="Comment image" 
-                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                    />
-                  </div>
-                )}
-                {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2">
-                    <VideoPlayer
-                      src={comment.mediaUrl}
-                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                      onError={(error) => console.error("Error loading comment video:", error)}
-                    />
-                  </div>
-                )}
-
-                <div className="mt-2 flex justify-end">
-                  <ReactionSummary postId={comment.id} />
-                </div>
-              </CardContent>
-            </Card>
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-muted-foreground">
-                {formatTimeAgo(comment.createdAt || new Date())}
-              </p>
-              <ReactionButton
-                postId={comment.id}
-                variant="text"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`p-1 h-7 text-sm ${isReplying ? 'bg-gray-200 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setReplyingTo(isReplying ? null : comment.id);
-                }}
-              >
-                {isReplying ? 'Cancel Reply' : 'Reply'}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {comment.replies?.map((reply) => (
-          <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
-        ))}
-
-        {editingComment === comment.id && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999999]" style={{ zIndex: 2147483647, transform: 'translateZ(0)' }}>
-            <div className="flex items-center mb-2">
-              <p className="text-sm text-muted-foreground">
-                Edit comment
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-2"
-                onClick={() => setEditingComment(null)}
-              >
-                Cancel
-              </Button>
-            </div>
-            <CommentForm
-              onSubmit={async (content) => {
-                await editCommentMutation.mutateAsync({ id: comment.id, content });
-              }}
-              isSubmitting={editCommentMutation.isPending}
-              defaultValue={comment.content || ""}
-              onCancel={() => setEditingComment(null)}
-              inputRef={editInputRef}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
-    for (const comment of comments) {
-      if (comment.id === selectedComment) return comment;
-      if (comment.replies) {
-        const found = findSelectedComment(comment.replies);
-        if (found) return found;
-      }
-    }
-    return undefined;
-  };
-
-  const selectedCommentData = findSelectedComment(threadedComments);
-
+  // This effect is to focus the input field when replying
   useEffect(() => {
     if (replyingTo && replyInputRef.current) {
       replyInputRef.current.focus();
     }
+  }, [replyingTo]);
+
+  // This effect is to focus the input field when editing
+  useEffect(() => {
     if (editingComment && editInputRef.current) {
       editInputRef.current.focus();
     }
-    onVisibilityChange?.(editingComment !== null, replyingTo !== null);
-  }, [replyingTo, editingComment, onVisibilityChange]);
+  }, [editingComment]);
+
+  // Update local state when initialComments change
+  useEffect(() => {
+    // Sort by date (oldest first)
+    const sortedComments = [...initialComments].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateA.getTime() - dateB.getTime();
+    });
+    setComments(sortedComments);
+  }, [initialComments]);
+
+  // Function to toggle reply mode
+  const handleReply = (commentId: number) => {
+    if (replyingTo === commentId) {
+      setReplyingTo(null);
+    } else {
+      setReplyingTo(commentId);
+      setEditingComment(null);
+    }
+  };
+
+  // Function to toggle edit mode
+  const handleEdit = (commentId: number) => {
+    if (editingComment === commentId) {
+      setEditingComment(null);
+    } else {
+      setEditingComment(commentId);
+      setReplyingTo(null);
+    }
+  };
+
+  // Function to show delete confirmation
+  const handleDelete = (commentId: number) => {
+    setCommentToDelete(commentId);
+    setShowDeleteAlert(true);
+  };
 
   return (
-    <>
-      <div className="space-y-4 w-full">
-        {threadedComments.map((comment) => (
-          <CommentCard key={comment.id} comment={comment} />
-        ))}
-      </div>
-
-      {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ position: 'fixed', bottom: '0', zIndex: 2147483647, transform: 'translateZ(0)', height: 'auto', minHeight: '120px' }}>
-          <div className="flex items-center mb-2">
-            <p className="text-sm text-muted-foreground">
-              Replying to {replyingToComment.author?.username}
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-2"
-              onClick={() => setReplyingTo(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-          <CommentForm
-            onSubmit={async (data) => {
-              await createReplyMutation.mutateAsync(data);
-              if (replyInputRef.current) {
-                replyInputRef.current.value = '';
-              }
-            }}
-            isSubmitting={createReplyMutation.isPending}
-            placeholder={`Reply to ${replyingToComment.author?.username}...`}
-            inputRef={replyInputRef}
-            onCancel={() => setReplyingTo(null)}
-            key={`reply-form-${replyingTo}`}
-          />
+    <div className="space-y-4">
+      {comments.map((comment) => (
+        <div key={comment.id} className="mb-4 relative">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-2">
+                <Avatar className="h-8 w-8 bg-slate-200">
+                  <AvatarImage src={comment.author?.avatar || ''} alt={comment.author?.username || 'User'} />
+                  <AvatarFallback>{comment.author?.username?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-1">
+                  <div className="flex justify-between">
+                    <div className="font-medium text-sm">{comment.author?.preferredName || comment.author?.username || 'Anonymous'}</div>
+                    {user?.id === comment.author?.id && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 px-2 text-muted-foreground"
+                        onClick={() => {
+                          setSelectedComment(comment.id);
+                          setIsActionsOpen(true);
+                        }}
+                      >
+                        •••
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {editingComment === comment.id ? (
+                    <CommentForm 
+                      onSubmit={(content, file) => {
+                        editCommentMutation.mutate({ 
+                          id: comment.id, 
+                          content: content 
+                        });
+                      }}
+                      initialContent={comment.content || ''}
+                      isSubmitting={editCommentMutation.isPending}
+                      onCancel={() => setEditingComment(null)}
+                      inputRef={editInputRef}
+                      isEditMode={true}
+                    />
+                  ) : (
+                    <>
+                      <div className="text-sm">
+                        {comment.content}
+                      </div>
+                      
+                      {comment.imageUrl && (
+                        <div className="mt-2">
+                          {comment.is_video ? (
+                            <VideoPlayer
+                              src={comment.imageUrl}
+                              className="rounded-md max-h-[200px] object-contain"
+                            />
+                          ) : (
+                            <img 
+                              src={comment.imageUrl} 
+                              alt="Comment attachment" 
+                              className="rounded-md max-h-[200px] object-contain" 
+                            />
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center mt-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-muted-foreground"
+                          onClick={() => handleReply(comment.id)}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          Reply
+                        </Button>
+                        
+                        <div className="flex ml-auto">
+                          <ReactionButton postId={comment.id} type="like" />
+                          <ReactionButton postId={comment.id} type="clap" />
+                          <ReactionButton postId={comment.id} type="pray" />
+                        </div>
+                      </div>
+                      
+                      <ReactionSummary postId={comment.id} />
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {replyingTo === comment.id && (
+            <div className="ml-8 mt-2">
+              <CommentForm 
+                onSubmit={(content, file) => createReplyMutation.mutate({ content, file })}
+                isSubmitting={createReplyMutation.isPending}
+                onCancel={() => setReplyingTo(null)}
+                placeholder={`Reply to ${comment.author?.preferredName || comment.author?.username || 'comment'}...`}
+                inputRef={replyInputRef}
+              />
+            </div>
+          )}
         </div>
-      )}
-
-      {selectedCommentData && (
-        <CommentActionsDrawer
-          isOpen={isActionsOpen}
-          onClose={() => {
-            setIsActionsOpen(false);
-            setSelectedComment(null);
-          }}
-          onReply={() => {
-            setReplyingTo(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onEdit={() => {
-            setEditingComment(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onDelete={() => {
-            setCommentToDelete(selectedComment);
-            setShowDeleteAlert(true);
-            setIsActionsOpen(false);
-          }}
-          onCopy={() => handleCopyComment(selectedCommentData.content || "")}
-          canEdit={user?.id === selectedCommentData.author?.id}
-          canDelete={user?.id === selectedCommentData.author?.id}
-        />
-      )}
-
+      ))}
+      
+      <CommentActionsDrawer 
+        isOpen={isActionsOpen} 
+        onOpenChange={setIsActionsOpen}
+        onEdit={() => {
+          setIsActionsOpen(false);
+          if (selectedComment) handleEdit(selectedComment);
+        }}
+        onDelete={() => {
+          setIsActionsOpen(false);
+          if (selectedComment) handleDelete(selectedComment);
+        }}
+      />
+      
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent className="z-[99999]">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure you want to delete this comment?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your comment and remove it from our servers.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowDeleteAlert(false);
-                setCommentToDelete(null);
-              }}
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteAlert(false)}
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
+            <Button 
+              variant="destructive" 
               onClick={() => {
                 if (commentToDelete) {
                   deleteCommentMutation.mutate(commentToDelete);
@@ -520,6 +457,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

@@ -191,10 +191,10 @@ messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, re
       })
       .from(messages)
       .leftJoin(users, eq(messages.senderId, users.id))
-      .where(
+      .where(and(
         eq(messages.recipientId, req.user.id),
         eq(messages.isRead, false)
-      )
+      ))
       .groupBy(messages.senderId, users.id, users.username, users.preferredName, users.avatar);
 
     // Ensure proper response formatting
