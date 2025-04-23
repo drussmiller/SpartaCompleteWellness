@@ -425,9 +425,8 @@ export function MessageSlideCard() {
                         formData.append('image', blob, 'pasted-image.png');
                         
                         // Add isVideo flag to indicate if this is a video
-                        if (isVideo) {
-                          formData.append('is_video', 'true');
-                        }
+                        // The server expects this as a string 'true'/'false' since FormData can only contain strings
+                        formData.append('is_video', isVideo ? 'true' : 'false');
                       }
                       
                       formData.append('recipientId', selectedMember.id.toString());
