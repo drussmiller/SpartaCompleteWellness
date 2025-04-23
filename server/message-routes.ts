@@ -216,10 +216,16 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
     // Get sender details for each message
     const messageList = [];
     for (const msg of rawMessages) {
-      // Check if the imageUrl ends with common video extensions to add is_video flag
-      const isVideo = msg.imageUrl ? 
-        /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(msg.imageUrl) : 
-        false;
+      // Use the is_video flag from the database if available, otherwise fall back to extension detection
+      let isVideo = msg.is_video;
+      
+      // For backward compatibility with older messages that don't have the is_video field
+      if (isVideo === undefined || isVideo === null) {
+        // Check if the imageUrl ends with common video extensions
+        isVideo = msg.imageUrl ? 
+          /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(msg.imageUrl) : 
+          false;
+      }
       
       const [senderInfo] = await db
         .select({
