@@ -81,19 +81,15 @@ messageRouter.get("/api/messages/unread/count", authenticate, async (req, res) =
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
     // Count unread messages for this user
-    const [result] = await db
-      .select({
-        count: db.fn.count(messages.id),
-      })
-      .from(messages)
-      .where(
-        eq(messages.recipientId, req.user.id),
-        eq(messages.isRead, false)
-      );
+    const result = await db.select().from(messages)
+      .where(eq(messages.recipientId, req.user.id))
+      .where(eq(messages.isRead, false));
 
-    const unreadCount = Number(result?.count || 0);
+    const unreadCount = result.length;
+    console.log(`Found ${unreadCount} unread messages for user ${req.user.id}`);
     return res.json({ unreadCount });
   } catch (error) {
+    console.error("DETAILED ERROR counting unread messages:", error);
     logger.error("Error counting unread messages:", error);
     return res.status(500).json({ message: "Failed to count unread messages" });
   }
@@ -104,28 +100,49 @@ messageRouter.get("/api/messages/unread/by-sender", authenticate, async (req, re
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-    // Get count of unread messages grouped by sender
-    const result = await db
+    console.log(`Getting unread messages by sender for user ${req.user.id}`);
+    
+    // First, get all unread messages
+    const unreadMessages = await db
       .select({
         senderId: messages.senderId,
-        count: db.fn.count(messages.id),
-        sender: {
+      })
+      .from(messages)
+      .where(eq(messages.recipientId, req.user.id))
+      .where(eq(messages.isRead, false));
+    
+    // Group by sender
+    const senderCounts = {};
+    for (const msg of unreadMessages) {
+      senderCounts[msg.senderId] = (senderCounts[msg.senderId] || 0) + 1;
+    }
+    
+    // Get sender details
+    const result = [];
+    for (const senderId of Object.keys(senderCounts)) {
+      const [sender] = await db
+        .select({
           id: users.id,
           username: users.username,
           preferredName: users.preferredName,
-          avatar: users.avatar,
-        },
-      })
-      .from(messages)
-      .leftJoin(users, eq(messages.senderId, users.id))
-      .where(
-        eq(messages.recipientId, req.user.id),
-        eq(messages.isRead, false)
-      )
-      .groupBy(messages.senderId, users.id, users.username, users.preferredName, users.avatar);
-
+          imageUrl: users.imageUrl,
+        })
+        .from(users)
+        .where(eq(users.id, parseInt(senderId)));
+        
+      if (sender) {
+        result.push({
+          senderId: parseInt(senderId),
+          count: senderCounts[senderId],
+          sender
+        });
+      }
+    }
+    
+    console.log(`Found ${result.length} senders with unread messages`);
     return res.json(result);
   } catch (error) {
+    console.error("DETAILED ERROR fetching unread messages by sender:", error);
     logger.error("Error fetching unread messages by sender:", error);
     return res.status(500).json({ message: "Failed to fetch unread messages by sender" });
   }
@@ -164,40 +181,67 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
     const otherUserId = parseInt(req.params.userId);
+    
+    // Added detailed debug logging
+    console.log(`Fetching messages between user ${req.user.id} and user ${otherUserId}`);
+    
+    // Validate the userId is a valid number
+    if (isNaN(otherUserId)) {
+      console.log(`Invalid userId: ${req.params.userId} is not a number`);
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
 
-    // Get messages between these two users
-    const messageList = await db
-      .select({
-        id: messages.id,
-        senderId: messages.senderId,
-        recipientId: messages.recipientId,
-        content: messages.content,
-        imageUrl: messages.imageUrl,
-        isRead: messages.isRead,
-        createdAt: messages.createdAt,
-        is_video: messages.is_video,
-        sender: {
-          id: users.id,
-          username: users.username,
-          preferredName: users.preferredName,
-          avatar: users.avatar,
-        },
-      })
+    // Get all messages between these two users
+    const rawMessages = await db
+      .select()
       .from(messages)
-      .leftJoin(users, eq(messages.senderId, users.id))
       .where(
         // Either messages sent by current user to the other user
         // or messages sent by the other user to the current user
-        eq(
-          true,
-          eq(messages.senderId, req.user.id) && eq(messages.recipientId, otherUserId) ||
-          eq(messages.senderId, otherUserId) && eq(messages.recipientId, req.user.id)
-        )
+        (builder) => 
+          builder
+            .where((subBuilder) => 
+              subBuilder
+                .where(eq(messages.senderId, req.user.id))
+                .where(eq(messages.recipientId, otherUserId))
+            )
+            .orWhere((subBuilder) => 
+              subBuilder
+                .where(eq(messages.senderId, otherUserId))
+                .where(eq(messages.recipientId, req.user.id))
+            )
       )
       .orderBy(messages.createdAt);
-
+    
+    // Get sender details for each message
+    const messageList = [];
+    for (const msg of rawMessages) {
+      // Check if the imageUrl ends with common video extensions to add is_video flag
+      const isVideo = msg.imageUrl ? 
+        /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(msg.imageUrl) : 
+        false;
+      
+      const [senderInfo] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          preferredName: users.preferredName,
+          imageUrl: users.imageUrl,
+        })
+        .from(users)
+        .where(eq(users.id, msg.senderId));
+        
+      messageList.push({
+        ...msg,
+        is_video: isVideo,
+        sender: senderInfo
+      });
+    }
+    
+    console.log(`Found ${messageList.length} messages`);
     return res.json(messageList);
   } catch (error) {
+    console.error("DETAILED ERROR fetching messages:", error);
     logger.error("Error fetching messages:", error);
     return res.status(500).json({ message: "Failed to fetch messages" });
   }
