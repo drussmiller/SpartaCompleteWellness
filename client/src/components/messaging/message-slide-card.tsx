@@ -353,8 +353,8 @@ export function MessageSlideCard() {
             
             // DEBUG: Add extra debugging info about the file
             console.log('Video file details:', {
-              originalName: window._SPARTA_ORIGINAL_VIDEO_FILE.name,
-              originalType: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
+              originalName: window._SPARTA_ORIGINAL_VIDEO_FILE?.name || 'unknown',
+              originalType: window._SPARTA_ORIGINAL_VIDEO_FILE?.type || 'unknown',
               size: processedFile.size,
               newType: processedFile.type,
               lastModified: processedFile.lastModified,

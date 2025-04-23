@@ -103,14 +103,38 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     try {
       if (!content.trim() && !pastedImage) return;
       
-      // Pass the isVideo flag if it's a video file
-      const isVideo = selectedFile?.type.startsWith('video/') || false;
-      await onSubmit(content, pastedImage, isVideo);
+      // Determine if this is a video file
+      const isVideoBySelectedFile = selectedFile?.type.startsWith('video/') || false;
+      // Check for video file in the global window object (set earlier when capturing video preview)
+      const hasStoredVideoFile = !!(window as any)._SPARTA_ORIGINAL_VIDEO_FILE;
+      
+      // Pass the appropriate isVideo flag
+      const finalIsVideo = isVideo || isVideoBySelectedFile || hasStoredVideoFile;
+      
+      // Check if we're trying to send a video but the global variable is missing
+      if (finalIsVideo && !(window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+        console.warn("Trying to send a video message but the original video file is missing.");
+        // Still proceed, but log a warning
+        console.log("Will attempt to send message without the original video file");
+      }
+      
+      console.log("Submitting message with isVideo:", finalIsVideo, 
+                 "hasStoredVideo:", hasStoredVideoFile,
+                 "originalVideoSize:", (window as any)._SPARTA_ORIGINAL_VIDEO_FILE?.size || 'N/A');
+      
+      await onSubmit(content, pastedImage, finalIsVideo);
 
       // Reset state
       setContent('');
       setPastedImage(null);
       setSelectedFile(null); // Reset selected file
+      setIsVideo(false); // Reset isVideo flag
+      
+      // Clear the global stored video file reference
+      if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+        console.log("Clearing original video file reference after successful submission");
+        (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
+      }
 
       // Force a re-render to reset the textarea and container
       requestAnimationFrame(() => {
@@ -126,6 +150,11 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       });
     } catch (error) {
       console.error('Error submitting message:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
+        variant: "destructive",
+      });
     }
   };
 
