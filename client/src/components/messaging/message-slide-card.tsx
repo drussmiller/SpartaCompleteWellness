@@ -308,10 +308,21 @@ export function MessageSlideCard() {
             const uniqueFilename = `video-message-${timestamp}${videoExt}`;
             console.log('Sending video with filename:', uniqueFilename);
             
-            // Attach original video with proper extension
-            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, uniqueFilename);
+            // Important: Clone the original file with a new name to preserve the correct extension
+            // This prevents the blob from being saved with the wrong type
+            const videoFile = new File(
+              [window._SPARTA_ORIGINAL_VIDEO_FILE], 
+              uniqueFilename, 
+              { 
+                type: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
+                lastModified: window._SPARTA_ORIGINAL_VIDEO_FILE.lastModified 
+              }
+            );
             
-            // Set the is_video flag explicitly
+            // Attach renamed video file
+            formData.append('image', videoFile);
+            
+            // Set the is_video flag explicitly 
             console.log('Sending message with video flag set to true');
             formData.append('is_video', 'true');
             
