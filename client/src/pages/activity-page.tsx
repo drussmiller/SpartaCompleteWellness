@@ -229,48 +229,17 @@ export default function ActivityPage() {
                       </div>
                     ) : (
                       <>
-                        {/* Process content to hide YouTube links when they're embedded */}
-                        {(() => {
-                          const { id, url } = extractYouTubeIdFromContent(field.content);
-                          let contentToDisplay = field.content;
-                          
-                          // If a YouTube URL was found, remove it from the content before displaying
-                          if (id && url) {
-                            // Replace the URL with empty string
-                            contentToDisplay = contentToDisplay.replace(url, '');
-                            
-                            // Also remove any empty paragraphs that might be left behind
-                            contentToDisplay = contentToDisplay
-                              .replace(/<p>\s*<\/p>/g, '')
-                              .replace(/<p>WARM UP VIDEO<\/p>\s*<p>\s*<\/p>/g, '<p>WARM UP VIDEO</p>');
-                          }
-                          
-                          return (
-                            <div 
-                              className="rich-text-content prose-sm text-base overflow-hidden" 
-                              style={{ 
-                                wordWrap: 'break-word',
-                                overflowWrap: 'break-word'
-                              }}
-                              dangerouslySetInnerHTML={{ 
-                                __html: contentToDisplay 
-                              }}
-                            />
-                          );
-                        })()}
-                        
-                        {/* Check for YouTube URLs in the text content and embed them */}
-                        {(() => {
-                          const { id } = extractYouTubeIdFromContent(field.content);
-                          if (id) {
-                            return (
-                              <div className="mt-4 mb-4">
-                                <YouTubePlayer videoId={id} />
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
+                        {/* Just display the content directly since iframes are already embedded */}
+                        <div 
+                          className="rich-text-content prose-sm text-base overflow-hidden" 
+                          style={{ 
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word'
+                          }}
+                          dangerouslySetInnerHTML={{ 
+                            __html: field.content 
+                          }}
+                        />
                       </>
                     )}
                   </div>
@@ -331,48 +300,17 @@ export default function ActivityPage() {
                       </div>
                     ) : (
                       <>
-                        {/* Process content to hide YouTube links when they're embedded */}
-                        {(() => {
-                          const { id, url } = extractYouTubeIdFromContent(field.content);
-                          let contentToDisplay = field.content;
-                          
-                          // If a YouTube URL was found, remove it from the content before displaying
-                          if (id && url) {
-                            // Replace the URL with empty string
-                            contentToDisplay = contentToDisplay.replace(url, '');
-                            
-                            // Also remove any empty paragraphs that might be left behind
-                            contentToDisplay = contentToDisplay
-                              .replace(/<p>\s*<\/p>/g, '')
-                              .replace(/<p>WARM UP VIDEO<\/p>\s*<p>\s*<\/p>/g, '<p>WARM UP VIDEO</p>');
-                          }
-                          
-                          return (
-                            <div 
-                              className="rich-text-content prose-sm text-lg overflow-hidden" 
-                              style={{ 
-                                wordWrap: 'break-word',
-                                overflowWrap: 'break-word'
-                              }}
-                              dangerouslySetInnerHTML={{ 
-                                __html: contentToDisplay 
-                              }}
-                            />
-                          );
-                        })()}
-                        
-                        {/* Check for YouTube URLs in the text content and embed them */}
-                        {(() => {
-                          const { id } = extractYouTubeIdFromContent(field.content);
-                          if (id) {
-                            return (
-                              <div className="mt-4 mb-6">
-                                <YouTubePlayer videoId={id} />
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
+                        {/* Just display the content directly since iframes are already embedded */}
+                        <div 
+                          className="rich-text-content prose-sm text-lg overflow-hidden" 
+                          style={{ 
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word'
+                          }}
+                          dangerouslySetInnerHTML={{ 
+                            __html: field.content 
+                          }}
+                        />
                       </>
                     )}
                   </div>
