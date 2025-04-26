@@ -387,6 +387,17 @@ export default function ActivityManagementPage() {
   return (
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
+          <div className="flex items-center mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => window.history.back()}
+              className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            >
+              <ChevronLeft className="h-8 w-8" />
+              <span className="sr-only">Back</span>
+            </Button>
+            <h1 className="text-2xl font-bold">Activity Management</h1>
+          </div>
           <div className="mb-8">
             <Label htmlFor="docUpload">Upload Word Document</Label>
             <div className="flex items-center gap-2">
@@ -407,17 +418,6 @@ export default function ActivityManagementPage() {
             <p className="text-sm text-muted-foreground mt-1">
               Upload a Word document to automatically create content with embedded videos
             </p>
-          </div>
-          <div className="flex items-center mb-6">
-            <Button
-              variant="ghost"
-              onClick={() => window.history.back()}
-              className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-            >
-              <ChevronLeft className="h-8 w-8" />
-              <span className="sr-only">Back</span>
-            </Button>
-            <h1 className="text-2xl font-bold">Activity Management</h1>
           </div>
 
         <Card className="mb-6">
