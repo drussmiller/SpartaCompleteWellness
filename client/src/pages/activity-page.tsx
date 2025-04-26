@@ -33,9 +33,18 @@ interface ContentField {
   title?: string;
 }
 
-// Function to extract YouTube video IDs from HTML content
+// Function to extract YouTube video IDs from HTML content, but only for plain URLs
+// (not already embedded videos)
 function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
   if (!content) return { id: null, url: null };
+  
+  // Check if content already has embedded YouTube iframes
+  const hasEmbeddedVideos = content.includes('<iframe src="https://www.youtube.com/embed/');
+  
+  // If the content already has embedded videos, don't extract additional videos
+  if (hasEmbeddedVideos) {
+    return { id: null, url: null };
+  }
   
   // More comprehensive regex to find YouTube URLs in various formats
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
