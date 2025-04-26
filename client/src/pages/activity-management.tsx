@@ -198,8 +198,18 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = file.name.replace('.docx', '');
 
-      // Clean up any empty paragraphs
-      const cleanedContent = data.content.replace(/<p>\s*<\/p>/g, '');
+      // Process YouTube links in the content
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      let content = data.content;
+
+      // First, replace the YouTube URLs with embedded iframe HTML
+      const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      });
+
+      // Then clean up the URL text to avoid duplicates
+      const cleanedContent = enhancedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/g, '');
+
 
       // Create single rich text field with embedded videos
       const newFields: ContentField[] = [{
@@ -253,8 +263,17 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = file.name.replace('.docx', '');
 
-      // Clean up any empty paragraphs
-      const cleanedContent = data.content.replace(/<p>\s*<\/p>/g, '');
+      // Process YouTube links in the content
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      let content = data.content;
+
+      // First, replace the YouTube URLs with embedded iframe HTML
+      const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      });
+
+      // Then clean up the URL text to avoid duplicates
+      const cleanedContent = enhancedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/g, '');
 
       // Create single rich text field with embedded videos
       const newFields: ContentField[] = [{
