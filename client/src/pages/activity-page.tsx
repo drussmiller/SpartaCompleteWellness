@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { BottomNav } from "@/components/bottom-nav";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,18 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Loader2, 
-  ChevronDown, 
-  ChevronUp,
-  CalendarDays,
-  BookText,
-  Target
+  Loader2
 } from "lucide-react";
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Activity } from "@shared/schema";
 
 // Define the interface for content fields
@@ -99,9 +88,6 @@ export default function ActivityPage() {
   
   // Find the first activity of the week to use as the week overview
   const weekOverviewActivity = weekActivities?.[0];
-  
-  // State for collapsible section
-  const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
 
   const navigatePrevDay = () => {
     if (selectedDay > 1) {
@@ -148,74 +134,6 @@ export default function ActivityPage() {
         </div>
       </header>
       <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
-        {/* Week Information Section */}
-        <Card className="border-2 border-primary/20">
-          <CardContent className="p-4 mt-2">
-            <div className="flex items-center gap-3 mb-3">
-              <CalendarDays className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Week {selectedWeek} Overview</h2>
-            </div>
-            <div className="text-sm space-y-2">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <span>Week Goal: Complete all daily activities</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BookText className="h-4 w-4 text-primary" />
-                <span>Focus: {weekActivities && weekActivities.length > 0 ? 
-                  `${weekActivities.length} days of planned activities` : 
-                  'Plan your week activities'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Week Content Collapsible Section */}
-        <Collapsible 
-          open={isWeekOverviewOpen} 
-          onOpenChange={setIsWeekOverviewOpen}
-          className="border rounded-md">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="flex w-full justify-between p-4">
-              <div className="flex items-center gap-2">
-                <BookText className="h-4 w-4" />
-                <span className="font-medium">Week {selectedWeek} Content</span>
-              </div>
-              {isWeekOverviewOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="p-4 bg-muted/20">
-            {weekOverviewActivity ? (
-              <div className="prose max-w-none">
-                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
-                  field.title?.includes(`Week ${selectedWeek}`) && !field.title?.includes('Day')
-                ).map((field: ContentField, index: number) => (
-                  <div key={index} className="mb-4">
-                    {field.title && (
-                      <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
-                    )}
-                    <div 
-                      className="rich-text-content prose-sm text-base" 
-                      dangerouslySetInnerHTML={{ 
-                        __html: field.content 
-                      }}
-                    />
-                  </div>
-                ))}
-                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
-                  field.title?.includes(`Week ${selectedWeek}`) && !field.title?.includes('Day')).length === 0 && (
-                  <p className="text-muted-foreground text-center py-2">No week content available</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-2">No week content available</p>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
         
         {/* Day Navigation */}
         <div className="flex items-center justify-center gap-4 mt-2">
