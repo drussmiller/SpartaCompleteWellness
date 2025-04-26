@@ -94,6 +94,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register message routes
   router.use(messageRouter);
 
+  // Configure document upload multer instance
+  const docUpload = multer({
+    storage: multerStorage,
+    limits: { 
+      fileSize: 10 * 1024 * 1024, // 10MB limit for document uploads
+    },
+    fileFilter: (req, file, cb) => {
+      // Allow only Word documents
+      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          file.originalname.endsWith('.docx')) {
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    }
+  });
+
   // Add CORS headers for all requests
   router.use((req, res, next) => {
     const origin = req.headers.origin;
@@ -1637,6 +1654,67 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Activities endpoints
+  // Add endpoint to handle document upload for activities
+  router.post("/api/activities/upload-doc", authenticate, docUpload.single('document'), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No document uploaded" });
+      }
+
+      const filePath = req.file.path;
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Uploaded file not found" });
+      }
+
+      // Process the document with mammoth
+      try {
+        const result = await mammoth.extractRawText({ path: filePath });
+        const content = result.value; // The raw text content
+        const messages = result.messages; // Any messages during conversion
+
+        if (messages.length > 0) {
+          logger.info('Mammoth conversion messages:', { messages });
+        }
+
+        logger.info(`Successfully extracted text from document: ${req.file.originalname}`);
+        
+        // Return the processed content
+        return res.json({ 
+          message: "Document processed successfully",
+          content,
+          filename: req.file.originalname
+        });
+      } catch (mammothError) {
+        logger.error("Error processing document with mammoth:", mammothError);
+        return res.status(500).json({ 
+          message: "Failed to process document",
+          error: mammothError instanceof Error ? mammothError.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      logger.error("Error handling document upload:", error);
+      return res.status(500).json({ 
+        message: "Error processing document upload",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    } finally {
+      // Clean up the temporary file if it exists
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        try {
+          // fs.unlinkSync(req.file.path);
+          // Leave file in place for debugging
+          logger.info(`Leaving uploaded document for debugging: ${req.file.path}`);
+        } catch (cleanupError) {
+          logger.warn("Error cleaning up temporary document file:", cleanupError);
+        }
+      }
+    }
+  });
+
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
       const { week, day } = req.query;
