@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/collapsible";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
+import "@/components/ui/activity-content.css";
 
 // Define the interface for content fields
 interface ContentField {
@@ -237,7 +238,11 @@ export default function ActivityPage() {
                           
                           return (
                             <div 
-                              className="rich-text-content prose-sm text-base" 
+                              className="rich-text-content prose-sm text-base overflow-hidden" 
+                              style={{ 
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word'
+                              }}
                               dangerouslySetInnerHTML={{ 
                                 __html: contentToDisplay 
                               }}
@@ -335,7 +340,11 @@ export default function ActivityPage() {
                           
                           return (
                             <div 
-                              className="rich-text-content prose-sm text-lg" 
+                              className="rich-text-content prose-sm text-lg overflow-hidden" 
+                              style={{ 
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word'
+                              }}
                               dangerouslySetInnerHTML={{ 
                                 __html: contentToDisplay 
                               }}
