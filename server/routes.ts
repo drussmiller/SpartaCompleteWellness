@@ -34,7 +34,6 @@ import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
-import { docRouter } from "./doc-processor";
 import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
@@ -46,6 +45,8 @@ import { prayerRoutes } from './prayer-routes';
 // Note: There are duplicate message handlers in this file around lines 3348 and 3979
 // However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
 import { messageRouter } from './message-routes';
+// Import document processing router
+import docRouter from './doc-processor';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({

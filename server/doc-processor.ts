@@ -1,72 +1,112 @@
-import mammoth from 'mammoth';
+/**
+ * Document Processing Module
+ * 
+ * This module provides functionality for processing uploaded documents,
+ * particularly Word (.docx) files, and converting them to HTML content
+ * that can be used within the application.
+ */
+
+import express, { Router, Request, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
 import fs from 'fs';
-import { Router } from 'express';
-import { authenticate } from './auth';
+import path from 'path';
+import mammoth from 'mammoth';
 import { logger } from './logger';
+import { authenticate } from './auth';
 
-// Create a dedicated router for document processing
-export const docRouter = Router();
-
-// Set up file storage
+// Set up storage for uploaded documents
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'documents');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents');
+    
+    // Create the directory if it doesn't exist
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
     }
-    cb(null, uploadDir);
+    
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    const timestamp = Date.now();
-    const safeName = file.originalname.replace(/\s+/g, '_');
-    cb(null, `${timestamp}-${safeName}`);
+    // Generate a unique filename with original extension
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
 
-// Create multer instance
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+// File filter to only allow .docx files
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    cb(null, true);
+  } else {
+    cb(new Error('Only Word documents (.docx) are allowed'));
+  }
+};
+
+// Initialize multer upload
+const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  }
 });
 
-// Add route for document upload
-docRouter.post('/api/activities/upload-doc', authenticate, upload.single('document'), async (req, res) => {
+/**
+ * Process a Word document and extract its content as HTML
+ * @param filePath Path to the uploaded document file
+ * @returns Promise that resolves to the processed HTML content
+ */
+async function processDocument(filePath: string): Promise<string> {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded'
-      });
-    }
-
-    // Get file path
-    const filePath = req.file.path;
-    logger.info(`Processing document: ${filePath}`);
-    
-    // Check if it's a Word document
-    if (!req.file.originalname.endsWith('.docx')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Only .docx files are supported'
-      });
-    }
-    
-    // Process Word document
     const result = await mammoth.convertToHtml({ path: filePath });
     
-    // Return the processed content
-    return res.status(200).json({
-      success: true,
-      content: result.value,
+    // Clean up the generated HTML to work better with our editor
+    let html = result.value;
+    
+    // Add custom processing here if needed
+    // For example, you might want to:
+    // - Convert certain elements to different formats
+    // - Handle special cases for images or tables
+    // - Add specific classes for styling
+    
+    logger.info(`Document processed successfully: ${path.basename(filePath)}`);
+    return html;
+  } catch (error) {
+    logger.error(`Error processing document: ${error instanceof Error ? error.message : 'Unknown error'}`, error);
+    throw new Error('Failed to process document');
+  }
+}
+
+// Create router for document-related endpoints
+export const docRouter = Router();
+
+// Process a document upload (no authentication for testing)
+docRouter.post('/api/process', upload.single('document'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No document uploaded' });
+    }
+    
+    const filePath = req.file.path;
+    const content = await processDocument(filePath);
+    
+    // Optionally, you could delete the file after processing if you don't need to keep it
+    // fs.unlinkSync(filePath);
+    
+    res.json({ 
+      success: true, 
+      content,
       filename: req.file.originalname
     });
   } catch (error) {
-    logger.error(`Document processing error: ${error}`);
-    return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Failed to process document'
+    logger.error(`Error in document processing endpoint: ${error instanceof Error ? error.message : 'Unknown error'}`, error);
+    res.status(500).json({ 
+      error: 'Document processing failed', 
+      message: error instanceof Error ? error.message : 'An unexpected error occurred'
     });
   }
 });
+
+// Create document processing router
+export default docRouter;

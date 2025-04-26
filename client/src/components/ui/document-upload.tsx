@@ -1,8 +1,14 @@
-import { useState, useRef } from 'react';
-import { Button } from './button';
-import { Loader2, Upload, FileText } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { Input } from './input';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { FileText, Upload, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+/**
+ * DocumentUpload Component
+ * 
+ * A reusable component for uploading Word documents and processing them
+ * Handles file selection, upload and processing via the server API
+ */
 
 interface DocumentUploadProps {
   onContentLoaded: (content: string) => void;
@@ -11,101 +17,86 @@ interface DocumentUploadProps {
 
 export function DocumentUpload({ onContentLoaded, buttonText = "Upload Document" }: DocumentUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // Check if it's a Word document
     if (!file.name.endsWith('.docx')) {
       toast({
-        title: 'Invalid file type',
-        description: 'Please upload a Word document (.docx)',
-        variant: 'destructive',
+        title: "Invalid file type",
+        description: "Please select a Word document (.docx)",
+        variant: "destructive"
       });
       return;
     }
 
-    setFileName(file.name);
     setIsUploading(true);
-
+    
     try {
+      // Create FormData and append the file
       const formData = new FormData();
       formData.append('document', file);
 
-      const response = await fetch('/api/activities/upload-doc', {
+      // Send the file to the server for processing
+      const response = await fetch('/api/process', {
         method: 'POST',
         body: formData,
-        credentials: 'include',
+        credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        throw new Error(`Failed to process document: ${response.statusText}`);
       }
 
       const data = await response.json();
-
-      if (data.success) {
-        toast({
-          title: 'Document uploaded successfully',
-          description: 'The document has been processed and content extracted.',
-        });
-        onContentLoaded(data.content);
-      } else {
-        toast({
-          title: 'Upload failed',
-          description: data.message || 'An error occurred while processing the document.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Document upload error:', error);
+      
+      // Call the provided callback with the processed content
+      onContentLoaded(data.content);
+      
       toast({
-        title: 'Upload failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
+        title: "Document processed",
+        description: "Your document has been successfully processed."
+      });
+    } catch (error) {
+      console.error('Error processing document:', error);
+      toast({
+        title: "Processing failed",
+        description: error instanceof Error ? error.message : "Failed to process the document",
+        variant: "destructive"
       });
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
   return (
-    <div className="flex flex-col gap-2">
-      <Input
+    <div className="w-full">
+      <input
         type="file"
-        ref={fileInputRef}
+        id="document-upload"
         className="hidden"
         accept=".docx"
         onChange={handleFileChange}
-      />
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full flex gap-2 items-center justify-center"
-        onClick={handleButtonClick}
         disabled={isUploading}
+      />
+      <Button 
+        variant="outline" 
+        onClick={() => document.getElementById('document-upload')?.click()}
+        disabled={isUploading}
+        className="w-full"
       >
         {isUploading ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Processing...</span>
-          </>
-        ) : fileName ? (
-          <>
-            <FileText className="h-4 w-4" />
-            <span>{fileName}</span>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Processing...
           </>
         ) : (
           <>
-            <Upload className="h-4 w-4" />
-            <span>{buttonText}</span>
+            <FileText className="h-4 w-4 mr-2" />
+            {buttonText}
           </>
         )}
       </Button>
