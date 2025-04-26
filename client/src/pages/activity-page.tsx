@@ -221,7 +221,13 @@ export default function ActivityPage() {
                           
                           // If a YouTube URL was found, remove it from the content before displaying
                           if (id && url) {
+                            // Replace the URL with empty string
                             contentToDisplay = contentToDisplay.replace(url, '');
+                            
+                            // Also remove any empty paragraphs that might be left behind
+                            contentToDisplay = contentToDisplay
+                              .replace(/<p>\s*<\/p>/g, '')
+                              .replace(/<p>WARM UP VIDEO<\/p>\s*<p>\s*<\/p>/g, '<p>WARM UP VIDEO</p>');
                           }
                           
                           return (
@@ -313,7 +319,13 @@ export default function ActivityPage() {
                           
                           // If a YouTube URL was found, remove it from the content before displaying
                           if (id && url) {
+                            // Replace the URL with empty string
                             contentToDisplay = contentToDisplay.replace(url, '');
+                            
+                            // Also remove any empty paragraphs that might be left behind
+                            contentToDisplay = contentToDisplay
+                              .replace(/<p>\s*<\/p>/g, '')
+                              .replace(/<p>WARM UP VIDEO<\/p>\s*<p>\s*<\/p>/g, '<p>WARM UP VIDEO</p>');
                           }
                           
                           return (
