@@ -387,17 +387,38 @@ export default function ActivityManagementPage() {
   return (
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="flex items-center mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => window.history.back()}
-            className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-          >
-            <ChevronLeft className="h-8 w-8" />
-            <span className="sr-only">Back</span>
-          </Button>
-          <h1 className="text-2xl font-bold">Activity Management</h1>
-        </div>
+          <div className="mb-8">
+            <Label htmlFor="docUpload">Upload Word Document</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="docUpload"
+                type="file"
+                accept=".docx"
+                onChange={async (event) => {
+                  setContentFields([]);
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    await handleDailyFileUpload(event);
+                  }
+                }}
+                className="flex-1"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload a Word document to automatically create content with embedded videos
+            </p>
+          </div>
+          <div className="flex items-center mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => window.history.back()}
+              className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            >
+              <ChevronLeft className="h-8 w-8" />
+              <span className="sr-only">Back</span>
+            </Button>
+            <h1 className="text-2xl font-bold">Activity Management</h1>
+          </div>
 
         <Card className="mb-6">
           <CardHeader>
@@ -417,25 +438,6 @@ export default function ActivityManagementPage() {
                 value={selectedWeek}
                 onChange={handleWeekChange}
               />
-            </div>
-
-            <div className="mb-4">
-              <Label htmlFor="week-doc-upload">Upload Word Document</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="week-doc-upload"
-                  type="file"
-                  accept=".docx"
-                  onChange={async (event) => {
-                    setContentFields([]);
-                    await handleWeekFileUpload(event);
-                  }}
-                  className="flex-1"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Upload a Word document to automatically create content with embedded videos
-              </p>
             </div>
 
             <form onSubmit={async (e) => {
@@ -582,25 +584,6 @@ export default function ActivityManagementPage() {
                   <Label htmlFor="day">Day</Label>
                   <Input type="number" name="day" required min="1" max="7" />
                 </div>
-              </div>
-
-              <div className="mb-4">
-                <Label htmlFor="docUpload">Upload Word Document</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="docUpload"
-                    type="file"
-                    accept=".docx"
-                    onChange={async (event) => {
-                      setContentFields([]);
-                      await handleDailyFileUpload(event);
-                    }}
-                    className="flex-1"
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upload a Word document to automatically create content with embedded videos
-                </p>
               </div>
 
               <div className="space-y-4">
