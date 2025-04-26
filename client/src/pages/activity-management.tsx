@@ -9,7 +9,6 @@ import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, FileText, Calendar, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { YouTubePlayer } from "@/components/ui/youtube-player";
 
 type ContentField = {
   id: string;
@@ -222,6 +222,12 @@ export default function ActivityManagementPage() {
     }
   };
 
+  const handleWeekChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const week = parseInt(event.target.value);
+    if (!isNaN(week) && week > 0) {
+      setSelectedWeek(week);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -285,8 +291,167 @@ export default function ActivityManagementPage() {
           <h1 className="text-2xl font-bold">Activity Management</h1>
         </div>
 
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <span>Week Information Management</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <Label htmlFor="week-number" className="flex-shrink-0">Week Number</Label>
+              <Input 
+                id="week-number" 
+                type="number" 
+                min="1" 
+                className="w-24"
+                value={selectedWeek}
+                onChange={handleWeekChange}
+              />
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="week-only-toggle"
+                  checked={isWeekOnly}
+                  onCheckedChange={setIsWeekOnly}
+                />
+                <Label htmlFor="week-only-toggle">Week-only information (no specific day)</Label>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <Label htmlFor="week-doc-upload">Upload Word Document for Week</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  id="week-doc-upload"
+                  type="file"
+                  accept=".docx"
+                  onChange={handleFileUpload}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={() => document.getElementById('week-doc-upload')?.click()}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Upload Week Document
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Upload a Word document to automatically create week content
+              </p>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              
+              // Format a title that includes "Week X" format for week-only content
+              const weekTitle = `Week ${selectedWeek}${isWeekOnly ? ' Overview' : ''}`;
+              
+              // Update content fields to include week number in title if they don't already
+              const updatedContentFields = contentFields.map(field => ({
+                ...field,
+                title: field.title || weekTitle
+              }));
+              
+              const data = {
+                week: selectedWeek,
+                day: isWeekOnly ? 0 : 1, // Use day 0 to indicate week-only content
+                contentFields: updatedContentFields
+              };
+
+              try {
+                console.log('Submitting activity data:', data);
+                const res = await apiRequest("POST", "/api/activities", data);
+                if (!res.ok) {
+                  const errorData = await res.json();
+                  throw new Error(errorData.message || 'Failed to create activity');
+                }
+
+                toast({
+                  title: "Success",
+                  description: `Week ${selectedWeek} information created successfully`
+                });
+
+                queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+                setContentFields([]);
+                setIsWeekOnly(false);
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: error instanceof Error ? error.message : "Failed to create activity",
+                  variant: "destructive"
+                });
+              }
+            }} className="space-y-4">
+              <div className="space-y-4">
+                {contentFields.map((field) => (
+                  <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeContentField(field.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder={`Week ${selectedWeek} ${field.type === 'video' ? 'Video' : 'Content'}`}
+                      value={field.title}
+                      onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
+                    />
+                    {field.type === 'video' ? (
+                      <div className="space-y-2">
+                        <Input
+                          type="text"
+                          placeholder="YouTube Video URL"
+                          value={field.content}
+                          onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
+                        />
+                        {field.content && (
+                          <div className="mt-4 bg-black/5 rounded-md p-2">
+                            <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
+                            <YouTubePlayer videoId={field.content} />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <RichTextEditor
+                        content={field.content}
+                        onChange={(newContent) => updateContentField(field.id, 'content', newContent)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => addContentField('text')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Text
+                </Button>
+                <Button type="button" variant="outline" onClick={() => addContentField('video')}>
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Add YouTube Video
+                </Button>
+              </div>
+
+              <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">
+                Add Week Information
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         <Card>
-          <CardContent className="space-y-6 pt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <span>Daily Activity Management</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
@@ -372,12 +537,20 @@ export default function ActivityManagementPage() {
                       onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
                     />
                     {field.type === 'video' ? (
-                      <Input
-                        type="text"
-                        placeholder="YouTube Video URL"
-                        value={field.content}
-                        onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
-                      />
+                      <div className="space-y-2">
+                        <Input
+                          type="text"
+                          placeholder="YouTube Video URL"
+                          value={field.content}
+                          onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
+                        />
+                        {field.content && (
+                          <div className="mt-4 bg-black/5 rounded-md p-2">
+                            <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
+                            <YouTubePlayer videoId={field.content} />
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <RichTextEditor
                         content={field.content}
@@ -394,8 +567,8 @@ export default function ActivityManagementPage() {
                   Add Text
                 </Button>
                 <Button type="button" variant="outline" onClick={() => addContentField('video')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Video
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Add YouTube Video
                 </Button>
               </div>
 
@@ -414,7 +587,9 @@ export default function ActivityManagementPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">
-                              Week {activity.week} - Day {activity.day}
+                              {activity.day === 0 
+                                ? `Week ${activity.week} Information` 
+                                : `Week ${activity.week} - Day ${activity.day}`}
                             </p>
                           </div>
                           <div className="flex gap-2">
@@ -477,9 +652,14 @@ export default function ActivityManagementPage() {
                         name="day"
                         defaultValue={editingActivity?.day}
                         required
-                        min="1"
+                        min="0" // Allow 0 for week-only information
                         max="7"
                       />
+                      {editingActivity?.day === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Day 0 indicates week-only information
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -504,12 +684,20 @@ export default function ActivityManagementPage() {
                           onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
                         />
                         {field.type === 'video' ? (
-                          <Input
-                            type="text"
-                            placeholder="YouTube Video URL"
-                            value={field.content}
-                            onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
-                          />
+                          <div className="space-y-2">
+                            <Input
+                              type="text"
+                              placeholder="YouTube Video URL"
+                              value={field.content}
+                              onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
+                            />
+                            {field.content && (
+                              <div className="mt-4 bg-black/5 rounded-md p-2">
+                                <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
+                                <YouTubePlayer videoId={field.content} />
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <RichTextEditor
                             content={field.content}
@@ -526,8 +714,8 @@ export default function ActivityManagementPage() {
                       Add Text
                     </Button>
                     <Button type="button" variant="outline" onClick={() => addEditingContentField('video')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Video
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Add YouTube Video
                     </Button>
                   </div>
 
