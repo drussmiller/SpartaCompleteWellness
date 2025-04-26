@@ -12,40 +12,32 @@
   overflow-wrap: break-word;
 }
 
-/* Video container styling */
-.video-wrapper {
-  position: relative;
-  width: 560px; /* Original YouTube size */
-  height: 315px; /* Original YouTube size */
-  margin-bottom: 15px;
-  max-width: 100%;
-}
-
-.video-wrapper iframe {
-  width: 100% !important;
-  height: 100% !important;
-  border: none;
-}
-
-/* Style for iframes that aren't in video-wrapper */
+/* Universal iframe styles */
 iframe {
   width: 560px !important;
   height: 315px !important;
   max-width: 100%;
-  border: none;
-  margin: 10px 0;
-}
-
-/* Style wrapper when in an activity context */
-.rich-text-content .video-wrapper {
-  max-width: 100%;
-  margin-left: 0;
-  margin-right: auto;
-}
-
-/* Ensure proper spacing for iframes in rich text content */
-.rich-text-content iframe {
+  border: none !important;
   display: block;
+  margin: 15px 0;
+}
+
+/* Video container styling */
+.video-wrapper {
+  position: relative;
+  width: 560px;
+  height: 315px;
+  max-width: 100%;
+  margin: 15px 0;
+}
+
+.video-wrapper iframe {
+  margin: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Remove extra spaces around iframes */
