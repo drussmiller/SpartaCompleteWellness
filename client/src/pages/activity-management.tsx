@@ -18,6 +18,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
+import { DocumentUpload } from "@/components/ui/document-upload";
 
 type ContentField = {
   id: string;
@@ -169,57 +170,7 @@ export default function ActivityManagementPage() {
     setEditingContentFields(editingContentFields.filter(f => f.id !== id));
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !file.name.endsWith('.docx')) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a Word document (.docx)",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('document', file);
-
-    try {
-      console.log('Uploading document:', file.name);
-      const res = await fetch('/api/activities/upload-doc', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to process document');
-      }
-
-      const data = await res.json();
-      console.log('Processed document content:', data.content);
-
-      const newField: ContentField = {
-        id: Math.random().toString(36).substring(7),
-        type: 'text',
-        content: data.content,
-        title: file.name.replace('.docx', '')
-      };
-
-      setContentFields([newField]);
-
-      toast({
-        title: "Success",
-        description: "Document processed successfully"
-      });
-    } catch (error) {
-      console.error('Error processing document:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process document",
-        variant: "destructive"
-      });
-    }
-  };
+  // handleFileUpload has been replaced with the DocumentUpload component
 
   const handleWeekChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const week = parseInt(event.target.value);
@@ -312,19 +263,26 @@ export default function ActivityManagementPage() {
 
             <div className="mb-4">
               <Label htmlFor="week-doc-upload">Upload Word Document</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="week-doc-upload"
-                  type="file"
-                  accept=".docx"
-                  onChange={handleFileUpload}
-                  className="flex-1"
-                />
-                <Button type="button" variant="outline" onClick={() => document.getElementById('week-doc-upload')?.click()}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload
-                </Button>
-              </div>
+              <DocumentUpload 
+                onContentLoaded={(content) => {
+                  // Create a new field with the content from the document
+                  const newField: ContentField = {
+                    id: Math.random().toString(36).substring(7),
+                    type: 'text',
+                    content: content,
+                    title: `Week ${selectedWeek} Document`
+                  };
+                  
+                  // Set as the new content field
+                  setContentFields([...contentFields, newField]);
+                  
+                  toast({
+                    title: "Success",
+                    description: "Document processed successfully"
+                  });
+                }}
+                buttonText="Upload Word Document"
+              />
               <p className="text-sm text-muted-foreground mt-1">
                 Upload a Word document to automatically create content with embedded videos
               </p>
@@ -488,19 +446,26 @@ export default function ActivityManagementPage() {
 
               <div className="mb-4">
                 <Label htmlFor="docUpload">Upload Word Document</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="docUpload"
-                    type="file"
-                    accept=".docx"
-                    onChange={handleFileUpload}
-                    className="flex-1"
-                  />
-                  <Button type="button" variant="outline" onClick={() => document.getElementById('docUpload')?.click()}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
-                </div>
+                <DocumentUpload 
+                  onContentLoaded={(content) => {
+                    // Create a new field with the content from the document
+                    const newField: ContentField = {
+                      id: Math.random().toString(36).substring(7),
+                      type: 'text',
+                      content: content,
+                      title: 'Document Content'
+                    };
+                    
+                    // Set as the new content field
+                    setContentFields([...contentFields, newField]);
+                    
+                    toast({
+                      title: "Success",
+                      description: "Document processed successfully"
+                    });
+                  }}
+                  buttonText="Upload Word Document"
+                />
                 <p className="text-sm text-muted-foreground mt-1">
                   Upload a Word document to automatically create content with embedded videos
                 </p>
