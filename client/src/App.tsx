@@ -56,15 +56,6 @@ function MainContent() {
     );
   }
 
-  // Special case for document test page - accessible regardless of auth
-  if (!user && window.location.pathname === '/doc-test') {
-    return (
-      <div className="min-h-screen">
-        <DocumentUploadTest />
-      </div>
-    );
-  }
-  
   // If not authenticated, show auth page
   if (!user) {
     return <AuthPage />;
