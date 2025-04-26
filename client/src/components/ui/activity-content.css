@@ -11,3 +11,30 @@
   max-width: 100%;
   overflow-wrap: break-word;
 }
+
+/* Video container styling */
+.video-wrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  margin-bottom: 20px;
+}
+
+.video-wrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Remove extra spaces around iframes */
+p > .video-wrapper:only-child {
+  margin: 0;
+}
+
+/* Ensure clean layout by removing extra spacing */
+.rich-text-content p:empty {
+  display: none;
+}
