@@ -1672,15 +1672,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Process the document with mammoth
       try {
-        const result = await mammoth.extractRawText({ path: filePath });
-        const content = result.value; // The raw text content
+        // Convert to HTML instead of raw text to preserve formatting
+        const result = await mammoth.convertToHtml({ path: filePath });
+        const content = result.value; // The HTML content
         const messages = result.messages; // Any messages during conversion
 
         if (messages.length > 0) {
           logger.info('Mammoth conversion messages:', { messages });
         }
 
-        logger.info(`Successfully extracted text from document: ${req.file.originalname}`);
+        logger.info(`Successfully extracted HTML from document: ${req.file.originalname}`);
         
         // Return the processed content
         return res.json({ 

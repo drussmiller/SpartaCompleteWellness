@@ -197,19 +197,48 @@ export default function ActivityManagementPage() {
 
       const data = await res.json();
       console.log('Processed document content:', data.content);
-
-      const newField: ContentField = {
+      
+      // Extract a title from the filename or first heading
+      let title = file.name.replace('.docx', '');
+      
+      // Process YouTube links in the content if they exist
+      // This is a simple regex to find YouTube video IDs
+      const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/g;
+      const youtubeMatches = [...data.content.matchAll(youtubeRegex)];
+      
+      // If we found YouTube videos, create separate video fields
+      const contentFields: ContentField[] = [];
+      
+      // First, create a text field with the main content
+      const newTextField: ContentField = {
         id: Math.random().toString(36).substring(7),
         type: 'text',
         content: data.content,
-        title: file.name.replace('.docx', '')
+        title: title
       };
-
-      setContentFields([newField]);
+      
+      contentFields.push(newTextField);
+      
+      // Then add any YouTube videos as separate fields
+      youtubeMatches.forEach((match, index) => {
+        const videoId = match[1];
+        if (videoId) {
+          const videoField: ContentField = {
+            id: Math.random().toString(36).substring(7),
+            type: 'video',
+            content: videoId,
+            title: `${title} - Video ${index + 1}`
+          };
+          contentFields.push(videoField);
+        }
+      });
+      
+      setContentFields(contentFields);
 
       toast({
         title: "Success",
-        description: "Document processed successfully"
+        description: "Document processed successfully with " + 
+                     (youtubeMatches.length > 0 ? youtubeMatches.length + " embedded videos" : "content")
       });
     } catch (error) {
       console.error('Error processing document:', error);
