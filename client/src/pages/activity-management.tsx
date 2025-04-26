@@ -346,7 +346,10 @@ export default function ActivityManagementPage() {
                   id="week-doc-upload"
                   type="file"
                   accept=".docx"
-                  onChange={handleFileUpload}
+                  onChange={(e) => {
+                    setContentFields([]); // Clear existing fields first
+                    handleFileUpload(e);
+                  }}
                   className="flex-1"
                 />
               </div>
