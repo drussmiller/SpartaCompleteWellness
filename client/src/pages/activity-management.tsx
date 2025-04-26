@@ -202,8 +202,8 @@ export default function ActivityManagementPage() {
       let title = file.name.replace('.docx', '');
       
       // Process YouTube links in the content if they exist
-      // This is a simple regex to find YouTube video IDs
-      const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/g;
+      // More comprehensive regex to find YouTube URLs in various formats
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       const youtubeMatches = [...data.content.matchAll(youtubeRegex)];
       
       // If we found YouTube videos, create separate video fields

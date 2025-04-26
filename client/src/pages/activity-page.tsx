@@ -32,6 +32,14 @@ interface ContentField {
   title?: string;
 }
 
+// Function to extract YouTube video IDs from HTML content
+function extractYouTubeIdFromContent(content: string): string | null {
+  // More comprehensive regex to find YouTube URLs in various formats
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = content.match(youtubeRegex);
+  return match ? match[1] : null;
+}
+
 // Define progress interface
 interface ActivityProgress {
   currentWeek: number;
@@ -182,12 +190,20 @@ export default function ActivityPage() {
                         <YouTubePlayer videoId={field.content} />
                       </div>
                     ) : (
-                      <div 
-                        className="rich-text-content prose-sm text-base" 
-                        dangerouslySetInnerHTML={{ 
-                          __html: field.content 
-                        }}
-                      />
+                      <>
+                        <div 
+                          className="rich-text-content prose-sm text-base" 
+                          dangerouslySetInnerHTML={{ 
+                            __html: field.content 
+                          }}
+                        />
+                        {/* Check for YouTube URLs in the text content and embed them */}
+                        {extractYouTubeIdFromContent(field.content) && (
+                          <div className="mt-4 mb-4">
+                            <YouTubePlayer videoId={extractYouTubeIdFromContent(field.content)!} />
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}
@@ -244,12 +260,20 @@ export default function ActivityPage() {
                         <YouTubePlayer videoId={field.content} />
                       </div>
                     ) : (
-                      <div 
-                        className="rich-text-content prose-sm text-lg" 
-                        dangerouslySetInnerHTML={{ 
-                          __html: field.content 
-                        }}
-                      />
+                      <>
+                        <div 
+                          className="rich-text-content prose-sm text-lg" 
+                          dangerouslySetInnerHTML={{ 
+                            __html: field.content 
+                          }}
+                        />
+                        {/* Check for YouTube URLs in the text content and embed them */}
+                        {extractYouTubeIdFromContent(field.content) && (
+                          <div className="mt-4 mb-6">
+                            <YouTubePlayer videoId={extractYouTubeIdFromContent(field.content)!} />
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}
