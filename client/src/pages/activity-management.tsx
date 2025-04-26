@@ -200,11 +200,39 @@ export default function ActivityManagementPage() {
 
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
+      let videos = [];
+      let match;
 
-      // Replace URLs with iframes directly in their original position
-      content = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-      });
+      // First, collect all video URLs in order of appearance
+      while ((match = youtubeRegex.exec(content)) !== null) {
+        videos.push({
+          url: match[0],
+          videoId: match[1],
+          position: match.index
+        });
+      }
+
+      // Sort videos by position in ascending order (top to bottom)
+      videos.sort((a, b) => a.position - b.position);
+
+      // Remove all video URLs from content
+      content = content.replace(youtubeRegex, '');
+
+      // Add the first video at the beginning of the content, rest in their original order
+      if (videos.length > 0) {
+        const warmupVideo = videos.find(v => v.videoId === 'JT49h1zSD6I');
+        if (warmupVideo) {
+          // Move warmup video to the beginning
+          videos = [warmupVideo, ...videos.filter(v => v !== warmupVideo)];
+        }
+
+        content = `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videos[0].videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>\n${content}`;
+
+        // Add remaining videos back in their order
+        for (let i = 1; i < videos.length; i++) {
+          content += `\n<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videos[i].videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        }
+      }
 
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
@@ -260,11 +288,39 @@ export default function ActivityManagementPage() {
 
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
+      let videos = [];
+      let match;
 
-      // Replace URLs with iframes directly in their original position
-      content = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-      });
+      // First, collect all video URLs in order of appearance
+      while ((match = youtubeRegex.exec(content)) !== null) {
+        videos.push({
+          url: match[0],
+          videoId: match[1],
+          position: match.index
+        });
+      }
+
+      // Sort videos by position in ascending order (top to bottom)
+      videos.sort((a, b) => a.position - b.position);
+
+      // Remove all video URLs from content
+      content = content.replace(youtubeRegex, '');
+
+      // Add the first video at the beginning of the content, rest in their original order
+      if (videos.length > 0) {
+        const warmupVideo = videos.find(v => v.videoId === 'JT49h1zSD6I');
+        if (warmupVideo) {
+          // Move warmup video to the beginning
+          videos = [warmupVideo, ...videos.filter(v => v !== warmupVideo)];
+        }
+
+        content = `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videos[0].videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>\n${content}`;
+
+        // Add remaining videos back in their order
+        for (let i = 1; i < videos.length; i++) {
+          content += `\n<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videos[i].videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        }
+      }
 
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
