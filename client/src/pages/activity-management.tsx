@@ -197,18 +197,18 @@ export default function ActivityManagementPage() {
 
       const data = await res.json();
       console.log('Processed document content:', data.content);
-      
+
       // Extract a title from the filename or first heading
       let title = file.name.replace('.docx', '');
-      
+
       // Process YouTube links in the content if they exist
       // More comprehensive regex to find YouTube URLs in various formats
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       const youtubeMatches = [...data.content.matchAll(youtubeRegex)];
-      
+
       // If we found YouTube videos, create separate video fields
       const contentFields: ContentField[] = [];
-      
+
       // First, create a text field with the main content
       const newTextField: ContentField = {
         id: Math.random().toString(36).substring(7),
@@ -216,9 +216,9 @@ export default function ActivityManagementPage() {
         content: data.content,
         title: title
       };
-      
+
       contentFields.push(newTextField);
-      
+
       // Then add any YouTube videos as separate fields
       youtubeMatches.forEach((match, index) => {
         const videoId = match[1];
@@ -232,7 +232,7 @@ export default function ActivityManagementPage() {
           contentFields.push(videoField);
         }
       });
-      
+
       setContentFields(contentFields);
 
       toast({
@@ -361,16 +361,16 @@ export default function ActivityManagementPage() {
 
             <form onSubmit={async (e) => {
               e.preventDefault();
-              
+
               // Format a title that includes "Week X" format for week content
               const weekTitle = `Week ${selectedWeek} Overview`;
-              
+
               // Update content fields to include week number in title if they don't already
               const updatedContentFields = contentFields.map(field => ({
                 ...field,
                 title: field.title || weekTitle
               }));
-              
+
               const data = {
                 week: selectedWeek,
                 day: 0, // Use day 0 to indicate week-only content
@@ -445,16 +445,6 @@ export default function ActivityManagementPage() {
                 ))}
               </div>
 
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => addContentField('text')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Text
-                </Button>
-                <Button type="button" variant="outline" onClick={() => addContentField('video')}>
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                  Add YouTube Video
-                </Button>
-              </div>
 
               <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">
                 Add Week Information
@@ -578,17 +568,6 @@ export default function ActivityManagementPage() {
                     )}
                   </div>
                 ))}
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => addContentField('text')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Text
-                </Button>
-                <Button type="button" variant="outline" onClick={() => addContentField('video')}>
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                  Add YouTube Video
-                </Button>
               </div>
 
               <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">Add Activity</Button>
@@ -725,17 +704,6 @@ export default function ActivityManagementPage() {
                         )}
                       </div>
                     ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => addEditingContentField('text')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Text
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => addEditingContentField('video')}>
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      Add YouTube Video
-                    </Button>
                   </div>
 
                   <Button type="submit" disabled={updateActivityMutation.isPending}>
