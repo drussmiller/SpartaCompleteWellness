@@ -8,8 +8,8 @@ interface YouTubePlayerProps {
   title?: string;
   autoplay?: boolean;
   allowFullScreen?: boolean;
-  width?: string;
-  height?: string;
+  width?: number;
+  height?: number;
 }
 
 export function YouTubePlayer({
@@ -18,8 +18,8 @@ export function YouTubePlayer({
   title = 'YouTube video player',
   autoplay = false,
   allowFullScreen = true,
-  width = '100%',
-  height = '100%',
+  width = 560,
+  height = 315,
 }: YouTubePlayerProps) {
   // Extract video ID from YouTube URL if a full URL is provided
   const getYouTubeId = (url: string): string => {
@@ -63,13 +63,15 @@ export function YouTubePlayer({
   if (!embedId) return null;
   
   return (
-    <div className={cn("video-wrapper", className)}>
+    <div className={cn("video-wrapper", className)} style={{ width: `${width}px`, height: `${height}px` }}>
       <iframe
         src={`https://www.youtube.com/embed/${embedId}${autoplay ? '?autoplay=1' : ''}`}
         title={title}
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen={allowFullScreen}
+        width={width}
+        height={height}
       />
     </div>
   );
