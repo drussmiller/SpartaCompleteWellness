@@ -48,7 +48,12 @@ export function DocumentUpload({ onContentLoaded, buttonText = "Upload Document"
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to process document: ${response.statusText}`);
+        console.error('Document processing failed:', response.status, response.statusText);
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please ensure you are logged in.');
+        } else {
+          throw new Error(`Failed to process document: ${response.statusText}`);
+        }
       }
 
       const data = await response.json();
