@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import '../ui/activity-content.css';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -7,6 +8,8 @@ interface YouTubePlayerProps {
   title?: string;
   autoplay?: boolean;
   allowFullScreen?: boolean;
+  width?: string;
+  height?: string;
 }
 
 export function YouTubePlayer({
@@ -15,9 +18,13 @@ export function YouTubePlayer({
   title = 'YouTube video player',
   autoplay = false,
   allowFullScreen = true,
+  width = '100%',
+  height = '100%',
 }: YouTubePlayerProps) {
   // Extract video ID from YouTube URL if a full URL is provided
   const getYouTubeId = (url: string): string => {
+    if (!url) return '';
+    
     // Clean up the input string - remove any HTML tags
     const cleanUrl = url.replace(/<\/?[^>]+(>|$)/g, '').trim();
     
@@ -53,10 +60,11 @@ export function YouTubePlayer({
 
   const embedId = getYouTubeId(videoId);
   
+  if (!embedId) return null;
+  
   return (
-    <div className={cn("relative pt-[56.25%] w-full", className)}>
+    <div className={cn("video-wrapper", className)}>
       <iframe
-        className="absolute inset-0 w-full h-full"
         src={`https://www.youtube.com/embed/${embedId}${autoplay ? '?autoplay=1' : ''}`}
         title={title}
         frameBorder="0"
