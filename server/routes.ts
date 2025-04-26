@@ -45,8 +45,6 @@ import { prayerRoutes } from './prayer-routes';
 // Note: There are duplicate message handlers in this file around lines 3348 and 3979
 // However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
 import { messageRouter } from './message-routes';
-// Import document processing router
-import docRouter from './doc-processor';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({
@@ -95,9 +93,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Register message routes
   router.use(messageRouter);
-  
-  // Register document processing routes
-  router.use(docRouter);
 
   // Add CORS headers for all requests
   router.use((req, res, next) => {
