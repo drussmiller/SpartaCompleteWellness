@@ -34,10 +34,30 @@ interface ContentField {
 
 // Function to extract YouTube video IDs from HTML content
 function extractYouTubeIdFromContent(content: string): string | null {
+  if (!content) return null;
+  
   // More comprehensive regex to find YouTube URLs in various formats
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  const match = content.match(youtubeRegex);
-  return match ? match[1] : null;
+  
+  // Extract all matches and use the first valid one
+  const matches = content.match(youtubeRegex);
+  if (matches && matches[1]) {
+    console.log('Found YouTube URL in content:', matches[0]);
+    return matches[1];
+  }
+  
+  // Also look for bare YouTube IDs surrounded by non-URL text
+  const idPattern = /\b([a-zA-Z0-9_-]{11})\b/;
+  const bareMatches = content.match(idPattern);
+  if (bareMatches && bareMatches[1]) {
+    const possibleId = bareMatches[1];
+    if (possibleId.length === 11) {
+      console.log('Found possible YouTube ID in content:', possibleId);
+      return possibleId;
+    }
+  }
+  
+  return null;
 }
 
 // Define progress interface
@@ -179,7 +199,10 @@ export default function ActivityPage() {
             {weekOverviewActivity ? (
               <div className="prose max-w-none">
                 {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
-                  field.title?.includes(`Week ${selectedWeek}`) && !field.title?.includes('Day')
+                  // For week 0 entries or entries where day is 0, include them
+                  (field.title?.includes(`Week ${selectedWeek}`) || 
+                   weekOverviewActivity.day === 0) && 
+                  !field.title?.includes('Day')
                 ).map((field: ContentField, index: number) => (
                   <div key={index} className="mb-4">
                     {field.title && (
@@ -208,7 +231,9 @@ export default function ActivityPage() {
                   </div>
                 ))}
                 {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
-                  field.title?.includes(`Week ${selectedWeek}`) && !field.title?.includes('Day')).length === 0 && (
+                  (field.title?.includes(`Week ${selectedWeek}`) || 
+                   weekOverviewActivity.day === 0) && 
+                  !field.title?.includes('Day')).length === 0 && (
                   <p className="text-muted-foreground text-center py-2">No week content available</p>
                 )}
               </div>
