@@ -201,16 +201,24 @@ export default function ActivityManagementPage() {
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
 
-      // Replace YouTube URLs with iframe embeds directly in the content
-      content = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-      });
+      // Insert video iframes at the exact position of the URLs
+      let lastIndex = 0;
+      let newContent = '';
+      let match;
 
-      // Create single content field with embedded videos
+      while ((match = youtubeRegex.exec(content)) !== null) {
+        const videoId = match[1];
+        newContent += content.slice(lastIndex, match.index);
+        newContent += `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        lastIndex = match.index + match[0].length;
+      }
+      newContent += content.slice(lastIndex);
+
+      // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
         type: 'text',
-        content: content.trim(),
+        content: newContent.trim(),
         title: title
       }];
 
@@ -261,16 +269,24 @@ export default function ActivityManagementPage() {
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
 
-      // Replace YouTube URLs with iframe embeds directly in the content
-      content = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-      });
+      // Insert video iframes at the exact position of the URLs
+      let lastIndex = 0;
+      let newContent = '';
+      let match;
 
-      // Create single content field with embedded videos
+      while ((match = youtubeRegex.exec(content)) !== null) {
+        const videoId = match[1];
+        newContent += content.slice(lastIndex, match.index);
+        newContent += `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        lastIndex = match.index + match[0].length;
+      }
+      newContent += content.slice(lastIndex);
+
+      // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
         type: 'text',
-        content: content.trim(),
+        content: newContent.trim(),
         title: title
       }];
 
