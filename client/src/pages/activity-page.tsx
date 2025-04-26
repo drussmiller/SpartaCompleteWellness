@@ -47,11 +47,16 @@ function extractYouTubeIdFromContent(content: string): { id: string | null, url:
   }
   
   // Also look for bare YouTube IDs surrounded by non-URL text
-  const idPattern = /\b([a-zA-Z0-9_-]{11})\b/;
-  const bareMatches = content.match(idPattern);
+  // Check if there's any text that might be a YouTube ID but not part of a biblical reference or other text
+  const youtubeSpecificIdPattern = /\b([A-Za-z0-9_-]{11})\b/;
+  const bareMatches = content.match(youtubeSpecificIdPattern);
+  
   if (bareMatches && bareMatches[1]) {
     const possibleId = bareMatches[1];
-    if (possibleId.length === 11) {
+    // Make sure it's not a biblical reference or other common text
+    const notYouTubeIdPatterns = /(Corinthians|Testament|Scripture|Genesis|Exodus|Matthew|Chapter)/i;
+    
+    if (possibleId.length === 11 && !notYouTubeIdPatterns.test(possibleId) && /[0-9]/.test(possibleId)) {
       console.log('Found possible YouTube ID in content:', possibleId);
       return { id: possibleId, url: null };
     }
