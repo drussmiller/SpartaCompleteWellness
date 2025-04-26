@@ -202,20 +202,16 @@ export default function ActivityManagementPage() {
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
 
-      // First, replace the YouTube URLs with embedded iframe HTML
+      // Replace YouTube URLs with embedded iframe HTML
       const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>`;
       });
-
-      // Then clean up the URL text to avoid duplicates
-      const cleanedContent = enhancedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/g, '');
-
 
       // Create single rich text field with embedded videos
       const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
         type: 'text',
-        content: cleanedContent.trim(),
+        content: enhancedContent.trim(),
         title: title
       }];
 
@@ -267,13 +263,15 @@ export default function ActivityManagementPage() {
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
 
-      // First, replace the YouTube URLs with embedded iframe HTML
+      // Replace YouTube URLs with embedded iframe HTML
       const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>`;
       });
 
-      // Then clean up the URL text to avoid duplicates
-      const cleanedContent = enhancedContent.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/g, '');
+      // Clean up any empty paragraphs that might be left
+      const cleanedContent = enhancedContent
+        .replace(/<p>\s*<\/p>/g, '')
+        .replace(/>\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)[^<]*/g, '');
 
       // Create single rich text field with embedded videos
       const newFields: ContentField[] = [{
