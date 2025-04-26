@@ -82,7 +82,7 @@ export default function ActivityManagementPage() {
       const previousActivities = queryClient.getQueryData<Activity[]>(["/api/activities"]);
 
       // Optimistically update to the new value
-      queryClient.setQueryData<Activity[]>(["/api/activities"], (old) => 
+      queryClient.setQueryData<Activity[]>(["/api/activities"], (old) =>
         old?.filter(activity => activity.id !== deletedActivityId) || []
       );
 
@@ -237,7 +237,7 @@ export default function ActivityManagementPage() {
 
       toast({
         title: "Success",
-        description: "Document processed successfully with " + 
+        description: "Document processed successfully with " +
                      (youtubeMatches.length > 0 ? youtubeMatches.length + " embedded videos" : "content")
       });
     } catch (error) {
@@ -329,10 +329,10 @@ export default function ActivityManagementPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4 mb-4">
               <Label htmlFor="week-number" className="flex-shrink-0">Week Number</Label>
-              <Input 
-                id="week-number" 
-                type="number" 
-                min="1" 
+              <Input
+                id="week-number"
+                type="number"
+                min="1"
                 className="w-24"
                 value={selectedWeek}
                 onChange={handleWeekChange}
@@ -349,10 +349,6 @@ export default function ActivityManagementPage() {
                   onChange={handleFileUpload}
                   className="flex-1"
                 />
-                <Button type="button" variant="outline" onClick={() => document.getElementById('week-doc-upload')?.click()}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload
-                </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Upload a Word document to automatically create content with embedded videos
@@ -515,10 +511,6 @@ export default function ActivityManagementPage() {
                     onChange={handleFileUpload}
                     className="flex-1"
                   />
-                  <Button type="button" variant="outline" onClick={() => document.getElementById('docUpload')?.click()}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   Upload a Word document to automatically create content with embedded videos
@@ -585,8 +577,8 @@ export default function ActivityManagementPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">
-                              {activity.day === 0 
-                                ? `Week ${activity.week} Information` 
+                              {activity.day === 0
+                                ? `Week ${activity.week} Information`
                                 : `Week ${activity.week} - Day ${activity.day}`}
                             </p>
                           </div>
@@ -622,94 +614,94 @@ export default function ActivityManagementPage() {
               <DialogTitle>Edit Activity</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4 mb-20">
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
-                  const data = {
-                    week: parseInt(formData.get('week') as string),
-                    day: parseInt(formData.get('day') as string),
-                    contentFields: editingContentFields
-                  };
-                  updateActivityMutation.mutate(data);
-                }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="week">Week</Label>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target as HTMLFormElement);
+                const data = {
+                  week: parseInt(formData.get('week') as string),
+                  day: parseInt(formData.get('day') as string),
+                  contentFields: editingContentFields
+                };
+                updateActivityMutation.mutate(data);
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="week">Week</Label>
+                    <Input
+                      type="number"
+                      name="week"
+                      defaultValue={editingActivity?.week}
+                      required
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="day">Day</Label>
+                    <Input
+                      type="number"
+                      name="day"
+                      defaultValue={editingActivity?.day}
+                      required
+                      min="0" // Allow 0 for week-only information
+                      max="7"
+                    />
+                    {editingActivity?.day === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Day 0 indicates week-only information
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {editingContentFields.map((field) => (
+                    <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEditingContentField(field.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <Input
-                        type="number"
-                        name="week"
-                        defaultValue={editingActivity?.week}
-                        required
-                        min="1"
+                        type="text"
+                        placeholder="Title"
+                        value={field.title}
+                        onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
                       />
-                    </div>
-                    <div>
-                      <Label htmlFor="day">Day</Label>
-                      <Input
-                        type="number"
-                        name="day"
-                        defaultValue={editingActivity?.day}
-                        required
-                        min="0" // Allow 0 for week-only information
-                        max="7"
-                      />
-                      {editingActivity?.day === 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Day 0 indicates week-only information
-                        </p>
+                      {field.type === 'video' ? (
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            placeholder="YouTube Video URL"
+                            value={field.content}
+                            onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
+                          />
+                          {field.content && (
+                            <div className="mt-4 bg-black/5 rounded-md p-2">
+                              <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
+                              <YouTubePlayer videoId={field.content} />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <RichTextEditor
+                          content={field.content}
+                          onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
+                        />
                       )}
                     </div>
-                  </div>
+                  ))}
+                </div>
 
-                  <div className="space-y-4">
-                    {editingContentFields.map((field) => (
-                      <div key={field.id} className="space-y-2 p-4 border rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeEditingContentField(field.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Input
-                          type="text"
-                          placeholder="Title"
-                          value={field.title}
-                          onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
-                        />
-                        {field.type === 'video' ? (
-                          <div className="space-y-2">
-                            <Input
-                              type="text"
-                              placeholder="YouTube Video URL"
-                              value={field.content}
-                              onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
-                            />
-                            {field.content && (
-                              <div className="mt-4 bg-black/5 rounded-md p-2">
-                                <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
-                                <YouTubePlayer videoId={field.content} />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <RichTextEditor
-                            content={field.content}
-                            onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <Button type="submit" disabled={updateActivityMutation.isPending}>
-                    {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
-                  </Button>
-                </form>
+                <Button type="submit" disabled={updateActivityMutation.isPending}>
+                  {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                </Button>
+              </form>
             </ScrollArea>
           </DialogContent>
         </Dialog>
