@@ -229,17 +229,35 @@ export default function ActivityPage() {
                       </div>
                     ) : (
                       <>
-                        {/* Just display the content directly since iframes are already embedded */}
-                        <div 
-                          className="rich-text-content prose-sm text-base overflow-hidden" 
-                          style={{ 
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word'
-                          }}
-                          dangerouslySetInnerHTML={{ 
-                            __html: field.content 
-                          }}
-                        />
+                        {/* Check if content has iframes and handle them differently */}
+                        {field.content.includes('<iframe') ? (
+                          <div 
+                            className="rich-text-content prose-sm text-base overflow-hidden iframe-container" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            // Don't use dangerouslySetInnerHTML for iframe content
+                            // to prevent them from rendering twice
+                            dangerouslySetInnerHTML={{ 
+                              __html: field.content.replace(
+                                /<div class="video-wrapper"><iframe[\s\S]*?<\/iframe><\/div>/g,
+                                '<div class="video-iframe-placeholder"></div>'
+                              ) 
+                            }}
+                          />
+                        ) : (
+                          <div 
+                            className="rich-text-content prose-sm text-base overflow-hidden" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: field.content 
+                            }}
+                          />
+                        )}
                       </>
                     )}
                   </div>
@@ -300,17 +318,35 @@ export default function ActivityPage() {
                       </div>
                     ) : (
                       <>
-                        {/* Just display the content directly since iframes are already embedded */}
-                        <div 
-                          className="rich-text-content prose-sm text-lg overflow-hidden" 
-                          style={{ 
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word'
-                          }}
-                          dangerouslySetInnerHTML={{ 
-                            __html: field.content 
-                          }}
-                        />
+                        {/* Check if content has iframes and handle them differently */}
+                        {field.content.includes('<iframe') ? (
+                          <div 
+                            className="rich-text-content prose-sm text-lg overflow-hidden iframe-container" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            // Don't use dangerouslySetInnerHTML for iframe content
+                            // to prevent them from rendering twice
+                            dangerouslySetInnerHTML={{ 
+                              __html: field.content.replace(
+                                /<div class="video-wrapper"><iframe[\s\S]*?<\/iframe><\/div>/g,
+                                '<div class="video-iframe-placeholder"></div>'
+                              ) 
+                            }}
+                          />
+                        ) : (
+                          <div 
+                            className="rich-text-content prose-sm text-lg overflow-hidden" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: field.content 
+                            }}
+                          />
+                        )}
                       </>
                     )}
                   </div>

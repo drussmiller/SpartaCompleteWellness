@@ -42,6 +42,21 @@ iframe:not(.video-wrapper iframe) {
   margin-right: auto;
 }
 
+/* Style for iframe placeholders to avoid duplicates */
+.video-iframe-placeholder {
+  width: 560px;
+  height: 315px;
+  max-width: 100%;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  margin: 10px 0;
+  position: relative;
+}
+
+.iframe-container iframe {
+  display: none;
+}
+
 /* Remove extra spaces around iframes */
 p > .video-wrapper:only-child {
   margin: 0;
