@@ -34,6 +34,7 @@ import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
+import { docRouter } from "./doc-processor";
 import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
@@ -93,6 +94,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Register message routes
   router.use(messageRouter);
+  
+  // Register document processing routes
+  router.use(docRouter);
 
   // Add CORS headers for all requests
   router.use((req, res, next) => {
