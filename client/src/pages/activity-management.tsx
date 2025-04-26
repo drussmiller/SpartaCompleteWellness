@@ -442,9 +442,11 @@ export default function ActivityManagementPage() {
 
             <form onSubmit={async (e) => {
               e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              const weekNumber = parseInt(formData.get('week') as string);
 
               // Format a title that includes "Week X" format for week content
-              const weekTitle = `Week ${selectedWeek} Overview`;
+              const weekTitle = `Week ${weekNumber} Overview`;
 
               // Update content fields to include week number in title if they don't already
               const updatedContentFields = contentFields.map(field => ({
@@ -453,7 +455,7 @@ export default function ActivityManagementPage() {
               }));
 
               const data = {
-                week: selectedWeek,
+                week: weekNumber,
                 day: 0, // Use day 0 to indicate week-only content
                 contentFields: updatedContentFields
               };
@@ -468,11 +470,12 @@ export default function ActivityManagementPage() {
 
                 toast({
                   title: "Success",
-                  description: `Week ${selectedWeek} information created successfully`
+                  description: `Week ${weekNumber} information created successfully`
                 });
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
                 setContentFields([]);
+                (e.target as HTMLFormElement).reset();
               } catch (error) {
                 toast({
                   title: "Error",
@@ -481,6 +484,10 @@ export default function ActivityManagementPage() {
                 });
               }
             }} className="space-y-4">
+              <div>
+                <Label htmlFor="week">Week Number</Label>
+                <Input type="number" name="week" required min="1" className="w-24" />
+              </div>
               <div className="space-y-4">
                 {contentFields.map((field) => (
                   <div key={field.id} className="space-y-2 p-4 border rounded-lg">
