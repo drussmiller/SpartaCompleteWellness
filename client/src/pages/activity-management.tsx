@@ -36,7 +36,6 @@ export default function ActivityManagementPage() {
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
-  const [isWeekOnly, setIsWeekOnly] = useState(false);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const isMobile = useIsMobile();
 
@@ -299,7 +298,7 @@ export default function ActivityManagementPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 mb-4">
               <Label htmlFor="week-number" className="flex-shrink-0">Week Number</Label>
               <Input 
                 id="week-number" 
@@ -309,19 +308,11 @@ export default function ActivityManagementPage() {
                 value={selectedWeek}
                 onChange={handleWeekChange}
               />
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="week-only-toggle"
-                  checked={isWeekOnly}
-                  onCheckedChange={setIsWeekOnly}
-                />
-                <Label htmlFor="week-only-toggle">Week-only information (no specific day)</Label>
-              </div>
             </div>
 
             <div className="mb-4">
-              <Label htmlFor="week-doc-upload">Upload Word Document for Week</Label>
-              <div className="flex items-center gap-2 mt-1">
+              <Label htmlFor="week-doc-upload">Upload Word Document</Label>
+              <div className="flex items-center gap-2">
                 <Input
                   id="week-doc-upload"
                   type="file"
@@ -330,20 +321,20 @@ export default function ActivityManagementPage() {
                   className="flex-1"
                 />
                 <Button type="button" variant="outline" onClick={() => document.getElementById('week-doc-upload')?.click()}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Upload Week Document
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Upload a Word document to automatically create week content
+                Upload a Word document to automatically create content with embedded videos
               </p>
             </div>
 
             <form onSubmit={async (e) => {
               e.preventDefault();
               
-              // Format a title that includes "Week X" format for week-only content
-              const weekTitle = `Week ${selectedWeek}${isWeekOnly ? ' Overview' : ''}`;
+              // Format a title that includes "Week X" format for week content
+              const weekTitle = `Week ${selectedWeek} Overview`;
               
               // Update content fields to include week number in title if they don't already
               const updatedContentFields = contentFields.map(field => ({
@@ -353,7 +344,7 @@ export default function ActivityManagementPage() {
               
               const data = {
                 week: selectedWeek,
-                day: isWeekOnly ? 0 : 1, // Use day 0 to indicate week-only content
+                day: 0, // Use day 0 to indicate week-only content
                 contentFields: updatedContentFields
               };
 
@@ -372,7 +363,6 @@ export default function ActivityManagementPage() {
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
                 setContentFields([]);
-                setIsWeekOnly(false);
               } catch (error) {
                 toast({
                   title: "Error",
