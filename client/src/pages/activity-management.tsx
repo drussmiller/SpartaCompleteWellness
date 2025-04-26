@@ -198,22 +198,8 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = file.name.replace('.docx', '');
 
-      // Process YouTube links in the content
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-      let content = data.content;
-
-      // Remove the ">" characters that might appear near video links
-      content = content.replace(/>[^\s<]*(?:youtube\.com|youtu\.be)[^\s<]*/g, '');
-
-      // Replace YouTube URLs with embedded iframe HTML
-      const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-      });
-
-      // Clean up any empty paragraphs that might be left
-      const cleanedContent = enhancedContent
-        .replace(/<p>\s*<\/p>/g, '')
-        .replace(/>\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)[^<]*/g, '');
+      // Clean up any empty paragraphs
+      const cleanedContent = data.content.replace(/<p>\s*<\/p>/g, '');
 
       // Create single rich text field with embedded videos
       const newFields: ContentField[] = [{
@@ -267,22 +253,8 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = file.name.replace('.docx', '');
 
-      // Process YouTube links in the content
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-      let content = data.content;
-
-      // Remove the ">" characters that might appear near video links
-      content = content.replace(/>[^\s<]*(?:youtube\.com|youtu\.be)[^\s<]*/g, '');
-
-      // Replace YouTube URLs with embedded iframe HTML
-      const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-      });
-
-      // Clean up any empty paragraphs that might be left
-      const cleanedContent = enhancedContent
-        .replace(/<p>\s*<\/p>/g, '')
-        .replace(/>\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)[^<]*/g, '');
+      // Clean up any empty paragraphs
+      const cleanedContent = data.content.replace(/<p>\s*<\/p>/g, '');
 
       // Create single rich text field with embedded videos
       const newFields: ContentField[] = [{
