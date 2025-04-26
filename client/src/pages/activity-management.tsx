@@ -169,7 +169,8 @@ export default function ActivityManagementPage() {
     setEditingContentFields(editingContentFields.filter(f => f.id !== id));
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleWeekFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !file.name.endsWith('.docx')) {
       toast({
@@ -184,7 +185,6 @@ export default function ActivityManagementPage() {
     formData.append('document', file);
 
     try {
-      console.log('Uploading document:', file.name);
       const res = await fetch('/api/activities/upload-doc', {
         method: 'POST',
         body: formData,
@@ -196,49 +196,129 @@ export default function ActivityManagementPage() {
       }
 
       const data = await res.json();
-      console.log('Processed document content:', data.content);
-
-      // Extract a title from the filename or first heading
       let title = file.name.replace('.docx', '');
 
-      // Process YouTube links in the content if they exist
-      // More comprehensive regex to find YouTube URLs in various formats
+      // Process YouTube links in the content
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-      const youtubeMatches = [...data.content.matchAll(youtubeRegex)];
+      let content = data.content;
+      const youtubeMatches = [...content.matchAll(youtubeRegex)];
 
-      // If we found YouTube videos, create separate video fields
-      const contentFields: ContentField[] = [];
+      // Replace YouTube URLs with empty string and create video fields
+      youtubeMatches.forEach((match) => {
+        content = content.replace(match[0], '');
+      });
 
-      // First, create a text field with the main content
-      const newTextField: ContentField = {
-        id: Math.random().toString(36).substring(7),
-        type: 'text',
-        content: data.content,
-        title: title
-      };
+      // Create content fields
+      const newFields: ContentField[] = [];
 
-      contentFields.push(newTextField);
+      // Add text content if there's any left after removing videos
+      if (content.trim()) {
+        newFields.push({
+          id: Math.random().toString(36).substring(7),
+          type: 'text',
+          content: content.trim(),
+          title: title
+        });
+      }
 
-      // Then add any YouTube videos as separate fields
+      // Add video fields
       youtubeMatches.forEach((match, index) => {
         const videoId = match[1];
         if (videoId) {
-          const videoField: ContentField = {
+          newFields.push({
             id: Math.random().toString(36).substring(7),
             type: 'video',
             content: videoId,
             title: `${title} - Video ${index + 1}`
-          };
-          contentFields.push(videoField);
+          });
         }
       });
 
-      setContentFields(contentFields);
+      setContentFields(newFields);
 
       toast({
         title: "Success",
-        description: "Document processed successfully with " +
-                     (youtubeMatches.length > 0 ? youtubeMatches.length + " embedded videos" : "content")
+        description: "Document processed successfully"
+      });
+    } catch (error) {
+      console.error('Error processing document:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process document",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDailyFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.name.endsWith('.docx')) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a Word document (.docx)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('document', file);
+
+    try {
+      const res = await fetch('/api/activities/upload-doc', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to process document');
+      }
+
+      const data = await res.json();
+      let title = file.name.replace('.docx', '');
+
+      // Process YouTube links in the content
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      let content = data.content;
+      const youtubeMatches = [...content.matchAll(youtubeRegex)];
+
+      // Replace YouTube URLs with empty string and create video fields
+      youtubeMatches.forEach((match) => {
+        content = content.replace(match[0], '');
+      });
+
+      // Create content fields
+      const newFields: ContentField[] = [];
+
+      // Add text content if there's any left after removing videos
+      if (content.trim()) {
+        newFields.push({
+          id: Math.random().toString(36).substring(7),
+          type: 'text',
+          content: content.trim(),
+          title: title
+        });
+      }
+
+      // Add video fields
+      youtubeMatches.forEach((match, index) => {
+        const videoId = match[1];
+        if (videoId) {
+          newFields.push({
+            id: Math.random().toString(36).substring(7),
+            type: 'video',
+            content: videoId,
+            title: `${title} - Video ${index + 1}`
+          });
+        }
+      });
+
+      setContentFields(newFields);
+
+      toast({
+        title: "Success",
+        description: "Document processed successfully"
       });
     } catch (error) {
       console.error('Error processing document:', error);
@@ -346,9 +426,9 @@ export default function ActivityManagementPage() {
                   id="week-doc-upload"
                   type="file"
                   accept=".docx"
-                  onChange={(e) => {
-                    setContentFields([]); // Clear existing fields first
-                    handleFileUpload(e);
+                  onChange={async (event) => {
+                    setContentFields([]);
+                    await handleWeekFileUpload(event);
                   }}
                   className="flex-1"
                 />
@@ -511,7 +591,10 @@ export default function ActivityManagementPage() {
                     id="docUpload"
                     type="file"
                     accept=".docx"
-                    onChange={handleFileUpload}
+                    onChange={async (event) => {
+                      setContentFields([]);
+                      await handleDailyFileUpload(event);
+                    }}
                     className="flex-1"
                   />
                 </div>
