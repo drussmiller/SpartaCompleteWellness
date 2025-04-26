@@ -21,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { YouTubePlayer } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
 
 // Define the interface for content fields
@@ -176,12 +177,18 @@ export default function ActivityPage() {
                     {field.title && (
                       <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
                     )}
-                    <div 
-                      className="rich-text-content prose-sm text-base" 
-                      dangerouslySetInnerHTML={{ 
-                        __html: field.content 
-                      }}
-                    />
+                    {field.type === 'video' ? (
+                      <div className="mt-4 mb-4">
+                        <YouTubePlayer videoId={field.content} />
+                      </div>
+                    ) : (
+                      <div 
+                        className="rich-text-content prose-sm text-base" 
+                        dangerouslySetInnerHTML={{ 
+                          __html: field.content 
+                        }}
+                      />
+                    )}
                   </div>
                 ))}
                 {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
@@ -232,12 +239,18 @@ export default function ActivityPage() {
                     {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
                       <h2 className="text-xl font-bold mb-4">{field.title}</h2>
                     )}
-                    <div 
-                      className="rich-text-content prose-sm text-lg" 
-                      dangerouslySetInnerHTML={{ 
-                        __html: field.content 
-                      }}
-                    />
+                    {field.type === 'video' ? (
+                      <div className="mt-4 mb-6">
+                        <YouTubePlayer videoId={field.content} />
+                      </div>
+                    ) : (
+                      <div 
+                        className="rich-text-content prose-sm text-lg" 
+                        dangerouslySetInnerHTML={{ 
+                          __html: field.content 
+                        }}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
