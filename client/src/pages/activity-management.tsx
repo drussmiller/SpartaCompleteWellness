@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, FileText, Calendar, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type ContentField = {
   id: string;
@@ -34,6 +36,8 @@ export default function ActivityManagementPage() {
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+  const [isWeekOnly, setIsWeekOnly] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
@@ -195,7 +199,7 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       console.log('Processed document content:', data.content);
 
-      const newField = {
+      const newField: ContentField = {
         id: Math.random().toString(36).substring(7),
         type: 'text',
         content: data.content,
@@ -445,7 +449,6 @@ export default function ActivityManagementPage() {
               <DialogTitle>Edit Activity</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4 mb-20">
-              <Form>
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.target as HTMLFormElement);
@@ -532,7 +535,6 @@ export default function ActivityManagementPage() {
                     {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
                   </Button>
                 </form>
-              </Form>
             </ScrollArea>
           </DialogContent>
         </Dialog>
