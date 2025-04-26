@@ -22,17 +22,18 @@
 }
 
 .video-wrapper iframe {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   border: none;
 }
 
 /* Style for iframes that aren't in video-wrapper */
-iframe:not(.video-wrapper iframe) {
-  width: 560px;
-  height: 315px;
+iframe {
+  width: 560px !important;
+  height: 315px !important;
   max-width: 100%;
   border: none;
+  margin: 10px 0;
 }
 
 /* Style wrapper when in an activity context */
@@ -42,19 +43,9 @@ iframe:not(.video-wrapper iframe) {
   margin-right: auto;
 }
 
-/* Style for iframe placeholders to avoid duplicates */
-.video-iframe-placeholder {
-  width: 560px;
-  height: 315px;
-  max-width: 100%;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  margin: 10px 0;
-  position: relative;
-}
-
-.iframe-container iframe {
-  display: none;
+/* Ensure proper spacing for iframes in rich text content */
+.rich-text-content iframe {
+  display: block;
 }
 
 /* Remove extra spaces around iframes */
