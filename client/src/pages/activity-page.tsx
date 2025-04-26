@@ -148,28 +148,6 @@ export default function ActivityPage() {
         </div>
       </header>
       <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
-        {/* Week Information Section */}
-        <Card className="border-2 border-primary/20">
-          <CardContent className="p-4 mt-2">
-            <div className="flex items-center gap-3 mb-3">
-              <CalendarDays className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Week {selectedWeek} Overview</h2>
-            </div>
-            <div className="text-sm space-y-2">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <span>Week Goal: Complete all daily activities</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BookText className="h-4 w-4 text-primary" />
-                <span>Focus: {weekActivities && weekActivities.length > 0 ? 
-                  `${weekActivities.length} days of planned activities` : 
-                  'Plan your week activities'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
         {/* Week Content Collapsible Section */}
         <Collapsible 
           open={isWeekOverviewOpen} 
