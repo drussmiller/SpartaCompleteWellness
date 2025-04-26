@@ -6,7 +6,42 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Loader2, 
+  ChevronDown, 
+  ChevronUp,
+  CalendarDays,
+  BookText,
+  Target
+} from "lucide-react";
+import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Activity } from "@shared/schema";
+
+// Define the interface for content fields
+interface ContentField {
+  id: string;
+  type: 'text' | 'video';
+  content: string;
+  title?: string;
+}
+
+// Define progress interface
+interface ActivityProgress {
+  currentWeek: number;
+  currentDay: number;
+  daysSinceStart: number;
+  progressDays: number;
+  debug?: {
+    timezone: string;
+    localTime: string;
+  };
+}
 
 export default function ActivityPage() {
   const { user } = useAuth();
@@ -24,7 +59,7 @@ export default function ActivityPage() {
   }, [tzOffset]);
 
   // Get current week and day from the server
-  const { data: currentProgress, isLoading: isProgressLoading } = useQuery({
+  const { data: currentProgress, isLoading: isProgressLoading } = useQuery<ActivityProgress>({
     queryKey: ["/api/activities/current", { tzOffset }],
     queryFn: async () => {
       const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
@@ -48,13 +83,25 @@ export default function ActivityPage() {
   const [selectedDay, setSelectedDay] = useState(1);
 
 
-  const { data: activities, isLoading: isActivitiesLoading } = useQuery({
+  const { data: activities, isLoading: isActivitiesLoading } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
   });
 
+  // Get current activity for selected day
   const currentActivity = activities?.find(
-    (a) => a.week === selectedWeek && a.day === selectedDay
+    (a: Activity) => a.week === selectedWeek && a.day === selectedDay
   );
+  
+  // Get week activities - all activities for the selected week
+  const weekActivities = activities?.filter(
+    (a: Activity) => a.week === selectedWeek
+  );
+  
+  // Find the first activity of the week to use as the week overview
+  const weekOverviewActivity = weekActivities?.[0];
+  
+  // State for collapsible section
+  const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
 
   const navigatePrevDay = () => {
     if (selectedDay > 1) {
@@ -101,7 +148,77 @@ export default function ActivityPage() {
         </div>
       </header>
       <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
-        <div className="flex items-center justify-center gap-4">
+        {/* Week Information Section */}
+        <Card className="border-2 border-primary/20">
+          <CardContent className="p-4 mt-2">
+            <div className="flex items-center gap-3 mb-3">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">Week {selectedWeek} Overview</h2>
+            </div>
+            <div className="text-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <span>Week Goal: Complete all daily activities</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <BookText className="h-4 w-4 text-primary" />
+                <span>Focus: {weekActivities && weekActivities.length > 0 ? 
+                  `${weekActivities.length} days of planned activities` : 
+                  'Plan your week activities'}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Week Content Collapsible Section */}
+        <Collapsible 
+          open={isWeekOverviewOpen} 
+          onOpenChange={setIsWeekOverviewOpen}
+          className="border rounded-md">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex w-full justify-between p-4">
+              <div className="flex items-center gap-2">
+                <BookText className="h-4 w-4" />
+                <span className="font-medium">Week {selectedWeek} Content</span>
+              </div>
+              {isWeekOverviewOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-4 bg-muted/20">
+            {weekOverviewActivity ? (
+              <div className="prose max-w-none">
+                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
+                  field.title?.includes(`Week ${selectedWeek}`) && !field.title?.includes('Day')
+                ).map((field: ContentField, index: number) => (
+                  <div key={index} className="mb-4">
+                    {field.title && (
+                      <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
+                    )}
+                    <div 
+                      className="rich-text-content prose-sm text-base" 
+                      dangerouslySetInnerHTML={{ 
+                        __html: field.content 
+                      }}
+                    />
+                  </div>
+                ))}
+                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
+                  field.title?.includes(`Week ${selectedWeek}`) && !field.title?.includes('Day')).length === 0 && (
+                  <p className="text-muted-foreground text-center py-2">No week content available</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-2">No week content available</p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+        
+        {/* Day Navigation */}
+        <div className="flex items-center justify-center gap-4 mt-2">
           <Button
             variant="outline"
             size="icon"
@@ -127,17 +244,18 @@ export default function ActivityPage() {
           </Button>
         </div>
 
+        {/* Daily Content Card */}
         {currentActivity ? (
           <Card>
             <CardContent className="p-6">
               <div className="prose max-w-none">
-                {currentActivity.contentFields?.map((field, index) => (
+                {currentActivity.contentFields?.map((field: ContentField, index: number) => (
                   <div key={index} className="mb-8">
                     {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
                       <h2 className="text-xl font-bold mb-4">{field.title}</h2>
                     )}
                     <div 
-                      className="rich-text-content prose-sm  text-lg" 
+                      className="rich-text-content prose-sm text-lg" 
                       dangerouslySetInnerHTML={{ 
                         __html: field.content 
                       }}
