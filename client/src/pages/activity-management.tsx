@@ -454,50 +454,16 @@ export default function ActivityManagementPage() {
                 });
               }
             }} className="space-y-4">
-              <div className="space-y-4">
-                {contentFields.map((field) => (
-                  <div key={field.id} className="space-y-2 p-4 border rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeContentField(field.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder={`Week ${selectedWeek} ${field.type === 'video' ? 'Video' : 'Content'}`}
-                      value={field.title}
-                      onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
-                    />
-                    {field.type === 'video' ? (
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          placeholder="YouTube Video URL"
-                          value={field.content}
-                          onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
-                        />
-                        {field.content && (
-                          <div className="mt-4 bg-black/5 rounded-md p-2">
-                            <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
-                            <YouTubePlayer videoId={field.content} />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <RichTextEditor
-                        content={field.content}
-                        onChange={(newContent) => updateContentField(field.id, 'content', newContent)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+              {contentFields.length > 0 && (
+                <div className="space-y-4">
+                  <Input
+                    type="text"
+                    placeholder={`Week ${selectedWeek} Information`}
+                    value={contentFields[0].title}
+                    onChange={(e) => updateContentField(contentFields[0].id, 'title', e.target.value)}
+                  />
+                </div>
+              )}
 
 
               <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">
