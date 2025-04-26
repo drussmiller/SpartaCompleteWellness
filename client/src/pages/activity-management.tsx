@@ -200,28 +200,10 @@ export default function ActivityManagementPage() {
 
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
-      let videos = [];
-      let match;
 
-      // First, collect all video URLs in order of appearance
-      while ((match = youtubeRegex.exec(content)) !== null) {
-        videos.push({
-          url: match[0],
-          videoId: match[1],
-          position: match.index
-        });
-      }
-
-      // Sort videos by position in ascending order (top to bottom)
-      videos.sort((a, b) => a.position - b.position);
-
-      // Remove all video URLs from content
-      content = content.replace(youtubeRegex, '');
-
-      // Replace video URLs with iframes in their original positions
-      videos.forEach(video => {
-        const videoHtml = `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${video.videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-        content = content.slice(0, video.position) + videoHtml + content.slice(video.position);
+      // Replace URLs with iframes directly in their original position
+      content = content.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
       // Create single content field with embedded videos in correct positions
@@ -278,28 +260,10 @@ export default function ActivityManagementPage() {
 
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
-      let videos = [];
-      let match;
 
-      // First, collect all video URLs in order of appearance
-      while ((match = youtubeRegex.exec(content)) !== null) {
-        videos.push({
-          url: match[0],
-          videoId: match[1],
-          position: match.index
-        });
-      }
-
-      // Sort videos by position in ascending order (top to bottom)
-      videos.sort((a, b) => a.position - b.position);
-
-      // Remove all video URLs from content
-      content = content.replace(youtubeRegex, '');
-
-      // Replace video URLs with iframes in their original positions
-      videos.forEach(video => {
-        const videoHtml = `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${video.videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-        content = content.slice(0, video.position) + videoHtml + content.slice(video.position);
+      // Replace URLs with iframes directly in their original position
+      content = content.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
       // Create single content field with embedded videos in correct positions
