@@ -12,7 +12,7 @@
   overflow-wrap: break-word;
 }
 
-/* Universal iframe styles */
+/* Default iframe styles */
 iframe {
   width: 560px !important;
   height: 315px !important;
@@ -22,15 +22,38 @@ iframe {
   margin: 15px 0;
 }
 
-/* Video container styling */
+/* Video container styling - cleaner wrapper for embedded content */
 .video-wrapper {
   position: relative;
   width: 560px;
   height: 315px;
   max-width: 100%;
   margin: 15px 0;
+  display: block;
+  clear: both;
 }
 
+/* Fix for embedded videos to prevent duplicates */
+.rich-text-content em .video-wrapper,
+.rich-text-content em iframe,
+.rich-text-content i .video-wrapper,
+.rich-text-content i iframe {
+  display: inline-block !important;
+}
+
+/* Special treatment for weekly content */
+.weekly-content .video-wrapper {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+/* Special treatment for daily content */
+.daily-content .video-wrapper {
+  margin-top: 15px;
+  margin-bottom: 25px;
+}
+
+/* Ensure correct video size regardless of parent */
 .video-wrapper iframe {
   margin: 0;
   position: absolute;

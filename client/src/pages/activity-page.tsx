@@ -230,7 +230,7 @@ export default function ActivityPage() {
                     ) : (
                       <>
                         <div 
-                          className="rich-text-content prose-sm text-base overflow-hidden" 
+                          className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
                           style={{ 
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word'
@@ -300,7 +300,7 @@ export default function ActivityPage() {
                     ) : (
                       <>
                         <div 
-                          className="rich-text-content prose-sm text-lg overflow-hidden" 
+                          className="rich-text-content prose-sm text-lg overflow-hidden daily-content" 
                           style={{ 
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word'

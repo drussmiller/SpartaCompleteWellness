@@ -58,6 +58,11 @@ export function YouTubePlayer({
     return cleanUrl;
   };
 
+  // Check if this is already an embedded iframe HTML
+  if (videoId.includes('<iframe') && videoId.includes('youtube.com/embed/')) {
+    return null; // Skip already embedded videos to prevent duplicates
+  }
+  
   const embedId = getYouTubeId(videoId);
   
   if (!embedId) return null;
