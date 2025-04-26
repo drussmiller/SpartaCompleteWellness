@@ -201,18 +201,38 @@ export default function ActivityManagementPage() {
       // Process YouTube links in the content
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
-      // Replace YouTube URLs with embedded iframe HTML
-      const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      const youtubeMatches = [...content.matchAll(youtubeRegex)];
+
+      // Replace YouTube URLs with empty string and create video fields
+      youtubeMatches.forEach((match) => {
+        content = content.replace(match[0], '');
       });
 
-      // Create single rich text field with embedded videos
-      const newFields: ContentField[] = [{
-        id: Math.random().toString(36).substring(7),
-        type: 'text',
-        content: enhancedContent.trim(),
-        title: title
-      }];
+      // Create content fields
+      const newFields: ContentField[] = [];
+
+      // Add text content if there's any left after removing videos
+      if (content.trim()) {
+        newFields.push({
+          id: Math.random().toString(36).substring(7),
+          type: 'text',
+          content: content.trim(),
+          title: title
+        });
+      }
+
+      // Add video fields
+      youtubeMatches.forEach((match, index) => {
+        const videoId = match[1];
+        if (videoId) {
+          newFields.push({
+            id: Math.random().toString(36).substring(7),
+            type: 'video',
+            content: videoId,
+            title: `${title} - Video ${index + 1}`
+          });
+        }
+      });
 
       setContentFields(newFields);
 
@@ -261,18 +281,38 @@ export default function ActivityManagementPage() {
       // Process YouTube links in the content
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
-      // Replace YouTube URLs with embedded iframe HTML
-      const enhancedContent = content.replace(youtubeRegex, (match, videoId) => {
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      const youtubeMatches = [...content.matchAll(youtubeRegex)];
+
+      // Replace YouTube URLs with empty string and create video fields
+      youtubeMatches.forEach((match) => {
+        content = content.replace(match[0], '');
       });
 
-      // Create single rich text field with embedded videos
-      const newFields: ContentField[] = [{
-        id: Math.random().toString(36).substring(7),
-        type: 'text',
-        content: enhancedContent.trim(),
-        title: title
-      }];
+      // Create content fields
+      const newFields: ContentField[] = [];
+
+      // Add text content if there's any left after removing videos
+      if (content.trim()) {
+        newFields.push({
+          id: Math.random().toString(36).substring(7),
+          type: 'text',
+          content: content.trim(),
+          title: title
+        });
+      }
+
+      // Add video fields
+      youtubeMatches.forEach((match, index) => {
+        const videoId = match[1];
+        if (videoId) {
+          newFields.push({
+            id: Math.random().toString(36).substring(7),
+            type: 'video',
+            content: videoId,
+            title: `${title} - Video ${index + 1}`
+          });
+        }
+      });
 
       setContentFields(newFields);
 
