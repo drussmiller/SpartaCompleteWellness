@@ -33,8 +33,8 @@ interface ContentField {
 }
 
 // Function to extract YouTube video IDs from HTML content
-function extractYouTubeIdFromContent(content: string): string | null {
-  if (!content) return null;
+function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
+  if (!content) return { id: null, url: null };
   
   // More comprehensive regex to find YouTube URLs in various formats
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -43,7 +43,7 @@ function extractYouTubeIdFromContent(content: string): string | null {
   const matches = content.match(youtubeRegex);
   if (matches && matches[1]) {
     console.log('Found YouTube URL in content:', matches[0]);
-    return matches[1];
+    return { id: matches[1], url: matches[0] };
   }
   
   // Also look for bare YouTube IDs surrounded by non-URL text
@@ -53,11 +53,11 @@ function extractYouTubeIdFromContent(content: string): string | null {
     const possibleId = bareMatches[1];
     if (possibleId.length === 11) {
       console.log('Found possible YouTube ID in content:', possibleId);
-      return possibleId;
+      return { id: possibleId, url: null };
     }
   }
   
-  return null;
+  return { id: null, url: null };
 }
 
 // Define progress interface
@@ -214,18 +214,38 @@ export default function ActivityPage() {
                       </div>
                     ) : (
                       <>
-                        <div 
-                          className="rich-text-content prose-sm text-base" 
-                          dangerouslySetInnerHTML={{ 
-                            __html: field.content 
-                          }}
-                        />
+                        {/* Process content to hide YouTube links when they're embedded */}
+                        {(() => {
+                          const { id, url } = extractYouTubeIdFromContent(field.content);
+                          let contentToDisplay = field.content;
+                          
+                          // If a YouTube URL was found, remove it from the content before displaying
+                          if (id && url) {
+                            contentToDisplay = contentToDisplay.replace(url, '');
+                          }
+                          
+                          return (
+                            <div 
+                              className="rich-text-content prose-sm text-base" 
+                              dangerouslySetInnerHTML={{ 
+                                __html: contentToDisplay 
+                              }}
+                            />
+                          );
+                        })()}
+                        
                         {/* Check for YouTube URLs in the text content and embed them */}
-                        {extractYouTubeIdFromContent(field.content) && (
-                          <div className="mt-4 mb-4">
-                            <YouTubePlayer videoId={extractYouTubeIdFromContent(field.content)!} />
-                          </div>
-                        )}
+                        {(() => {
+                          const { id } = extractYouTubeIdFromContent(field.content);
+                          if (id) {
+                            return (
+                              <div className="mt-4 mb-4">
+                                <YouTubePlayer videoId={id} />
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </>
                     )}
                   </div>
@@ -286,18 +306,38 @@ export default function ActivityPage() {
                       </div>
                     ) : (
                       <>
-                        <div 
-                          className="rich-text-content prose-sm text-lg" 
-                          dangerouslySetInnerHTML={{ 
-                            __html: field.content 
-                          }}
-                        />
+                        {/* Process content to hide YouTube links when they're embedded */}
+                        {(() => {
+                          const { id, url } = extractYouTubeIdFromContent(field.content);
+                          let contentToDisplay = field.content;
+                          
+                          // If a YouTube URL was found, remove it from the content before displaying
+                          if (id && url) {
+                            contentToDisplay = contentToDisplay.replace(url, '');
+                          }
+                          
+                          return (
+                            <div 
+                              className="rich-text-content prose-sm text-lg" 
+                              dangerouslySetInnerHTML={{ 
+                                __html: contentToDisplay 
+                              }}
+                            />
+                          );
+                        })()}
+                        
                         {/* Check for YouTube URLs in the text content and embed them */}
-                        {extractYouTubeIdFromContent(field.content) && (
-                          <div className="mt-4 mb-6">
-                            <YouTubePlayer videoId={extractYouTubeIdFromContent(field.content)!} />
-                          </div>
-                        )}
+                        {(() => {
+                          const { id } = extractYouTubeIdFromContent(field.content);
+                          if (id) {
+                            return (
+                              <div className="mt-4 mb-6">
+                                <YouTubePlayer videoId={id} />
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </>
                     )}
                   </div>
