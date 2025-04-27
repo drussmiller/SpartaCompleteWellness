@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import ChangePasswordForm from "@/components/change-password-form";
 import { insertMeasurementSchema } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -477,6 +478,16 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">Account Security</h3>
+              <div className="mb-4">
+                {/* Import and render the change password form */}
+                <ChangePasswordForm />
+              </div>
             </CardContent>
           </Card>
 
