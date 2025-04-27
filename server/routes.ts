@@ -4766,13 +4766,80 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         );
 
-      let weeklyPoints = 0;
+      // Log the weekly posts for debugging
+      logger.info(`Found ${weeklyPosts.length} posts for the week:`, {
+        userId,
+        dateRange: `${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`
+      });
+
+      // Detailed logging of each post
       for (const post of weeklyPosts) {
-        if (post.type === 'food') weeklyPoints += 3;
-        else if (post.type === 'workout') weeklyPoints += 3;
-        else if (post.type === 'scripture') weeklyPoints += 3;
-        else if (post.type === 'memory_verse') weeklyPoints += 10;
+        logger.info(`Weekly post: id=${post.id}, type=${post.type}, created=${post.createdAt.toISOString()}, points=${post.points}`, {
+          userId,
+          postId: post.id
+        });
       }
+
+      // Check specifically for Friday posts
+      const friday = new Date(userLocalTime);
+      // Set to previous Friday if today is not Friday
+      if (userLocalTime.getDay() !== 5) { // 5 is Friday
+        const daysToSubtract = (userLocalTime.getDay() + 2) % 7;
+        friday.setDate(userLocalTime.getDate() - daysToSubtract);
+      }
+      friday.setHours(0, 0, 0, 0);
+      const fridayUTC = new Date(friday.getTime() + (tzOffset * 60000));
+      const nextDayUTC = new Date(fridayUTC);
+      nextDayUTC.setDate(fridayUTC.getDate() + 1);
+
+      logger.info(`Checking specifically for Friday posts between ${fridayUTC.toISOString()} and ${nextDayUTC.toISOString()}`, {
+        userId
+      });
+
+      const fridayPosts = await db.select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, fridayUTC),
+            lt(posts.createdAt, nextDayUTC),
+            eq(posts.type, 'food')
+          )
+        );
+
+      logger.info(`Found ${fridayPosts.length} food posts for Friday`, {
+        userId,
+        fridayPosts: fridayPosts.map(p => ({ id: p.id, created: p.createdAt.toISOString() }))
+      });
+
+      let weeklyPoints = 0;
+      let foodPoints = 0;
+      let workoutPoints = 0;
+      let scripturePoints = 0;
+      let memoryVersePoints = 0;
+
+      for (const post of weeklyPosts) {
+        if (post.type === 'food') {
+          weeklyPoints += 3;
+          foodPoints += 3;
+        }
+        else if (post.type === 'workout') {
+          weeklyPoints += 3;
+          workoutPoints += 3;
+        }
+        else if (post.type === 'scripture') {
+          weeklyPoints += 3;
+          scripturePoints += 3;
+        }
+        else if (post.type === 'memory_verse') {
+          weeklyPoints += 10;
+          memoryVersePoints += 10;
+        }
+      }
+      
+      logger.info(`Weekly points breakdown: total=${weeklyPoints}, food=${foodPoints}, workout=${workoutPoints}, scripture=${scripturePoints}, memory_verse=${memoryVersePoints}`, {
+        userId
+      });
 
       // Monthly average - Three months ago in user's local time
       const threeMonthsAgo = new Date(
@@ -4885,38 +4952,129 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      // Get timezone offset in minutes directly from the client
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      
+      // For better debugging, log all the timezone information
+      logger.info(`Weekly points requested for user ${userId} with timezone offset: ${tzOffset} minutes`);
+      
       const now = new Date();
       
-      // Get start of week (Monday)
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+      // Calculate the local date for the user based on their timezone
+      const userLocalTime = new Date(now.getTime() - (tzOffset * 60000));
+      
+      logger.info(`User's local time: ${userLocalTime.toISOString()}, Day of week: ${userLocalTime.getDay()}`);
+      
+      // Get start of week (Sunday) in user's local time
+      const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const startOfWeek = new Date(userLocalTime);
+      startOfWeek.setDate(userLocalTime.getDate() - dayOfWeek); // Go back to Sunday
       startOfWeek.setHours(0, 0, 0, 0);
       
-      // Get end of week (Sunday)
+      // Convert back to UTC for database query
+      const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
+      
+      // Get end of week (Saturday) in user's local time
       const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setDate(startOfWeek.getDate() + 6); // End on Saturday
       endOfWeek.setHours(23, 59, 59, 999);
+      
+      // Convert back to UTC for database query
+      const endOfWeekUTC = new Date(endOfWeek.getTime() + (tzOffset * 60000));
+      
+      logger.info(`Week date range (UTC): ${startOfWeekUTC.toISOString()} to ${endOfWeekUTC.toISOString()}`);
 
-      const result = await db
-        .select({
-          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
-        })
+      // Get all posts for the week to analyze
+      const weekPosts = await db
+        .select()
         .from(posts)
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, startOfWeek),
-            lte(posts.createdAt, endOfWeek),
+            gte(posts.createdAt, startOfWeekUTC),
+            lte(posts.createdAt, endOfWeekUTC),
             isNull(posts.parentId) // Don't count comments
           )
         );
+        
+      logger.info(`Found ${weekPosts.length} posts for the week`);
+      
+      // Check specifically for Friday posts
+      const friday = new Date(userLocalTime);
+      // Set to previous Friday if today is not Friday
+      if (userLocalTime.getDay() !== 5) { // 5 is Friday
+        const daysToSubtract = (userLocalTime.getDay() + 2) % 7;
+        friday.setDate(userLocalTime.getDate() - daysToSubtract);
+      }
+      friday.setHours(0, 0, 0, 0);
+      const fridayUTC = new Date(friday.getTime() + (tzOffset * 60000));
+      const saturdayUTC = new Date(fridayUTC);
+      saturdayUTC.setDate(fridayUTC.getDate() + 1);
+
+      logger.info(`Friday date range (UTC): ${fridayUTC.toISOString()} to ${saturdayUTC.toISOString()}`);
+
+      // Get Friday food posts specifically
+      const fridayFoodPosts = await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, fridayUTC),
+            lt(posts.createdAt, saturdayUTC),
+            eq(posts.type, 'food')
+          )
+        );
+        
+      logger.info(`Friday food posts: ${fridayFoodPosts.length}`);
+      
+      if (fridayFoodPosts.length > 0) {
+        for (const post of fridayFoodPosts) {
+          logger.info(`Friday food post: id=${post.id}, created=${post.createdAt.toISOString()}, points=${post.points}`);
+        }
+      }
+
+      // Calculate points by type
+      let totalPoints = 0;
+      let foodPoints = 0;
+      let workoutPoints = 0;
+      let scripturePoints = 0;
+      let memoryVersePoints = 0;
+      
+      for (const post of weekPosts) {
+        if (post.type === 'food') {
+          totalPoints += 3;
+          foodPoints += 3;
+        }
+        else if (post.type === 'workout') {
+          totalPoints += 3;
+          workoutPoints += 3;
+        }
+        else if (post.type === 'scripture') {
+          totalPoints += 3;
+          scripturePoints += 3;
+        }
+        else if (post.type === 'memory_verse') {
+          totalPoints += 10;
+          memoryVersePoints += 10;
+        }
+      }
+      
+      logger.info(`Weekly points breakdown - Total: ${totalPoints}, Food: ${foodPoints}, Workout: ${workoutPoints}, Scripture: ${scripturePoints}, Memory Verse: ${memoryVersePoints}`);
 
       // Ensure this endpoint also has consistent content-type
       res.setHeader('Content-Type', 'application/json');
       res.json({ 
-        points: result[0]?.points || 0,
-        startDate: startOfWeek.toISOString(),
-        endDate: endOfWeek.toISOString()
+        points: totalPoints,
+        breakdown: {
+          food: foodPoints,
+          workout: workoutPoints,
+          scripture: scripturePoints,
+          memoryVerse: memoryVersePoints
+        },
+        startDate: startOfWeekUTC.toISOString(),
+        endDate: endOfWeekUTC.toISOString(),
+        fridayFoodPostCount: fridayFoodPosts.length
       });
     } catch (error) {
       logger.error('Error getting weekly points:', error instanceof Error ? error : new Error(String(error)));
