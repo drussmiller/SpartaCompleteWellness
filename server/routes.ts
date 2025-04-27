@@ -4690,7 +4690,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Posts for user ${userId} today in UTC: ${postsToday.length}`);
 
       // Calculate the local date for the user based on their timezone
-      const now = new Date();
+      const currentTimestamp = new Date();
       // First convert to UTC by removing the local timezone offset
       const utcTime = now.getTime();
       // Then adjust to user's local time by applying their timezone offset (reversed since getTimezoneOffset returns the opposite)
@@ -4741,10 +4741,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Weekly stats calculation
       // Use current date in the user's local time zone to calculate the week
-      const now = new Date(userLocalTime);
+      const statsNow = new Date(userLocalTime);
       
       // Get the current day of week (0 = Sunday, 1 = Monday, etc.)
-      const dayOfWeek = now.getDay();
+      const dayOfWeek = statsNow.getDay();
       
       // Find the beginning of the week (Sunday) in user's local time
       const startOfWeek = new Date(userLocalTime);
@@ -4829,9 +4829,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         friday.setDate(userLocalTime.getDate() - daysToSubtract);
       }
       friday.setHours(0, 0, 0, 0);
-      const fridayUTC = new Date(friday.getTime() + (tzOffset * 60000));
-      const nextDayUTC = new Date(fridayUTC);
-      nextDayUTC.setDate(fridayUTC.getDate() + 1);
+      const fridaySpecialUTC = new Date(friday.getTime() + (tzOffset * 60000));
+      const nextDayUTC = new Date(fridaySpecialUTC);
+      nextDayUTC.setDate(fridaySpecialUTC.getDate() + 1);
 
       logger.info(`Checking specifically for Friday posts between ${fridayUTC.toISOString()} and ${nextDayUTC.toISOString()}`, {
         userId
@@ -5006,10 +5006,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       logger.info(`User's local time: ${userLocalTime.toISOString()}, Day of week: ${userLocalTime.getDay()}`);
       
-      // Get start of week (Sunday) in user's local time
+      // Get start of week (Monday) in user's local time
       const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const startOfWeek = new Date(userLocalTime);
-      startOfWeek.setDate(userLocalTime.getDate() - dayOfWeek); // Go back to Sunday
+      // If today is Sunday (0), go back 6 days to previous Monday
+      // For other days, go back (current day - 1) days to reach Monday
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startOfWeek.setDate(userLocalTime.getDate() - daysToMonday); // Go back to Monday
       startOfWeek.setHours(0, 0, 0, 0);
       
       // Convert back to UTC for database query
@@ -5135,7 +5138,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
       
       // Calculate the local date for the user based on their timezone
-      const now = new Date();
+      const currentDateNow = new Date();
       const userLocalTime = new Date(now.getTime() - (tzOffset * 60000));
       
       // Get the current day of week based on user's local time
@@ -5143,9 +5146,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       logger.info(`Leaderboard calculation - user local time: ${userLocalTime.toISOString()}, day of week: ${dayOfWeek}`);
       
-      // Find the beginning of the week (Sunday) in user's local time
+      // Find the beginning of the week (Monday) in user's local time
       const startOfWeek = new Date(userLocalTime);
-      startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+      // Calculate how many days to go back to reach Monday (where Monday is 1, Sunday is 0)
+      // If today is Sunday (0), we go back 6 days to previous Monday
+      // For other days, we go back (current day - 1) days
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
       startOfWeek.setHours(0, 0, 0, 0);
       
       // Convert local time to UTC for database query
