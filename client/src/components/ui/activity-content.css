@@ -86,9 +86,8 @@ iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"],
   display: none !important;
 }
 
-/* Week 9 specific fixes - hide ALL identical videos in week content */
-[data-week="9"] .weekly-content .video-wrapper ~ .video-wrapper,
-[data-week="9"] .weekly-content iframe[src*="youtube.com/embed"] ~ iframe[src*="youtube.com/embed"] {
+/* Week 9 specific fixes - hide duplicate videos but use a more targeted approach */
+[data-week="9"] .weekly-content .video-wrapper:nth-of-type(n+2) {
   display: none !important;
 }
 

@@ -58,16 +58,40 @@ function checkForWeek3() {
     setTimeout(fixDuplicateVideos, 500);
     setTimeout(fixDuplicateVideos, 1000);
     
-    // For very problematic weeks (3, 9), run even more aggressive fixing
+    // For very problematic weeks (3, 9), run more targeted fixing
     if (currentWeek === 3 || currentWeek === 9) {
-      console.log(`Week ${currentWeek} known to have duplicate video issues - applying aggressive fix`);
+      console.log(`Week ${currentWeek} known to have duplicate video issues - applying targeted fix`);
       setTimeout(() => {
-        // Extra pass for these problematic weeks
-        const duplicateContainers = document.querySelectorAll('.video-wrapper + .video-wrapper');
-        duplicateContainers.forEach(container => {
-          container.style.display = 'none';
-          container.setAttribute('data-duplicate', 'true');
-        });
+        // Week 3 specific fix
+        if (currentWeek === 3) {
+          const warmupVideos = document.querySelectorAll('iframe[src*="JT49h1zSD6I"]');
+          if (warmupVideos.length > 1) {
+            // Keep only the first one
+            for (let i = 1; i < warmupVideos.length; i++) {
+              const container = findVideoContainer(warmupVideos[i]);
+              if (container) {
+                container.style.display = 'none';
+                container.setAttribute('data-duplicate', 'true');
+              }
+            }
+          }
+        }
+        
+        // Week 9 specific fix - more targeted approach
+        if (currentWeek === 9) {
+          // Only target the weekly content section
+          const weeklyContent = document.querySelector('[data-week="9"] .weekly-content');
+          if (weeklyContent) {
+            const videos = weeklyContent.querySelectorAll('.video-wrapper');
+            // If there's more than one video, keep only the first one
+            if (videos.length > 1) {
+              for (let i = 1; i < videos.length; i++) {
+                videos[i].style.display = 'none';
+                videos[i].setAttribute('data-duplicate', 'true');
+              }
+            }
+          }
+        }
       }, 1200);
     }
   }

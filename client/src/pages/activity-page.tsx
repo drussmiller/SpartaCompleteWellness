@@ -110,44 +110,13 @@ export default function ActivityPage() {
 
   // Custom effect to run fix for duplicate videos
   useEffect(() => {
-    // Reset the fix flag when week/day changes to ensure fix runs again
-    hasFixedDuplicates.current = false;
-    
     // Explicitly call the global function to fix duplicate videos
-    if (typeof window !== 'undefined' && window.fixDuplicateVideos) {
-      console.log(`Running fix for duplicate videos in Week ${selectedWeek}, Day ${selectedDay}`);
-      
-      // Run multiple fixes with different timings for better reliability
-      setTimeout(() => window.fixDuplicateVideos(), 300);
-      setTimeout(() => window.fixDuplicateVideos(), 800);
-      
-      // Apply special handling for problematic weeks
-      if (selectedWeek === 9) {
-        console.log('Applying special Week 9 duplicate video fix');
-        setTimeout(() => {
-          // Extra aggressive approach for Week 9
-          try {
-            const weeklySection = document.querySelector('[data-week="9"] .weekly-content');
-            if (weeklySection) {
-              const videos = weeklySection.querySelectorAll('.video-wrapper');
-              console.log(`Found ${videos.length} videos in Week 9 weekly content`);
-              
-              // Keep only the first one
-              videos.forEach((video, index) => {
-                if (index > 0) {
-                  (video as HTMLElement).style.display = 'none';
-                  video.setAttribute('data-duplicate', 'true');
-                  video.innerHTML = ''; // Remove content to be safe
-                }
-              });
-            }
-          } catch (err) {
-            console.error('Error in Week 9 specific fix:', err);
-          }
-        }, 1000);
-      }
-      
-      hasFixedDuplicates.current = true;
+    if (typeof window !== 'undefined' && window.fixDuplicateVideos && !hasFixedDuplicates.current) {
+      setTimeout(() => {
+        console.log('Running fix for duplicate videos from React component');
+        window.fixDuplicateVideos();
+        hasFixedDuplicates.current = true;
+      }, 500);
     }
   }, [selectedWeek, selectedDay]);
 
