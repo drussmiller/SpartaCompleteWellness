@@ -57,13 +57,8 @@ iframe {
   display: block;
 }
 
-/* Hide duplicated videos (approach 1) */
-.weekly-content iframe[src*="JT49h1zSD6I"] {
-  counter-increment: jt49counter;
-}
-
-/* Hide duplicated videos (approach 2) - brute force for Week 3 warmup */
-.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type) {
+/* Hide all duplicate videos in weekly-content by using a data attribute */
+.weekly-content .video-wrapper[data-duplicate="true"] {
   display: none !important;
 }
 

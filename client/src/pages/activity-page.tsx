@@ -24,6 +24,7 @@ import {
 import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
 import "@/components/ui/activity-content.css";
+import { DuplicateVideoDetector, fixWeek3WarmupVideo } from "@/components/ui/duplicate-video-detector";
 
 // Define the interface for content fields
 interface ContentField {
@@ -183,6 +184,10 @@ export default function ActivityPage() {
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 pt-28">
+      {/* Add our duplicate video detection components */}
+      <DuplicateVideoDetector />
+      {selectedWeek === 3 && <FixWeek3WarmupVideo />}
+      
       <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
         {/* This div is an empty spacer, which you can style as necessary */}
       </div>
