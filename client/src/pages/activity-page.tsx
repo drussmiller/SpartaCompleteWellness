@@ -282,6 +282,7 @@ export default function ActivityPage() {
                           ) : (
                             <div 
                               className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
+                              data-week={selectedWeek.toString()}
                               style={{ 
                                 wordWrap: 'break-word',
                                 overflowWrap: 'break-word'
@@ -351,6 +352,7 @@ export default function ActivityPage() {
                         ) : (
                           <div 
                             className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
+                            data-week={selectedWeek.toString()}
                             style={{ 
                               wordWrap: 'break-word',
                               overflowWrap: 'break-word'
@@ -434,8 +436,11 @@ export default function ActivityPage() {
                       // Remove all instances first
                       processedContent = processedContent.replace(videoPattern, '');
                       
-                      // Add back just the first instance
-                      processedContent = `<div class="video-wrapper warmup-video">${matches[0][0].match(/<iframe.*?<\/iframe>/)[0]}</div>${processedContent}`;
+                      // Add back just the first instance - with safety check for null
+                      const iframeMatch = matches[0] && matches[0][0] ? matches[0][0].match(/<iframe.*?<\/iframe>/) : null;
+                      if (iframeMatch && iframeMatch[0]) {
+                        processedContent = `<div class="video-wrapper warmup-video">${iframeMatch[0]}</div>${processedContent}`;
+                      }
                     }
                   }
                   
