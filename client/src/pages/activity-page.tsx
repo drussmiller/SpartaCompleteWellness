@@ -24,7 +24,8 @@ import {
 import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
 import "@/components/ui/activity-content.css";
-import { DuplicateVideoDetector, fixWeek3WarmupVideo } from "@/components/ui/duplicate-video-detector";
+import { DuplicateVideoDetector, FixWeek3WarmupVideo } from "@/components/ui/duplicate-video-detector";
+import "@/components/ui/fix-duplicate-video.css"; // Special CSS to handle duplicates
 
 // Define the interface for content fields
 interface ContentField {
