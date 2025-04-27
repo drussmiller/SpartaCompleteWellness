@@ -37,6 +37,7 @@ import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
+import { calculateUserProgression } from './fix-progression-calculation';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
