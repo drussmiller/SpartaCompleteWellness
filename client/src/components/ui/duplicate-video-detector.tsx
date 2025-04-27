@@ -10,6 +10,76 @@ export function DuplicateVideoDetector() {
     const detectAndMarkDuplicates = () => {
       console.log('Running duplicate video detector...');
       
+      // First check if we're on Week 9
+      const weekHeader = document.querySelector('span.font-medium');
+      if (weekHeader && weekHeader.textContent && weekHeader.textContent.includes('Week 9')) {
+        console.log('Week 9 detected - applying video fix');
+        
+        // Get all weekly-content containers
+        const weeklyContentDivs = document.querySelectorAll('.weekly-content');
+        if (weeklyContentDivs.length > 0) {
+          console.log('Week 9 known to have duplicate video issues - applying targeted fix');
+          
+          // Get all iframes
+          const warmupIframes = document.querySelectorAll('iframe[src*="JT49h1zSD6I"]');
+          if (warmupIframes.length > 1) {
+            console.log(`Found ${warmupIframes.length} instances of the Week 3 warmup video`);
+            
+            // Map all YouTube videos to count duplicates
+            const allYoutubeIframes = document.querySelectorAll('iframe[src*="youtube.com/embed"]');
+            console.log(`Found ${allYoutubeIframes.length} total YouTube videos on page`);
+            
+            // Find duplicates
+            const videoMap = new Map();
+            const duplicateIds = new Set();
+            
+            allYoutubeIframes.forEach(iframe => {
+              const src = iframe.getAttribute('src') || '';
+              const match = src.match(/embed\/([a-zA-Z0-9_-]{11})/);
+              
+              if (match && match[1]) {
+                const videoId = match[1];
+                if (videoMap.has(videoId)) {
+                  duplicateIds.add(videoId);
+                } else {
+                  videoMap.set(videoId, iframe);
+                }
+              }
+            });
+            
+            if (duplicateIds.size > 0) {
+              console.log(`Found ${duplicateIds.size} duplicate video IDs: ${Array.from(duplicateIds).join(', ')}`);
+              
+              // Keep first instance, hide others
+              duplicateIds.forEach(videoId => {
+                let foundFirst = false;
+                allYoutubeIframes.forEach(iframe => {
+                  const src = iframe.getAttribute('src') || '';
+                  // Make sure we're working with string values
+                  const videoIdStr = String(videoId);
+                  if (src.includes(videoIdStr)) {
+                    if (!foundFirst) {
+                      foundFirst = true;
+                    } else {
+                      console.log(`Hiding previous instance of ${videoIdStr}`);
+                      let parent = iframe.parentElement;
+                      while (parent && !parent.classList.contains('video-wrapper')) {
+                        parent = parent.parentElement;
+                      }
+                      if (parent) {
+                        // Use HTMLElement type to ensure style property access is valid
+                        const htmlElement = parent as HTMLElement;
+                        htmlElement.style.display = 'none';
+                      }
+                    }
+                  }
+                });
+              });
+            }
+          }
+        }
+      }
+      
       // Get all weekly-content containers
       const weeklyContents = document.querySelectorAll('.weekly-content');
       
@@ -120,9 +190,72 @@ export function FixWeek3WarmupVideo() {
           
           if (parent) {
             console.log('Hiding duplicate Week 3 warmup video');
-            parent.style.display = 'none';
+            (parent as HTMLElement).style.display = 'none';
           }
         }
+      }
+    }, 500);
+    
+    return () => clearTimeout(timerId);
+  }, []);
+  
+  return null;
+}
+
+// Special function just for Week 9 video fix
+export function FixWeek9WarmupVideo() {
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      console.log('Checking for Week 9 video duplication issues');
+      
+      // Target specifically the Week 9 warmup video that's causing issues
+      const warmupIframes = document.querySelectorAll('iframe[src*="JT49h1zSD6I"]');
+      
+      if (warmupIframes.length > 1) {
+        console.log(`Found ${warmupIframes.length} instances of warmup video in Week 9`);
+        
+        // Keep only the first instance
+        for (let i = 1; i < warmupIframes.length; i++) {
+          const iframe = warmupIframes[i];
+          // Find the parent video-wrapper div
+          let parent = iframe.parentElement;
+          while (parent && !parent.classList.contains('video-wrapper')) {
+            parent = parent.parentElement;
+          }
+          
+          if (parent) {
+            console.log('Hiding duplicate Week 9 warmup video');
+            (parent as HTMLElement).style.display = 'none';
+            // If we want to be more aggressive, we can also remove the element
+            if (parent.parentElement) {
+              parent.parentElement.removeChild(parent);
+            }
+          } else {
+            // If we can't find parent, try hiding the iframe directly
+            (iframe as HTMLIFrameElement).style.display = 'none';
+          }
+        }
+      }
+      
+      // Also target any anchor tags that might be wrapping videos
+      const anchorVideos = document.querySelectorAll('a:has(iframe[src*="youtube.com/embed"])');
+      if (anchorVideos.length > 0) {
+        console.log(`Found ${anchorVideos.length} videos wrapped in anchor tags - fixing those`);
+        
+        anchorVideos.forEach(anchor => {
+          // Create a clone of the iframe
+          const iframe = anchor.querySelector('iframe');
+          if (iframe) {
+            const parent = anchor.parentElement;
+            if (parent) {
+              // Replace the anchor with just the iframe's div
+              const videoWrapper = iframe.closest('.video-wrapper');
+              if (videoWrapper) {
+                parent.replaceChild(videoWrapper, anchor);
+              }
+            }
+          }
+        });
       }
     }, 500);
     

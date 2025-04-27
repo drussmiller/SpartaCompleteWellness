@@ -29,6 +29,20 @@ iframe[src*="JT49h1zSD6I"] {
   display: none !important;
 }
 
+/* Specific Week 9 fix - fix anchor tags with embedded videos */
+a iframe[src*="youtube.com/embed"] {
+  display: none !important;
+}
+
+a:has(iframe[src*="youtube.com/embed"]) {
+  display: none !important;
+}
+
+/* Week 9 specific fix to ensure only first warmup video shows */
+.rich-text-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type) {
+  display: none !important;
+}
+
 /* JavaScript will add this class to duplicates */
 .video-duplicate {
   display: none !important;

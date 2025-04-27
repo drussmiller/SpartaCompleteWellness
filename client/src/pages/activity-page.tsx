@@ -24,7 +24,7 @@ import {
 import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
 import "@/components/ui/activity-content.css";
-import { DuplicateVideoDetector, FixWeek3WarmupVideo } from "@/components/ui/duplicate-video-detector";
+import { DuplicateVideoDetector, FixWeek3WarmupVideo, FixWeek9WarmupVideo } from "@/components/ui/duplicate-video-detector";
 import "@/components/ui/fix-duplicate-video.css"; // Special CSS to handle duplicates
 
 // Define the interface for content fields
@@ -188,6 +188,7 @@ export default function ActivityPage() {
       {/* Add our duplicate video detection components */}
       <DuplicateVideoDetector />
       {selectedWeek === 3 && <FixWeek3WarmupVideo />}
+      {selectedWeek === 9 && <FixWeek9WarmupVideo />}
       
       <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
         {/* This div is an empty spacer, which you can style as necessary */}
