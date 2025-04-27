@@ -101,13 +101,17 @@ export default function ActivityPage() {
   // Get timezone offset for the current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();
   
+  // State for week and day selection
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(1);
+  
   // Create ref to track first render
   const hasFixedDuplicates = useRef(false);
 
   // Custom effect to run fix for duplicate videos
   useEffect(() => {
     // Explicitly call the global function to fix duplicate videos
-    if (window.fixDuplicateVideos && !hasFixedDuplicates.current) {
+    if (typeof window !== 'undefined' && window.fixDuplicateVideos && !hasFixedDuplicates.current) {
       setTimeout(() => {
         console.log('Running fix for duplicate videos from React component');
         window.fixDuplicateVideos();
@@ -144,9 +148,6 @@ export default function ActivityPage() {
       setSelectedDay(currentProgress.currentDay);
     }
   }, [currentProgress]);
-
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
 
 
   const { data: activities, isLoading: isActivitiesLoading } = useQuery<Activity[]>({
