@@ -4750,15 +4750,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Convert back to UTC for database query
       const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
 
-      logger.info(`Date range for weekly stats (in user's local timezone): ${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
+      // Log the date range for better debugging
+      logger.info(`Date range for weekly stats (user ${userId}): ${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
+      logger.info(`Today is ${userLocalTime.toDateString()} with day of week: ${dayOfWeek}`);
 
+      // Get posts for this week with explicit parentId check
       const weeklyPosts = await db.select()
         .from(posts)
         .where(
           and(
             eq(posts.userId, userId),
             gte(posts.createdAt, startOfWeekUTC),
-            lte(posts.createdAt, endOfDayUTC)
+            lte(posts.createdAt, endOfDayUTC),
+            isNull(posts.parentId) // Don't count comments as posts
           )
         );
 
