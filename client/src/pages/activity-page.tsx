@@ -1,10 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BottomNav } from "@/components/bottom-nav";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+
+// Define global fixes added via script tag
+declare global {
+  interface Window {
+    fixDuplicateVideos: () => void;
+  }
+}
 import { useAuth } from "@/hooks/use-auth";
 import { 
   ChevronLeft, 
@@ -93,6 +100,21 @@ export default function ActivityPage() {
 
   // Get timezone offset for the current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();
+  
+  // Create ref to track first render
+  const hasFixedDuplicates = useRef(false);
+
+  // Custom effect to run fix for duplicate videos
+  useEffect(() => {
+    // Explicitly call the global function to fix duplicate videos
+    if (window.fixDuplicateVideos && !hasFixedDuplicates.current) {
+      setTimeout(() => {
+        console.log('Running fix for duplicate videos from React component');
+        window.fixDuplicateVideos();
+        hasFixedDuplicates.current = true;
+      }, 500);
+    }
+  }, [selectedWeek, selectedDay]);
 
   // Debug timezone information
   useEffect(() => {

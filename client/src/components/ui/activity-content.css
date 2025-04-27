@@ -57,29 +57,31 @@ iframe {
   display: block;
 }
 
-/* CRITICAL FIX: Brute force approach to completely prevent duplicate Week 3 warmup videos */
-.weekly-content:has(.warmup-video) .rich-text-content iframe[src*="JT49h1zSD6I"]:not(:first-child) {
+/* CRITICAL FIX: Direct solution for Week 3 warmup video duplication */
+
+/* Hide any element with the duplicate attribute */
+[data-duplicate="true"] {
   display: none !important;
 }
 
-/* When in Week 3, ensure only the warmup video in the weekly section is shown */
-.weekly-content[data-week="3"] .warmup-video-day1 {
-  display: none !important;
-}
-
-/* Hide any second instance of the warmup video */
-.weekly-content iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"] {
-  display: none !important;
-}
-
-/* Special styling for warmup videos to make them stand out */
-.weekly-content .warmup-video, 
-.weekly-content .warmup-video-day1 {
-  margin-top: 1em;
-  margin-bottom: 1em;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+/* Style the primary instance of videos that we keep */
+.primary-video-instance {
+  border: 2px solid #f0f0f0;
   border-radius: 8px;
-  padding: 4px;
+  position: relative;
+}
+
+/* Hide all duplicate iframes that contain the warmup video */
+.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type),
+iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"],
+.weekly-content .video-wrapper:has(iframe[src*="JT49h1zSD6I"]) ~ .video-wrapper:has(iframe[src*="JT49h1zSD6I"]) {
+  display: none !important;
+}
+
+/* Fix for nested video containers */
+p > p > .video-wrapper {
+  margin-top: 1rem !important; 
+  margin-bottom: 1rem !important;
 }
 
 /* Special treatment for daily content */
