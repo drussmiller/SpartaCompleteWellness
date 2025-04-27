@@ -4746,9 +4746,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get the current day of week (0 = Sunday, 1 = Monday, etc.)
       const dayOfWeek = statsNow.getDay();
       
-      // Find the beginning of the week (Sunday) in user's local time
+      // Find the beginning of the week (Monday) in user's local time
       const startOfWeek = new Date(userLocalTime);
-      startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+      // Calculate how many days to go back to reach Monday (where Monday is 1, Sunday is 0)
+      // If today is Sunday (0), we go back 6 days to previous Monday
+      // For other days, we go back (current day - 1) days
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
       startOfWeek.setHours(0, 0, 0, 0);
       
       // Convert local time to UTC for database query by adding the timezone offset
