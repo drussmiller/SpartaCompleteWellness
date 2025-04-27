@@ -47,6 +47,26 @@ iframe {
   margin-bottom: 15px;
 }
 
+/* Basic styling for videos */
+.video-wrapper {
+  position: relative;
+  width: 560px;
+  height: 315px;
+  max-width: 100%;
+  margin: 15px 0;
+  display: block;
+}
+
+/* Hide duplicated videos (approach 1) */
+.weekly-content iframe[src*="JT49h1zSD6I"] {
+  counter-increment: jt49counter;
+}
+
+/* Hide duplicated videos (approach 2) - brute force for Week 3 warmup */
+.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type) {
+  display: none !important;
+}
+
 /* Special treatment for daily content */
 .daily-content .video-wrapper {
   margin-top: 15px;

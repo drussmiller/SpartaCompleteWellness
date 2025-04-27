@@ -21,7 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { YouTubePlayer } from "@/components/ui/youtube-player";
+import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
 import "@/components/ui/activity-content.css";
 
@@ -229,26 +229,32 @@ export default function ActivityPage() {
                       // Clean embedded content of duplicate videos
                       let processedContent = field.content;
                       
-                      // Special fix for week 3 warmup video - remove the duplicated iframes
-                      if (processedContent && processedContent.includes('WARM UP VIDEO') && 
-                          processedContent.includes('https://www.youtube.com/embed/JT49h1zSD6I')) {
-                        // Replace the paragraph with the video wrapper with a cleaner version
-                        // This keeps only the first instance of the video and removes duplicates
-                        const videoPattern = /<p><div class="video-wrapper"><iframe.*?<\/iframe><\/div><\/p>/;
-                        const videoMatch = processedContent.match(videoPattern);
+                      // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
+                      if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
+                        // First, extract all video iframes
+                        const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
+                        const matches = processedContent.match(iframeRegex);
                         
-                        if (videoMatch && videoMatch[0]) {
-                          // Remove all instances of the video
+                        if (matches && matches.length > 1) {
+                          // We have multiple videos with the same ID
+                          console.log(`Found ${matches.length} instances of Week 3 warmup video`);
+                          
+                          // Remove all video wrappers
                           processedContent = processedContent.replace(
-                            /<p><div class="video-wrapper"><iframe.*?<\/iframe><\/div><\/p>/g, 
+                            /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
                             ''
                           );
                           
-                          // Add back just one instance of the video where the "WARM UP VIDEO" text is
-                          processedContent = processedContent.replace(
-                            /<p><em>WARM UP VIDEO<\/em><\/p>/, 
-                            `<p>WARM UP VIDEO</p>${videoMatch[0]}`
-                          );
+                          // Add back just one video after "WARM UP VIDEO" text
+                          if (processedContent.includes('WARM UP VIDEO')) {
+                            processedContent = processedContent.replace(
+                              'WARM UP VIDEO',
+                              `WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div><p>`
+                            );
+                          } else {
+                            // If no "WARM UP VIDEO" text, just add at the beginning
+                            processedContent = `<div class="video-wrapper">${matches[0]}</div>${processedContent}`;
+                          }
                         }
                       }
                       

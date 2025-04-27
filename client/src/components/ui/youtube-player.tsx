@@ -1,83 +1,135 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
-import '../ui/activity-content.css';
+import React, { useEffect, useRef } from 'react';
 
 interface YouTubePlayerProps {
   videoId: string;
-  className?: string;
-  title?: string;
-  autoplay?: boolean;
-  allowFullScreen?: boolean;
+  autoPlay?: boolean;
   width?: number;
   height?: number;
+  className?: string;
 }
+
+// Track which videos have been rendered to prevent duplicates
+const renderedVideos = new Set<string>();
 
 export function YouTubePlayer({
   videoId,
-  className,
-  title = 'YouTube video player',
-  autoplay = false,
-  allowFullScreen = true,
+  autoPlay = false,
   width = 560,
   height = 315,
+  className = ""
 }: YouTubePlayerProps) {
-  // Extract video ID from YouTube URL if a full URL is provided
-  const getYouTubeId = (url: string): string => {
-    if (!url) return '';
-    
-    // Clean up the input string - remove any HTML tags
-    const cleanUrl = url.replace(/<\/?[^>]+(>|$)/g, '').trim();
-    
-    if (!cleanUrl.includes('youtube.com') && !cleanUrl.includes('youtu.be')) {
-      // Already a video ID, but clean it just in case
-      return cleanUrl.replace(/[^a-zA-Z0-9_-]/g, '');
-    }
-    
-    let id = '';
-    
-    // Handle youtu.be URLs
-    if (cleanUrl.includes('youtu.be')) {
-      id = cleanUrl.split('youtu.be/')[1];
-      const ampersandPosition = id.indexOf('&');
-      if (ampersandPosition !== -1) {
-        id = id.substring(0, ampersandPosition);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Handle different YouTube URL formats and extract the ID
+  const extractedId = extractYouTubeId(videoId);
+  
+  useEffect(() => {
+    // Create special cleanup function for repeated renders
+    return () => {
+      // Check if this is a Week 3 warmup video (JT49h1zSD6I)
+      if (extractedId === 'JT49h1zSD6I') {
+        console.log('Cleaned up Week 3 warmup video from render tracking');
+        renderedVideos.delete('JT49h1zSD6I'); 
       }
-      return id;
-    }
-    
-    // Handle youtube.com URLs
-    if (cleanUrl.includes('v=')) {
-      id = cleanUrl.split('v=')[1];
-      const ampersandPosition = id.indexOf('&');
-      if (ampersandPosition !== -1) {
-        id = id.substring(0, ampersandPosition);
-      }
-      return id;
-    }
-    
-    return cleanUrl;
-  };
-
-  // Check if this is already an embedded iframe HTML
-  if (videoId.includes('<iframe') && videoId.includes('youtube.com/embed/')) {
-    return null; // Skip already embedded videos to prevent duplicates
+    };
+  }, [extractedId]);
+  
+  // Prevent duplicate renders of the same video
+  if (extractedId === 'JT49h1zSD6I' && renderedVideos.has(extractedId)) {
+    console.log('Prevented duplicate render of Week 3 warmup video');
+    return null;
   }
   
-  const embedId = getYouTubeId(videoId);
-  
-  if (!embedId) return null;
-  
+  if (extractedId === 'JT49h1zSD6I') {
+    renderedVideos.add(extractedId);
+    console.log('Added Week 3 warmup video to render tracking');
+  }
+
   return (
-    <div className={cn("video-wrapper", className)} style={{ width: `${width}px`, height: `${height}px` }}>
+    <div 
+      ref={containerRef}
+      className={`video-wrapper ${className}`} 
+      style={{ 
+        position: 'relative',
+        width: `${width}px`,
+        height: `${height}px`,
+        maxWidth: '100%',
+      }}
+    >
       <iframe
-        src={`https://www.youtube.com/embed/${embedId}${autoplay ? '?autoplay=1' : ''}`}
-        title={title}
-        frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen={allowFullScreen}
         width={width}
         height={height}
-      />
+        src={`https://www.youtube.com/embed/${extractedId}${autoPlay ? '?autoplay=1' : ''}`}
+        title="YouTube video player"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+        }}
+      ></iframe>
     </div>
   );
+}
+
+function extractYouTubeId(url: string): string {
+  // If it's already just an ID (11 characters), return it
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+    return url;
+  }
+  
+  // Handle various YouTube URL formats
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  
+  if (match && match[2].length === 11) {
+    return match[2];
+  }
+  
+  // Special case for Week 3 warmup video if ID is embedded in content
+  if (url.includes('JT49h1zSD6I')) {
+    return 'JT49h1zSD6I';
+  }
+  
+  console.error('Invalid YouTube URL or ID:', url);
+  return '';
+}
+
+// Function to be called from activity-page.tsx to handle duplicate videos in HTML content
+export function removeDuplicateVideos(content: string): string {
+  if (!content) return '';
+  
+  // Special handling for Week 3 warmup video
+  if (content.includes('JT49h1zSD6I')) {
+    // Extract all iframes with this video ID
+    const warmupVideoRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
+    const matches = content.match(warmupVideoRegex);
+    
+    if (matches && matches.length > 1) {
+      console.log(`Found ${matches.length} occurrences of Week 3 warmup video, keeping only one`);
+      
+      // Remove all video wrappers with this ID
+      let cleanedContent = content.replace(
+        /<div class="video-wrapper">(<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>)<\/div>/g,
+        ''
+      );
+      
+      // If there's a place marker for the warmup video, put it there
+      if (cleanedContent.includes('WARM UP VIDEO')) {
+        return cleanedContent.replace(
+          /<p>(<em>)?WARM UP VIDEO(<\/em>)?<\/p>/,
+          `<p>WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div>`
+        );
+      }
+      
+      // Otherwise add it to the beginning
+      return `<div class="video-wrapper">${matches[0]}</div>${cleanedContent}`;
+    }
+  }
+  
+  return content;
 }
