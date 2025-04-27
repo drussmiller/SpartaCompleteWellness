@@ -57,9 +57,9 @@ iframe {
   display: block;
 }
 
-/* CRITICAL FIX: Direct solution for Week 3 warmup video duplication */
+/* CRITICAL FIX: Solutions for video duplication across all weeks */
 
-/* Hide any element with the duplicate attribute */
+/* Hide any element explicitly marked as duplicate */
 [data-duplicate="true"] {
   display: none !important;
 }
@@ -71,10 +71,24 @@ iframe {
   position: relative;
 }
 
-/* Hide all duplicate iframes that contain the warmup video */
+/* BRUTE FORCE APPROACH FOR ALL WEEKS */
+/* Hide adjacent identical videos (common pattern in our HTML) */
+iframe[src*="youtube.com/embed"] ~ iframe[src*="youtube.com/embed"][src$="&rel=0"],
+iframe[src*="youtube.com/embed"] ~ iframe[src*="youtube.com/embed"][src$="?rel=0"],
+.video-wrapper:has(iframe[src*="youtube.com"]) + .video-wrapper:has(iframe[src*="youtube.com"]) {
+  display: none !important;
+}
+
+/* Week 3 specific fixes */
 .weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type),
 iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"],
 .weekly-content .video-wrapper:has(iframe[src*="JT49h1zSD6I"]) ~ .video-wrapper:has(iframe[src*="JT49h1zSD6I"]) {
+  display: none !important;
+}
+
+/* Week 9 specific fixes - hide ALL identical videos in week content */
+[data-week="9"] .weekly-content .video-wrapper ~ .video-wrapper,
+[data-week="9"] .weekly-content iframe[src*="youtube.com/embed"] ~ iframe[src*="youtube.com/embed"] {
   display: none !important;
 }
 
@@ -82,6 +96,12 @@ iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"],
 p > p > .video-wrapper {
   margin-top: 1rem !important; 
   margin-bottom: 1rem !important;
+}
+
+/* Hard block for adjacent duplicate video containers */
+.video-wrapper + .video-wrapper:has(iframe[src$="&rel=0"]),
+.video-wrapper + .video-wrapper:has(iframe[src$="?rel=0"]) {
+  display: none !important;
 }
 
 /* Special treatment for daily content */
