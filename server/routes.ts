@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, not, lt, ne } from "drizzle-orm";
 import {
   posts,
   notifications,
@@ -851,7 +851,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Exclude posts of specific type if specified
       if (excludeType) {
-        conditions.push(ne(posts.type, excludeType));
+        conditions.push(not(eq(posts.type, excludeType)));
       }
 
       // Join with users table to get author info
