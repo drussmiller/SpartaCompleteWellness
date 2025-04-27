@@ -822,6 +822,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const postType = req.query.type as string;
+      const excludeType = req.query.exclude as string;
 
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
@@ -846,6 +847,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Add type filter if specified and not 'all'
       if (postType && postType !== 'all') {
         conditions.push(eq(posts.type, postType));
+      }
+
+      // Exclude posts of specific type if specified
+      if (excludeType) {
+        conditions.push(ne(posts.type, excludeType));
       }
 
       // Join with users table to get author info
