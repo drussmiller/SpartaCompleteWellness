@@ -4739,22 +4739,63 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         else if (post.type === 'memory_verse') dailyPoints += 10;
       }
 
-      // Weekly stats - Start from Sunday in user's local time
-      const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const startOfWeek = new Date(
-        userLocalTime.getFullYear(),
-        userLocalTime.getMonth(),
-        userLocalTime.getDate() - dayOfWeek, // Go back to the start of the week (Sunday)
-        0, 0, 0, 0
-      );
-      // Convert back to UTC for database query
+      // Weekly stats calculation
+      // Use current date in the user's local time zone to calculate the week
+      const now = new Date(userLocalTime);
+      
+      // Get the current day of week (0 = Sunday, 1 = Monday, etc.)
+      const dayOfWeek = now.getDay();
+      
+      // Find the beginning of the week (Sunday) in user's local time
+      const startOfWeek = new Date(userLocalTime);
+      startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Convert local time to UTC for database query by adding the timezone offset
       const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
-
-      // Log the date range for better debugging
-      logger.info(`Date range for weekly stats (user ${userId}): ${startOfWeekUTC.toISOString()} to ${endOfDayUTC.toISOString()}`);
-      logger.info(`Today is ${userLocalTime.toDateString()} with day of week: ${dayOfWeek}`);
-
-      // Get posts for this week with explicit parentId check
+      
+      // Log detailed date range information for diagnostics
+      logger.info(`Weekly stats calculation for user ${userId}:`, {
+        nowLocal: userLocalTime.toISOString(),
+        dayOfWeek,
+        startOfWeekLocal: startOfWeek.toISOString(),
+        startOfWeekUTC: startOfWeekUTC.toISOString(),
+        endOfDayUTC: endOfDayUTC.toISOString(),
+        tzOffset
+      });
+      
+      // Check specifically for the Friday date range in this week
+      const fridayOffset = (dayOfWeek >= 5) ? (dayOfWeek - 5) : (dayOfWeek + 2);
+      const fridayDate = new Date(userLocalTime);
+      fridayDate.setDate(fridayDate.getDate() - fridayOffset);
+      fridayDate.setHours(0, 0, 0, 0);
+      const fridayUTC = new Date(fridayDate.getTime() + (tzOffset * 60000));
+      
+      const saturdayDate = new Date(fridayDate);
+      saturdayDate.setDate(fridayDate.getDate() + 1);
+      const saturdayUTC = new Date(saturdayDate.getTime() + (tzOffset * 60000));
+      
+      logger.info(`Friday date range for weekly check: ${fridayUTC.toISOString()} to ${saturdayUTC.toISOString()}`);
+      
+      // Get Friday food posts to check if they're included
+      const fridayFoodPosts = await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, fridayUTC),
+            lt(posts.createdAt, saturdayUTC),
+            eq(posts.type, 'food')
+          )
+        );
+      
+      logger.info(`Found ${fridayFoodPosts.length} food posts for Friday`, {
+        userId,
+        posts: fridayFoodPosts.map(p => ({ id: p.id, created: p.createdAt?.toISOString() }))
+      });
+      
+      // Get all posts for the week with explicit parentId check
       const weeklyPosts = await db.select()
         .from(posts)
         .where(
@@ -5090,17 +5131,36 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       
-      const now = new Date();
+      // Get timezone offset in minutes directly from the client
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
       
-      // Get start of week (Monday)
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+      // Calculate the local date for the user based on their timezone
+      const now = new Date();
+      const userLocalTime = new Date(now.getTime() - (tzOffset * 60000));
+      
+      // Get the current day of week based on user's local time
+      const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      logger.info(`Leaderboard calculation - user local time: ${userLocalTime.toISOString()}, day of week: ${dayOfWeek}`);
+      
+      // Find the beginning of the week (Sunday) in user's local time
+      const startOfWeek = new Date(userLocalTime);
+      startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
       startOfWeek.setHours(0, 0, 0, 0);
       
-      // Get end of week (Sunday)
+      // Convert local time to UTC for database query
+      const startOfWeekUTC = new Date(startOfWeek.getTime() + (tzOffset * 60000));
+      
+      // End of week is the following Saturday
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
+      
+      // Convert to UTC for database
+      const endOfWeekUTC = new Date(endOfWeek.getTime() + (tzOffset * 60000));
+      
+      logger.info(`Leaderboard week range (UTC): ${startOfWeekUTC.toISOString()} to ${endOfWeekUTC.toISOString()}`);
+      
 
       // First get the user's team ID
       const [currentUser] = await db
@@ -5123,14 +5183,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             SELECT SUM(p.points)
             FROM posts p
             WHERE p.user_id = users.id
-            AND p.created_at >= ${startOfWeek}
-            AND p.created_at <= ${endOfWeek}
+            AND p.created_at >= ${startOfWeekUTC}
+            AND p.created_at <= ${endOfWeekUTC}
             AND p.parent_id IS NULL
           ), 0)::integer AS points`
         })
         .from(users)
         .where(eq(users.teamId, currentUser.teamId))
         .orderBy(sql`points DESC`);
+        
+      // Add debugging log to see team member points
+      logger.info(`Team member points for week ${startOfWeekUTC.toISOString()} to ${endOfWeekUTC.toISOString()}:`, {
+        teamMembers: teamMembers.map(m => ({ id: m.id, username: m.username, points: m.points }))
+      });
 
       // Get all teams average points
       const teamStats = await db
@@ -5146,7 +5211,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               u.id as user_id,
               COALESCE(SUM(p.points), 0) as total_points
             FROM users u
-            LEFT JOIN posts p ON p.user_id = u.id AND p.created_at >= ${startOfWeek} AND p.created_at <= ${endOfWeek} AND p.parent_id IS NULL
+            LEFT JOIN posts p ON p.user_id = u.id 
+                             AND p.created_at >= ${startOfWeekUTC} 
+                             AND p.created_at <= ${endOfWeekUTC} 
+                             AND p.parent_id IS NULL
             WHERE u.team_id IS NOT NULL
             GROUP BY u.id
           ) user_points ON user_points.team_id = t.id
@@ -5159,8 +5227,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         teamMembers,
         teamStats,
         weekRange: {
-          start: startOfWeek.toISOString(),
-          end: endOfWeek.toISOString()
+          start: startOfWeekUTC.toISOString(),
+          end: endOfWeekUTC.toISOString(),
+          tzOffset: tzOffset
         }
       });
     } catch (error) {
