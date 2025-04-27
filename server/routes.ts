@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, or, isNull, not, lt, ne } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
 import {
   posts,
   notifications,
@@ -37,7 +37,7 @@ import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
-import { calculateUserProgression } from './weekly-progression';
+import calculateUserProgression from './weekly-progression';
 
 // Configure multer for file uploads
 const multerStorage = multer.diskStorage({
@@ -822,7 +822,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const postType = req.query.type as string;
-      const excludeType = req.query.exclude as string;
 
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
@@ -847,11 +846,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Add type filter if specified and not 'all'
       if (postType && postType !== 'all') {
         conditions.push(eq(posts.type, postType));
-      }
-
-      // Exclude posts of specific type if specified
-      if (excludeType) {
-        conditions.push(not(eq(posts.type, excludeType)));
       }
 
       // Join with users table to get author info
@@ -1870,20 +1864,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Use the fixed progression calculation based on first Monday after team join date
-      const progression = calculateUserProgression(user, toUserLocalTime);
-      const { 
-        daysSinceStart, 
-        weekNumber, 
-        dayNumber, 
-        progressDays,
-        progressStart,
-        programStartDay,
-        utcNow,
-        userLocalNow,
-        userStartOfDay,
-        joinDateStartOfDay
-      } = progression;
+      // Program start date (2/24/2025)
+      const programStart = new Date('2025-02-24T00:00:00.000Z');
+
+      // Get current time in user's timezone
+      const utcNow = new Date();
+      const userLocalNow = toUserLocalTime(utcNow);
+
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
 
       // Debug info
       console.log('Date Calculations:', {
@@ -2492,20 +2495,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Use the fixed progression calculation based on first Monday after team join date
-      const progression = calculateUserProgression(user, toUserLocalTime);
-      const { 
-        daysSinceStart, 
-        weekNumber, 
-        dayNumber, 
-        progressDays,
-        progressStart,
-        programStartDay,
-        utcNow,
-        userLocalNow,
-        userStartOfDay,
-        joinDateStartOfDay
-      } = progression;
+      // Program start date (2/24/2025)
+      const programStart = new Date('2025-02-24T00:00:00.000Z');
+
+      // Get current time in user's timezone
+      const utcNow = new Date();
+      const userLocalNow = toUserLocalTime(utcNow);
+
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
 
       // Debug info
       console.log('Date Calculations:', {
