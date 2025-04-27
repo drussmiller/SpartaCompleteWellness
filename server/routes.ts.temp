@@ -41,6 +41,10 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { repairThumbnails } from './thumbnail-repair';
 import { prayerRoutes } from './prayer-routes';
+// Consolidated message routes have been moved to message-routes.ts
+// Note: There are duplicate message handlers in this file around lines 3348 and 3979
+// However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
+import { messageRouter } from './message-routes';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({
@@ -81,11 +85,49 @@ const upload = multer({
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
   const router = express.Router();
 
+  // Helper function to calculate program start date (first Monday after team join date)
+  const calculateProgramStartDate = (teamJoinDate: Date): Date => {
+    const joinDate = new Date(teamJoinDate);
+    // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const dayOfWeek = joinDate.getDay();
+    
+    // Calculate days until next Monday: if already Monday (1), use that date, otherwise find next Monday
+    const daysUntilMonday = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7;
+    
+    // Create program start date as the Monday on/after team join date
+    const programStart = new Date(joinDate);
+    programStart.setDate(joinDate.getDate() + daysUntilMonday);
+    // Ensure we're at the start of the day
+    programStart.setHours(0, 0, 0, 0);
+    
+    return programStart;
+  };
+
   // Add request logging middleware
   router.use(requestLogger);
   
   // Register prayer routes
   router.use(prayerRoutes);
+  
+  // Register message routes
+  router.use(messageRouter);
+
+  // Configure document upload multer instance
+  const docUpload = multer({
+    storage: multerStorage,
+    limits: { 
+      fileSize: 10 * 1024 * 1024, // 10MB limit for document uploads
+    },
+    fileFilter: (req, file, cb) => {
+      // Allow only Word documents
+      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          file.originalname.endsWith('.docx')) {
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    }
+  });
 
   // Add CORS headers for all requests
   router.use((req, res, next) => {
@@ -1630,6 +1672,68 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Activities endpoints
+  // Add endpoint to handle document upload for activities
+  router.post("/api/activities/upload-doc", authenticate, docUpload.single('document'), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No document uploaded" });
+      }
+
+      const filePath = req.file.path;
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Uploaded file not found" });
+      }
+
+      // Process the document with mammoth
+      try {
+        // Convert to HTML instead of raw text to preserve formatting
+        const result = await mammoth.convertToHtml({ path: filePath });
+        const content = result.value; // The HTML content
+        const messages = result.messages; // Any messages during conversion
+
+        if (messages.length > 0) {
+          logger.info('Mammoth conversion messages:', { messages });
+        }
+
+        logger.info(`Successfully extracted HTML from document: ${req.file.originalname}`);
+        
+        // Return the processed content
+        return res.json({ 
+          message: "Document processed successfully",
+          content,
+          filename: req.file.originalname
+        });
+      } catch (mammothError) {
+        logger.error("Error processing document with mammoth:", mammothError);
+        return res.status(500).json({ 
+          message: "Failed to process document",
+          error: mammothError instanceof Error ? mammothError.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      logger.error("Error handling document upload:", error);
+      return res.status(500).json({ 
+        message: "Error processing document upload",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    } finally {
+      // Clean up the temporary file if it exists
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        try {
+          // fs.unlinkSync(req.file.path);
+          // Leave file in place for debugging
+          logger.info(`Leaving uploaded document for debugging: ${req.file.path}`);
+        } catch (cleanupError) {
+          logger.warn("Error cleaning up temporary document file:", cleanupError);
+        }
+      }
+    }
+  });
+
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
       const { week, day } = req.query;

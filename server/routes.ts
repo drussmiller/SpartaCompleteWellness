@@ -85,6 +85,24 @@ const upload = multer({
 export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
   const router = express.Router();
 
+  // Helper function to calculate program start date (first Monday after team join date)
+  const calculateProgramStartDate = (teamJoinDate: Date): Date => {
+    const joinDate = new Date(teamJoinDate);
+    // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const dayOfWeek = joinDate.getDay();
+    
+    // Calculate days until next Monday: if already Monday (1), use that date, otherwise find next Monday
+    const daysUntilMonday = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7;
+    
+    // Create program start date as the Monday on/after team join date
+    const programStart = new Date(joinDate);
+    programStart.setDate(joinDate.getDate() + daysUntilMonday);
+    // Ensure we're at the start of the day
+    programStart.setHours(0, 0, 0, 0);
+    
+    return programStart;
+  };
+
   // Add request logging middleware
   router.use(requestLogger);
   
