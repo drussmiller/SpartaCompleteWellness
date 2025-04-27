@@ -1,3 +1,5 @@
+
+      // Program start date (2/24/2025)
       const programStart = new Date('2025-02-24T00:00:00.000Z');
 
       // Get current time in user's timezone
@@ -13,3 +15,10 @@
       const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
 
       // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
