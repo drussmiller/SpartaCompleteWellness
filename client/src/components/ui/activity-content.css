@@ -57,46 +57,13 @@ iframe {
   display: block;
 }
 
-/* CRITICAL FIX: Solutions for video duplication across all weeks */
-
-/* Hide any element explicitly marked as duplicate */
-[data-duplicate="true"] {
-  display: none !important;
+/* Hide duplicated videos (approach 1) */
+.weekly-content iframe[src*="JT49h1zSD6I"] {
+  counter-increment: jt49counter;
 }
 
-/* Style the primary instance of videos that we keep */
-.primary-video-instance {
-  border: 2px solid #f0f0f0;
-  border-radius: 8px;
-  position: relative;
-}
-
-/* BRUTE FORCE APPROACH FOR ALL WEEKS */
-/* Hide adjacent identical videos (common pattern in our HTML) */
-iframe[src*="youtube.com/embed"] ~ iframe[src*="youtube.com/embed"][src$="&rel=0"],
-iframe[src*="youtube.com/embed"] ~ iframe[src*="youtube.com/embed"][src$="?rel=0"],
-.video-wrapper:has(iframe[src*="youtube.com"]) + .video-wrapper:has(iframe[src*="youtube.com"]) {
-  display: none !important;
-}
-
-/* Week 3 specific fixes */
-.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type),
-iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"],
-.weekly-content .video-wrapper:has(iframe[src*="JT49h1zSD6I"]) ~ .video-wrapper:has(iframe[src*="JT49h1zSD6I"]) {
-  display: none !important;
-}
-
-/* Week 9 specific fixes - we'll address this another way */
-
-/* Fix for nested video containers */
-p > p > .video-wrapper {
-  margin-top: 1rem !important; 
-  margin-bottom: 1rem !important;
-}
-
-/* Hard block for adjacent duplicate video containers */
-.video-wrapper + .video-wrapper:has(iframe[src$="&rel=0"]),
-.video-wrapper + .video-wrapper:has(iframe[src$="?rel=0"]) {
+/* Hide duplicated videos (approach 2) - brute force for Week 3 warmup */
+.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type) {
   display: none !important;
 }
 
