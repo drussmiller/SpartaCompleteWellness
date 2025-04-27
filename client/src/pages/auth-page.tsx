@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 
 type LoginForm = {
-  username: string;
+  username: string; // Will be used for either username or email
   password: string;
 };
 
@@ -72,9 +72,13 @@ export default function AuthPage() {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel>Username or Email</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field} 
+                              placeholder="Enter your username or email" 
+                              autoComplete="username"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -93,7 +97,7 @@ export default function AuthPage() {
                     />
                     {loginMutation.error && (
                       <p className="text-red-500 text-sm mb-2">
-                        Please check your username and password and try again.
+                        Please check your username/email and password and try again.
                       </p>
                     )}
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
