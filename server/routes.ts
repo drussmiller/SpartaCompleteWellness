@@ -4692,7 +4692,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Calculate the local date for the user based on their timezone
       const currentTimestamp = new Date();
       // First convert to UTC by removing the local timezone offset
-      const utcTime = now.getTime();
+      const utcTime = currentTimestamp.getTime();
       // Then adjust to user's local time by applying their timezone offset (reversed since getTimezoneOffset returns the opposite)
       const userLocalTime = new Date(utcTime - (tzOffset * 60000));
 
@@ -5139,7 +5139,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       // Calculate the local date for the user based on their timezone
       const currentDateNow = new Date();
-      const userLocalTime = new Date(now.getTime() - (tzOffset * 60000));
+      const userLocalTime = new Date(currentDateNow.getTime() - (tzOffset * 60000));
       
       // Get the current day of week based on user's local time
       const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
