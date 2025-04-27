@@ -29,7 +29,7 @@ import {
   messages,
   insertMessageSchema
 } from "@shared/schema";
-import { setupAuth, authenticate } from "./auth";
+import { setupAuth, authenticate, hashPassword, comparePasswords } from "./auth";
 import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
@@ -4986,6 +4986,59 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error deleting notification:', error instanceof Error ? error : new Error(String(error)));
       res.status(500).json({
         message: "Failed to delete notification",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Change password endpoint
+  router.post("/api/user/change-password", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+      
+      // Minimum password requirements
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters long" });
+      }
+      
+      // Get user from database to check current password
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify current password
+      const passwordMatch = await comparePasswords(currentPassword, user.password);
+      
+      if (!passwordMatch) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update password in database
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, req.user.id));
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      logger.error('Error changing password:', error instanceof Error ? error : new Error(String(error)));
+      res.status(500).json({
+        message: "Failed to change password",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
