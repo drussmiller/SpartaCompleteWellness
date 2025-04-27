@@ -229,31 +229,42 @@ export default function ActivityPage() {
                       // Clean embedded content of duplicate videos
                       let processedContent = field.content;
                       
-                      // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
-                      if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
-                        // First, extract all video iframes
-                        const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
-                        const matches = processedContent.match(iframeRegex);
+                      // Use our specialized function to remove duplicate videos
+                      processedContent = removeDuplicateVideos(processedContent);
+                      
+                      // Special fix exclusively for Week 3 warmup video
+                      // This is a brute-force approach to ensure the video is only shown once
+                      if (processedContent && processedContent.includes('JT49h1zSD6I')) {
+                        // First, find all wrappers with the Week 3 warmup video (using standard regex)
+                        const wrapperPattern = /<div[^>]*class="[^"]*video-wrapper[^"]*"[^>]*>(.|\n)*?src="[^"]*JT49h1zSD6I(.|\n)*?<\/div>/g;
+                        const wrappers = processedContent.match(wrapperPattern);
                         
-                        if (matches && matches.length > 1) {
-                          // We have multiple videos with the same ID
-                          console.log(`Found ${matches.length} instances of Week 3 warmup video`);
-                          
-                          // Remove all video wrappers
-                          processedContent = processedContent.replace(
-                            /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
-                            ''
-                          );
-                          
-                          // Add back just one video after "WARM UP VIDEO" text
-                          if (processedContent.includes('WARM UP VIDEO')) {
-                            processedContent = processedContent.replace(
-                              'WARM UP VIDEO',
-                              `WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div><p>`
-                            );
-                          } else {
-                            // If no "WARM UP VIDEO" text, just add at the beginning
-                            processedContent = `<div class="video-wrapper">${matches[0]}</div>${processedContent}`;
+                        // Extract the first iframe that contains the warmup video
+                        const iframePattern = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/;
+                        let warmupFrame = null;
+                        
+                        if (wrappers && wrappers.length > 0) {
+                          const match = wrappers[0].match(iframePattern);
+                          if (match) {
+                            warmupFrame = match[0];
+                            console.log('Found Week 3 warmup iframe:', warmupFrame ? 'yes' : 'no');
+                            
+                            // Now completely remove all instances of this video from the content
+                            processedContent = processedContent.replace(wrapperPattern, '');
+                            
+                            // Create a single clean wrapper for the warmup video
+                            const cleanWrapper = `<div class="video-wrapper warmup-video">${warmupFrame}</div>`;
+                            
+                            // Insert the clean wrapper where 'WARM UP VIDEO' text appears if it exists
+                            if (processedContent.includes('WARM UP VIDEO')) {
+                              processedContent = processedContent.replace(
+                                /<p>(<em>)?WARM UP VIDEO(<\/em>)?<\/p>/,
+                                `<p>WARM UP VIDEO</p>${cleanWrapper}`
+                              );
+                            } else {
+                              // Or insert at the beginning if no marker exists
+                              processedContent = `${cleanWrapper}${processedContent}`;
+                            }
                           }
                         }
                       }
@@ -402,41 +413,30 @@ export default function ActivityPage() {
                   // Process daily content to remove duplicate videos
                   let processedContent = field.content;
                   
-                  // Only process content with embedded videos
-                  if (processedContent && processedContent.includes('class="video-wrapper"')) {
-                    // Make sure we don't have duplicate video wrappers
-                    const uniqueVideos = new Set();
-                    // Extract all video IDs using a regex pattern
-                    const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
-                    let match;
-                    const videoIds = [];
+                  // Use our specialized function to remove duplicate videos
+                  processedContent = removeDuplicateVideos(processedContent);
+                  
+                  // Additional processing for Week 3 warmup video if it appears in daily content
+                  if (selectedWeek === 3 && processedContent && processedContent.includes('JT49h1zSD6I')) {
+                    console.log('Processing Week 3 warmup video in daily content');
                     
-                    while ((match = videoRegex.exec(processedContent)) !== null) {
-                      videoIds.push(match[1]);
+                    // Ensure only one instance of the warmup video exists in daily content
+                    const videoPattern = /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g;
+                    
+                    // Collect all matches manually instead of using matchAll (for compatibility)
+                    const matches = [];
+                    let match;
+                    while ((match = videoPattern.exec(processedContent)) !== null) {
+                      matches.push([match[0]]);
                     }
                     
-                    // Process each unique video ID
-                    videoIds.forEach(videoId => {
-                      if (uniqueVideos.has(videoId)) {
-                        // This is a duplicate - remove all instances after the first
-                        const videoPattern = new RegExp(
-                          `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
-                          'g'
-                        );
-                        let found = false;
-                        
-                        // Replace content keeping only the first instance
-                        processedContent = processedContent.replace(videoPattern, (match) => {
-                          if (!found) {
-                            found = true;
-                            return match; // Keep the first instance
-                          }
-                          return ''; // Remove duplicates
-                        });
-                      } else {
-                        uniqueVideos.add(videoId);
-                      }
-                    });
+                    if (matches.length > 1) {
+                      // Remove all instances first
+                      processedContent = processedContent.replace(videoPattern, '');
+                      
+                      // Add back just the first instance
+                      processedContent = `<div class="video-wrapper warmup-video">${matches[0][0].match(/<iframe.*?<\/iframe>/)[0]}</div>${processedContent}`;
+                    }
                   }
                   
                   return (

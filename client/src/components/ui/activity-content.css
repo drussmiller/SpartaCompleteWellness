@@ -57,14 +57,17 @@ iframe {
   display: block;
 }
 
-/* Hide duplicated videos (approach 1) */
-.weekly-content iframe[src*="JT49h1zSD6I"] {
-  counter-increment: jt49counter;
+/* CRITICAL FIX: This specifically targets the duplicate Week 3 warmup video */
+.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type),
+.weekly-content .video-wrapper:not(:first-of-type) iframe[src*="JT49h1zSD6I"],
+.weekly-content div:has(iframe[src*="JT49h1zSD6I"]) ~ div iframe[src*="JT49h1zSD6I"] {
+  display: none !important;
 }
 
-/* Hide duplicated videos (approach 2) - brute force for Week 3 warmup */
-.weekly-content iframe[src*="JT49h1zSD6I"]:not(:first-of-type) {
-  display: none !important;
+/* Define a class for Week 3 specific workup warmup to ensure it only appears once */
+.weekly-content .warmup-video {
+  margin-top: 1em;
+  margin-bottom: 1em;
 }
 
 /* Special treatment for daily content */
