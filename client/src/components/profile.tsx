@@ -408,6 +408,10 @@ function UserProfile({ user }: ProfileProps) {
     // Fallback to client-side calculation
     if (!weeklyData || weeklyData.length === 0) return 0;
     const total = weeklyData.reduce((sum, week) => sum + week.totalPoints, 0);
+    
+    // If total is 0, always return 0 to avoid any math issues
+    if (total === 0) return 0;
+    
     return Math.round(total / weeklyData.length);
   }, [weeklyStatsData, weeklyData]);
 
@@ -470,7 +474,10 @@ function UserProfile({ user }: ProfileProps) {
               
               <div className="flex flex-col items-center">
                 <div className="text-sm text-muted-foreground">Monthly Avg</div>
-                <div className="text-3xl font-bold">{averageWeeklyPoints * 4}</div>
+                <div className="text-3xl font-bold">
+                  {/* If average is 0, don't multiply by 4 to avoid showing "4" for new users */}
+                  {averageWeeklyPoints === 0 ? 0 : averageWeeklyPoints * 4}
+                </div>
               </div>
             </div>
           </CardContent>

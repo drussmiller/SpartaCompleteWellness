@@ -4800,10 +4800,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         else if (post.type === 'memory_verse') totalPoints += 10;
       }
 
-      // Calculate monthly average (total points divided by 3 months)
-      const monthlyAvgPoints = Math.round(totalPoints / 3);
+      // Check the user's join date to calculate how many months they've been active
+      const [user] = await db
+        .select({ teamJoinedAt: users.teamJoinedAt })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
-      logger.info(`Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, monthlyAvg=${monthlyAvgPoints}`);
+      // Calculate the number of months the user has been a member
+      const joinDate = user?.teamJoinedAt ? new Date(user.teamJoinedAt) : new Date();
+      const currentDate = new Date();
+      const monthsActive = Math.max(
+        1, // Minimum 1 month to avoid division by zero
+        (currentDate.getFullYear() - joinDate.getFullYear()) * 12 + 
+        (currentDate.getMonth() - joinDate.getMonth())
+      );
+
+      // Calculate monthly average based on actual time as a member
+      // For very new users (less than a month), use their actual points instead of dividing
+      const monthlyAvgPoints = monthsActive < 1 ? totalPoints : Math.round(totalPoints / Math.min(3, monthsActive));
+
+      logger.info(`Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, monthlyAvg=${monthlyAvgPoints}, monthsActive=${monthsActive}`);
       res.json({
         dailyPoints,
         weeklyPoints,
