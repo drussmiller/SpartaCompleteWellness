@@ -1,4 +1,5 @@
 
-UPDATE users
-SET team_joined_at = '2025-01-25 15:05:00Z'  -- 9:05 AM CST = 15:05 UTC
+UPDATE users 
+SET current_week = 13,
+    current_day = 6
 WHERE id = 3972;
