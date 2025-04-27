@@ -4,8 +4,6 @@ import { storage } from "./storage";
 import multer from "multer";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
-import * as fs from 'fs';
-import * as path from 'path';
 import {
   posts,
   notifications,
@@ -39,28 +37,21 @@ import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
-import { repairThumbnails } from './thumbnail-repair';
-import { prayerRoutes } from './prayer-routes';
-// Consolidated message routes have been moved to message-routes.ts
-// Note: There are duplicate message handlers in this file around lines 3348 and 3979
-// However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
-import { messageRouter } from './message-routes';
 
-// Configure multer for file uploads - ensure directory matches SpartaObjectStorage
+// Configure multer for file uploads
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Make sure the directory exists
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    cb(null, './uploads/');
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
+
+// Make sure upload directory exists
+import fs from 'fs';
+import path from 'path';
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -87,29 +78,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Add request logging middleware
   router.use(requestLogger);
-  
-  // Register prayer routes
-  router.use(prayerRoutes);
-  
-  // Register message routes
-  router.use(messageRouter);
-
-  // Configure document upload multer instance
-  const docUpload = multer({
-    storage: multerStorage,
-    limits: { 
-      fileSize: 10 * 1024 * 1024, // 10MB limit for document uploads
-    },
-    fileFilter: (req, file, cb) => {
-      // Allow only Word documents
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-          file.originalname.endsWith('.docx')) {
-        cb(null, true);
-      } else {
-        cb(null, false);
-      }
-    }
-  });
 
   // Add CORS headers for all requests
   router.use((req, res, next) => {
@@ -552,60 +520,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Delete a comment
-  router.delete("/api/posts/comments/:commentId", authenticate, async (req, res) => {
-    try {
-      // Set content type early to prevent browser confusion
-      res.setHeader('Content-Type', 'application/json');
-
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const commentId = parseInt(req.params.commentId);
-      if (isNaN(commentId)) {
-        return res.status(400).json({ message: "Invalid comment ID" });
-      }
-
-      // Get the comment first to check ownership
-      const [comment] = await db
-        .select()
-        .from(posts)
-        .where(
-          and(
-            eq(posts.id, commentId),
-            eq(posts.type, 'comment')
-          )
-        );
-
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
-      }
-
-      // Check if user is authorized to delete this comment
-      if (comment.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to delete this comment" });
-      }
-
-      // Delete the comment
-      await db
-        .delete(posts)
-        .where(eq(posts.id, commentId));
-
-      // Return success response
-      return res.status(200).json({ 
-        message: "Comment deleted successfully",
-        id: commentId 
-      });
-    } catch (error) {
-      logger.error("Error deleting comment:", error);
-      return res.status(500).json({ 
-        message: "Failed to delete comment",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
   // Create a comment on a post
   router.post("/api/posts/comments", authenticate, async (req, res) => {
     try {
@@ -619,7 +533,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Validate request body
       const { content, parentId, depth = 0 } = req.body;
 
-      logger.info('Creating comment/reply with data:', {
+      logger.info('Creating comment with data:', {
         userId: req.user.id, 
         parentId, 
         contentLength: content ? content.length : 0,
@@ -640,25 +554,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid parent post ID" });
       }
 
-      // Check if parent post exists
-      try {
-        const parentPost = await db.select().from(posts).where(eq(posts.id, parentIdNum)).limit(1);
-        if (!parentPost || parentPost.length === 0) {
-          logger.error(`Parent post with ID ${parentIdNum} not found.`);
-          return res.status(404).json({ message: `Parent post with ID ${parentIdNum} not found` });
-        }
-        logger.info(`Found parent post: ID ${parentPost[0].id}, type: ${parentPost[0].type}`);
-      } catch (error) {
-        logger.error(`Error checking parent post ${parentIdNum}:`, error);
-      }
-
       const comment = await storage.createComment({
         userId: req.user.id,
         content,
         parentId: parentIdNum,
         depth,
-        type: 'comment', // Explicitly set type for comments
-        points: 0 // Explicitly set 0 points for comments
+        type: 'comment' // Explicitly set type for comments
       });
 
       // Return the created comment with author information
@@ -689,40 +590,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         message: "Failed to create comment",
         error: error instanceof Error ? error.message : "Unknown error"
       });
-    }
-  });
-
-  // Debug endpoint for safe post ID conversion
-  router.get("/api/debug/safe-id/:id", async (req, res) => {
-    try {
-      const id = req.params.id;
-      
-      // Check for potentially problematic ID values (like JS timestamps)
-      const originalId = parseInt(id);
-      let safeId = originalId;
-      
-      // Handle potential integer overflow from JavaScript timestamps
-      if (safeId && !isNaN(safeId) && safeId > 2147483647) {
-        // PostgreSQL integer type range is -2,147,483,648 to 2,147,483,647
-        // If we have a JavaScript timestamp (13 digits), convert it to a safe integer
-        const idStr = String(safeId);
-        if (idStr.length > 10) {
-          safeId = parseInt(idStr.substring(0, 9));
-        }
-      }
-      
-      return res.json({
-        originalId,
-        safeId,
-        isLarge: originalId > 2147483647,
-        isSafe: safeId <= 2147483647,
-        message: originalId === safeId 
-          ? "ID is already within PostgreSQL integer range" 
-          : "ID was converted to stay within PostgreSQL integer range"
-      });
-    } catch (error) {
-      logger.error("Error in safe-id conversion debug endpoint:", error);
-      return res.status(500).json({ error: "Failed to process ID" });
     }
   });
 
@@ -770,7 +637,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           id: posts.id,
           content: posts.content,
           type: posts.type,
-          mediaUrl: posts.mediaUrl,
+          imageUrl: posts.imageUrl,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
@@ -935,371 +802,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Endpoint to trigger thumbnail repair
-  router.get("/api/debug/repair-thumbnails", authenticate, async (req, res) => {
-    try {
-      // Only allow admin users to run this operation
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ message: "Unauthorized: Admin access required" });
-      }
-
-      logger.info(`Thumbnail repair process initiated by user ${req.user.id}`);
-      
-      // Run the repair process asynchronously
-      res.json({ 
-        message: "Thumbnail repair process started",
-        status: "running",
-        startedAt: new Date().toISOString()
-      });
-      
-      // Execute the thumbnail repair after sending the response
-      repairThumbnails().then(() => {
-        logger.info('Thumbnail repair process completed successfully');
-      }).catch(err => {
-        logger.error('Error in thumbnail repair process:', err);
-      });
-    } catch (error) {
-      logger.error('Error initiating thumbnail repair:', error);
-      res.status(500).json({
-        message: "Failed to initiate thumbnail repair",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-  
-  // Debug endpoint to analyze comment structure
-  router.get("/api/debug/comment-structure", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
-      // Get a sample post with its comments to analyze structure
-      const postId = parseInt(req.query.postId as string) || 400;
-      
-      const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
-      const comments = await storage.getPostComments(postId);
-      
-      // Return debug information about the comment structure
-      return res.json({
-        post: post[0] || null,
-        comments,
-        commentCount: comments.length,
-        topLevelComments: comments.filter(c => c.parentId === postId).length,
-        replyComments: comments.filter(c => c.parentId !== postId).length,
-        commentTypes: comments.reduce((acc, comment) => {
-          if (!acc[comment.type]) acc[comment.type] = 0;
-          acc[comment.type]++;
-          return acc;
-        }, {} as Record<string, number>),
-        depthAnalysis: comments.reduce((acc, comment) => {
-          const depth = comment.depth || 0;
-          if (!acc[depth]) acc[depth] = 0;
-          acc[depth]++;
-          return acc;
-        }, {} as Record<number, number>)
-      });
-    } catch (error) {
-      logger.error('Error in debug endpoint:', error);
-      return res.status(500).json({ 
-        message: "Debug endpoint error",
-        error: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
-  });
-  
-  // Endpoint to check thumbnail status
-  router.get("/api/debug/check-thumbnails", authenticate, async (req, res) => {
-    try {
-      // Only allow admin users to run this operation
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ message: "Unauthorized: Admin access required" });
-      }
-
-      logger.info(`Thumbnail check process initiated by user ${req.user.id}`);
-      
-      // Import the thumbnail check script
-      const { checkThumbnails } = await import('./thumbnail-check');
-      
-      // Run the check process asynchronously
-      res.json({ 
-        message: "Thumbnail check process started",
-        status: "running",
-        startedAt: new Date().toISOString()
-      });
-      
-      // Execute the thumbnail check after sending the response
-      checkThumbnails().then(() => {
-        logger.info('Thumbnail check process completed successfully');
-      }).catch(err => {
-        logger.error('Error in thumbnail check process:', err);
-      });
-    } catch (error) {
-      logger.error('Error initiating thumbnail check:', error);
-      res.status(500).json({
-        message: "Failed to initiate thumbnail check",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-  
-  // Helper endpoint to fix memory verse thumbnails for existing videos
-  router.post("/api/memory-verse/fix-thumbnails", authenticate, async (req, res) => {
-    try {
-      // Only need to be logged in to repair your own memory verse videos
-      if (!req.user) {
-        return res.status(403).json({ message: "Authentication required" });
-      }
-      
-      logger.info(`Fix memory verse thumbnails requested by user ${req.user.id}`);
-      
-      // Import the repair module
-      const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
-      
-      // Run the repair asynchronously
-      res.json({
-        message: "Memory verse thumbnail repair started",
-        status: "processing"
-      });
-      
-      // Process after sending the response
-      repairMemoryVerseVideos()
-        .then(() => {
-          logger.info(`Memory verse thumbnail repair completed for user ${req.user.id}`);
-        })
-        .catch(error => {
-          logger.error(`Memory verse thumbnail repair failed for user ${req.user.id}:`, error);
-        });
-        
-    } catch (error) {
-      logger.error('Error starting memory verse repair:', error);
-      res.status(500).json({ message: "Failed to start memory verse repair" });
-    }
-  });
-  
-  // Endpoint to generate poster images for videos
-  router.post("/api/video/generate-posters", authenticate, async (req, res) => {
-    try {
-      // Only need to be logged in to generate poster images
-      if (!req.user) {
-        return res.status(403).json({ message: "Authentication required" });
-      }
-      
-      const { mediaUrl, postId } = req.body;
-      
-      logger.info(`Video poster generation requested for ${mediaUrl || 'all videos'} by user ${req.user.id}`, { postId });
-      
-      // Import the poster generation module
-      const { processPosterBatch } = await import('./poster-generator');
-      
-      // Run the poster generation asynchronously
-      res.json({
-        message: "Video poster generation started",
-        status: "processing",
-        postId: postId || null
-      });
-      
-      // Process after sending the response
-      processPosterBatch(20, 60000)
-        .then((result) => {
-          logger.info(`Video poster generation completed for user ${req.user.id}`, { ...result });
-        })
-        .catch(error => {
-          logger.error(`Video poster generation failed for user ${req.user.id}:`, error);
-        });
-        
-    } catch (error) {
-      logger.error('Error starting video poster generation:', error);
-      res.status(500).json({ message: "Failed to start video poster generation" });
-    }
-  });
-
-  // General endpoint to fix all thumbnails for uploaded files
-  router.post("/api/fix-thumbnails", authenticate, async (req, res) => {
-    try {
-      // Only need to be logged in to repair thumbnails
-      if (!req.user) {
-        return res.status(403).json({ message: "Authentication required" });
-      }
-      
-      logger.info(`Fix all thumbnails requested by user ${req.user.id}`);
-      
-      // Import the repair module
-      const { repairThumbnails } = await import('./thumbnail-repair');
-      
-      // Run the repair asynchronously
-      res.json({
-        message: "Thumbnail repair started",
-        status: "processing"
-      });
-      
-      // Process after sending the response
-      repairThumbnails()
-        .then(() => {
-          logger.info(`Thumbnail repair completed for user ${req.user.id}`);
-        })
-        .catch(error => {
-          logger.error(`Thumbnail repair failed for user ${req.user.id}:`, error);
-        });
-        
-    } catch (error) {
-      logger.error('Error starting thumbnail repair:', error);
-      res.status(500).json({ message: "Failed to start thumbnail repair" });
-    }
-  });
-  
-  // Admin endpoint to repair all memory verse videos
-  router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
-    try {
-      // Only allow admin users to run this operation
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ message: "Unauthorized: Admin access required" });
-      }
-
-      logger.info(`Memory verse video repair process initiated by user ${req.user.id}`);
-      
-      // Import the memory verse repair script
-      const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
-      
-      // Run the repair process asynchronously
-      res.json({ 
-        message: "Memory verse repair process started",
-        status: "running",
-        startedAt: new Date().toISOString()
-      });
-      
-      // Execute the repair after sending the response
-      repairMemoryVerseVideos().then(() => {
-        logger.info('Memory verse repair process completed successfully');
-      }).catch(err => {
-        logger.error('Error in memory verse repair process:', err);
-      });
-    } catch (error) {
-      logger.error('Error initiating memory verse repair:', error);
-      res.status(500).json({
-        message: "Failed to initiate memory verse repair",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-  
-  // Public route to check if a post exists and is accessible
-  router.get("/api/check-post/:id", async (req, res) => {
-    try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID" });
-      }
-      
-      // Get post from the database
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId));
-        
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
-      
-      // Also get author details
-      const [author] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, post.userId));
-        
-      // Check if the image exists if there's a mediaUrl
-      let imageExists = false;
-      let imagePath = '';
-      let imagePathFixed = '';
-      
-      // Print full post object for debugging
-      console.log('Post object:', JSON.stringify(post, null, 2));
-      
-      if (post.mediaUrl) {
-        // Try current working directory
-        imagePath = `.${post.mediaUrl}`; // Remove leading slash
-        
-        // Also try absolute path
-        imagePathFixed = path.join(process.cwd(), post.mediaUrl.substring(1)); // Remove leading slash
-        
-        try {
-          imageExists = fs.existsSync(imagePath) || fs.existsSync(imagePathFixed);
-          console.log(`Image check: original path ${imagePath} exists: ${fs.existsSync(imagePath)}`);
-          console.log(`Image check: fixed path ${imagePathFixed} exists: ${fs.existsSync(imagePathFixed)}`);
-        } catch (err) {
-          console.error(`Error checking if file exists at ${imagePath}:`, err);
-          logger.error(`Error checking if file exists at ${imagePath}:`, err);
-        }
-      } else {
-        console.log("No mediaUrl found in the post:", post);
-      }
-      
-      // Check for thumbnail
-      let thumbnailExists = false;
-      let thumbnailPath = '';
-      let thumbnailPathFixed = '';
-      if (post.mediaUrl) {
-        const filename = post.mediaUrl.split('/').pop() || '';
-        
-        // Check both formats - with and without thumb- prefix
-        const newFormatThumbnailPath = `./uploads/thumbnails/thumb-${filename}`;
-        const oldFormatThumbnailPath = `./uploads/thumbnails/${filename}`;
-        
-        // Also try absolute paths
-        const newFormatPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', `thumb-${filename}`);
-        const oldFormatPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', filename);
-        
-        // Check if the filename matches the old format pattern
-        const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
-        
-        // For debugging purposes, set thumbnailPath to the actual path we're checking first
-        thumbnailPath = isOldFormatImage ? oldFormatThumbnailPath : newFormatThumbnailPath;
-        thumbnailPathFixed = isOldFormatImage ? oldFormatPathFixed : newFormatPathFixed;
-        
-        try {
-          // Check both paths regardless of the format
-          const newFormatExists = fs.existsSync(newFormatThumbnailPath) || fs.existsSync(newFormatPathFixed);
-          const oldFormatExists = fs.existsSync(oldFormatThumbnailPath) || fs.existsSync(oldFormatPathFixed);
-          
-          thumbnailExists = newFormatExists || oldFormatExists;
-          
-          // Log the results for debugging
-          console.log(`Thumbnail check: original path ${thumbnailPath} exists: ${fs.existsSync(thumbnailPath)}`);
-          console.log(`Thumbnail check: fixed path ${thumbnailPathFixed} exists: ${fs.existsSync(thumbnailPathFixed)}`);
-          
-          if (isOldFormatImage) {
-            console.log(`Old format image detected. Also checked new format: ${newFormatThumbnailPath} exists: ${fs.existsSync(newFormatThumbnailPath)}`);
-          } else {
-            console.log(`New format image detected. Also checked old format: ${oldFormatThumbnailPath} exists: ${fs.existsSync(oldFormatThumbnailPath)}`);
-          }
-        } catch (err) {
-          console.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
-          logger.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
-        }
-      }
-      
-      return res.json({
-        post,
-        author: author ? {
-          id: author.id,
-          username: author.username,
-          imageUrl: author.imageUrl
-        } : null,
-        files: {
-          imageExists,
-          imagePath,
-          imagePathFixed,
-          thumbnailExists,
-          thumbnailPath,
-          thumbnailPathFixed
-        }
-      });
-    } catch (error) {
-      logger.error(`Error checking post ${req.params.id}:`, error);
-      return res.status(500).json({ message: "Error checking post", error: String(error) });
-    }
-  });
-
   // Main GET endpoint for fetching posts
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
@@ -1319,7 +821,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const postType = req.query.type as string;
-      const excludeType = req.query.exclude as string;
 
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
@@ -1345,11 +846,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (postType && postType !== 'all') {
         conditions.push(eq(posts.type, postType));
       }
-      
-      // Add exclude filter if specified
-      if (excludeType) {
-        conditions.push(not(eq(posts.type, excludeType)));
-      }
 
       // Join with users table to get author info
       const query = db
@@ -1357,7 +853,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           id: posts.id,
           content: posts.content,
           type: posts.type,
-          mediaUrl: posts.mediaUrl,
+          imageUrl: posts.imageUrl,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
@@ -1415,7 +911,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           id: posts.id,
           content: posts.content,
           type: posts.type,
-          mediaUrl: posts.mediaUrl,
+          imageUrl: posts.imageUrl,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
@@ -1654,68 +1150,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Activities endpoints
-  // Add endpoint to handle document upload for activities
-  router.post("/api/activities/upload-doc", authenticate, docUpload.single('document'), async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ message: "No document uploaded" });
-      }
-
-      const filePath = req.file.path;
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: "Uploaded file not found" });
-      }
-
-      // Process the document with mammoth
-      try {
-        // Convert to HTML instead of raw text to preserve formatting
-        const result = await mammoth.convertToHtml({ path: filePath });
-        const content = result.value; // The HTML content
-        const messages = result.messages; // Any messages during conversion
-
-        if (messages.length > 0) {
-          logger.info('Mammoth conversion messages:', { messages });
-        }
-
-        logger.info(`Successfully extracted HTML from document: ${req.file.originalname}`);
-        
-        // Return the processed content
-        return res.json({ 
-          message: "Document processed successfully",
-          content,
-          filename: req.file.originalname
-        });
-      } catch (mammothError) {
-        logger.error("Error processing document with mammoth:", mammothError);
-        return res.status(500).json({ 
-          message: "Failed to process document",
-          error: mammothError instanceof Error ? mammothError.message : "Unknown error"
-        });
-      }
-    } catch (error) {
-      logger.error("Error handling document upload:", error);
-      return res.status(500).json({ 
-        message: "Error processing document upload",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    } finally {
-      // Clean up the temporary file if it exists
-      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-        try {
-          // fs.unlinkSync(req.file.path);
-          // Leave file in place for debugging
-          logger.info(`Leaving uploaded document for debugging: ${req.file.path}`);
-        } catch (cleanupError) {
-          logger.warn("Error cleaning up temporary document file:", cleanupError);
-        }
-      }
-    }
-  });
-
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
       const { week, day } = req.query;
@@ -1834,41 +1268,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Update the post creation endpoint to ensure correct point assignment
-  // Get memory verse videos for the current user
-  router.get("/api/memory-verse-videos", authenticate, async (req, res) => {
-    try {
-      const userId = req.user?.id;
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      // Fetch memory verse posts with videos
-      const memoryVersePosts = await db
-        .select({
-          id: posts.id,
-          content: posts.content,
-          mediaUrl: posts.mediaUrl,
-          createdAt: posts.createdAt,
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            eq(posts.type, 'memory_verse'),
-            not(isNull(posts.mediaUrl)),
-            isNull(posts.parentId) // Don't include comments
-          )
-        )
-        .orderBy(desc(posts.createdAt));
-      
-      res.json(memoryVersePosts);
-    } catch (error) {
-      logger.error("Error fetching memory verse videos:", error);
-      res.status(500).json({ message: "Error fetching memory verse videos" });
-    }
-  });
-
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     // Set content type early to prevent browser confusion
     res.set({
@@ -1878,68 +1277,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       'X-Content-Type-Options': 'nosniff'
     });
     
-    // Initialize isVideo variable to be used throughout the route handler
-    let isVideo = false;
-    
-    console.log("POST /api/posts - Request received", {
-      hasFile: !!req.file,
-      fileDetails: req.file ? {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        path: req.file.path,
-        destination: req.file.destination,
-        size: req.file.size
-      } : 'No file uploaded',
-      contentType: req.headers['content-type'],
-      bodyKeys: Object.keys(req.body)
-    });
-    
-    // Check if this is a memory verse post based on the parsed data
-    let isMemoryVersePost = false;
-    if (req.body.data) {
-      try {
-        const parsedData = JSON.parse(req.body.data);
-        isMemoryVersePost = parsedData.type === 'memory_verse';
-        if (isMemoryVersePost) {
-          console.log("Memory verse post detected:", {
-            originalname: req.file?.originalname || 'No file',
-            mimetype: req.file?.mimetype || 'No mimetype',
-            fileSize: req.file?.size || 0,
-            path: req.file?.path || 'No path'
-          });
-        }
-      } catch (e) {
-        // Ignore parsing errors here, it will be handled later
-      }
-    }
-    
-    // Extra logging for debugging
-    if (req.file) {
-      try {
-        const stats = fs.statSync(req.file.path);
-        console.log("File stats:", {
-          exists: fs.existsSync(req.file.path),
-          size: stats.size,
-          isFile: stats.isFile(),
-          path: req.file.path,
-          absolutePath: path.resolve(req.file.path)
-        });
-      } catch (statError) {
-        console.error("Error checking file:", statError);
-      }
-    }
-    
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
       let postData = req.body;
       if (typeof postData.data === 'string') {
         try {
-          console.log("Parsing JSON from postData.data", { raw: postData.data.substring(0, 100) + '...' });
           postData = JSON.parse(postData.data);
-          console.log("Successfully parsed post data:", { postType: postData.type });
         } catch (parseError) {
-          console.error("Error parsing post data:", parseError);
           logger.error("Error parsing post data:", parseError);
           return res.status(400).json({ message: "Invalid post data format" });
         }
@@ -1961,9 +1305,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         case 'memory_verse':
           points = 10; // 10 points for memory verse
           break;
-        case 'prayer':
-          points = 0; // 0 points for prayer requests
-          break;
         case 'miscellaneous':
         default:
           points = 0;
@@ -1984,105 +1325,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           logger.error("Missing parentId for comment");
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
-        
-        // Comments should have 0 points
-        const commentPoints = 0;
-        
-        // Log the points assignment for comments
-        console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
-        
-        // Process media file if present for comments too
-        let commentMediaUrl = null;
-        
-        // Check if we have a file upload with the comment
-        if (req.file) {
-          try {
-            // Use SpartaObjectStorage for file handling
-            const { spartaStorage } = await import('./sparta-object-storage');
-            
-            // Verify the file exists before proceeding
-            let filePath = req.file.path;
-            
-            // Verify the file exists at the path reported by multer
-            if (!fs.existsSync(filePath)) {
-              logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
-              
-              // Try to locate the file using alternative paths
-              const fileName = path.basename(filePath);
-              const possiblePaths = [
-                filePath,
-                path.join(process.cwd(), 'uploads', fileName),
-                path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
-                path.join(path.dirname(filePath), path.basename(req.file.originalname)),
-                path.join('/tmp', fileName)
-              ];
-              
-              let foundPath = null;
-              for (const altPath of possiblePaths) {
-                logger.info(`Checking alternative path: ${altPath}`);
-                if (fs.existsSync(altPath)) {
-                  logger.info(`Found file at alternative path: ${altPath}`);
-                  foundPath = altPath;
-                  break;
-                }
-              }
-              
-              if (foundPath) {
-                filePath = foundPath;
-                logger.info(`Using alternative file path: ${filePath}`);
-              } else {
-                logger.error(`Could not find file at any alternative path for: ${filePath}`);
-              }
-            }
-            
-            // Proceed if the file exists (either at original or alternative path)
-            if (fs.existsSync(filePath)) {
-              const originalFilename = req.file.originalname.toLowerCase();
-              
-              // Check if this is a video upload based on multiple indicators
-              const isVideoMimetype = req.file.mimetype.startsWith('video/');
-              const isVideoExtension = originalFilename.endsWith('.mov') || 
-                                     originalFilename.endsWith('.mp4') ||
-                                     originalFilename.endsWith('.webm') ||
-                                     originalFilename.endsWith('.avi') ||
-                                     originalFilename.endsWith('.mkv');
-              
-              // Final video determination
-              const isVideo = isVideoMimetype || isVideoExtension;
-              
-              // Store the file using SpartaObjectStorage
-              console.log(`Processing comment media file:`, {
-                originalFilename: req.file.originalname,
-                mimetype: req.file.mimetype,
-                isVideo: isVideo,
-                fileSize: req.file.size
-              });
-              
-              logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
-              
-              const fileInfo = await spartaStorage.storeFile(
-                filePath,
-                req.file.originalname,
-                req.file.mimetype,
-                isVideo
-              );
-              
-              commentMediaUrl = fileInfo.url;
-              console.log(`Stored comment media file:`, { url: commentMediaUrl });
-            }
-          } catch (error) {
-            logger.error("Error processing comment media file:", error);
-            // Continue with comment creation even if media processing fails
-          }
-        }
-        
+
         const post = await storage.createComment({
           userId: req.user.id,
           content: postData.content.trim(),
           parentId: postData.parentId,
-          depth: postData.depth || 0,
-          points: commentPoints, // Always set to 0 points for comments
-          mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
+          depth: postData.depth || 0
         });
         return res.status(201).json(post);
       }
@@ -2091,40 +1339,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let mediaUrl = null;
       let mediaProcessed = false;
       
-      // Check if we're using an existing memory verse video
-      if (postData.type === 'memory_verse' && req.body.existing_video_id) {
-        try {
-          const existingVideoId = parseInt(req.body.existing_video_id);
-          
-          // Get the existing post to find its media URL
-          const [existingPost] = await db
-            .select({
-              mediaUrl: posts.mediaUrl
-            })
-            .from(posts)
-            .where(
-              and(
-                eq(posts.id, existingVideoId),
-                eq(posts.userId, req.user.id),
-                eq(posts.type, 'memory_verse')
-              )
-            );
-          
-          if (existingPost && existingPost.mediaUrl) {
-            mediaUrl = existingPost.mediaUrl;
-            logger.info(`Re-using existing memory verse video from post ${existingVideoId}`, { mediaUrl });
-          } else {
-            logger.error(`Could not find existing memory verse video with ID ${existingVideoId}`);
-            return res.status(404).json({ message: "The selected memory verse video could not be found" });
-          }
-        } catch (error) {
-          logger.error("Error processing existing video reference:", error);
-          return res.status(500).json({ message: "Error processing the selected memory verse video" });
-        }
-      }
       // Scripture posts shouldn't have images/videos
       // Miscellaneous posts may or may not have images/videos
-      else if (postData.type === 'scripture') {
+      if (postData.type === 'scripture') {
         logger.info('Scripture post created with no media');
         mediaUrl = null;
       } else if (req.file) {
@@ -2133,193 +1350,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const { spartaStorage } = await import('./sparta-object-storage');
           
           // Verify the file exists before proceeding
-          let filePath = req.file.path;
-          
-          // Verify the file exists at the path reported by multer
-          if (!fs.existsSync(filePath)) {
-            logger.warn(`File not found at the reported path: ${filePath}, will search for it`);
-            
-            // Try to locate the file using alternative paths
-            const fileName = path.basename(filePath);
-            const possiblePaths = [
-              filePath,
-              path.join(process.cwd(), 'uploads', fileName),
-              path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
-              path.join(path.dirname(filePath), path.basename(req.file.originalname)),
-              path.join('/tmp', fileName)
-            ];
-            
-            let foundPath = null;
-            for (const altPath of possiblePaths) {
-              logger.info(`Checking alternative path: ${altPath}`);
-              if (fs.existsSync(altPath)) {
-                logger.info(`Found file at alternative path: ${altPath}`);
-                foundPath = altPath;
-                break;
-              }
-            }
-            
-            if (foundPath) {
-              filePath = foundPath;
-              logger.info(`Using alternative file path: ${filePath}`);
-            } else {
-              logger.error(`Could not find file at any alternative path for: ${filePath}`);
-            }
-          }
-          
-          // Proceed if the file exists (either at original or alternative path)
+          const filePath = req.file.path;
           if (fs.existsSync(filePath)) {
-            // Handle video files differently - check both mimetype and file extension
-            const originalFilename = req.file.originalname.toLowerCase();
+            // Handle video files differently
+            const isVideo = req.file.mimetype.startsWith('video/');
             
-            // Simplified detection for memory verse posts - rely only on the post type
-            const isMemoryVersePost = postData.type === 'memory_verse';
-            
-            // Handle specialized types
-            const isMiscellaneousPost = postData.type === 'miscellaneous';
-            
-            console.log("Post type detection:", {
-              isMemoryVersePost,
-              isMiscellaneousPost,
-              originalName: req.file.originalname
-            });
-            
-            // Check if this is a video upload based on multiple indicators
-            const isVideoMimetype = req.file.mimetype.startsWith('video/');
-            const isVideoExtension = originalFilename.endsWith('.mov') || 
-                                   originalFilename.endsWith('.mp4') ||
-                                   originalFilename.endsWith('.webm') ||
-                                   originalFilename.endsWith('.avi') ||
-                                   originalFilename.endsWith('.mkv');
-            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
-            
-            // For miscellaneous posts, check if explicitly marked as video from client
-            const isMiscellaneousVideo = isMiscellaneousPost && 
-                                       (req.body.is_video === "true" || 
-                                        req.body.selected_media_type === "video" ||
-                                        (req.file && (isVideoMimetype || isVideoExtension)));
-                                        
-            // Combined video detection - for miscellaneous posts, only trust the explicit markers
-            const isVideo = isMemoryVersePost || 
-                          (isMiscellaneousPost ? isMiscellaneousVideo : 
-                           (isVideoMimetype || hasVideoContentType || isVideoExtension));
-                          
-            console.log("Video detection:", {
-              isVideo,
-              isMiscellaneousVideo,
-              isMiscellaneousPost,
-              postType: postData.type,
-              isVideoMimetype,
-              isVideoExtension,
-              hasVideoContentType,
-              mimetype: req.file.mimetype,
-              originalFilename: req.file.originalname,
-              selectedMediaType: req.body.selected_media_type,
-              isVideoFlag: req.body.is_video
-            });
-            
-            // We no longer need to create a separate file with prefix here.
-            // SpartaObjectStorage will handle proper file placement based on post type.
-            // This removes the creation of a redundant third file.
-            console.log("Skipping redundant file creation - SpartaObjectStorage will handle file organization");
-            
-            console.log(`Processing media file:`, {
-              originalFilename: req.file.originalname,
-              mimetype: req.file.mimetype,
-              isVideo: isVideo,
-              isMemoryVerse: isMemoryVersePost,
-              fileSize: req.file.size,
-              path: req.file.path,
-              postType: postData.type || 'unknown'
-            });
-            
-            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
+            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
             
             // Store the file using SpartaObjectStorage (used for both images and videos)
-            // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
-            let effectiveMimeType = req.file.mimetype;
-            
-            // If it's a memory verse post but mimetype doesn't indicate a video, override it
-            if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
-              effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
-            }
-            
-            // Also handle miscellaneous post videos that might have wrong mime type
-            if (isMiscellaneousPost && isVideo && !effectiveMimeType.startsWith('video/')) {
-              console.log("Correcting miscellaneous video mime type from", effectiveMimeType, "to video/mp4");
-              effectiveMimeType = 'video/mp4';
-            }
-            
-            console.log("Using effective mime type for storage:", {
-              original: req.file.mimetype,
-              effective: effectiveMimeType,
-              isMemoryVerse: isMemoryVersePost,
-              isMiscellaneous: isMiscellaneousPost,
-              isVideo: isVideo,
-              wasOverridden: effectiveMimeType !== req.file.mimetype,
-              fileSize: req.file.size,
-              formDataKeys: Object.keys(req.body || {})
-            });
-              
             const fileInfo = await spartaStorage.storeFile(
               filePath,
               req.file.originalname,
-              effectiveMimeType, // Use potentially corrected mimetype
+              req.file.mimetype,
               isVideo // Pass flag for video handling
             );
             
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
             
-            // Verify the stored file exists in the uploads directory
-            const storedFilePath = path.join(process.cwd(), fileInfo.url);
-            let fileExists = fs.existsSync(storedFilePath);
-            
-            if (!fileExists) {
-              logger.error(`Stored file not found at expected path: ${storedFilePath}. Original stored at ${fileInfo.path}`);
-              
-              // Try to find the file in different paths
-              const alternativePaths = [
-                fileInfo.path,
-                path.join(process.cwd(), 'uploads', path.basename(fileInfo.url)),
-                path.join(process.cwd(), fileInfo.url),
-                path.join(process.cwd(), '..' + fileInfo.url),
-                path.join(process.cwd(), '..', 'uploads', path.basename(fileInfo.url))
-              ];
-              
-              let sourceFile = null;
-              
-              // Check each alternative path
-              for (const altPath of alternativePaths) {
-                if (fs.existsSync(altPath)) {
-                  logger.info(`Found file at alternative path: ${altPath}`);
-                  sourceFile = altPath;
-                  break;
-                }
-              }
-              
-              // Copy file to correct location if found
-              if (sourceFile) {
-                const newDir = path.dirname(storedFilePath);
-                if (!fs.existsSync(newDir)) {
-                  fs.mkdirSync(newDir, { recursive: true });
-                }
-                
-                try {
-                  fs.copyFileSync(sourceFile, storedFilePath);
-                  logger.info(`Copied file from ${sourceFile} to correct location ${storedFilePath}`);
-                  fileExists = true;
-                } catch (copyErr) {
-                  logger.error(`Failed to copy file: ${copyErr instanceof Error ? copyErr.message : 'Unknown error'}`);
-                }
-              } else {
-                logger.error(`Could not find file in any alternative locations`);
-              }
-            }
-            
             if (isVideo) {
               logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
-              logger.info(`Video URL: ${mediaUrl}, should be available at: ${storedFilePath}`);
             } else {
               logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
               logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
@@ -2340,38 +1390,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          
-          // Detailed error handling based on post type
-          if (postData.type === 'memory_verse') {
-            logger.error(`Memory verse video upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
-            
-            // For memory verse, video is required, so return an error response
-            return res.status(400).json({ 
-              message: "Failed to process memory verse video. Please try again with a different video file.",
-              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing video'
-            });
-          } else if (postData.type === 'food' || postData.type === 'workout') {
-            logger.error(`${postData.type} image upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
-            
-            // For food and workout posts, images are required
-            return res.status(400).json({ 
-              message: `Failed to process ${postData.type} image. Please try again with a different image.`,
-              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing image'
-            });
-          } else {
-            // For other post types, we can continue without media
-            mediaUrl = null;
-            logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
-          }
+          // Don't use any fallback image
+          mediaUrl = null;
+          logger.info(`Error with uploaded file for post type: ${postData.type}`);
         }
       } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
         // For miscellaneous posts, media is optional
         // For scripture posts, no media
-        // Memory verse posts REQUIRE a video
-        if (postData.type === 'memory_verse') {
-          logger.error(`Memory verse post requires a video but none was uploaded`);
-          return res.status(400).json({ message: "Memory verse posts require a video file." });
-        }
         // For other posts, we previously would use fallbacks, but now we leave them blank
         mediaUrl = null;
         logger.info(`No media uploaded for ${postData.type} post`);
@@ -2384,7 +1409,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           type: postData.type,
           content: postData.content?.trim() || '',
           mediaUrl: mediaUrl,
-          is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
@@ -2422,63 +1446,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Add this endpoint before the return httpServer statement with improved error handling
-  router.patch("/api/posts/:id", authenticate, async (req, res) => {
-    try {
-      // Set content type early to prevent browser confusion
-      res.setHeader('Content-Type', 'application/json');
-
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      // Get the post ID as a number
-      const postIdStr = req.params.id;
-      const postId = parseInt(postIdStr);
-      
-      if (isNaN(postId)) {
-        return res.status(400).json({ message: "Invalid post ID format" });
-      }
-
-      // Get the post to check ownership
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId))
-        .limit(1);
-
-      if (!post) {
-        return res.status(404).json({ message: "Post not found" });
-      }
-
-      // Check if the user is the owner of the post
-      if (post.userId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized to update this post" });
-      }
-
-      // Get the content from the request body
-      const { content } = req.body;
-      
-      if (!content || content.trim() === '') {
-        return res.status(400).json({ message: "Content cannot be empty" });
-      }
-
-      // Update only the content field
-      const [updatedPost] = await db
-        .update(posts)
-        .set({ content: content.trim() })
-        .where(eq(posts.id, postId))
-        .returning();
-
-      return res.status(200).json(updatedPost);
-    } catch (error) {
-      logger.error("Error updating post:", error);
-      return res.status(500).json({ 
-        message: "Failed to update post",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
@@ -2492,141 +1459,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const postIdStr = req.params.id;
 
       // Log the raw post ID for debugging
-      console.log(`Raw post ID from request: ${postIdStr}`);
       logger.info(`Raw post ID from request: ${postIdStr}`);
 
-      let post;
-      let postId;
-
-      // First, try direct numeric ID lookup (for posts created with regular IDs)
-      if (/^\d+$/.test(postIdStr) && postIdStr.length < 10) {
-        // Probably a regular numeric ID
-        postId = parseInt(postIdStr);
-        
-        // Get the post to check ownership
-        [post] = await db
-          .select()
-          .from(posts)
-          .where(eq(posts.id, postId));
+      // Validate it's a valid number
+      if (!/^\d+$/.test(postIdStr)) {
+        return res.status(400).json({ message: "Invalid post ID format" });
       }
 
-      // If not found or ID looks like a timestamp (longer numeric string), try to find by timestamp ID
-      if (!post && /^\d+$/.test(postIdStr) && postIdStr.length > 10) {
-        // Timestamp-based ID, likely a newer style post
-        console.log(`Handling timestamp-based ID: ${postIdStr}`);
-        
-        // First try exact match in case it's stored directly
-        [post] = await db
-          .select()
-          .from(posts)
-          .where(sql`CAST(id AS TEXT) = ${postIdStr}`);
-        
-        if (post) {
-          postId = post.id;
-          console.log(`Found post with exact timestamp ID: ${postId}`);
-        } else {
-          // Try to find by created timestamp proximity
-          const approxTimestamp = parseInt(postIdStr);
-          console.log(`Trying to find post with approximate timestamp: ${approxTimestamp}`);
-          
-          // SQL query to find a post created around the same time as the timestamp
-          // Look for posts within 10 seconds of the timestamp
-          // Note: Database column is "created_at" not "createdAt"
-          const postsAroundTime = await db
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.userId, req.user.id),
-                sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${approxTimestamp}) < 10000`
-              )
-            )
-            .orderBy(sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${approxTimestamp})`);
-          
-          if (postsAroundTime.length > 0) {
-            // Use the closest post
-            post = postsAroundTime[0];
-            postId = post.id;
-            console.log(`Found post by timestamp proximity: ${postId}`);
-          }
-        }
-      }
+      // Convert to numeric ID for database operations
+      const postId = parseInt(postIdStr);
 
-      // Special handling for posts with timestamp IDs
-      if (!post && /^\d+$/.test(postIdStr) && postIdStr.length > 10) {
-        const timestampValue = parseInt(postIdStr);
-        const approxTimestamp = new Date(timestampValue);
-        const timestampThreshold = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        
-        // Log the timestamp-based search approach
-        console.log(`Attempting advanced search for post with timestamp ID: ${postIdStr}`);
-        console.log(`Parsed timestamp: ${approxTimestamp.toISOString()}`);
-        logger.info(`Attempting advanced search for post with timestamp ID: ${postIdStr}`);
-        logger.info(`Parsed timestamp: ${approxTimestamp.toISOString()}`);
-        
-        // First, try to find any post by this user with a created_at timestamp close to the ID value
-        // This covers any post type (including miscellaneous posts)
-        const recentPosts = await db
-          .select()
-          .from(posts)
-          .where(
-            and(
-              eq(posts.userId, req.user.id),
-              // Created within the last 24 hours
-              sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${timestampValue}) < ${timestampThreshold}`
-            )
-          )
-          .orderBy(sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${timestampValue})`)
-          .limit(5);
-        
-        if (recentPosts.length > 0) {
-          // Use the post with the closest timestamp to the ID
-          post = recentPosts[0];
-          postId = post.id;
-          console.log(`Found post by timestamp proximity: ${postId}, type: ${post.type}, created: ${post.createdAt}`);
-          logger.info(`Found post by timestamp proximity: ${postId}, type: ${post.type}, created: ${post.createdAt}`);
-        }
-        
-        // If still not found, try specific handling for memory verse posts
-        if (!post) {
-          console.log(`No posts found by timestamp proximity, trying memory verse specific search`);
-          
-          // Try to find memory verse posts by this user in the past 24 hours
-          // and order by creation time to get the most recent one
-          const recentMemoryVersePosts = await db
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.userId, req.user.id),
-                eq(posts.type, 'memory_verse'),
-                // Created within the last 24 hours
-                sql`"created_at" > NOW() - INTERVAL '24 hours'`
-              )
-            )
-            .orderBy(desc(posts.createdAt))
-            .limit(5);
-          
-          if (recentMemoryVersePosts.length > 0) {
-            // Use the most recent memory verse post
-            post = recentMemoryVersePosts[0];
-            postId = post.id;
-            console.log(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
-            logger.info(`Found recent memory verse post as fallback: ${postId}, created: ${post.createdAt}`);
-          }
-        }
-      }
-      
-      // If still not found after all attempts, handle that
+      // Use Drizzle's built-in query methods which handle parameter binding correctly
+      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
+
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId));
+
       if (!post) {
-        console.log(`Post with ID ${postIdStr} not found during deletion attempt`);
-        logger.info(`Post with ID ${postIdStr} not found during deletion attempt`);
+        logger.info(`Post ${postId} not found during deletion attempt`);
         return res.status(404).json({ message: "Post not found" });
       }
 
       // Check if user is admin or the post owner
       if (!req.user.isAdmin && post.userId !== req.user.id) {
-        console.log(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
         logger.info(`User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`);
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
@@ -2634,13 +1492,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Delete associated media files if they exist
       if (post.mediaUrl) {
         try {
-          console.log(`Deleting file associated with post: ${post.mediaUrl}`);
           logger.info(`Deleting file associated with post: ${post.mediaUrl}`);
           await spartaStorage.deleteFile(post.mediaUrl);
-          console.log(`Successfully deleted media file for post: ${postId}`);
           logger.info(`Successfully deleted media file for post: ${postId}`);
         } catch (fileError) {
-          console.error(`Error deleting media file for post ${postId}:`, fileError);
           logger.error(`Error deleting media file for post ${postId}:`, fileError);
           // Continue with post deletion even if file deletion fails
         }
@@ -2653,24 +1508,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           await tx
             .delete(reactions)
             .where(eq(reactions.postId, postId));
-          console.log(`Deleted reactions for post ${postId}`);
           logger.info(`Deleted reactions for post ${postId}`);
 
           // Then delete any comments on the post
           await tx
             .delete(posts)
             .where(eq(posts.parentId, postId));
-          console.log(`Deleted comments for post ${postId}`);
           logger.info(`Deleted comments for post ${postId}`);
 
           // Finally delete the post itself
           await tx
             .delete(posts)
             .where(eq(posts.id, postId));
-          console.log(`Post ${postId} successfully deleted`);
           logger.info(`Post ${postId} successfully deleted`);
         } catch (txError) {
-          console.error(`Transaction error while deleting post ${postId}:`, txError);
           logger.error(`Transaction error while deleting post ${postId}:`, txError);
           throw txError; // Re-throw to roll back the transaction
         }
@@ -2681,7 +1532,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         id: postId 
       });
     } catch (error) {
-      console.error("Error deleting post:", error);
       logger.error("Error deleting post:", error);
       return res.status(500).json({
         message: "Failed to delete post",
@@ -2743,12 +1593,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         ? parseInt(req.body.currentMinute) 
         : new Date().getMinutes();
       
-      // Get timezone offset from request if provided (in minutes)
-      const tzOffset = req.body?.tzOffset !== undefined 
-        ? parseInt(req.body.tzOffset) 
-        : 0; // Default to UTC if not provided
-      
-      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute} with timezone offset: ${tzOffset}`);
+      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute}`);
       
       // Get all users using a more explicit query to avoid type issues
       const allUsers = await db
@@ -2782,7 +1627,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           logger.info(`Processing user ${user.id} (${user.username})`);
 
           // Get user's posts from yesterday with detailed logging
-          // Note: Database column is "created_at" not "createdAt"
           const userPostsResult = await db
             .select({
               points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
@@ -2793,8 +1637,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             .where(
               and(
                 eq(posts.userId, user.id),
-                gte(sql`posts.created_at`, yesterday), // Using SQL template for created_at
-                lt(sql`posts.created_at`, today),      // Using SQL template for created_at
+                gte(posts.createdAt, yesterday),
+                lt(posts.createdAt, today),
                 isNull(posts.parentId) // Don't count comments
               )
             );
@@ -2831,8 +1675,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               .where(
                 and(
                   eq(posts.userId, user.id),
-                  gte(sql`posts.created_at`, yesterday), // Using SQL template for created_at
-                  lt(sql`posts.created_at`, today),      // Using SQL template for created_at
+                  gte(posts.createdAt, yesterday),
+                  lt(posts.createdAt, today),
                   isNull(posts.parentId) // Don't count comments
                 )
               )
@@ -2915,39 +1759,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
             
-            // Convert the server's current time to the user's local timezone
-            // For rmiller@gmail.com (CDT), this would convert 4:00 AM UTC to 9:00 AM CDT
-            // assuming a timezone offset of -300 minutes (-5 hours)
-            // This allows us to match the user's preferred notification time
-            
-            // This is a simplified implementation - in a perfect solution, we would store
-            // the user's timezone preference and convert properly with full timezone support
-            // For now, we'll use the correct offset for Central Daylight Time users
-            
-            // Default offset for Central Time: 5 hours = 300 minutes
-            // Note: Timezone offset for CDT is -5 hours from UTC, but the offset needs to be positive
-            // to add hours to the UTC time
-            const defaultTzOffsetMinutes = 300; // CDT is UTC-5, so we add 5 hours (300 mins) to get proper time 
-            
-            // Adjust currentHour based on timezone offset
-            let adjustedHour = currentHour + Math.floor(defaultTzOffsetMinutes / 60);
-            // Handle day overflow
-            adjustedHour = adjustedHour % 24;
-            
             // Check if we're within a 10-minute window of the user's preferred time
             const isPreferredTimeWindow = 
-              (adjustedHour === preferredHour && 
+              (currentHour === preferredHour && 
                 (currentMinute >= preferredMinute && currentMinute < preferredMinute + 10)) ||
               // Handle edge case where preferred time is near the end of an hour
-              (adjustedHour === preferredHour + 1 && 
+              (currentHour === preferredHour + 1 && 
                 preferredMinute >= 50 && 
                 currentMinute < (preferredMinute + 10) % 60);
                 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
-              email: user.email,
-              serverTime: `${currentHour}:${currentMinute}`,
-              adjustedTime: `${adjustedHour}:${currentMinute}`, // Time adjusted for timezone
+              currentTime: `${currentHour}:${currentMinute}`,
               preferredTime: `${preferredHour}:${preferredMinute}`,
               isPreferredTimeWindow,
               existingNotificationsToday: existingNotifications.length
@@ -3200,8 +2023,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             eq(posts.userId, userId),
-            gte(sql`posts.created_at`, startOfDay),
-            lt(sql`posts.created_at`, endOfDay),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
             isNull(posts.parentId) // Don't count comments in the total
           )
         );
@@ -3218,8 +2041,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .where(
           and(
             eq(posts.userId, userId),
-            gte(sql`posts.created_at`, startOfDay),
-            lt(sql`posts.created_at`, endOfDay),
+            gte(posts.createdAt, startOfDay),
+            lt(posts.createdAt, endOfDay),
             isNull(posts.parentId)
           )
         );
@@ -5504,48 +4327,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error(`Error awarding achievement ${achievementType} to user ${userId}:`, error);
     }
   };
-
-  // Add endpoint to process video posters in batches without blocking the main server
-  router.post("/api/process-video-posters", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-      
-      logger.info(`Video poster batch processing initiated by admin user ${req.user.id}`);
-      
-      // Get batch parameters from request
-      const batchSize = req.query.batch ? parseInt(req.query.batch as string, 10) : 20;
-      const maxRunTime = req.query.timeout ? parseInt(req.query.timeout as string, 10) : 60000;
-      
-      // Import the generator module
-      const { processPosterBatch } = await import('./poster-generator');
-      
-      // Send initial response that the process has started
-      res.json({ 
-        message: "Video poster processing started",
-        status: "running",
-        batchSize,
-        maxRunTime,
-        startedAt: new Date().toISOString()
-      });
-      
-      // Execute the process after sending the response
-      processPosterBatch(batchSize, maxRunTime)
-        .then((stats) => {
-          logger.info('Video poster processing completed successfully', stats);
-        })
-        .catch(err => {
-          logger.error('Error in video poster processing:', err);
-        });
-    } catch (error) {
-      logger.error('Error initiating video poster processing:', error);
-      res.status(500).json({
-        message: "Failed to initiate video poster processing",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
   return httpServer;
 };
