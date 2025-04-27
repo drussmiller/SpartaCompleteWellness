@@ -86,10 +86,7 @@ iframe[src*="JT49h1zSD6I"] ~ iframe[src*="JT49h1zSD6I"],
   display: none !important;
 }
 
-/* Week 9 specific fixes - hide duplicate videos but use a more targeted approach */
-[data-week="9"] .weekly-content .video-wrapper:nth-of-type(n+2) {
-  display: none !important;
-}
+/* Week 9 specific fixes - we'll address this another way */
 
 /* Fix for nested video containers */
 p > p > .video-wrapper {
