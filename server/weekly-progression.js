@@ -14,7 +14,7 @@
  * @param {Date} date - The reference date
  * @returns {Date} The first Monday after or on the reference date
  */
-function getFirstMondayAfterDate(date) {
+export function getFirstMondayAfterDate(date) {
   const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   
   // If today is already Monday, use today
@@ -41,7 +41,7 @@ function getFirstMondayAfterDate(date) {
  * @param {Function} toUserLocalTime - Function to convert UTC time to user's local time
  * @returns {Object} Object with progression data (weekNumber, dayNumber, etc.)
  */
-module.exports = function calculateUserProgression(user, toUserLocalTime) {
+export function calculateUserProgression(user, toUserLocalTime) {
   // Get current time in user's timezone
   const utcNow = new Date();
   const userLocalNow = toUserLocalTime(utcNow);
