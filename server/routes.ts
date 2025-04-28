@@ -116,6 +116,86 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register user role routes
   router.use(userRoleRouter);
 
+  // Endpoint to get current progress for a specific user (for admin dashboard)
+  router.get("/api/users/:userId/progress", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      // Only admins can access other users' progress
+      if (!req.user.isAdmin && req.user.id !== parseInt(req.params.userId)) {
+        return res.status(403).json({ message: "Not authorized to view this user's progress" });
+      }
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+      const userId = parseInt(req.params.userId);
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Helper function to convert UTC date to user's local time
+      const toUserLocalTime = (utcDate: Date): Date => {
+        const localDate = new Date(utcDate.getTime());
+        localDate.setMinutes(localDate.getMinutes() - tzOffset);
+        return localDate;
+      };
+
+      // Get requested user's team join date
+      const [requestedUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!requestedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!requestedUser.teamJoinedAt) {
+        return res.status(400).json({ message: "User has no team join date" });
+      }
+
+      // Program start date based on this user's team join date
+      const programStart = calculateProgramStartDate(new Date(requestedUser.teamJoinedAt));
+
+      // Get current time in user's timezone
+      const utcNow = new Date();
+      const userLocalNow = toUserLocalTime(utcNow);
+
+      // Get start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start in user's timezone
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week and day in user's timezone
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
+
+      // Calculate user's progress based on their local time
+      const progressStart = toUserLocalTime(new Date(requestedUser.teamJoinedAt));
+      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
+
+      res.json({
+        currentWeek: weekNumber,
+        currentDay: dayNumber,
+        daysSinceStart,
+        progressDays,
+        username: requestedUser.username
+      });
+    } catch (error) {
+      logger.error('Error getting user progress:', error);
+      res.status(500).json({
+        message: "Failed to get user progress",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Configure document upload multer instance
   const docUpload = multer({
     storage: multerStorage,

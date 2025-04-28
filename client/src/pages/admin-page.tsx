@@ -68,9 +68,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   useEffect(() => {
     if (users) {
-      users.forEach(async (user) => {
+      // Create a function to fetch individual user progress
+      const fetchUserProgress = async (user: User) => {
         try {
-          const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+          const response = await fetch(`/api/users/${user.id}/progress?tzOffset=${tzOffset}`);
           if (response.ok) {
             const progress = await response.json();
             setUserProgress(prev => ({
@@ -82,9 +83,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             }));
           }
         } catch (error) {
-          console.error('Error fetching user progress:', error);
+          console.error(`Error fetching progress for user ${user.id}:`, error);
         }
-      });
+      };
+
+      // Fetch progress for each user
+      Promise.all(users.map(user => fetchUserProgress(user)))
+        .catch(error => {
+          console.error('Error fetching user progress data:', error);
+        });
     }
   }, [users, tzOffset]);
 
