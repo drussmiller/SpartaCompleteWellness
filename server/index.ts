@@ -3,7 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { Server as HttpServer } from "http";
+import { Server as HttpServer, createServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
@@ -97,7 +97,7 @@ const scheduleDailyScoreCheck = () => {
       logger.info('Running daily score check');
 
       // Use relative URL to avoid port binding issues
-      const baseUrl = 'http://localhost:5000';
+      const baseUrl = `http://localhost:${port}`;
 
       // Run checks for each hour to ensure notifications go out for all users
       // based on their preferred notification times
@@ -153,7 +153,7 @@ const scheduleDailyScoreCheck = () => {
       const currentHour = new Date().getHours();
       logger.info(`Running hourly check for hour ${currentHour}`);
 
-      const baseUrl = 'http://localhost:5000';
+      const baseUrl = `http://localhost:${port}`;
       const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
         method: 'POST',
         headers: {
@@ -256,8 +256,34 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // ALWAYS serve the app on port 5000
-    const port = 5000;
+    // Try alternative ports if 5000 is busy
+    const ports = [5000, 5001, 5002, 5003];
+    let port = ports[0];
+
+    // Handle port selection
+    const findAvailablePort = async () => {
+      for (const p of ports) {
+        try {
+          await new Promise((resolve, reject) => {
+            const testServer = createServer();
+            testServer.once('error', reject);
+            testServer.once('listening', () => {
+              testServer.close(() => resolve(true));
+            });
+            testServer.listen(p, '0.0.0.0');
+          });
+          return p;
+        } catch (err) {
+          logger.warn(`Port ${p} is busy, trying next port...`);
+          continue;
+        }
+      }
+      throw new Error('No available ports found');
+    };
+
+    // Find an available port before starting
+    port = await findAvailablePort();
+    logger.info(`Selected port ${port}`);
 
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
