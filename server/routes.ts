@@ -180,12 +180,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const progressStart = toUserLocalTime(new Date(requestedUser.teamJoinedAt));
       const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Add debugging info to the response
       res.json({
         currentWeek: weekNumber,
         currentDay: dayNumber,
         daysSinceStart,
         progressDays,
-        username: requestedUser.username
+        username: requestedUser.username,
+        debug: {
+          teamJoinedAt: requestedUser.teamJoinedAt,
+          programStartDate: programStart.toISOString(),
+          userLocalNow: userLocalNow.toISOString(),
+          timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`
+        }
       });
     } catch (error) {
       logger.error('Error getting user progress:', error);

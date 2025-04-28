@@ -53,7 +53,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [, setLocation] = useLocation();
-  const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
+  const [userProgress, setUserProgress] = useState<Record<number, { 
+    week: number; 
+    day: number; 
+    debug?: {
+      teamJoinedAt: string;
+      programStartDate: string;
+      userLocalNow: string;
+      timezone: string;
+    }
+  }>>({});
 
   // Get timezone offset for current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();
@@ -78,7 +87,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               ...prev,
               [user.id]: {
                 week: progress.currentWeek,
-                day: progress.currentDay
+                day: progress.currentDay,
+                debug: progress.debug
               }
             }));
           }
@@ -618,7 +628,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </div>
                                 <CardDescription>{user.email}</CardDescription>
                                 <div className="mt-1 text-sm text-muted-foreground">
-                                  Start Date: {new Date(user.createdAt!).toLocaleDateString()}
+                                  Created: {new Date(user.createdAt!).toLocaleDateString()}
+                                </div>
+                                <div className="mt-1 text-sm text-muted-foreground">
+                                  Team Joined: {user.teamJoinedAt ? new Date(user.teamJoinedAt).toLocaleDateString() : 'Not in team'}
+                                </div>
+                                <div className="mt-1 text-sm text-muted-foreground">
+                                  Program Start: {userProgress[user.id]?.debug?.programStartDate 
+                                    ? new Date(userProgress[user.id].debug.programStartDate).toLocaleDateString() 
+                                    : 'Loading...'}
                                 </div>
                                 <div className="mt-1 text-sm text-muted-foreground">
                                   Progress: Week {userProgress[user.id]?.week ?? user.currentWeek},
