@@ -45,6 +45,7 @@ import { prayerRoutes } from './prayer-routes';
 // Note: There are duplicate message handlers in this file around lines 3348 and 3979
 // However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
 import { messageRouter } from './message-routes';
+import { userRoleRouter } from './user-role-route';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const multerStorage = multer.diskStorage({
@@ -111,6 +112,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Register message routes
   router.use(messageRouter);
+  
+  // Register user role routes
+  router.use(userRoleRouter);
 
   // Configure document upload multer instance
   const docUpload = multer({
