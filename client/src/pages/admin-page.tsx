@@ -555,7 +555,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="pt-0">
                         <p className="text-sm">
                           <span className="font-medium">Members: </span>
                           {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
