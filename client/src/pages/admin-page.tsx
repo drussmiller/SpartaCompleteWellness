@@ -45,7 +45,7 @@ interface AdminPageProps {
 }
 
 // Basic Collapsible Component (replace with your actual implementation)
-const Collapsible = ({ children }: { children: React.ReactNode }) => {
+const Collapsible = ({ children, user }: { children: React.ReactNode, user: any }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div>
@@ -568,7 +568,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <h2 className="text-2xl font-semibold mb-4">Users</h2>
                 <div className="space-y-4">
                   {sortedUsers?.map((user) => (
-                    <Collapsible key={user.id}>
+                    <Collapsible key={user.id} user={user}>
                       <Card>
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
