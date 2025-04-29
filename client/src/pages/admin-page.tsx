@@ -53,7 +53,9 @@ const Collapsible = ({ children, user }: { children: React.ReactNode, user: any 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full px-4 py-2 cursor-pointer hover:bg-gray-100"
       >
-        <span>{user.username}{user.preferredName ? ` (${user.preferredName})` : ''}</span>
+        <span className={!user.teamId ? "font-bold" : ""}>
+          {user.username}{user.preferredName ? ` (${user.preferredName})` : ''}
+        </span>
         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </div>
       <div style={{ display: isOpen ? 'block' : 'none' }}>
