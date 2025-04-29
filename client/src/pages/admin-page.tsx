@@ -613,7 +613,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-2">
-                                    <CardTitle>{user.preferredName || user.username}</CardTitle>
+                                    <CardTitle className={!user.teamId ? "font-extrabold" : ""}>
+                                      {user.preferredName || user.username}
+                                    </CardTitle>
                                     <div className="flex gap-2">
                                       <Button
                                         variant="ghost"
