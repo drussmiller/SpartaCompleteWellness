@@ -312,7 +312,7 @@ export function CreatePostDialog({
         is_video: data.type === "memory_verse" || (data.type === "miscellaneous" && selectedMediaType === "video")
       };
 
-      queryClient.setQueryData(["/api/posts"], (old: any[] = []) => [optimisticPost, ...old]);
+      queryClient.setQueryData(["/api/posts", "team-posts"], (old: any[] = []) => [optimisticPost, ...old]);
 
       return { previousPosts };
     },
@@ -333,10 +333,8 @@ export function CreatePostDialog({
         fileInputRef.current.value = "";
       }
 
-      // Update the post data in the cache
-      queryClient.setQueryData(["/api/posts"], (old: any[] = []) => {
-        return old.map(post => post.id === Date.now() ? newPost : post);
-      });
+      // Don't try to manually update cache data - instead rely on invalidation
+      // to fetch fresh data from the server, which is more reliable
       
       // Also update prayer requests cache if this is a prayer post
       if (newPost.type === "prayer") {
@@ -346,8 +344,23 @@ export function CreatePostDialog({
       }
 
       // Invalidate related queries to refresh counts and stats
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+      // Use object form for invalidation to be more specific and faster
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey as (string | number)[];
+          
+          // Check for /api/posts with exact match or with team-posts as second parameter
+          if (
+            (queryKey.length === 1 && queryKey[0] === "/api/posts") ||
+            (queryKey.length === 2 && queryKey[0] === "/api/posts" && queryKey[1] === "team-posts") ||
+            (queryKey.length === 1 && queryKey[0] === "/api/posts/counts") ||
+            (queryKey.length === 1 && queryKey[0] === "/api/user/stats")
+          ) {
+            return true;
+          }
+          return false;
+        }
+      });
       
       // Display success toast
       toast({
@@ -356,7 +369,10 @@ export function CreatePostDialog({
       });
     },
     onError: (error: any, _: any, context: any) => {
-      queryClient.setQueryData(["/api/posts"], context?.previousPosts);
+      // Restore previous posts data if we have it
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["/api/posts", "team-posts"], context.previousPosts);
+      }
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
