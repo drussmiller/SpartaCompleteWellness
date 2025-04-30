@@ -14,7 +14,7 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
-import ReactPullToRefresh from "react-pull-to-refresh";
+import { useToast } from "@/hooks/use-toast";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -92,9 +92,11 @@ export default function HomePage() {
     navigate('/prayer-requests');
   };
   
-  // Handle pull-to-refresh
+  const { toast } = useToast();
+  
+  // Handle refresh
   const handleRefresh = async () => {
-    console.log("Pull-to-refresh triggered");
+    console.log("Refresh triggered");
     setRefreshing(true);
     try {
       // Invalidate the posts cache and refetch
@@ -103,12 +105,21 @@ export default function HomePage() {
       await refetchLimits();
       localStorage.setItem('lastPostLimitsRefetch', Date.now().toString());
       console.log("Data refreshed successfully");
+      toast({
+        title: "Refreshed",
+        description: "Your feed has been updated.",
+        duration: 2000,
+      });
     } catch (err) {
       console.error("Error refreshing data:", err);
+      toast({
+        title: "Refresh failed",
+        description: "Unable to refresh. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setRefreshing(false);
     }
-    return Promise.resolve();
   };
 
   if (error) {
@@ -192,83 +203,42 @@ export default function HomePage() {
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
               <main className="mt-32 pt-8 mb-20">
-                {isMobile ? (
-                  <ReactPullToRefresh
-                    onRefresh={handleRefresh}
-                    style={{ 
-                      textAlign: 'center',
-                      position: 'relative',
-                      overflow: 'visible',
-                    }}
-                    pullDownContent={
-                      <div className="flex justify-center items-center py-2 text-primary">
-                        <RefreshCw className="h-5 w-5 mr-2" />
-                        <span>Pull down to refresh</span>
-                      </div>
-                    }
-                    releaseContent={
-                      <div className="flex justify-center items-center py-2 text-primary">
-                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                        <span>Release to refresh</span>
-                      </div>
-                    }
-                    refreshContent={
-                      <div className="flex justify-center items-center py-2 text-primary">
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        <span>Refreshing...</span>
-                      </div>
-                    }
+                <div className="mb-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 rounded-full px-4"
+                    onClick={handleRefresh}
+                    disabled={refreshing || isLoading}
                   >
-                    <div className="space-y-2">
-                      {posts?.length > 0 ? (
-                        posts.map((post: Post, index: number) => (
-                          <div key={post.id}>
-                            <ErrorBoundary>
-                              <PostCard post={post} />
-                            </ErrorBoundary>
-                            {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
-                          </div>
-                        ))
-                      ) : !isLoading ? (
-                        <div className="text-center text-muted-foreground py-8">
-                          No posts yet. Be the first to share!
-                        </div>
-                      ) : null}
-
-                      {/* Loading indicator */}
-                      <div ref={loadingRef} className="flex justify-center py-4">
-                        {isLoading && !refreshing && (
-                          <Loader2 className="h-8 w-8 animate-spin" />
-                        )}
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Refreshing...' : 'Refresh Feed'}
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {posts?.length > 0 ? (
+                    posts.map((post: Post, index: number) => (
+                      <div key={post.id}>
+                        <ErrorBoundary>
+                          <PostCard post={post} />
+                        </ErrorBoundary>
+                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
                       </div>
+                    ))
+                  ) : !isLoading ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No posts yet. Be the first to share!
                     </div>
-                  </ReactPullToRefresh>
-                ) : (
-                  // Non-mobile view without pull-to-refresh
-                  <div className="space-y-2">
-                    {posts?.length > 0 ? (
-                      posts.map((post: Post, index: number) => (
-                        <div key={post.id}>
-                          <ErrorBoundary>
-                            <PostCard post={post} />
-                          </ErrorBoundary>
-                          {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
-                        </div>
-                      ))
-                    ) : !isLoading ? (
-                      <div className="text-center text-muted-foreground py-8">
-                        No posts yet. Be the first to share!
-                      </div>
-                    ) : null}
+                  ) : null}
 
-                    {/* Loading indicator */}
-                    <div ref={loadingRef} className="flex justify-center py-4">
-                      {isLoading && (
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                      )}
-                    </div>
+                  {/* Loading indicator */}
+                  <div ref={loadingRef} className="flex justify-center py-4">
+                    {isLoading && !refreshing && (
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    )}
                   </div>
-                )}
+                </div>
               </main>
             </div>
 
