@@ -1,19 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
+import ReactPullToRefresh from "react-pull-to-refresh";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -39,6 +40,8 @@ export default function HomePage() {
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
+  const [refreshing, setRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -87,6 +90,25 @@ export default function HomePage() {
     // Mark prayer requests as viewed before navigating
     markAsViewed();
     navigate('/prayer-requests');
+  };
+  
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    console.log("Pull-to-refresh triggered");
+    setRefreshing(true);
+    try {
+      // Invalidate the posts cache and refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/posts", "team-posts"] });
+      // Also refresh post limits
+      await refetchLimits();
+      localStorage.setItem('lastPostLimitsRefetch', Date.now().toString());
+      console.log("Data refreshed successfully");
+    } catch (err) {
+      console.error("Error refreshing data:", err);
+    } finally {
+      setRefreshing(false);
+    }
+    return Promise.resolve();
   };
 
   if (error) {
@@ -170,29 +192,83 @@ export default function HomePage() {
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
               <main className="mt-32 pt-8 mb-20">
-                <div className="space-y-2">
-                  {posts?.length > 0 ? (
-                    posts.map((post: Post, index: number) => (
-                      <div key={post.id}>
-                        <ErrorBoundary>
-                          <PostCard post={post} />
-                        </ErrorBoundary>
-                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                {isMobile ? (
+                  <ReactPullToRefresh
+                    onRefresh={handleRefresh}
+                    style={{ 
+                      textAlign: 'center',
+                      position: 'relative',
+                      overflow: 'visible',
+                    }}
+                    pullDownContent={
+                      <div className="flex justify-center items-center py-2 text-primary">
+                        <RefreshCw className="h-5 w-5 mr-2" />
+                        <span>Pull down to refresh</span>
                       </div>
-                    ))
-                  ) : !isLoading ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      No posts yet. Be the first to share!
-                    </div>
-                  ) : null}
+                    }
+                    releaseContent={
+                      <div className="flex justify-center items-center py-2 text-primary">
+                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                        <span>Release to refresh</span>
+                      </div>
+                    }
+                    refreshContent={
+                      <div className="flex justify-center items-center py-2 text-primary">
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        <span>Refreshing...</span>
+                      </div>
+                    }
+                  >
+                    <div className="space-y-2">
+                      {posts?.length > 0 ? (
+                        posts.map((post: Post, index: number) => (
+                          <div key={post.id}>
+                            <ErrorBoundary>
+                              <PostCard post={post} />
+                            </ErrorBoundary>
+                            {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                          </div>
+                        ))
+                      ) : !isLoading ? (
+                        <div className="text-center text-muted-foreground py-8">
+                          No posts yet. Be the first to share!
+                        </div>
+                      ) : null}
 
-                  {/* Loading indicator */}
-                  <div ref={loadingRef} className="flex justify-center py-4">
-                    {isLoading && (
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                    )}
+                      {/* Loading indicator */}
+                      <div ref={loadingRef} className="flex justify-center py-4">
+                        {isLoading && !refreshing && (
+                          <Loader2 className="h-8 w-8 animate-spin" />
+                        )}
+                      </div>
+                    </div>
+                  </ReactPullToRefresh>
+                ) : (
+                  // Non-mobile view without pull-to-refresh
+                  <div className="space-y-2">
+                    {posts?.length > 0 ? (
+                      posts.map((post: Post, index: number) => (
+                        <div key={post.id}>
+                          <ErrorBoundary>
+                            <PostCard post={post} />
+                          </ErrorBoundary>
+                          {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                        </div>
+                      ))
+                    ) : !isLoading ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        No posts yet. Be the first to share!
+                      </div>
+                    ) : null}
+
+                    {/* Loading indicator */}
+                    <div ref={loadingRef} className="flex justify-center py-4">
+                      {isLoading && (
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </main>
             </div>
 
