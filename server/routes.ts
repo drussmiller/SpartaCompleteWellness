@@ -1478,7 +1478,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         conditions.push(not(eq(posts.type, excludeType)));
       }
 
-      logger.info(`Query conditions:`, conditions);
+      // Don't try to log the complex SQL conditions object directly
+      logger.info(`Query conditions applied for: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}, exclude=${excludeType}`);
+      
+      // Debug log to see condition types
+      logger.info(`Number of conditions: ${conditions.length}`);
 
       // Join with users table to get author info
       const query = db
