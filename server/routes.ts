@@ -1432,6 +1432,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const postType = req.query.type as string;
       const excludeType = req.query.exclude as string;
 
+      // Log request parameters
+      logger.info(`Fetching posts with params: page=${page}, limit=${limit}, userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}, exclude=${excludeType}`);
+
+      // First check if post ID 491 exists and what user it belongs to
+      const debugPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, 491))
+        .limit(1);
+      
+      if (debugPost.length > 0) {
+        logger.info(`Post #491 exists in the database:`, debugPost[0]);
+      } else {
+        logger.info(`Post #491 does not exist in the database`);
+      }
+
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
 
@@ -1461,6 +1477,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (excludeType) {
         conditions.push(not(eq(posts.type, excludeType)));
       }
+
+      logger.info(`Query conditions:`, conditions);
 
       // Join with users table to get author info
       const query = db
@@ -1493,6 +1511,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       const result = await query;
 
+      // Check if post #491 is in the result set
+      const includesPost491 = result.some(post => post.id === 491);
+      logger.info(`Result set includes post #491: ${includesPost491}`);
+      
       logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
       res.json(result);
     } catch (error) {

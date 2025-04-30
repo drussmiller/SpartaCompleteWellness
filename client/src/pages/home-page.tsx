@@ -56,14 +56,24 @@ export default function HomePage() {
     queryKey: ["/api/posts", "team-posts"],
     queryFn: async () => {
       // Make sure to exclude prayer posts from Team page
+      console.log("Fetching posts...");
       const response = await apiRequest("GET", `/api/posts?page=1&limit=50&exclude=prayer`);
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
       const data = await response.json();
       
+      console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
+      
+      // Check if post ID 491 is in the response
+      const hasTargetPost = data.some(post => post.id === 491);
+      console.log("Does response include post #491?", hasTargetPost);
+      
       // Double-check to filter out any prayer posts that might have slipped through
-      return data.filter(post => post.type !== 'prayer');
+      const filtered = data.filter(post => post.type !== 'prayer');
+      console.log("Posts after prayer filtering:", filtered.length);
+      
+      return filtered;
     },
     enabled: !!user,
     refetchOnWindowFocus: true,
