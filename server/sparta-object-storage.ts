@@ -21,14 +21,15 @@ export class SpartaObjectStorage {
    * @param allowedTypes Array of allowed mime types
    */
   constructor(
-    baseDir: string = path.join(process.cwd(), 'uploads'),
-    thumbnailDir: string = path.join(process.cwd(), 'uploads', 'thumbnails'),
+    baseDir: string = path.resolve(process.cwd(), 'uploads'),
+    thumbnailDir: string = path.resolve(process.cwd(), 'uploads', 'thumbnails'),
     allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'application/octet-stream'] // Added more video types and octet-stream
   ) {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
 
+    // Ensure we're using absolute paths to avoid any path resolution issues
     console.log("SpartaObjectStorage initialized with paths:", {
       baseDir: this.baseDir,
       thumbnailDir: this.thumbnailDir,
@@ -46,26 +47,26 @@ export class SpartaObjectStorage {
    */
   private ensureDirectories(): void {
     try {
+      // Ensure absolute paths are used
+      const baseDirPath = path.resolve(this.baseDir);
+      const thumbnailDirPath = path.resolve(this.thumbnailDir);
+      
       // Array of directories to ensure they exist
       const dirsToCreate = [
         // Base directories
-        this.baseDir,
-        this.thumbnailDir,
+        baseDirPath,
+        thumbnailDirPath,
         
         // Special directories for memory verse videos
-        path.join(this.baseDir, 'memory_verse'),
-        path.join(this.thumbnailDir, 'memory_verse'),
-        path.join(process.cwd(), 'uploads', 'memory_verse'),
-        path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse'),
+        path.join(baseDirPath, 'memory_verse'),
+        path.join(thumbnailDirPath, 'memory_verse'),
         
         // Special directories for miscellaneous videos
-        path.join(this.baseDir, 'miscellaneous'),
-        path.join(this.thumbnailDir, 'miscellaneous'),
-        path.join(process.cwd(), 'uploads', 'miscellaneous'),
-        path.join(process.cwd(), 'uploads', 'thumbnails', 'miscellaneous'),
+        path.join(baseDirPath, 'miscellaneous'),
+        path.join(thumbnailDirPath, 'miscellaneous'),
         
         // General video directory
-        path.join(this.baseDir, 'videos')
+        path.join(baseDirPath, 'videos')
       ];
       
       // Create each directory if it doesn't exist
@@ -299,15 +300,20 @@ export class SpartaObjectStorage {
 
       // Create thumbnail based on file type
       const thumbnailFilename = `thumb-${safeFilename}`;
-      const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
+      const thumbnailDirPath = path.resolve(this.thumbnailDir);
+      const thumbnailPath = path.join(thumbnailDirPath, thumbnailFilename);
       
-      console.log(`Preparing to create thumbnail: ${thumbnailFilename}`);
+      console.log(`Preparing to create thumbnail: ${thumbnailFilename}`, {
+        thumbnailPath,
+        thumbnailDirPath,
+        originalDir: this.thumbnailDir
+      });
 
       try {
         // Ensure thumbnail directory exists
-        if (!fs.existsSync(this.thumbnailDir)) {
-          console.log(`Creating thumbnails directory: ${this.thumbnailDir}`);
-          fs.mkdirSync(this.thumbnailDir, { recursive: true });
+        if (!fs.existsSync(thumbnailDirPath)) {
+          console.log(`Creating thumbnails directory: ${thumbnailDirPath}`);
+          fs.mkdirSync(thumbnailDirPath, { recursive: true });
         }
         
         if (mimeType.startsWith('image/')) {
@@ -374,7 +380,8 @@ export class SpartaObjectStorage {
                 
                 // Special handling for videos - create a copy without the thumb- prefix too
                 // This is because some parts of the code might look for thumbnails without the prefix
-                const alternateThumbPath = path.join(this.thumbnailDir, safeFilename);
+                const thumbDirResolved = path.resolve(this.thumbnailDir);
+                const alternateThumbPath = path.join(thumbDirResolved, safeFilename);
                 if (!fs.existsSync(alternateThumbPath)) {
                   try {
                     fs.copyFileSync(thumbnailPath, alternateThumbPath);

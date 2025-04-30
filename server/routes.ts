@@ -48,12 +48,18 @@ import { messageRouter } from './message-routes';
 import { userRoleRouter } from './user-role-route';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
+const uploadDir = path.resolve(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log(`Created upload directory: ${uploadDir}`);
+}
+
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Make sure the directory exists
-    const uploadDir = path.join(process.cwd(), 'uploads');
+    // Use the same absolute path as SpartaObjectStorage
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
+      console.log(`Created upload directory: ${uploadDir}`);
     }
     cb(null, uploadDir);
   },
@@ -62,10 +68,6 @@ const multerStorage = multer.diskStorage({
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
-const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 const upload = multer({
   storage: multerStorage,
