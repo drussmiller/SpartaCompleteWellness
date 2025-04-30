@@ -1,20 +1,19 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
-import { useToast } from "@/hooks/use-toast";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -40,8 +39,6 @@ export default function HomePage() {
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
-  const [refreshing, setRefreshing] = useState(false);
-  const queryClient = useQueryClient();
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -90,36 +87,6 @@ export default function HomePage() {
     // Mark prayer requests as viewed before navigating
     markAsViewed();
     navigate('/prayer-requests');
-  };
-  
-  const { toast } = useToast();
-  
-  // Handle refresh
-  const handleRefresh = async () => {
-    console.log("Refresh triggered");
-    setRefreshing(true);
-    try {
-      // Invalidate the posts cache and refetch
-      await queryClient.invalidateQueries({ queryKey: ["/api/posts", "team-posts"] });
-      // Also refresh post limits
-      await refetchLimits();
-      localStorage.setItem('lastPostLimitsRefetch', Date.now().toString());
-      console.log("Data refreshed successfully");
-      toast({
-        title: "Refreshed",
-        description: "Your feed has been updated.",
-        duration: 2000,
-      });
-    } catch (err) {
-      console.error("Error refreshing data:", err);
-      toast({
-        title: "Refresh failed",
-        description: "Unable to refresh. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setRefreshing(false);
-    }
   };
 
   if (error) {
@@ -203,19 +170,6 @@ export default function HomePage() {
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
               <main className="mt-32 pt-8 mb-20">
-                <div className="mb-4 flex justify-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2 rounded-full px-4"
-                    onClick={handleRefresh}
-                    disabled={refreshing || isLoading}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                    {refreshing ? 'Refreshing...' : 'Refresh Feed'}
-                  </Button>
-                </div>
-                
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
@@ -234,7 +188,7 @@ export default function HomePage() {
 
                   {/* Loading indicator */}
                   <div ref={loadingRef} className="flex justify-center py-4">
-                    {isLoading && !refreshing && (
+                    {isLoading && (
                       <Loader2 className="h-8 w-8 animate-spin" />
                     )}
                   </div>
