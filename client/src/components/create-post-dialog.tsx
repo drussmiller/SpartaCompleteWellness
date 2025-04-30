@@ -333,8 +333,7 @@ export function CreatePostDialog({
         fileInputRef.current.value = "";
       }
 
-      // Don't try to manually update cache data - instead rely on invalidation
-      // to fetch fresh data from the server, which is more reliable
+      console.log("Post created successfully, invalidating queries to update UI");
       
       // Also update prayer requests cache if this is a prayer post
       if (newPost.type === "prayer") {
@@ -343,19 +342,18 @@ export function CreatePostDialog({
         });
       }
 
-      // Invalidate related queries to refresh counts and stats
-      // Use object form for invalidation to be more specific and faster
+      // First directly invalidate the most common query keys
+      // This is more explicit and reliable than using predicates
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", "team-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+      
+      // Then use predicate for any other post-related queries we might have missed
       queryClient.invalidateQueries({
         predicate: (query) => {
           const queryKey = query.queryKey as (string | number)[];
-          
-          // Check for /api/posts with exact match or with team-posts as second parameter
-          if (
-            (queryKey.length === 1 && queryKey[0] === "/api/posts") ||
-            (queryKey.length === 2 && queryKey[0] === "/api/posts" && queryKey[1] === "team-posts") ||
-            (queryKey.length === 1 && queryKey[0] === "/api/posts/counts") ||
-            (queryKey.length === 1 && queryKey[0] === "/api/user/stats")
-          ) {
+          if (queryKey[0] === "/api/posts") {
             return true;
           }
           return false;
