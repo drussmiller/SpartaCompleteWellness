@@ -1516,7 +1516,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Result set includes post #491: ${includesPost491}`);
       
       logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
-      res.json(result);
+      
+      // Fix circular references by explicitly mapping the result objects before serializing to JSON
+      const safeResults = result.map(post => ({
+        id: post.id,
+        content: post.content,
+        type: post.type,
+        mediaUrl: post.mediaUrl,
+        createdAt: post.createdAt,
+        parentId: post.parentId,
+        points: post.points,
+        userId: post.userId,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          imageUrl: post.author.imageUrl,
+          isAdmin: post.author.isAdmin
+        } : null
+      }));
+      
+      res.json(safeResults);
     } catch (error) {
       logger.error('Error fetching posts:', error);
       res.status(500).json({
@@ -1578,8 +1597,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Double-check we're still sending as JSON (just in case)
       res.set('Content-Type', 'application/json');
       
+      // Fix circular references by mapping the post object before serializing
+      const safePost = {
+        id: post.id,
+        content: post.content,
+        type: post.type,
+        mediaUrl: post.mediaUrl,
+        createdAt: post.createdAt,
+        parentId: post.parentId,
+        points: post.points,
+        userId: post.userId,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          imageUrl: post.author.imageUrl,
+          isAdmin: post.author.isAdmin
+        } : null
+      };
+      
       // Manually stringify the JSON to ensure it's not transformed in any way
-      const jsonString = JSON.stringify(post);
+      const jsonString = JSON.stringify(safePost);
       
       // Send the manual JSON response
       return res.send(jsonString);
