@@ -14,9 +14,6 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
-import { PullToRefresh } from 'react-pull-to-refresh'; // Import the library
-import { useQueryClient } from "@tanstack/react-query"; // Import useQueryClient
-
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -42,7 +39,6 @@ export default function HomePage() {
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
-  const queryClient = useQueryClient(); // Initialize queryClient
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -66,17 +62,17 @@ export default function HomePage() {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
       const data = await response.json();
-
+      
       console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
-
+      
       // Check if post ID 491 is in the response
       const hasTargetPost = data.some(post => post.id === 491);
       console.log("Does response include post #491?", hasTargetPost);
-
+      
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
       console.log("Posts after prayer filtering:", filtered.length);
-
+      
       return filtered;
     },
     enabled: !!user,
@@ -129,7 +125,7 @@ export default function HomePage() {
                 <MessageSlideCard />
               </div>
             </div>
-
+            
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
@@ -173,42 +169,31 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <PullToRefresh
-                onRefresh={async () => {
-                  console.log("Refreshing posts...");
-                  await queryClient.invalidateQueries({ queryKey: ["/api/posts", "team-posts"] });
-                }}
-                pullDownThreshold={67}
-                triggerHeight={60}
-                backgroundColor="transparent"
-                startInvisible={true}
-              >
-                <main className="mt-32 pt-8 mb-20">
-                  <div className="space-y-2">
-                    {posts?.length > 0 ? (
-                      posts.map((post: Post, index: number) => (
-                        <div key={post.id}>
-                          <ErrorBoundary>
-                            <PostCard post={post} />
-                          </ErrorBoundary>
-                          {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
-                        </div>
-                      ))
-                    ) : !isLoading ? (
-                      <div className="text-center text-muted-foreground py-8">
-                        No posts yet. Be the first to share!
+              <main className="mt-32 pt-8 mb-20">
+                <div className="space-y-2">
+                  {posts?.length > 0 ? (
+                    posts.map((post: Post, index: number) => (
+                      <div key={post.id}>
+                        <ErrorBoundary>
+                          <PostCard post={post} />
+                        </ErrorBoundary>
+                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
                       </div>
-                    ) : null}
-
-                    {/* Loading indicator */}
-                    <div ref={loadingRef} className="flex justify-center py-4">
-                      {isLoading && (
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                      )}
+                    ))
+                  ) : !isLoading ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      No posts yet. Be the first to share!
                     </div>
+                  ) : null}
+
+                  {/* Loading indicator */}
+                  <div ref={loadingRef} className="flex justify-center py-4">
+                    {isLoading && (
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    )}
                   </div>
-                </main>
-              </PullToRefresh>
+                </div>
+              </main>
             </div>
 
             {/* Right panel - hidden on mobile */}
