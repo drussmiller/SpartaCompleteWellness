@@ -1718,6 +1718,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Thumbnail repair endpoint
+  router.get("/api/admin/repair-thumbnails", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const { repairMissingThumbnails } = await import('./fix-thumbnails.js');
+      const results = await repairMissingThumbnails();
+      
+      return res.json({
+        message: "Thumbnail repair completed",
+        results
+      });
+    } catch (error) {
+      logger.error('Error repairing thumbnails:', error);
+      return res.status(500).json({
+        message: "Failed to repair thumbnails",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
     try {
