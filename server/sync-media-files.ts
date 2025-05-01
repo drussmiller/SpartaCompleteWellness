@@ -136,20 +136,63 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
     // Make sure the URL has a leading slash for correct server path
     const urlPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
     
-    // URL to download from
-    const sourceUrl = new URL(fileUrl.startsWith('http') ? fileUrl : `${PROD_BASE_URL}${urlPath}`);
+    // URL to download from - Make sure to handle both relative and absolute URLs
+    let sourceUrlString;
+    if (fileUrl.startsWith('http')) {
+      // It's already a full URL
+      sourceUrlString = fileUrl;
+    } else {
+      // It's a relative path, format consistently for production server
+      // Ensure the path starts with a single slash and does not have redundant prefixes
+      let cleanPath = urlPath;
+      if (cleanPath.startsWith('/uploads')) {
+        // If it's already /uploads/file.jpg, use as is
+        sourceUrlString = `${PROD_BASE_URL}${cleanPath}`;
+      } else if (cleanPath.startsWith('/')) {
+        // If it's just /file.jpg, add /uploads prefix
+        sourceUrlString = `${PROD_BASE_URL}/uploads${cleanPath}`;
+      } else {
+        // If it's just file.jpg, add /uploads/ prefix
+        sourceUrlString = `${PROD_BASE_URL}/uploads/${cleanPath.replace(/^\/+/, '')}`;
+      }
+    }
     
-    logger.info(`Downloading file from ${sourceUrl.toString()} to ${targetPath}`);
+    // Print the full URL for debugging
+    logger.info(`Attempting to download from: ${sourceUrlString}`);
+    logger.info(`Target save path: ${targetPath}`);
+    
+    // Create the URL object after fixing the string format
+    const sourceUrl = new URL(sourceUrlString);
+    
+    // Create an empty file first to avoid issues with non-existent paths
+    fs.writeFileSync(targetPath, '');
     
     // Create a write stream to save the file
     const fileStream = fs.createWriteStream(targetPath);
     
-    // Download the file
+    // Download the file with a timeout
     return new Promise<boolean>((resolve) => {
-      https.get(sourceUrl, (response) => {
+      const request = https.get(sourceUrl, {
+        headers: {
+          // Add user-agent to avoid being blocked
+          'User-Agent': 'Mozilla/5.0 (Sparta Media Sync)',
+          // Accept common image types
+          'Accept': 'image/jpeg,image/png,image/gif,video/mp4,*/*',
+        },
+        // Set a timeout on the request
+        timeout: 15000 // 15 seconds timeout
+      }, (response) => {
         if (response.statusCode !== 200) {
           logger.error(`Failed to download file, status code: ${response.statusCode}, URL: ${sourceUrl.toString()}`);
           fileStream.close();
+          
+          // Try to fix the issue with file type detection
+          if (response.statusCode === 404) {
+            // If not found, could be a wrong extension - try to guess
+            logger.info(`File not found at ${sourceUrl.toString()}, trying alternative extensions...`);
+            // Allow the caller to try again with different file format
+          }
+          
           resolve(false);
           return;
         }
@@ -158,7 +201,17 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
         
         fileStream.on('finish', () => {
           fileStream.close();
-          logger.info(`Successfully downloaded file to ${targetPath}`);
+          
+          // Verify the file is not empty
+          const stats = fs.statSync(targetPath);
+          if (stats.size === 0) {
+            logger.error(`Downloaded file is empty, removing: ${targetPath}`);
+            fs.unlinkSync(targetPath);
+            resolve(false);
+            return;
+          }
+          
+          logger.info(`Successfully downloaded file to ${targetPath} (${stats.size} bytes)`);
           resolve(true);
         });
         
@@ -183,7 +236,21 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
         } catch (e) {
           logger.error(`Error removing file after failed download: ${e instanceof Error ? e.message : String(e)}`);
         }
-        logger.error(`Error downloading file: ${err.message}`);
+        logger.error(`Error downloading file: ${err.message}, URL: ${sourceUrl.toString()}`);
+        resolve(false);
+      });
+      
+      // Set a timeout for the entire request
+      request.on('timeout', () => {
+        logger.error(`Download timeout for URL: ${sourceUrl.toString()}`);
+        request.destroy();
+        try {
+          if (fs.existsSync(targetPath)) {
+            fs.unlinkSync(targetPath);
+          }
+        } catch (e) {
+          logger.error(`Error removing file after timeout: ${e instanceof Error ? e.message : String(e)}`);
+        }
         resolve(false);
       });
     });
@@ -296,8 +363,46 @@ export const syncMediaFiles = async (): Promise<{
       } else {
         logger.info(`File missing: ${normalizedPath}`);
         
-        // Try to download the file
-        const downloaded = await downloadFile(imageUrl);
+        // Try to download the file with original extension
+        let downloaded = await downloadFile(imageUrl);
+        
+        // If download failed and file has an extension, try common alternatives
+        if (!downloaded) {
+          const parsedPath = path.parse(imageUrl);
+          const baseName = parsedPath.name;
+          const origExt = parsedPath.ext.toLowerCase();
+          
+          // Don't try alternatives for known video formats
+          const isVideoExt = ['.mp4', '.mov', '.avi', '.wmv', '.webm'].includes(origExt);
+          
+          if (!isVideoExt && origExt) {
+            logger.info(`Initial download failed for ${imageUrl}, trying alternative formats...`);
+            
+            // List of common image extensions to try
+            const altExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+            
+            // Remove current extension from alternatives if it exists
+            const extensions = altExtensions.filter(ext => ext !== origExt);
+            
+            // Try each alternative extension
+            for (const ext of extensions) {
+              // Create a new URL with the alternative extension
+              const altUrl = `${parsedPath.dir}/${baseName}${ext}`;
+              logger.info(`Trying alternative format: ${altUrl}`);
+              
+              // Attempt download with this extension
+              downloaded = await downloadFile(altUrl);
+              if (downloaded) {
+                logger.info(`Successfully downloaded with alternative extension: ${ext}`);
+                
+                // Update imageUrl to use the successful extension for thumbnail generation
+                imageUrl = altUrl;
+                break;
+              }
+            }
+          }
+        }
+        
         if (downloaded) {
           stats.downloaded++;
           
@@ -306,6 +411,7 @@ export const syncMediaFiles = async (): Promise<{
           stats.thumbnailsGenerated++;
         } else {
           stats.failed++;
+          logger.error(`Failed to download ${imageUrl} after all attempts`);
         }
       }
       
