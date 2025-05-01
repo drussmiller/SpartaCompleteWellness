@@ -76,8 +76,38 @@ const normalizePath = (url: string): string => {
  */
 const fileExists = (filePath: string): boolean => {
   try {
+    // Try as-is path
     const fullPath = path.join(process.cwd(), filePath);
-    return fs.existsSync(fullPath);
+    if (fs.existsSync(fullPath)) {
+      return true;
+    }
+    
+    // Try with uploads/ prefix if it doesn't already have it
+    if (!filePath.startsWith('uploads/')) {
+      const uploadsPath = path.join(process.cwd(), 'uploads', filePath);
+      if (fs.existsSync(uploadsPath)) {
+        return true;
+      }
+    }
+    
+    // Try to check different possible variants of the path
+    // 1. Without leading /
+    if (filePath.startsWith('/')) {
+      const trimmedPath = path.join(process.cwd(), filePath.substring(1));
+      if (fs.existsSync(trimmedPath)) {
+        return true;
+      }
+    }
+    
+    // 2. With explicit uploads parent dir
+    const baseFilename = path.basename(filePath);
+    const uploadsFilePath = path.join(process.cwd(), 'uploads', baseFilename);
+    if (fs.existsSync(uploadsFilePath)) {
+      logger.info(`Found file at alternate path: ${uploadsFilePath}`);
+      return true;
+    }
+    
+    return false;
   } catch (error) {
     logger.error(`Error checking if file exists: ${filePath}`, error);
     return false;
@@ -90,16 +120,24 @@ const fileExists = (filePath: string): boolean => {
 const downloadFile = async (fileUrl: string): Promise<boolean> => {
   try {
     const normalizedPath = normalizePath(fileUrl);
-    const targetPath = path.join(process.cwd(), normalizedPath);
+    
+    // Important: Make sure the file path starts with 'uploads/' if it doesn't already
+    const finalPath = normalizedPath.startsWith('uploads/') ? normalizedPath : `uploads/${normalizedPath}`;
+    
+    const targetPath = path.join(process.cwd(), finalPath);
     
     // Ensure target directory exists
     const targetDir = path.dirname(targetPath);
     if (!fs.existsSync(targetDir)) {
+      logger.info(`Creating directory: ${targetDir}`);
       fs.mkdirSync(targetDir, { recursive: true });
     }
     
+    // Make sure the URL has a leading slash for correct server path
+    const urlPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+    
     // URL to download from
-    const sourceUrl = new URL(fileUrl.startsWith('http') ? fileUrl : `${PROD_BASE_URL}${fileUrl}`);
+    const sourceUrl = new URL(fileUrl.startsWith('http') ? fileUrl : `${PROD_BASE_URL}${urlPath}`);
     
     logger.info(`Downloading file from ${sourceUrl.toString()} to ${targetPath}`);
     
@@ -110,7 +148,7 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
     return new Promise<boolean>((resolve) => {
       https.get(sourceUrl, (response) => {
         if (response.statusCode !== 200) {
-          logger.error(`Failed to download file, status code: ${response.statusCode}`);
+          logger.error(`Failed to download file, status code: ${response.statusCode}, URL: ${sourceUrl.toString()}`);
           fileStream.close();
           resolve(false);
           return;
@@ -125,12 +163,26 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
         });
         
         fileStream.on('error', (err) => {
-          fs.unlink(targetPath, () => {}); // Delete the file on error
+          // Safe file unlink operation
+          try {
+            if (fs.existsSync(targetPath)) {
+              fs.unlinkSync(targetPath);
+            }
+          } catch (e) {
+            logger.error(`Error removing file after failed download: ${e instanceof Error ? e.message : String(e)}`);
+          }
           logger.error(`Error saving downloaded file: ${err.message}`);
           resolve(false);
         });
       }).on('error', (err) => {
-        fs.unlink(targetPath, () => {}); // Delete the file on error
+        // Safe file unlink operation
+        try {
+          if (fs.existsSync(targetPath)) {
+            fs.unlinkSync(targetPath);
+          }
+        } catch (e) {
+          logger.error(`Error removing file after failed download: ${e instanceof Error ? e.message : String(e)}`);
+        }
         logger.error(`Error downloading file: ${err.message}`);
         resolve(false);
       });
@@ -253,14 +305,29 @@ export const syncMediaFiles = async (): Promise<{
       }
       
       // Check if thumbnails exist, regardless of whether the original exists
-      const thumbPath = path.join(THUMBNAILS_DIR, `thumb-${path.basename(post.mediaUrl)}`);
-      const thumbExists = fs.existsSync(thumbPath);
+      const thumbBasename = `thumb-${path.basename(post.mediaUrl)}`;
+      const thumbPath = path.join(THUMBNAILS_DIR, thumbBasename);
+      
+      // Also check for video thumbnails that might have .jpg extension
+      const videoThumbPath = path.join(THUMBNAILS_DIR, `${thumbBasename}.jpg`);
+      
+      const thumbExists = fs.existsSync(thumbPath) || fs.existsSync(videoThumbPath);
+      
+      logger.info(`Checking thumbnail: ${thumbPath}, exists: ${fs.existsSync(thumbPath)}`);
+      if (post.is_video) {
+        logger.info(`Checking video thumbnail: ${videoThumbPath}, exists: ${fs.existsSync(videoThumbPath)}`);
+      }
       
       if (!thumbExists) {
-        // If the original exists but the thumbnail doesn't, generate it
-        if (exists || stats.downloaded > 0) {
+        // If the original exists or was just downloaded, generate the thumbnail
+        const fileAvailable = exists || stats.downloaded > 0;
+        
+        if (fileAvailable) {
+          logger.info(`Generating thumbnail for: ${post.mediaUrl}, isVideo: ${!!post.is_video}`);
           await generateThumbnails(post.mediaUrl, !!post.is_video);
           stats.thumbnailsGenerated++;
+        } else {
+          logger.warn(`Cannot generate thumbnail for missing file: ${post.mediaUrl}`);
         }
       }
     }
