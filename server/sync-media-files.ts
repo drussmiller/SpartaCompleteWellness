@@ -170,11 +170,11 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
     // Create the URL object after fixing the string format
     const sourceUrl = new URL(sourceUrlString);
     
-    // Create an empty file first to avoid issues with non-existent paths
-    fs.writeFileSync(targetPath, '');
+    // Ensure directory exists but do NOT create an empty file
+    // as this can lead to empty files if download fails
     
     // Create a write stream to save the file
-    const fileStream = fs.createWriteStream(targetPath);
+    const fileStream = fs.createWriteStream(targetPath, { flags: 'w' });
     
     // Download the file with a timeout
     return new Promise<boolean>((resolve) => {
@@ -319,6 +319,66 @@ const generateThumbnails = async (mediaUrl: string, isVideo: boolean): Promise<v
 };
 
 /**
+ * Clean up empty files in the uploads directory
+ * This helps fix issues where files are created but not populated with data
+ */
+const cleanupEmptyFiles = (): { removed: number } => {
+  const stats = {
+    removed: 0
+  };
+
+  try {
+    logger.info('Starting empty file cleanup');
+    
+    // Get all files in uploads directory recursively
+    const getAllFiles = (dir: string): string[] => {
+      let results: string[] = [];
+      const list = fs.readdirSync(dir);
+      
+      list.forEach((file) => {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        
+        if (stat && stat.isDirectory()) {
+          // Recurse into subdirectories
+          results = results.concat(getAllFiles(fullPath));
+        } else {
+          // Only include files, not directories
+          results.push(fullPath);
+        }
+      });
+      
+      return results;
+    };
+    
+    // Get all files in the uploads directory
+    const allFiles = getAllFiles(STORAGE_CONFIG.UPLOADS_DIR);
+    logger.info(`Found ${allFiles.length} files total in uploads directory`);
+    
+    // Check each file size and remove if empty
+    for (const file of allFiles) {
+      try {
+        const stat = fs.statSync(file);
+        
+        if (stat.size === 0) {
+          logger.info(`Removing empty file: ${file}`);
+          fs.unlinkSync(file);
+          stats.removed++;
+        }
+      } catch (error) {
+        logger.error(`Error checking file ${file}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    
+    logger.info(`Removed ${stats.removed} empty files`);
+    return stats;
+  } catch (error) {
+    logger.error(`Error cleaning up empty files: ${error instanceof Error ? error.message : String(error)}`);
+    return stats;
+  }
+};
+
+/**
  * Synchronize media files referenced in the database
  */
 export const syncMediaFiles = async (): Promise<{
@@ -327,6 +387,7 @@ export const syncMediaFiles = async (): Promise<{
   downloaded: number;
   failed: number;
   thumbnailsGenerated: number;
+  emptyFilesRemoved: number;
 }> => {
   // Initialize counters
   const stats = {
@@ -334,8 +395,13 @@ export const syncMediaFiles = async (): Promise<{
     existing: 0,
     downloaded: 0,
     failed: 0,
-    thumbnailsGenerated: 0
+    thumbnailsGenerated: 0,
+    emptyFilesRemoved: 0
   };
+  
+  // Clean up empty files first
+  const cleanupStats = cleanupEmptyFiles();
+  stats.emptyFilesRemoved = cleanupStats.removed;
   
   // Ensure needed directories exist
   ensureDirectories();
@@ -470,7 +536,8 @@ if (isMainModule) {
   syncMediaFiles()
     .then((stats) => {
       console.log('Media synchronization complete:');
-      console.log(`Total files processed: ${stats.total}`);
+      console.log(`Empty files removed: ${stats.emptyFilesRemoved}`);
+      console.log(`Total media files processed: ${stats.total}`);
       console.log(`Already existing: ${stats.existing}`);
       console.log(`Downloaded: ${stats.downloaded}`);
       console.log(`Failed to download: ${stats.failed}`);

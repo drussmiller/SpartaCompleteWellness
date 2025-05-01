@@ -115,6 +115,19 @@ class MediaService {
         // Clear timeout since the request completed
         clearTimeout(timeoutId);
         
+        // If the file exists, check its size from the Content-Length header
+        if (response.ok) {
+          const contentLength = response.headers.get('Content-Length');
+          const size = contentLength ? parseInt(contentLength, 10) : 0;
+          
+          // If size is 0, file exists but is empty
+          if (size === 0) {
+            console.warn(`File exists but is empty (0 bytes): ${path}`);
+            cachedFileStatus[cacheKey] = false;
+            return false;
+          }
+        }
+        
         // Cache the result to avoid future requests
         const exists = response.ok;
         cachedFileStatus[cacheKey] = exists;
@@ -375,6 +388,20 @@ export function checkImageExists(url: string): Promise<boolean> {
     })
       .then(response => {
         clearTimeout(timeoutId);
+        
+        // Check if file exists and is not empty
+        if (response.ok) {
+          const contentLength = response.headers.get('Content-Length');
+          const size = contentLength ? parseInt(contentLength, 10) : 0;
+          
+          if (size === 0) {
+            console.warn(`File exists but is empty (0 bytes): ${url}`);
+            cachedFileStatus[cacheKey] = false;
+            resolve(false);
+            return;
+          }
+        }
+        
         const exists = response.ok;
         cachedFileStatus[cacheKey] = exists;
         resolve(exists);

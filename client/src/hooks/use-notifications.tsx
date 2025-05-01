@@ -318,7 +318,7 @@ export function useNotifications(suppressToasts = false) {
         console.log("Media synchronization initiated");
         toast({
           title: "Media Synchronization Started",
-          description: "Media files are being synchronized between environments. This may take several minutes.",
+          description: "Media files are being synchronized and empty files removed. This may take several minutes.",
           duration: 5000,
         });
         return true;

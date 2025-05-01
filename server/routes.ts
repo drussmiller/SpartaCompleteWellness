@@ -1284,7 +1284,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Execute the synchronization process after responding
         syncMediaFiles()
           .then((stats) => {
-            logger.info(`Media synchronization completed by admin ${req.user.id}`, stats);
+            logger.info(`Media synchronization completed by admin ${req.user.id}`, {
+              emptyFilesRemoved: stats.emptyFilesRemoved,
+              totalProcessed: stats.total,
+              existing: stats.existing,
+              downloaded: stats.downloaded,
+              failed: stats.failed,
+              thumbnailsGenerated: stats.thumbnailsGenerated
+            });
           })
           .catch(error => {
             logger.error(`Media synchronization failed for admin ${req.user.id}:`, error);
