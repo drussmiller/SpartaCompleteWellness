@@ -1269,24 +1269,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       logger.info(`Media synchronization requested by admin user ${req.user.id}`);
       
-      // Import the synchronization module
-      const { syncMediaFiles } = await import('./sync-media-files');
-      
-      // Send response immediately
-      res.json({
-        message: "Media synchronization started",
-        status: "processing",
-        startedAt: new Date().toISOString()
-      });
-      
-      // Execute the synchronization process after responding
-      syncMediaFiles()
-        .then((stats) => {
-          logger.info(`Media synchronization completed by admin ${req.user.id}`, stats);
-        })
-        .catch(error => {
-          logger.error(`Media synchronization failed for admin ${req.user.id}:`, error);
+      try {
+        // Import the synchronization module dynamically
+        const syncMediaFilesModule = await import('./sync-media-files.js');
+        const syncMediaFiles = syncMediaFilesModule.syncMediaFiles;
+        
+        // Send response immediately
+        res.json({
+          message: "Media synchronization started",
+          status: "processing",
+          startedAt: new Date().toISOString()
         });
+        
+        // Execute the synchronization process after responding
+        syncMediaFiles()
+          .then((stats) => {
+            logger.info(`Media synchronization completed by admin ${req.user.id}`, stats);
+          })
+          .catch(error => {
+            logger.error(`Media synchronization failed for admin ${req.user.id}:`, error);
+          });
+      } catch (importError) {
+        logger.error(`Failed to import sync-media-files module:`, importError);
+        return res.status(500).json({ 
+          message: "Failed to start media synchronization", 
+          error: importError instanceof Error ? importError.message : String(importError)
+        });
+      }
         
     } catch (error) {
       logger.error('Error initiating media synchronization:', error);
@@ -1307,22 +1316,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Memory verse video repair process initiated by user ${req.user.id}`);
       
-      // Import the memory verse repair script
-      const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
-      
-      // Run the repair process asynchronously
-      res.json({ 
-        message: "Memory verse repair process started",
-        status: "running",
-        startedAt: new Date().toISOString()
-      });
-      
-      // Execute the repair after sending the response
-      repairMemoryVerseVideos().then(() => {
-        logger.info('Memory verse repair process completed successfully');
-      }).catch(err => {
-        logger.error('Error in memory verse repair process:', err);
-      });
+      try {
+        // Import the memory verse repair script dynamically
+        const memoryVerseRepairModule = await import('./memory-verse-repair.js');
+        const repairMemoryVerseVideos = memoryVerseRepairModule.repairMemoryVerseVideos;
+        
+        // Run the repair process asynchronously
+        res.json({ 
+          message: "Memory verse repair process started",
+          status: "running",
+          startedAt: new Date().toISOString()
+        });
+        
+        // Execute the repair after sending the response
+        repairMemoryVerseVideos()
+          .then(() => {
+            logger.info('Memory verse repair process completed successfully');
+          })
+          .catch(err => {
+            logger.error('Error in memory verse repair process:', err);
+          });
+      } catch (importError) {
+        logger.error(`Failed to import memory-verse-repair module:`, importError);
+        return res.status(500).json({ 
+          message: "Failed to start memory verse repair", 
+          error: importError instanceof Error ? importError.message : String(importError)
+        });
+      }
     } catch (error) {
       logger.error('Error initiating memory verse repair:', error);
       res.status(500).json({

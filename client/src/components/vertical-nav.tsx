@@ -121,7 +121,7 @@ export const VerticalNav = () => {
                       <span className="text-xs mt-1">{item.label}</span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-56 z-50">
                     <DropdownMenuItem onClick={handleFixMemoryVerseThumbnails} disabled={isLoading}>
                       <Image className="mr-2 h-4 w-4" />
                       <span>Fix Memory Verse Thumbnails</span>
@@ -137,7 +137,7 @@ export const VerticalNav = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="z-50">
                 <p>Admin Tools</p>
               </TooltipContent>
             </Tooltip>
@@ -171,7 +171,7 @@ export const VerticalNav = () => {
                   <span className="text-xs mt-1">{item.label}</span>
                 </AnchorLink>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="z-50">
                 {item.status === "offline" ? (
                   <p>Notification service offline - click to manage</p>
                 ) : item.count && item.count > 0 ? (

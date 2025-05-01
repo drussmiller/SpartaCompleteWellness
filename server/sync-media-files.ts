@@ -159,19 +159,20 @@ const generateThumbnails = async (mediaUrl: string, isVideo: boolean): Promise<v
     
     if (isVideo) {
       // For videos, use ffmpeg to create a thumbnail
-      return new Promise<void>((resolve, reject) => {
-        const ffmpeg = require('fluent-ffmpeg');
+      return new Promise<void>(async (resolve, reject) => {
+        // Import ffmpeg dynamically
+        const { default: ffmpeg } = await import('fluent-ffmpeg');
         ffmpeg(srcPath)
-          .on('error', (err: Error) => {
-            logger.error(`Error creating video thumbnail: ${err.message}`);
-            reject(err);
+          .on('error', (err) => {
+            logger.error(`Error creating video thumbnail: ${err?.message || 'Unknown error'}`);
+            reject(err || new Error('Unknown ffmpeg error'));
           })
           .on('end', () => {
             logger.info(`Successfully created thumbnail for video at ${targetPath}`);
             resolve();
           })
           .screenshots({
-            count: 1,
+            timestamps: ['00:00:01'],
             folder: THUMBNAILS_DIR,
             filename: thumbFilename,
             size: '320x240'
@@ -179,7 +180,8 @@ const generateThumbnails = async (mediaUrl: string, isVideo: boolean): Promise<v
       });
     } else {
       // For images, use sharp to create a thumbnail
-      const sharp = require('sharp');
+      // Import sharp dynamically
+      const sharp = (await import('sharp')).default;
       await sharp(srcPath)
         .resize(320, 240, { fit: 'inside', withoutEnlargement: true })
         .toFile(targetPath);
@@ -270,8 +272,17 @@ export const syncMediaFiles = async (): Promise<{
   }
 };
 
-// If run directly, execute the sync
-if (require.main === module) {
+// This code only runs when using ES modules directly
+// Check if this file is being run directly
+import { fileURLToPath } from 'url';
+import * as url from 'url';
+
+// Get the current file name
+const currentFileUrl = url.pathToFileURL(process.argv[1]);
+// Compare with the module's URL
+const isMainModule = process.argv[1] && (import.meta.url === currentFileUrl.href);
+
+if (isMainModule) {
   syncMediaFiles()
     .then((stats) => {
       console.log('Media synchronization complete:');
