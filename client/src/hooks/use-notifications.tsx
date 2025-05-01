@@ -299,12 +299,55 @@ export function useNotifications(suppressToasts = false) {
       return false;
     }
   }, [toast]);
+  
+  // Helper function to synchronize media files between environments
+  const syncMediaFiles = useCallback(async () => {
+    try {
+      console.log("Triggering media synchronization");
+      
+      // Create a fetch request to the media sync endpoint
+      const response = await fetch('/api/admin/sync-media', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        console.log("Media synchronization initiated");
+        toast({
+          title: "Media Synchronization Started",
+          description: "Media files are being synchronized between environments. This may take several minutes.",
+          duration: 5000,
+        });
+        return true;
+      } else {
+        console.error("Failed to initiate media synchronization:", await response.text());
+        toast({
+          title: "Error",
+          description: "Failed to start media synchronization process.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Error requesting media synchronization:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect to the server for media synchronization.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, [toast]);
 
   return {
     connectionStatus,
     notifications,
     reconnect: connectWebSocket,
     fixMemoryVerseThumbnails,
-    fixAllThumbnails
+    fixAllThumbnails,
+    syncMediaFiles
   };
 }

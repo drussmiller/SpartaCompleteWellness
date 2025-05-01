@@ -1259,6 +1259,44 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  // Admin endpoint to synchronize media files between environments
+  router.get("/api/admin/sync-media", authenticate, async (req, res) => {
+    try {
+      // Check if user is an admin
+      if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ message: "Admin privileges required" });
+      }
+      
+      logger.info(`Media synchronization requested by admin user ${req.user.id}`);
+      
+      // Import the synchronization module
+      const { syncMediaFiles } = await import('./sync-media-files');
+      
+      // Send response immediately
+      res.json({
+        message: "Media synchronization started",
+        status: "processing",
+        startedAt: new Date().toISOString()
+      });
+      
+      // Execute the synchronization process after responding
+      syncMediaFiles()
+        .then((stats) => {
+          logger.info(`Media synchronization completed by admin ${req.user.id}`, stats);
+        })
+        .catch(error => {
+          logger.error(`Media synchronization failed for admin ${req.user.id}:`, error);
+        });
+        
+    } catch (error) {
+      logger.error('Error initiating media synchronization:', error);
+      res.status(500).json({
+        message: "Failed to start media synchronization",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {
@@ -1817,6 +1855,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error('Error repairing thumbnails:', error);
       return res.status(500).json({
         message: "Failed to repair thumbnails",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Media synchronization endpoint - admin only
+  router.get("/api/admin/sync-media", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      logger.info(`Media synchronization requested by user ${req.user.id}`);
+      
+      // Import the sync-media-files module
+      const { syncMediaFiles } = await import('./sync-media-files');
+      
+      // Start the synchronization process
+      res.json({ 
+        message: "Media synchronization process started",
+        status: "running",
+        startedAt: new Date().toISOString(),
+        note: "This process runs in the background and may take several minutes to complete."
+      });
+      
+      // Execute the sync process after sending the response
+      syncMediaFiles()
+        .then((stats) => {
+          logger.info(`Media synchronization completed: ${JSON.stringify(stats)}`);
+        })
+        .catch(error => {
+          logger.error(`Error in media synchronization process: ${error instanceof Error ? error.message : String(error)}`);
+        });
+    } catch (error) {
+      logger.error('Error starting media synchronization:', error);
+      return res.status(500).json({
+        message: "Failed to start media synchronization",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
