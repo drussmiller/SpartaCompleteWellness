@@ -269,10 +269,11 @@ export const syncMediaFiles = async (): Promise<{
   
   try {
     // Get all posts with media URLs
+    // mediaUrl is the JavaScript property name, but image_url is the database column name
     const postsWithMedia = await db
       .select()
       .from(posts)
-      .where(sql`"media_url" IS NOT NULL`)
+      .where(sql`"image_url" IS NOT NULL`)
       .execute();
     
     logger.info(`Found ${postsWithMedia.length} posts with media URLs`);
@@ -282,7 +283,11 @@ export const syncMediaFiles = async (): Promise<{
     for (const post of postsWithMedia) {
       if (!post.mediaUrl) continue;
       
-      const normalizedPath = normalizePath(post.mediaUrl);
+      // In schema.ts, the field is named mediaUrl in JavaScript but image_url in the database
+      // Make sure we're using the right property name when working with post objects
+      const imageUrl = post.mediaUrl;
+      
+      const normalizedPath = normalizePath(imageUrl);
       const exists = fileExists(normalizedPath);
       
       if (exists) {
@@ -292,12 +297,12 @@ export const syncMediaFiles = async (): Promise<{
         logger.info(`File missing: ${normalizedPath}`);
         
         // Try to download the file
-        const downloaded = await downloadFile(post.mediaUrl);
+        const downloaded = await downloadFile(imageUrl);
         if (downloaded) {
           stats.downloaded++;
           
           // Generate thumbnails for the downloaded file
-          await generateThumbnails(post.mediaUrl, !!post.is_video);
+          await generateThumbnails(imageUrl, !!post.is_video);
           stats.thumbnailsGenerated++;
         } else {
           stats.failed++;
@@ -305,7 +310,7 @@ export const syncMediaFiles = async (): Promise<{
       }
       
       // Check if thumbnails exist, regardless of whether the original exists
-      const thumbBasename = `thumb-${path.basename(post.mediaUrl)}`;
+      const thumbBasename = `thumb-${path.basename(imageUrl)}`;
       const thumbPath = path.join(THUMBNAILS_DIR, thumbBasename);
       
       // Also check for video thumbnails that might have .jpg extension
@@ -323,11 +328,11 @@ export const syncMediaFiles = async (): Promise<{
         const fileAvailable = exists || stats.downloaded > 0;
         
         if (fileAvailable) {
-          logger.info(`Generating thumbnail for: ${post.mediaUrl}, isVideo: ${!!post.is_video}`);
-          await generateThumbnails(post.mediaUrl, !!post.is_video);
+          logger.info(`Generating thumbnail for: ${imageUrl}, isVideo: ${!!post.is_video}`);
+          await generateThumbnails(imageUrl, !!post.is_video);
           stats.thumbnailsGenerated++;
         } else {
-          logger.warn(`Cannot generate thumbnail for missing file: ${post.mediaUrl}`);
+          logger.warn(`Cannot generate thumbnail for missing file: ${imageUrl}`);
         }
       }
     }

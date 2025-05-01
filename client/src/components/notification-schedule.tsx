@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, WifiOff, Wifi, RefreshCw } from "lucide-react";
+import { ChevronLeft, WifiOff, Wifi, RefreshCw, Database, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -20,7 +20,7 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { connectionStatus, reconnect, fixMemoryVerseThumbnails } = useNotifications();
+  const { connectionStatus, reconnect, fixMemoryVerseThumbnails, fixAllThumbnails, syncMediaFiles } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -370,9 +370,51 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
               
               {user?.isAdmin && (
                 <>
+                  {/* Media Synchronization Button (Admin Only) */}
                   <Button 
                     variant="outline" 
                     className="w-full"
+                    size="sm"
+                    onClick={() => {
+                      if (!user?.isAdmin) return;
+                      
+                      toast({
+                        title: "Media Synchronization",
+                        description: "Starting media file synchronization...",
+                      });
+                      
+                      // Call the syncMediaFiles function
+                      syncMediaFiles();
+                    }}
+                  >
+                    <Database className="h-4 w-4 mr-2" />
+                    Sync Media Files
+                  </Button>
+                  
+                  {/* All Thumbnails Fix Button (Admin Only) */}
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-2"
+                    size="sm"
+                    onClick={() => {
+                      if (!user?.isAdmin) return;
+                      
+                      toast({
+                        title: "Thumbnail Repair",
+                        description: "Starting repair process for all image thumbnails...",
+                      });
+                      
+                      // Call the fixAllThumbnails function
+                      fixAllThumbnails();
+                    }}
+                  >
+                    <Image className="h-4 w-4 mr-2" />
+                    Repair All Thumbnails
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-2"
                     size="sm"
                     onClick={async () => {
                       if (!user) return;

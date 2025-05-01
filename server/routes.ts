@@ -1271,7 +1271,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       try {
         // Import the synchronization module dynamically
-        const syncMediaFilesModule = await import('./sync-media-files.js');
+        const syncMediaFilesModule = await import('./sync-media-files');
         const syncMediaFiles = syncMediaFilesModule.syncMediaFiles;
         
         // Send response immediately
@@ -1318,7 +1318,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       try {
         // Import the memory verse repair script dynamically
-        const memoryVerseRepairModule = await import('./memory-verse-repair.js');
+        const memoryVerseRepairModule = await import('./memory-verse-repair');
         const repairMemoryVerseVideos = memoryVerseRepairModule.repairMemoryVerseVideos;
         
         // Run the repair process asynchronously
@@ -1880,42 +1880,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
-  // Media synchronization endpoint - admin only
-  router.get("/api/admin/sync-media", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      logger.info(`Media synchronization requested by user ${req.user.id}`);
-      
-      // Import the sync-media-files module
-      const { syncMediaFiles } = await import('./sync-media-files');
-      
-      // Start the synchronization process
-      res.json({ 
-        message: "Media synchronization process started",
-        status: "running",
-        startedAt: new Date().toISOString(),
-        note: "This process runs in the background and may take several minutes to complete."
-      });
-      
-      // Execute the sync process after sending the response
-      syncMediaFiles()
-        .then((stats) => {
-          logger.info(`Media synchronization completed: ${JSON.stringify(stats)}`);
-        })
-        .catch(error => {
-          logger.error(`Error in media synchronization process: ${error instanceof Error ? error.message : String(error)}`);
-        });
-    } catch (error) {
-      logger.error('Error starting media synchronization:', error);
-      return res.status(500).json({
-        message: "Failed to start media synchronization",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+  // Media synchronization endpoint - admin only is already defined earlier in the file (line ~1263)
   
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
