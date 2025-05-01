@@ -93,6 +93,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [videoLoadAttempts, setVideoLoadAttempts] = useState(0);
   const [videoLoadError, setVideoLoadError] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  
+  // Reset image loaded state when the post changes
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [post.id, post.mediaUrl]);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
@@ -643,44 +649,63 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 />
               </div>
             ) : (
-              <img
-                src={mediaService.getImageUrl(post.mediaUrl)}
-                alt={`${post.type} post content`}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-contain cursor-pointer"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  console.error("Failed to load image:", post.mediaUrl);
-                  
-                  // Try to load directly from production URL
-                  const productionUrl = `${PROD_URL}${post.mediaUrl}`;
-                  console.log(`Trying production URL: ${productionUrl}`);
-                  
-                  // Use production URL as first fallback
-                  img.src = productionUrl;
-                  
-                  // Set a one-time error handler for the fallback
-                  img.onerror = () => {
-                    console.error(`Production fallback also failed for image: ${productionUrl}`);
+              <div className="relative w-full h-full flex items-center justify-center">
+                {/* Use a placeholder div until image loads to prevent content flashing */}
+                <div 
+                  className="w-full min-h-[200px] h-full flex items-center justify-center bg-gray-50"
+                  style={{
+                    display: imageLoaded ? 'none' : 'flex'
+                  }}
+                >
+                  <div className="text-gray-400 animate-pulse">Loading image...</div>
+                </div>
+                
+                <img
+                  src={mediaService.getImageUrl(post.mediaUrl)}
+                  alt={post.type === 'food' ? "Food image" : post.type === 'workout' ? "Workout image" : `${post.type} image`}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-contain cursor-pointer"
+                  style={{
+                    display: imageLoaded ? 'block' : 'none'
+                  }}
+                  onLoad={() => {
+                    setImageLoaded(true);
+                  }}
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    console.error("Failed to load image:", post.mediaUrl);
                     
-                    // Try thumbnail as fallback
-                    const thumbnailUrl = mediaService.getThumbnailUrl(post.mediaUrl);
-                    console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
+                    // Try to load directly from production URL
+                    const productionUrl = `${PROD_URL}${post.mediaUrl}`;
+                    console.log(`Trying production URL: ${productionUrl}`);
                     
-                    img.src = thumbnailUrl;
+                    // Use production URL as first fallback
+                    img.src = productionUrl;
                     
-                    // Set a final error handler for the thumbnail fallback
+                    // Set a one-time error handler for the fallback
                     img.onerror = () => {
-                      console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
+                      console.error(`Production fallback also failed for image: ${productionUrl}`);
                       
-                      // Use a placeholder image as final fallback
-                      img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
-                      img.onerror = null; // Clear error handler after final fallback
+                      // Try thumbnail as fallback
+                      const thumbnailUrl = mediaService.getThumbnailUrl(post.mediaUrl);
+                      console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
+                      
+                      img.src = thumbnailUrl;
+                      
+                      // Set a final error handler for the thumbnail fallback
+                      img.onerror = () => {
+                        console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
+                        
+                        // Use a placeholder image as final fallback
+                        img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                        img.onerror = null; // Clear error handler after final fallback
+                        setImageLoaded(true); // Show the placeholder
+                      };
                     };
-                  };
-                }}
-              />
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
