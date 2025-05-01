@@ -28,7 +28,8 @@ import {
   getFallbackImageUrl, 
   checkImageExists, 
   generateImagePlaceholder,
-  mediaService
+  mediaService,
+  PROD_URL
 } from "../lib/image-utils";
 
 // Helper function to check if a file URL is likely a video
@@ -471,6 +472,19 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     
                     const videoEl = e.target as HTMLVideoElement;
                     
+                    // First try the production URL directly
+                    if (videoLoadAttempts === 1) {
+                      const productionUrl = `${PROD_URL}${post.mediaUrl}`;
+                      console.log(`Video load error - trying production URL: ${productionUrl}`);
+                      
+                      // Change the src attribute
+                      videoEl.src = productionUrl;
+                      
+                      // Try to reload the video
+                      videoEl.load();
+                      return;
+                    }
+                    
                     // Show a placeholder when all other attempts fail (after a few retries)
                     if (videoLoadAttempts >= 2) {
                       // Try to show a nice placeholder instead of a broken video element
@@ -636,12 +650,35 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
                 onError={(e) => {
-                  console.error("Failed to load image:", post.mediaUrl);
                   const img = e.currentTarget;
+                  console.error("Failed to load image:", post.mediaUrl);
                   
-                  // Use a placeholder image when all else fails
-                  img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
-                  console.warn(`Using placeholder for missing image in post ${post.id}`);
+                  // Try to load directly from production URL
+                  const productionUrl = `${PROD_URL}${post.mediaUrl}`;
+                  console.log(`Trying production URL: ${productionUrl}`);
+                  
+                  // Use production URL as first fallback
+                  img.src = productionUrl;
+                  
+                  // Set a one-time error handler for the fallback
+                  img.onerror = () => {
+                    console.error(`Production fallback also failed for image: ${productionUrl}`);
+                    
+                    // Try thumbnail as fallback
+                    const thumbnailUrl = mediaService.getThumbnailUrl(post.mediaUrl);
+                    console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
+                    
+                    img.src = thumbnailUrl;
+                    
+                    // Set a final error handler for the thumbnail fallback
+                    img.onerror = () => {
+                      console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
+                      
+                      // Use a placeholder image as final fallback
+                      img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                      img.onerror = null; // Clear error handler after final fallback
+                    };
+                  };
                 }}
               />
             )}

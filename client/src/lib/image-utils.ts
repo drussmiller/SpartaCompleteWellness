@@ -51,21 +51,33 @@ class MediaService {
       const result = `${normalizedPath}`;
       this.cachedResults[path] = result;
       return result;
+    } else if (this.cachedLocalChecks[path] === false) {
+      // We've previously confirmed this does NOT exist locally, use production URL
+      const result = `${this.prodUrl}${normalizedPath}`;
+      this.cachedResults[path] = result;
+      return result;
     }
     
-    // Default to production URL for stability
-    const result = `${this.prodUrl}${normalizedPath}`;
-    
-    // Try to check if this file exists locally
-    this.checkImageExistsLocally(normalizedPath).then(exists => {
-      if (exists) {
+    // Try to check if this file exists locally first before defaulting to production
+    this.checkImageExistsLocally(normalizedPath)
+      .then(exists => {
         // Update cache for future calls
-        this.cachedLocalChecks[path] = true;
-      }
-    }).catch(() => {
-      // If error, assume it doesn't exist locally
-      this.cachedLocalChecks[path] = false; 
-    });
+        this.cachedLocalChecks[path] = exists;
+        
+        // If needed, update the cached result for future calls
+        if (!exists) {
+          this.cachedResults[path] = `${this.prodUrl}${normalizedPath}`;
+        }
+      })
+      .catch(() => {
+        // If error, assume it doesn't exist locally
+        this.cachedLocalChecks[path] = false;
+        this.cachedResults[path] = `${this.prodUrl}${normalizedPath}`;
+      });
+    
+    // Use production URL by default for immediate response
+    // This will be used until the async check completes
+    const result = `${this.prodUrl}${normalizedPath}`;
     
     // Cache the result
     this.cachedResults[path] = result;
@@ -77,16 +89,56 @@ class MediaService {
    */
   private async checkImageExistsLocally(path: string): Promise<boolean> {
     try {
-      const response = await fetch(path, {
-        method: 'HEAD',
-        headers: {
-          // Add cache control to ensure we're not getting cached responses
-          'Cache-Control': 'no-cache'
+      // First check if it's already in cache
+      const cacheKey = `exists:${path}`;
+      if (cachedFileStatus[cacheKey] !== undefined) {
+        return cachedFileStatus[cacheKey];
+      }
+      
+      // Use AbortController for timeout to improve browser compatibility
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
+      try {
+        // Make a HEAD request to check if the file exists
+        console.debug(`Checking if file exists locally: ${path}`);
+        const response = await fetch(path, {
+          method: 'HEAD',
+          headers: {
+            // Add cache control to ensure we're not getting cached responses
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          signal: controller.signal
+        });
+        
+        // Clear timeout since the request completed
+        clearTimeout(timeoutId);
+        
+        // Cache the result to avoid future requests
+        const exists = response.ok;
+        cachedFileStatus[cacheKey] = exists;
+        console.debug(`File ${path} exists locally: ${exists}`);
+        return exists;
+      } catch (fetchError: any) { // Type as any to access name property safely
+        // Clear timeout to prevent memory leaks
+        clearTimeout(timeoutId);
+        
+        // If the request was aborted due to timeout, log and return false
+        if (fetchError.name === 'AbortError') {
+          console.warn(`Request timeout checking if file exists: ${path}`);
+          cachedFileStatus[cacheKey] = false;
+          return false;
         }
-      });
-      return response.ok;
+        
+        // Re-throw for handling in the outer catch block
+        throw fetchError;
+      }
     } catch (error) {
       console.warn(`Failed to check if image exists locally: ${path}`, error);
+      // Make sure cacheKey is in scope
+      const errorCacheKey = `exists:${path}`;
+      cachedFileStatus[errorCacheKey] = false;
       return false;
     }
   }
@@ -301,10 +353,42 @@ export function checkImageExists(url: string): Promise<boolean> {
       return;
     }
     
+    // Use a cached result if available
+    const cacheKey = `exists:${url}`;
+    if (cachedFileStatus[cacheKey] !== undefined) {
+      resolve(cachedFileStatus[cacheKey]);
+      return;
+    }
+    
+    // Use AbortController for timeout to improve browser compatibility
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+    
     // For regular images, do a HEAD request
-    fetch(url, { method: 'HEAD' })
-      .then(response => resolve(response.ok))
-      .catch(() => resolve(false));
+    fetch(url, { 
+      method: 'HEAD',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      },
+      signal: controller.signal
+    })
+      .then(response => {
+        clearTimeout(timeoutId);
+        const exists = response.ok;
+        cachedFileStatus[cacheKey] = exists;
+        resolve(exists);
+      })
+      .catch((error: any) => { // Type as any to access name property safely
+        clearTimeout(timeoutId);
+        if (error && error.name === 'AbortError') {
+          console.warn(`Request timeout checking if image exists: ${url}`);
+        } else {
+          console.warn(`Error checking if image exists: ${url}`, error);
+        }
+        cachedFileStatus[cacheKey] = false;
+        resolve(false);
+      });
   });
 }
 
