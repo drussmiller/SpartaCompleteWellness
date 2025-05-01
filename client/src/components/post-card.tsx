@@ -23,13 +23,13 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
-import { getThumbnailUrl, getFallbackImageUrl, checkImageExists, generateImagePlaceholder } from "../lib/image-utils";
-
-// Cache file status to avoid unnecessary network requests
-const cachedFileStatus: Record<string, boolean> = {};
-
-// Production URL for fallback image loading
-const PROD_URL = "https://sparta-faith.replit.app";
+import { 
+  getThumbnailUrl, 
+  getFallbackImageUrl, 
+  checkImageExists, 
+  generateImagePlaceholder,
+  mediaService
+} from "../lib/image-utils";
 
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
@@ -359,7 +359,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <Avatar>
             <AvatarImage
               key={`avatar-${authorData.id}-${avatarKey}`}
-              src={authorData.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${avatarSeed}`}
+              src={authorData.imageUrl ? mediaService.getImageUrl(authorData.imageUrl) : `https://api.dicebear.com/7.x/initials/svg?seed=${avatarSeed}`}
             />
             <AvatarFallback>{displayName[0].toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -443,8 +443,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 )}
                 <video
                   key={`video-${post.id}-${videoLoadAttempts}`}
-                  src={post.mediaUrl}
-                  poster={getThumbnailUrl(post.mediaUrl, 'medium')}
+                  src={mediaService.getImageUrl(post.mediaUrl)}
+                  poster={mediaService.getImageUrl(getThumbnailUrl(post.mediaUrl, 'medium'))}
                   controls
                   preload="metadata"
                   className="w-full h-full object-contain"
@@ -511,17 +511,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     // Try alternative URLs in case the path is wrong
                     const filename = post.mediaUrl?.split('/').pop();
                     if (filename) {
-                      // Try different path combinations
+                      // Try different path combinations with the mediaService
                       const alternativeUrls = [
                         `/uploads/${filename}`,
                         `/uploads/videos/${filename}`,
                         `/uploads/memory_verse/${filename}`,
                         `/uploads/miscellaneous/${filename}`,
-                      ];
+                      ].map(url => mediaService.getImageUrl(url));
                       
                       // Add more detailed logging including post ID
                       console.log(`Trying alternative URLs for ${post.type} video (post ID: ${post.id}):`, {
                         originalUrl: post.mediaUrl,
+                        originalProcessed: mediaService.getImageUrl(post.mediaUrl),
                         alternativeUrls,
                         filename,
                         postType: post.type,
@@ -629,27 +630,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               <img
-                src={post.mediaUrl}
+                src={mediaService.getImageUrl(post.mediaUrl)}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
                 onError={(e) => {
                   console.error("Failed to load image:", post.mediaUrl);
-                  
-                  // Try directly from production URL
                   const img = e.currentTarget;
-                  const prodUrl = "https://sparta-faith.replit.app" + post.mediaUrl;
                   
-                  console.log(`Trying production URL: ${prodUrl}`);
-                  img.src = prodUrl;
-                  
-                  // Add error handler for the production URL attempt
-                  img.onerror = () => {
-                    console.error("Production URL also failed:", prodUrl);
-                    img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
-                    console.warn(`Using placeholder for missing image in post ${post.id}`);
-                  };
+                  // Use a placeholder image when all else fails
+                  img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                  console.warn(`Using placeholder for missing image in post ${post.id}`);
                 }}
               />
             )}

@@ -1,24 +1,144 @@
 
 /**
- * Constants for deployment environments
+ * Constants for cross-environment image handling
  */
-const PROD_URL = 'https://sparta-faith.replit.app';
+export const PROD_URL = 'https://sparta-faith.replit.app';
 let cachedFileStatus: Record<string, boolean> = {};
 
 /**
- * Get the thumbnail URL for an image with size optimization and cross-environment support
+ * Media Service to handle cross-environment image loading
+ * This ensures images work in both development and production
+ * 
+ * This integrates with the server-side SpartaObjectStorage to provide
+ * consistent media access across environments
  */
-export /**
- * Gets a thumbnail URL for an image or creates a default SVG placeholder if needed.
- * This function now includes better fallback handling for missing files and will
- * automatically try production URLs if local files don't exist.
+class MediaService {
+  private prodUrl: string;
+  private localServerUrl: string;
+  private cachedResults: Record<string, string> = {};
+  private cachedLocalChecks: Record<string, boolean> = {};
+  
+  constructor(productionUrl: string) {
+    this.prodUrl = productionUrl;
+    // Local server URL is based on current window location
+    this.localServerUrl = window.location.origin;
+  }
+
+  /**
+   * Gets the proper URL for an image, handles cross-environment compatibility
+   * Always tries production URL first since that's where our actual images are
+   */
+  getImageUrl(path: string | null): string {
+    if (!path) return generateImagePlaceholder('No image available');
+    
+    // If path is already a full URL or data URI, return it as is
+    if (path.startsWith('http') || path.startsWith('data:')) {
+      return path;
+    }
+    
+    // If we've already processed this path, return the cached result
+    if (this.cachedResults[path]) {
+      return this.cachedResults[path];
+    }
+    
+    // Normalize the path (remove any leading slash)
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    
+    // First try using the server-side object storage if available
+    // by using a relative URL that will go through the local server's getFileUrl method
+    if (this.cachedLocalChecks[path] === true) {
+      // We've previously confirmed this exists locally
+      const result = `${normalizedPath}`;
+      this.cachedResults[path] = result;
+      return result;
+    }
+    
+    // Default to production URL for stability
+    const result = `${this.prodUrl}${normalizedPath}`;
+    
+    // Try to check if this file exists locally
+    this.checkImageExistsLocally(normalizedPath).then(exists => {
+      if (exists) {
+        // Update cache for future calls
+        this.cachedLocalChecks[path] = true;
+      }
+    }).catch(() => {
+      // If error, assume it doesn't exist locally
+      this.cachedLocalChecks[path] = false; 
+    });
+    
+    // Cache the result
+    this.cachedResults[path] = result;
+    return result;
+  }
+  
+  /**
+   * Attempt to check if an image exists locally by making a HEAD request
+   */
+  private async checkImageExistsLocally(path: string): Promise<boolean> {
+    try {
+      const response = await fetch(path, {
+        method: 'HEAD',
+        headers: {
+          // Add cache control to ensure we're not getting cached responses
+          'Cache-Control': 'no-cache'
+        }
+      });
+      return response.ok;
+    } catch (error) {
+      console.warn(`Failed to check if image exists locally: ${path}`, error);
+      return false;
+    }
+  }
+  
+  /**
+   * Gets a URL for a thumbnail of the given media
+   */
+  getThumbnailUrl(originalPath: string | null, size: 'small' | 'medium' = 'small'): string {
+    if (!originalPath) return generateImagePlaceholder('No thumbnail');
+    
+    // If it's a data URI or already a thumbnail URL, return as is
+    if (originalPath.startsWith('data:')) {
+      return originalPath;
+    }
+    
+    const basePath = originalPath.startsWith('http') ? 
+      new URL(originalPath).pathname : originalPath;
+      
+    // Extract the filename from the path
+    const filename = basePath.split('/').pop() || '';
+    
+    // Create the thumbnail path using the server's convention (thumb-{filename})
+    const thumbnailFilename = `thumb-${filename}`;
+    const thumbnailPath = `/uploads/thumbnails/${thumbnailFilename}`;
+    
+    // Use the getImageUrl method to handle the environment specifics
+    return this.getImageUrl(thumbnailPath);
+  }
+  
+  /**
+   * Get a URL for a video poster image
+   */
+  getVideoPosterUrl(videoPath: string | null): string {
+    if (!videoPath) return generateImagePlaceholder('Video'); 
+    
+    // Get the appropriate thumbnail
+    return this.getThumbnailUrl(videoPath);
+  }
+}
+
+// Create a singleton instance
+export const mediaService = new MediaService(PROD_URL);
+
+/**
+ * Gets a thumbnail URL for an image or creates a default SVG placeholder
  * 
  * @param originalUrl - The original URL of the image or video
  * @param size - The desired thumbnail size
  * @param tryRemote - Whether to try remote URLs if local ones fail
  * @returns The URL of the appropriate thumbnail or a placeholder SVG
  */
-function getThumbnailUrl(
+export function getThumbnailUrl(
   originalUrl: string | null, 
   size: 'small' | 'medium' | 'large' = 'medium',
   tryRemote: boolean = true

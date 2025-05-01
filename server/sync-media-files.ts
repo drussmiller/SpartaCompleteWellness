@@ -1,17 +1,21 @@
 /**
  * Media File Synchronization Utility
  * 
- * This script helps sync media files referenced in the database that may be
- * missing in the development environment. It:
+ * This module provides a robust solution for maintaining media files between
+ * development and production environments. It implements an Object Storage-like
+ * approach to ensure files are accessible consistently.
  * 
- * 1. Finds all media URLs in post records
+ * Key features:
+ * 1. Finds all media URLs in post records from the database
  * 2. Checks if the files exist locally
- * 3. If missing, attempts to download them from the production environment
+ * 3. If missing, downloads them from the production environment
  * 4. Generates appropriate thumbnails for all media types
+ * 5. Provides a centralized API for accessing media files
  * 
  * Usage:
- *   Run this script directly: npx tsx server/sync-media-files.ts
- *   Or via an API endpoint for convenience: GET /api/admin/sync-media
+ *   - Direct script execution: npx tsx server/sync-media-files.ts
+ *   - API endpoint: GET /api/admin/sync-media
+ *   - Programmatic use: import { syncMediaFiles } from './sync-media-files'
  */
 
 import * as fs from 'fs';
@@ -22,26 +26,28 @@ import { posts } from '@shared/schema';
 import { logger } from './logger';
 import { sql } from 'drizzle-orm';
 
-// Config
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-const THUMBNAILS_DIR = path.join(UPLOADS_DIR, 'thumbnails');
-
-// Production server base URL (where we'll try to download missing files from)
-// This hardcoded value should match your production server
-const PROD_BASE_URL = 'https://sparta-faith.replit.app';
+// Configuration constants
+// This ensures consistent directory paths across the application
+export const STORAGE_CONFIG = {
+  UPLOADS_DIR: path.join(process.cwd(), 'uploads'),
+  THUMBNAILS_DIR: path.join(process.cwd(), 'uploads/thumbnails'),
+  PROD_BASE_URL: 'https://sparta-faith.replit.app',
+  // Default max concurrent downloads to avoid overwhelming the production server
+  MAX_CONCURRENT_DOWNLOADS: 5
+};
 
 /**
  * Ensure all necessary directories exist
  */
 const ensureDirectories = (): void => {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    logger.info(`Creating uploads directory: ${UPLOADS_DIR}`);
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  if (!fs.existsSync(STORAGE_CONFIG.UPLOADS_DIR)) {
+    logger.info(`Creating uploads directory: ${STORAGE_CONFIG.UPLOADS_DIR}`);
+    fs.mkdirSync(STORAGE_CONFIG.UPLOADS_DIR, { recursive: true });
   }
   
-  if (!fs.existsSync(THUMBNAILS_DIR)) {
-    logger.info(`Creating thumbnails directory: ${THUMBNAILS_DIR}`);
-    fs.mkdirSync(THUMBNAILS_DIR, { recursive: true });
+  if (!fs.existsSync(STORAGE_CONFIG.THUMBNAILS_DIR)) {
+    logger.info(`Creating thumbnails directory: ${STORAGE_CONFIG.THUMBNAILS_DIR}`);
+    fs.mkdirSync(STORAGE_CONFIG.THUMBNAILS_DIR, { recursive: true });
   }
 };
 
@@ -147,13 +153,13 @@ const downloadFile = async (fileUrl: string): Promise<boolean> => {
       let cleanPath = urlPath;
       if (cleanPath.startsWith('/uploads')) {
         // If it's already /uploads/file.jpg, use as is
-        sourceUrlString = `${PROD_BASE_URL}${cleanPath}`;
+        sourceUrlString = `${STORAGE_CONFIG.PROD_BASE_URL}${cleanPath}`;
       } else if (cleanPath.startsWith('/')) {
         // If it's just /file.jpg, add /uploads prefix
-        sourceUrlString = `${PROD_BASE_URL}/uploads${cleanPath}`;
+        sourceUrlString = `${STORAGE_CONFIG.PROD_BASE_URL}/uploads${cleanPath}`;
       } else {
         // If it's just file.jpg, add /uploads/ prefix
-        sourceUrlString = `${PROD_BASE_URL}/uploads/${cleanPath.replace(/^\/+/, '')}`;
+        sourceUrlString = `${STORAGE_CONFIG.PROD_BASE_URL}/uploads/${cleanPath.replace(/^\/+/, '')}`;
       }
     }
     
@@ -267,13 +273,13 @@ const generateThumbnails = async (mediaUrl: string, isVideo: boolean): Promise<v
   try {
     const srcPath = path.join(process.cwd(), normalizePath(mediaUrl));
     const thumbFilename = `thumb-${path.basename(mediaUrl)}${isVideo ? '.jpg' : ''}`;
-    const targetPath = path.join(THUMBNAILS_DIR, thumbFilename);
+    const targetPath = path.join(STORAGE_CONFIG.THUMBNAILS_DIR, thumbFilename);
     
     logger.info(`Generating thumbnail for ${isVideo ? 'video' : 'image'}: ${mediaUrl}`);
     
     // Ensure the thumbnails directory exists
-    if (!fs.existsSync(THUMBNAILS_DIR)) {
-      fs.mkdirSync(THUMBNAILS_DIR, { recursive: true });
+    if (!fs.existsSync(STORAGE_CONFIG.THUMBNAILS_DIR)) {
+      fs.mkdirSync(STORAGE_CONFIG.THUMBNAILS_DIR, { recursive: true });
     }
     
     if (isVideo) {
@@ -292,7 +298,7 @@ const generateThumbnails = async (mediaUrl: string, isVideo: boolean): Promise<v
           })
           .screenshots({
             timestamps: ['00:00:01'],
-            folder: THUMBNAILS_DIR,
+            folder: STORAGE_CONFIG.THUMBNAILS_DIR,
             filename: thumbFilename,
             size: '320x240'
           });
@@ -417,10 +423,10 @@ export const syncMediaFiles = async (): Promise<{
       
       // Check if thumbnails exist, regardless of whether the original exists
       const thumbBasename = `thumb-${path.basename(imageUrl)}`;
-      const thumbPath = path.join(THUMBNAILS_DIR, thumbBasename);
+      const thumbPath = path.join(STORAGE_CONFIG.THUMBNAILS_DIR, thumbBasename);
       
       // Also check for video thumbnails that might have .jpg extension
-      const videoThumbPath = path.join(THUMBNAILS_DIR, `${thumbBasename}.jpg`);
+      const videoThumbPath = path.join(STORAGE_CONFIG.THUMBNAILS_DIR, `${thumbBasename}.jpg`);
       
       const thumbExists = fs.existsSync(thumbPath) || fs.existsSync(videoThumbPath);
       
