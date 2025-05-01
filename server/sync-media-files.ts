@@ -352,7 +352,7 @@ export const syncMediaFiles = async (): Promise<{
       
       // In schema.ts, the field is named mediaUrl in JavaScript but image_url in the database
       // Make sure we're using the right property name when working with post objects
-      const imageUrl = post.mediaUrl;
+      let imageUrl = post.mediaUrl;
       
       const normalizedPath = normalizePath(imageUrl);
       const exists = fileExists(normalizedPath);

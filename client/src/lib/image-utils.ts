@@ -1,16 +1,28 @@
 
 /**
- * Get the thumbnail URL for an image with size optimization
+ * Constants for deployment environments
+ */
+const PROD_URL = 'https://sparta-faith.replit.app';
+let cachedFileStatus: Record<string, boolean> = {};
+
+/**
+ * Get the thumbnail URL for an image with size optimization and cross-environment support
  */
 export /**
  * Gets a thumbnail URL for an image or creates a default SVG placeholder if needed.
- * This function now includes better fallback handling for missing files.
+ * This function now includes better fallback handling for missing files and will
+ * automatically try production URLs if local files don't exist.
  * 
  * @param originalUrl - The original URL of the image or video
  * @param size - The desired thumbnail size
+ * @param tryRemote - Whether to try remote URLs if local ones fail
  * @returns The URL of the appropriate thumbnail or a placeholder SVG
  */
-function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
+function getThumbnailUrl(
+  originalUrl: string | null, 
+  size: 'small' | 'medium' | 'large' = 'medium',
+  tryRemote: boolean = true
+): string {
   if (!originalUrl) {
     // Return a simple data URI SVG placeholder instead of empty string
     return generateImagePlaceholder('No image available');
@@ -66,15 +78,29 @@ function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 
       
       const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
       
-      if (isOldFormatImage) {
-        // Old format - no "thumb-" prefix
-        return `/uploads/thumbnails/${filename}`;
-      } else {
-        // New format - with "thumb-" prefix
-        return `/uploads/thumbnails/thumb-${filename}`;
+      // Generate local thumbnail path
+      const localThumbPath = isOldFormatImage
+        ? `/uploads/thumbnails/${filename}`
+        : `/uploads/thumbnails/thumb-${filename}`;
+        
+      // Check cache to see if we know this file exists locally
+      const cacheKey = `thumb:${localThumbPath}`;
+      if (cachedFileStatus[cacheKey] === false && tryRemote) {
+        // If we know it's missing locally, go straight to production URL
+        return `${PROD_URL}${localThumbPath}`;
       }
+      
+      // Return the local thumbnail path - we'll handle fallbacks in the image component
+      return localThumbPath;
     } else {
-      // For medium/large sizes or when size isn't specified, use original
+      // For medium/large sizes, check if we know the original is missing
+      const cacheKey = `orig:${originalUrl}`;
+      if (cachedFileStatus[cacheKey] === false && tryRemote) {
+        // If we know it's missing locally, go straight to production URL
+        return `${PROD_URL}${originalUrl}`;
+      }
+      
+      // Return the original URL - we'll handle fallbacks in the image component
       return originalUrl;
     }
   }

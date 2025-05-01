@@ -25,6 +25,12 @@ import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists, generateImagePlaceholder } from "../lib/image-utils";
 
+// Cache file status to avoid unnecessary network requests
+const cachedFileStatus: Record<string, boolean> = {};
+
+// Production URL for fallback image loading
+const PROD_URL = "https://sparta-faith.replit.app";
+
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
   if (!url) {
@@ -623,35 +629,27 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               <img
-                src={getThumbnailUrl(post.mediaUrl, 'small')}
-                data-full-src={post.mediaUrl}
+                src={post.mediaUrl}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
-                onLoad={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  if (isInViewport(img)) {
-                    const mediumUrl = getThumbnailUrl(post.mediaUrl, 'medium');
-                    // Preload medium size
-                    const preloadImg = new Image();
-                    preloadImg.onload = () => {
-                      img.src = mediumUrl;
-                    };
-                    preloadImg.src = mediumUrl;
-                  }
-                }}
                 onError={(e) => {
                   console.error("Failed to load image:", post.mediaUrl);
                   
-                  // Use our improved placeholder from generateImagePlaceholder
+                  // Try directly from production URL
                   const img = e.currentTarget;
+                  const prodUrl = "https://sparta-faith.replit.app" + post.mediaUrl;
                   
-                  // Keep the image visible, but show a placeholder SVG instead
-                  img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                  console.log(`Trying production URL: ${prodUrl}`);
+                  img.src = prodUrl;
                   
-                  // Report the error in the console but keep the UI working
-                  console.warn(`Using placeholder for missing image in post ${post.id}: ${post.mediaUrl}`);
+                  // Add error handler for the production URL attempt
+                  img.onerror = () => {
+                    console.error("Production URL also failed:", prodUrl);
+                    img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                    console.warn(`Using placeholder for missing image in post ${post.id}`);
+                  };
                 }}
               />
             )}
