@@ -1522,22 +1522,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
       
       // Fix circular references by explicitly mapping the result objects before serializing to JSON
-      const safeResults = result.map(post => ({
-        id: post.id,
-        content: post.content,
-        type: post.type,
-        mediaUrl: post.mediaUrl,
-        createdAt: post.createdAt,
-        parentId: post.parentId,
-        points: post.points,
-        userId: post.userId,
-        author: post.author ? {
-          id: post.author.id,
-          username: post.author.username,
-          imageUrl: post.author.imageUrl,
-          isAdmin: post.author.isAdmin
-        } : null
-      }));
+      // Also handle missing image files by checking for existence when needed
+      const safeResults = result.map(post => {
+        let mediaUrl = post.mediaUrl;
+        
+        // If there's a media URL, check if the file exists on disk or apply default handling
+        if (mediaUrl) {
+          // Convert URL path to filesystem path
+          const relativePath = mediaUrl.startsWith('/') ? mediaUrl.substring(1) : mediaUrl;
+          const fullPath = path.resolve(process.cwd(), relativePath);
+          
+          // Log file checks for debugging
+          logger.debug(`Checking file existence for post ${post.id}: ${fullPath}`);
+          
+          // Keep the URL as is even if file is missing - client will handle missing images gracefully
+          // Just log it for tracking purposes
+          if (!fs.existsSync(fullPath)) {
+            logger.warn(`File not found for post ${post.id}: ${mediaUrl} (path: ${fullPath})`);
+          }
+        }
+        
+        return {
+          id: post.id,
+          content: post.content,
+          type: post.type,
+          mediaUrl: mediaUrl, // Use original URL regardless
+          createdAt: post.createdAt,
+          parentId: post.parentId,
+          points: post.points,
+          userId: post.userId,
+          author: post.author ? {
+            id: post.author.id,
+            username: post.author.username,
+            imageUrl: post.author.imageUrl,
+            isAdmin: post.author.isAdmin
+          } : null
+        };
+      });
       
       res.json(safeResults);
     } catch (error) {
@@ -1602,11 +1623,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.set('Content-Type', 'application/json');
       
       // Fix circular references by mapping the post object before serializing
+      // Also handle missing image files gracefully
+      let mediaUrl = post.mediaUrl;
+      
+      // If there's a media URL, check if the file exists on disk
+      if (mediaUrl) {
+        // Convert URL path to filesystem path
+        const relativePath = mediaUrl.startsWith('/') ? mediaUrl.substring(1) : mediaUrl;
+        const fullPath = path.resolve(process.cwd(), relativePath);
+        
+        // Log file checks for debugging
+        logger.debug(`Checking file existence for single post ${post.id}: ${fullPath}`);
+        
+        // Keep the URL as is even if file is missing - client will handle missing images gracefully
+        // Just log it for tracking purposes
+        if (!fs.existsSync(fullPath)) {
+          logger.warn(`File not found for single post ${post.id}: ${mediaUrl} (path: ${fullPath})`);
+        }
+      }
+      
       const safePost = {
         id: post.id,
         content: post.content,
         type: post.type,
-        mediaUrl: post.mediaUrl,
+        mediaUrl: mediaUrl, // Use original URL regardless
         createdAt: post.createdAt,
         parentId: post.parentId,
         points: post.points,

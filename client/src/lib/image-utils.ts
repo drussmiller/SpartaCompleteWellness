@@ -2,9 +2,18 @@
 /**
  * Get the thumbnail URL for an image with size optimization
  */
-export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
+export /**
+ * Gets a thumbnail URL for an image or creates a default SVG placeholder if needed.
+ * This function now includes better fallback handling for missing files.
+ * 
+ * @param originalUrl - The original URL of the image or video
+ * @param size - The desired thumbnail size
+ * @returns The URL of the appropriate thumbnail or a placeholder SVG
+ */
+function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
   if (!originalUrl) {
-    return '';
+    // Return a simple data URI SVG placeholder instead of empty string
+    return generateImagePlaceholder('No image available');
   }
   
   // Handle SVG files - use them directly without thumbnailing
@@ -72,6 +81,33 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
   
   // For any other URLs, return as is
   return originalUrl;
+}
+
+/**
+ * Generates a data URI for an SVG placeholder image with customizable text
+ * 
+ * @param text - Text to display in the placeholder
+ * @returns - Data URI for an SVG image
+ */
+export function generateImagePlaceholder(text: string = 'Image'): string {
+  // Use consistent brand colors for placeholders
+  const bgColor = '#f0f0f0';
+  const textColor = '#888888';
+  
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+      <rect width="100%" height="100%" fill="${bgColor}"/>
+      <text x="50%" y="50%" fill="${textColor}" font-family="Arial, sans-serif" font-size="16" 
+        text-anchor="middle" dominant-baseline="middle">${text}</text>
+    </svg>
+  `.trim();
+  
+  // Convert to a data URI
+  const encoded = encodeURIComponent(svg)
+    .replace(/'/g, '%27')
+    .replace(/"/g, '%22');
+    
+  return `data:image/svg+xml;charset=UTF-8,${encoded}`;
 }
 
 /**

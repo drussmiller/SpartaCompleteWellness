@@ -23,7 +23,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
-import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
+import { getThumbnailUrl, getFallbackImageUrl, checkImageExists, generateImagePlaceholder } from "../lib/image-utils";
 
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
@@ -464,6 +464,44 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     setVideoLoadAttempts(prev => prev + 1);
                     
                     const videoEl = e.target as HTMLVideoElement;
+                    
+                    // Show a placeholder when all other attempts fail (after a few retries)
+                    if (videoLoadAttempts >= 2) {
+                      // Try to show a nice placeholder instead of a broken video element
+                      const container = videoEl.parentElement;
+                      
+                      if (container) {
+                        // Hide the video element and error banner
+                        videoEl.style.display = 'none';
+                        const errorBanner = container.querySelector('div.bg-red-500');
+                        if (errorBanner) {
+                          errorBanner.remove();
+                        }
+                        
+                        // Create a placeholder image if one doesn't already exist
+                        if (!container.querySelector('.video-placeholder')) {
+                          // Create a placeholder image
+                          const placeholderImg = document.createElement('img');
+                          placeholderImg.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Video`);
+                          placeholderImg.alt = "Video could not be loaded";
+                          placeholderImg.className = "max-w-full h-auto object-contain rounded-md video-placeholder";
+                          
+                          // Add it to the container
+                          container.appendChild(placeholderImg);
+                          
+                          // Add a caption
+                          const caption = document.createElement('p');
+                          caption.className = "text-center text-xs text-gray-500 mt-2";
+                          caption.textContent = "Video could not be loaded - Click to see the post";
+                          container.appendChild(caption);
+                        }
+                        
+                        // Log warning for debugging
+                        console.warn(`Using placeholder for missing video in post ${post.id}: ${post.mediaUrl}`);
+                        return; // Don't continue with the alternative URL attempts
+                      }
+                    }
+                    
                     // Try alternative URLs in case the path is wrong
                     const filename = post.mediaUrl?.split('/').pop();
                     if (filename) {
@@ -605,15 +643,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 }}
                 onError={(e) => {
                   console.error("Failed to load image:", post.mediaUrl);
-                  const img = e.currentTarget;
-                  img.style.display = 'none';
                   
-                  // Add a minimal message instead
-                  const container = img.parentElement;
-                  if (container) {
-                    container.style.minHeight = 'auto';
-                    container.style.background = 'transparent';
-                  }
+                  // Use our improved placeholder from generateImagePlaceholder
+                  const img = e.currentTarget;
+                  
+                  // Keep the image visible, but show a placeholder SVG instead
+                  img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                  
+                  // Report the error in the console but keep the UI working
+                  console.warn(`Using placeholder for missing image in post ${post.id}: ${post.mediaUrl}`);
                 }}
               />
             )}

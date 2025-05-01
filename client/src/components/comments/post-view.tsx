@@ -5,7 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
-import { getThumbnailUrl } from "@/lib/image-utils";
+import { getThumbnailUrl, generateImagePlaceholder } from "@/lib/image-utils";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -34,6 +34,18 @@ export function PostView({ post }: PostViewProps) {
                 src={post.mediaUrl}
                 alt={post.type}
                 className="max-w-full h-auto object-contain rounded-md"
+                onError={(e) => {
+                  console.error("Failed to load image in post view:", post.mediaUrl);
+                  
+                  // Use our improved placeholder from generateImagePlaceholder
+                  const img = e.currentTarget;
+                  
+                  // Keep the image visible, but show a placeholder SVG instead
+                  img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                  
+                  // Report the error in the console but keep the UI working
+                  console.warn(`Using placeholder for missing image in post ${post.id}: ${post.mediaUrl}`);
+                }}
               />
             </div>
           )}
@@ -53,7 +65,26 @@ export function PostView({ post }: PostViewProps) {
                 }}
                 onError={(e) => {
                   console.error(`Failed to load video in comment view: ${post.mediaUrl}`);
-                  // Try to trigger poster generation
+                  
+                  // Try to show a nice placeholder instead of a broken video element
+                  const videoElement = e.currentTarget;
+                  const container = videoElement.parentElement;
+                  
+                  if (container) {
+                    // Hide the video element
+                    videoElement.style.display = 'none';
+                    
+                    // Create a placeholder image
+                    const placeholderImg = document.createElement('img');
+                    placeholderImg.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Video`);
+                    placeholderImg.alt = "Video could not be loaded";
+                    placeholderImg.className = "max-w-full h-auto object-contain rounded-md";
+                    
+                    // Add it to the container
+                    container.appendChild(placeholderImg);
+                  }
+                  
+                  // Try to trigger poster generation for future views
                   fetch('/api/video/generate-posters', {
                     method: 'POST',
                     headers: {
@@ -65,6 +96,9 @@ export function PostView({ post }: PostViewProps) {
                     }),
                     credentials: 'include',
                   }).catch(err => console.error("Error requesting poster generation:", err));
+                  
+                  // Log warning for debugging
+                  console.warn(`Using placeholder for missing video in post ${post.id}: ${post.mediaUrl}`);
                 }}
               />
             </div>
