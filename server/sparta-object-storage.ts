@@ -1222,27 +1222,46 @@ export class SpartaObjectStorage {
           // Try to download and cache the file locally for future access
           try {
             console.log(`Downloading file from object storage with key: ${foundKey}`);
-            const fileData = await this.objectStorage.downloadAsBytes(foundKey);
+            const result = await this.objectStorage.downloadAsBytes(foundKey);
             
-            if (fileData) {
+            // Handle different response formats from Object Storage client
+            let buffer: Buffer | null = null;
+            
+            // Parse the result based on its format
+            if (Buffer.isBuffer(result)) {
+              buffer = result;
+              console.log(`Object Storage returned a Buffer directly (size: ${buffer.length} bytes)`);
+            } 
+            // Then check if result is an object with ok property (newer format)
+            else if (result && typeof result === 'object' && 'ok' in result) {
+              if (result.ok === true && result.value) {
+                // Check if the value property is a Buffer
+                if (Buffer.isBuffer(result.value)) {
+                  buffer = result.value;
+                  console.log(`Object Storage returned a Result object with Buffer value (size: ${buffer.length} bytes)`);
+                } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+                  buffer = result.value[0];
+                  console.log(`Object Storage returned a Result object with Buffer array (size: ${buffer.length} bytes)`);
+                } else {
+                  console.error(`Object Storage result has non-Buffer value:`, typeof result.value);
+                }
+              } else {
+                console.error(`Object Storage result indicates failure:`, result.error || 'Unknown error');
+              }
+            } else if (Array.isArray(result) && Buffer.isBuffer(result[0])) {
+              buffer = result[0];
+              console.log(`Downloaded ${buffer.length} bytes array from object storage`);
+            } else {
+              console.error(`Unknown Object Storage result format:`, typeof result);
+              // Create an empty buffer as fallback for backward compatibility
+              buffer = Buffer.from([]);
+            }
+            
+            if (buffer) {
               // Ensure directory exists
               const dir = path.dirname(actualFilePath);
               if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir, { recursive: true });
-              }
-              
-              // Convert the result to a Buffer if needed
-              let buffer: Buffer;
-              if (Buffer.isBuffer(fileData)) {
-                buffer = fileData;
-                console.log(`Downloaded ${buffer.length} bytes from object storage`);
-              } else if (Array.isArray(fileData) && Buffer.isBuffer(fileData[0])) {
-                buffer = fileData[0];
-                console.log(`Downloaded ${buffer.length} bytes from array in object storage`);
-              } else {
-                console.warn('Unexpected data format from object storage:', typeof fileData);
-                // Create an empty buffer as fallback
-                buffer = Buffer.from([]);
               }
               
               if (buffer.length === 0) {
@@ -1386,8 +1405,26 @@ export class SpartaObjectStorage {
         
         for (const key of thumbnailKeys) {
           try {
-            const exists = await this.objectStorage.exists(key);
-            if (exists) {
+            // Get the exists result and properly handle both result formats
+            const existsResult = await this.objectStorage.exists(key);
+            let keyExists = false;
+            
+            // Handle different result formats from Object Storage API
+            if (typeof existsResult === 'object' && existsResult !== null && 'ok' in existsResult) {
+              // Result object format: { ok: true, value: true/false }
+              if (existsResult.ok === true) {
+                keyExists = Boolean(existsResult.value);
+                console.log(`Object Storage exists check for ${key} returned ok:true, value:${existsResult.value}`);
+              } else {
+                console.log(`Object Storage exists returned error for ${key}:`, existsResult.error || 'Unknown error');
+              }
+            } else {
+              // Direct boolean format
+              keyExists = Boolean(existsResult);
+              console.log(`Object Storage exists check for ${key} returned direct boolean: ${keyExists}`);
+            }
+            
+            if (keyExists) {
               objectExists = true;
               foundKey = key;
               
@@ -1418,27 +1455,46 @@ export class SpartaObjectStorage {
           // Try to download and cache the thumbnail
           try {
             console.log(`Downloading thumbnail from object storage with key: ${foundKey}`);
-            const thumbnailData = await this.objectStorage.downloadAsBytes(foundKey);
+            const result = await this.objectStorage.downloadAsBytes(foundKey);
             
-            if (thumbnailData) {
+            // Handle different response formats from Object Storage client
+            let buffer: Buffer | null = null;
+            
+            // Parse the result based on its format
+            if (Buffer.isBuffer(result)) {
+              buffer = result;
+              console.log(`Object Storage returned a Buffer directly for thumbnail (size: ${buffer.length} bytes)`);
+            } 
+            // Then check if result is an object with ok property (newer format)
+            else if (result && typeof result === 'object' && 'ok' in result) {
+              if (result.ok === true && result.value) {
+                // Check if the value property is a Buffer
+                if (Buffer.isBuffer(result.value)) {
+                  buffer = result.value;
+                  console.log(`Object Storage returned a Result object with Buffer value for thumbnail (size: ${buffer.length} bytes)`);
+                } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+                  buffer = result.value[0];
+                  console.log(`Object Storage returned a Result object with Buffer array for thumbnail (size: ${buffer.length} bytes)`);
+                } else {
+                  console.error(`Object Storage result has non-Buffer value for thumbnail:`, typeof result.value);
+                }
+              } else {
+                console.error(`Object Storage result indicates failure for thumbnail:`, result.error || 'Unknown error');
+              }
+            } else if (Array.isArray(result) && Buffer.isBuffer(result[0])) {
+              buffer = result[0];
+              console.log(`Downloaded ${buffer.length} bytes array from object storage for thumbnail`);
+            } else {
+              console.error(`Unknown Object Storage result format for thumbnail:`, typeof result);
+              // Create an empty buffer as fallback for backward compatibility
+              buffer = Buffer.from([]);
+            }
+            
+            if (buffer) {
               // Ensure thumbnail directory exists
               const thumbDir = path.dirname(thumbnailPath);
               if (!fs.existsSync(thumbDir)) {
                 fs.mkdirSync(thumbDir, { recursive: true });
-              }
-              
-              // Convert the result to a Buffer if needed
-              let buffer: Buffer;
-              if (Buffer.isBuffer(thumbnailData)) {
-                buffer = thumbnailData;
-                console.log(`Downloaded ${buffer.length} bytes from object storage for thumbnail`);
-              } else if (Array.isArray(thumbnailData) && Buffer.isBuffer(thumbnailData[0])) {
-                buffer = thumbnailData[0];
-                console.log(`Downloaded ${buffer.length} bytes array from object storage for thumbnail`);
-              } else {
-                console.warn('Unexpected thumbnail data format from object storage:', typeof thumbnailData);
-                // Create an empty buffer as fallback
-                buffer = Buffer.from([]);
               }
               
               if (buffer.length === 0) {

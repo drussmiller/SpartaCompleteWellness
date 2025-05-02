@@ -244,134 +244,105 @@ app.use('/api', (req, res, next) => {
     app.use('/shared/uploads', async (req, res, next) => {
       try {
         const filePath = req.path;
+        console.log(`Processing shared file request: ${filePath}`);
         
-        // Build possible storage keys - check both the prefixed and non-prefixed versions
-        const sharedKey = `shared/uploads${filePath}`;
-        const regularKey = `uploads${filePath}`;
+        // Import required modules
+        const { Client } = require('@replit/object-storage');
+        const fs = require('fs');
         
-        console.log(`Attempting to serve shared file: ${sharedKey}`);
+        // Check if Replit Object Storage is available
+        if (!process.env.REPLIT_DB_ID) {
+          console.log(`Object Storage not available, redirecting to local path`);
+          return res.redirect(`/uploads${filePath}`);
+        }
         
-        // If replit object storage is available, try to fetch from there
-        if (process.env.REPLIT_DB_ID) {
+        // Initialize Object Storage client
+        const objectStorage = new Client();
+        console.log(`Object Storage client initialized`);
+        
+        // Define all possible key formats to try
+        const keysToCheck = [
+          `shared/uploads${filePath}`,
+          `uploads${filePath}`,
+          `shared${filePath}`,
+          filePath.startsWith('/') ? filePath.substring(1) : filePath
+        ];
+        
+        // Try to find the file with any of the keys
+        console.log(`Attempting to download file using the following keys: ${JSON.stringify(keysToCheck)}`);
+        let fileBuffer = null;
+        let usedKey = null;
+        
+        // Try each key directly with downloadAsBytes without checking existence first
+        for (const key of keysToCheck) {
           try {
-            // Use the Client class from the module (not default)
-            const { Client } = require('@replit/object-storage');
-            const objectStorage = new Client();
+            console.log(`Trying to download ${key} directly...`);
+            const result = await objectStorage.downloadAsBytes(key);
             
-            // Import fs for file checking
-            const fs = require('fs');
-            
-            // First check if the shared file exists
-            console.log(`Checking if ${sharedKey} exists in Object Storage...`);
-            const sharedKeyResult = await objectStorage.exists(sharedKey);
-            // Handle different result formats (direct boolean or result object)
-            const sharedKeyExists = typeof sharedKeyResult === 'object' && sharedKeyResult !== null && 'ok' in sharedKeyResult
-              ? sharedKeyResult.ok && sharedKeyResult.value === true
-              : Boolean(sharedKeyResult);
-            
-            let exists = sharedKeyExists;
-            let storageKey = sharedKey;
-            
-            // If shared key doesn't exist, try the regular key
-            if (!exists) {
-              console.log(`${sharedKey} not found, checking ${regularKey}...`);
-              const regularKeyResult = await objectStorage.exists(regularKey);
-              
-              // Parse result format
-              const regularKeyExists = typeof regularKeyResult === 'object' && regularKeyResult !== null && 'ok' in regularKeyResult
-                ? regularKeyResult.ok && regularKeyResult.value === true
-                : Boolean(regularKeyResult);
-              
-              exists = regularKeyExists;
-              storageKey = regularKey;
-            }
-            
-            console.log(`File exists in Object Storage: ${exists} (using key: ${storageKey})`);
-            
-            if (exists) {
-              // Fetch the file from object storage
-              console.log(`Fetching ${storageKey} from Object Storage...`);
-              
-              try {
-                // Using the downloadAsBytes method from the Client class
-                const result = await objectStorage.downloadAsBytes(storageKey);
-                
-                // Handle different response formats from Object Storage client
-                let fileBuffer: Buffer | null = null;
-                
-                // First check if result is a Buffer directly
-                if (Buffer.isBuffer(result)) {
-                  fileBuffer = result;
-                  console.log(`Object Storage returned a Buffer directly (size: ${fileBuffer.length} bytes)`);
-                } 
-                // Then check if result is an object with ok property (newer format)
-                else if (result && typeof result === 'object' && 'ok' in result) {
-                  if (result.ok === true && result.value) {
-                    // Check if the value property is a Buffer
-                    if (Buffer.isBuffer(result.value)) {
-                      fileBuffer = result.value;
-                      console.log(`Object Storage returned a Result object with Buffer value (size: ${fileBuffer.length} bytes)`);
-                    } else {
-                      console.error(`Object Storage result has non-Buffer value:`, typeof result.value);
-                    }
-                  } else {
-                    console.error(`Object Storage result indicates failure:`, result.error || 'Unknown error');
-                  }
-                } else {
-                  console.error(`Unknown Object Storage result format:`, typeof result);
-                }
-                
-                if (fileBuffer) {
-                  // Determine content type based on file extension
-                  const fileExtension = path.extname(filePath).toLowerCase();
-                  let contentType = 'application/octet-stream'; // default
-                  
-                  if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
-                    contentType = 'image/jpeg';
-                  } else if (fileExtension === '.png') {
-                    contentType = 'image/png';
-                  } else if (fileExtension === '.gif') {
-                    contentType = 'image/gif';
-                  } else if (fileExtension === '.mp4') {
-                    contentType = 'video/mp4';
-                  } else if (fileExtension === '.mov') {
-                    contentType = 'video/quicktime';
-                  } else if (fileExtension === '.svg') {
-                    contentType = 'image/svg+xml';
-                  } else if (fileExtension === '.webp') {
-                    contentType = 'image/webp';
-                  }
-                
-                  console.log(`SUCCESS: Serving file ${storageKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
-                  res.setHeader('Content-Type', contentType);
-                  res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
-                  return res.send(fileBuffer);
-                } else {
-                  console.error(`File exists in Object Storage but couldn't be retrieved: ${storageKey}`);
-                }
-              } catch (error) {
-                console.error(`Error accessing Object Storage:`, error);
-              }
-            } else {
-              console.log(`File not found in Object Storage under any key`);
-              
-              // Check if the file exists locally as a last resort
-              const localPath = path.join(process.cwd(), 'uploads', filePath);
-              if (fs.existsSync(localPath)) {
-                console.log(`Found file locally at ${localPath}, serving directly`);
-                return res.sendFile(localPath);
+            // Parse the result based on its format
+            if (Buffer.isBuffer(result)) {
+              console.log(`Success! Downloaded ${key} as direct Buffer`);
+              fileBuffer = result;
+              usedKey = key;
+              break;
+            } else if (typeof result === 'object' && result !== null && 'ok' in result) {
+              if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
+                console.log(`Success! Downloaded ${key} as Buffer in result object`);
+                fileBuffer = result.value;
+                usedKey = key;
+                break;
+              } else {
+                console.log(`Download attempt for ${key} returned non-buffer or failure: ${JSON.stringify(result)}`);
               }
             }
           } catch (error) {
-            console.error(`Error with Object Storage:`, error);
+            console.log(`Failed to download ${key}: ${error.message}`);
+            // Continue to next key
           }
         }
         
-        // If we get here, either object storage isn't available or the file wasn't found
-        // Try the local path as a fallback
-        const standardPath = `/uploads${filePath}`;
-        console.log(`No file found in Object Storage, falling back to local path: ${standardPath}`);
-        res.redirect(standardPath);
+        // If we found and downloaded a file, serve it
+        if (fileBuffer && fileBuffer.length > 0) {
+          // Determine content type based on file extension
+          const fileExtension = path.extname(filePath).toLowerCase();
+          let contentType = 'application/octet-stream'; // default
+          
+          if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+            contentType = 'image/jpeg';
+          } else if (fileExtension === '.png') {
+            contentType = 'image/png';
+          } else if (fileExtension === '.gif') {
+            contentType = 'image/gif';
+          } else if (fileExtension === '.mp4') {
+            contentType = 'video/mp4';
+          } else if (fileExtension === '.mov') {
+            contentType = 'video/quicktime';
+          } else if (fileExtension === '.svg') {
+            contentType = 'image/svg+xml';
+          } else if (fileExtension === '.webp') {
+            contentType = 'image/webp';
+          }
+          
+          console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
+          
+          // Set headers and send the file
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+          return res.send(fileBuffer);
+        }
+        
+        // If we get here, we couldn't find the file in Object Storage
+        // Check if it exists locally as a last resort
+        const localPath = path.join(process.cwd(), 'uploads', filePath);
+        if (fs.existsSync(localPath)) {
+          console.log(`Found file locally at ${localPath}, serving directly`);
+          return res.sendFile(localPath);
+        }
+        
+        // File not found anywhere, redirect to standard uploads path
+        console.log(`File not found in Object Storage or locally, redirecting to standard path: /uploads${filePath}`);
+        res.redirect(`/uploads${filePath}`);
+        
       } catch (error) {
         console.error('Error serving shared file:', error);
         next();
