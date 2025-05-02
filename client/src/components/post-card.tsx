@@ -117,7 +117,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   });
 
   // Comment count for this post
-  const commentCount = useCommentCount(post.id);
+  const { count: commentCount } = useCommentCount(post.id);
   
   // Delete post mutation
   const deleteMutation = useMutation({
