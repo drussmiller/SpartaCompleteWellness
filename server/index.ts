@@ -263,13 +263,26 @@ app.use('/api', (req, res, next) => {
             
             // First check if the shared file exists
             console.log(`Checking if ${sharedKey} exists in Object Storage...`);
-            let exists = await objectStorage.exists(sharedKey);
+            const sharedKeyResult = await objectStorage.exists(sharedKey);
+            // Handle different result formats (direct boolean or result object)
+            const sharedKeyExists = typeof sharedKeyResult === 'object' && sharedKeyResult !== null && 'ok' in sharedKeyResult
+              ? sharedKeyResult.ok && sharedKeyResult.value === true
+              : Boolean(sharedKeyResult);
+            
+            let exists = sharedKeyExists;
             let storageKey = sharedKey;
             
             // If shared key doesn't exist, try the regular key
             if (!exists) {
               console.log(`${sharedKey} not found, checking ${regularKey}...`);
-              exists = await objectStorage.exists(regularKey);
+              const regularKeyResult = await objectStorage.exists(regularKey);
+              
+              // Parse result format
+              const regularKeyExists = typeof regularKeyResult === 'object' && regularKeyResult !== null && 'ok' in regularKeyResult
+                ? regularKeyResult.ok && regularKeyResult.value === true
+                : Boolean(regularKeyResult);
+              
+              exists = regularKeyExists;
               storageKey = regularKey;
             }
             
