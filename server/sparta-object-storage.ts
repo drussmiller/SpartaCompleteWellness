@@ -4,15 +4,19 @@ import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from './logger';
 import ffmpeg from 'fluent-ffmpeg';
+import { Client as ObjectStorageClient } from '@replit/object-storage';
 
 /**
  * SpartaObjectStorage provides a unified interface for handling file objects
  * such as images and other media files with proper error handling and logging.
+ * It supports both filesystem storage and Replit Object Storage for cross-environment compatibility.
  */
 export class SpartaObjectStorage {
   private baseDir: string;
   private thumbnailDir: string;
   private allowedTypes: string[];
+  private objectStorage: ObjectStorageClient | null = null;
+  private isProductionEnv: boolean = process.env.NODE_ENV === 'production';
 
   /**
    * Creates a new SpartaObjectStorage instance
@@ -28,6 +32,16 @@ export class SpartaObjectStorage {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
+    this.isProductionEnv = process.env.NODE_ENV === 'production';
+
+    // Initialize Replit Object Storage
+    try {
+      this.objectStorage = new ObjectStorageClient();
+      console.log("Replit Object Storage initialized successfully");
+    } catch (error) {
+      console.warn("Failed to initialize Replit Object Storage, falling back to local storage:", error);
+      this.objectStorage = null;
+    }
 
     // Ensure we're using absolute paths to avoid any path resolution issues
     console.log("SpartaObjectStorage initialized with paths:", {
@@ -35,7 +49,9 @@ export class SpartaObjectStorage {
       thumbnailDir: this.thumbnailDir,
       cwd: process.cwd(),
       absoluteBaseDir: path.resolve(this.baseDir),
-      absoluteThumbnailDir: path.resolve(this.thumbnailDir)
+      absoluteThumbnailDir: path.resolve(this.thumbnailDir),
+      objectStorageEnabled: !!this.objectStorage,
+      environment: this.isProductionEnv ? 'production' : 'development'
     });
 
     // Ensure directories exist
@@ -282,7 +298,28 @@ export class SpartaObjectStorage {
 
       // Write the file
       try {
-        console.log(`Attempting to write file to ${filePath}, buffer size: ${fileBuffer.length}`);
+        console.log(`Attempting to write file, buffer size: ${fileBuffer.length}`);
+        
+        // First, store in object storage if available
+        let objectStorageKey = '';
+        
+        if (this.objectStorage) {
+          try {
+            // Create a key based on path structure to maintain same organization
+            const relativePath = filePath.replace(this.baseDir, '').replace(/^\/+/, '');
+            objectStorageKey = `uploads/${relativePath}`;
+            
+            console.log(`Storing file in Replit Object Storage with key: ${objectStorageKey}`);
+            await this.objectStorage.uploadFromBytes(objectStorageKey, fileBuffer);
+            console.log(`File stored successfully in Replit Object Storage with key: ${objectStorageKey}`);
+          } catch (objStorageError) {
+            console.error(`Error storing file in Replit Object Storage:`, objStorageError);
+            logger.error(`Error storing file in Replit Object Storage:`, objStorageError);
+            // Continue with local storage as fallback
+          }
+        }
+        
+        // Always store locally as well for backward compatibility
         fs.writeFileSync(filePath, fileBuffer);
         console.log(`File written successfully to ${filePath}`);
         logger.info(`File written successfully to ${filePath}`);
@@ -440,6 +477,22 @@ export class SpartaObjectStorage {
           fs.copyFileSync(filePath, thumbnailPath);
           console.log(`Created fallback thumbnail by copying original file to ${thumbnailPath}`);
           logger.info(`Created fallback thumbnail for ${safeFilename} by copying original file`);
+        }
+        
+        // Now that thumbnail is created (or fallback is in place), upload to Object Storage
+        if (thumbnailUrl && fs.existsSync(thumbnailPath) && this.objectStorage) {
+          try {
+            const thumbnailBasename = path.basename(thumbnailPath);
+            const objectStorageKey = `uploads/thumbnails/${thumbnailBasename}`;
+            
+            console.log(`Uploading thumbnail to Object Storage with key: ${objectStorageKey}`);
+            const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+            await this.objectStorage.uploadFromBytes(objectStorageKey, thumbnailBuffer);
+            console.log(`Successfully uploaded thumbnail to Object Storage`);
+          } catch (objStoreError) {
+            console.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
+            // Continue with local thumbnail only
+          }
         }
       } catch (thumbnailError) {
         console.error(`Error creating thumbnail for ${safeFilename}:`, thumbnailError);
@@ -1005,27 +1058,191 @@ export class SpartaObjectStorage {
    * @param fileUrl URL of the file
    * @returns File information or null if not found
    */
-  getFileInfo(fileUrl: string): { 
+  async getFileInfo(fileUrl: string): Promise<{ 
     url: string;
     thumbnailUrl: string | null;
     filename: string;
     mimeType: string | null;
     size: number;
     path: string;
-  } | null {
+    fromObjectStorage?: boolean;
+  } | null> {
     try {
       if (!fileUrl) return null;
 
       // Extract filename from URL
       const filename = path.basename(fileUrl);
-      const filePath = path.join(this.baseDir, filename);
-
-      if (!fs.existsSync(filePath)) {
+      
+      // Handle special directories in the URL
+      let basePathForFile = this.baseDir;
+      
+      // Check if this is a memory verse or miscellaneous video
+      const isMemoryVerse = fileUrl.toLowerCase().includes('memory_verse') || filename.toLowerCase().includes('memory_verse');
+      const isMiscellaneous = fileUrl.toLowerCase().includes('miscellaneous') || filename.toLowerCase().includes('miscellaneous');
+      
+      // Adjust base path for special file types
+      if (isMemoryVerse) {
+        basePathForFile = path.join(this.baseDir, 'memory_verse');
+      } else if (isMiscellaneous) {
+        basePathForFile = path.join(this.baseDir, 'miscellaneous');
+      }
+      
+      // Create standard file path
+      const filePath = path.join(basePathForFile, filename);
+      
+      // Generate a list of possible paths to check
+      const pathsToCheck = [
+        filePath,  // Base path (potentially adjusted for special directories)
+        path.join(this.baseDir, filename),  // Standard uploads path
+        path.join(process.cwd(), 'uploads', filename)  // Root-relative uploads path
+      ];
+      
+      // Add memory verse specific paths
+      if (isMemoryVerse) {
+        pathsToCheck.push(
+          path.join(this.baseDir, 'memory_verse', filename),
+          path.join(process.cwd(), 'uploads', 'memory_verse', filename)
+        );
+      }
+      
+      // Add miscellaneous specific paths
+      if (isMiscellaneous) {
+        pathsToCheck.push(
+          path.join(this.baseDir, 'miscellaneous', filename),
+          path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
+        );
+      }
+      
+      // Check if file exists in any of our possible locations
+      let fileExists = false;
+      let actualFilePath = filePath;
+      
+      for (const pathToCheck of pathsToCheck) {
+        if (fs.existsSync(pathToCheck)) {
+          fileExists = true;
+          actualFilePath = pathToCheck;
+          console.log(`Found file at path: ${actualFilePath}`);
+          break;
+        }
+      }
+      
+      // Get possible object storage keys to check
+      let objectStorageKeys = [
+        fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl  // Standard key
+      ];
+      
+      // Add keys for special directories
+      if (isMemoryVerse) {
+        objectStorageKeys.push(
+          `uploads/memory_verse/${filename}`,
+          `memory_verse/${filename}`
+        );
+      } else if (isMiscellaneous) {
+        objectStorageKeys.push(
+          `uploads/miscellaneous/${filename}`,
+          `miscellaneous/${filename}`
+        );
+      }
+      
+      let fileSize: number | undefined;
+      let fromObjectStorage = false;
+      
+      // If file doesn't exist locally, check in object storage for any of our possible keys
+      if (!fileExists && this.objectStorage) {
+        console.log(`File not found locally, checking object storage with keys:`, objectStorageKeys);
+        
+        let objectExists = false;
+        let foundKey = '';
+        
+        // Try each potential key
+        for (const key of objectStorageKeys) {
+          try {
+            const exists = await this.objectStorage.exists(key);
+            if (exists) {
+              objectExists = true;
+              foundKey = key;
+              console.log(`File found in object storage with key: ${foundKey}`);
+              break;
+            }
+          } catch (error) {
+            console.log(`Error checking key ${key} in object storage:`, error);
+          }
+        }
+        
+        if (objectExists && foundKey) {
+          // File exists in object storage
+          fileExists = true;
+          fromObjectStorage = true;
+          
+          // Try to download and cache the file locally for future access
+          try {
+            console.log(`Downloading file from object storage with key: ${foundKey}`);
+            const fileData = await this.objectStorage.downloadAsBytes(foundKey);
+            
+            if (fileData) {
+              // Ensure directory exists
+              const dir = path.dirname(actualFilePath);
+              if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+              }
+              
+              // Convert the result to a Buffer if needed
+              let buffer: Buffer;
+              if (Buffer.isBuffer(fileData)) {
+                buffer = fileData;
+                console.log(`Downloaded ${buffer.length} bytes from object storage`);
+              } else if (Array.isArray(fileData) && Buffer.isBuffer(fileData[0])) {
+                buffer = fileData[0];
+                console.log(`Downloaded ${buffer.length} bytes from array in object storage`);
+              } else {
+                console.warn('Unexpected data format from object storage:', typeof fileData);
+                // Create an empty buffer as fallback
+                buffer = Buffer.from([]);
+              }
+              
+              if (buffer.length === 0) {
+                console.error(`Downloaded empty buffer from object storage for key: ${foundKey}`);
+              }
+              
+              // Cache the file locally
+              fs.writeFileSync(actualFilePath, buffer);
+              console.log(`Cached file from object storage to local path: ${actualFilePath}`);
+              
+              // Now we can get the stats locally
+              if (fs.existsSync(actualFilePath)) {
+                const stats = fs.statSync(actualFilePath);
+                fileSize = stats.size;
+                console.log(`File size after caching: ${fileSize} bytes`);
+              } else {
+                console.error(`Failed to cache file from object storage to ${actualFilePath}`);
+              }
+            }
+          } catch (downloadError) {
+            console.error(`Failed to download file from object storage: ${foundKey}`, downloadError);
+            // We can still return the file info, but it won't be cached locally
+            // Estimate a file size if we don't have it
+            fileSize = 1024; // Default to 1KB
+          }
+        } else {
+          console.log(`File not found in object storage with any key:`, objectStorageKeys);
+        }
+      }
+      
+      if (!fileExists) {
         return null;
       }
-
-      // Get file stats
-      const stats = fs.statSync(filePath);
+      
+      // Get file stats if we haven't already
+      let stats;
+      if (fs.existsSync(actualFilePath)) {
+        stats = fs.statSync(actualFilePath);
+        fileSize = stats.size;
+        console.log(`Got stats for file at ${actualFilePath}: size = ${fileSize} bytes`);
+      } else if (!fileSize) {
+        // We don't have the file locally and didn't get a size from object storage
+        console.log(`File not found locally at ${actualFilePath} and no size available from object storage`);
+        return null;
+      }
 
       // Determine mime type based on extension (simplified)
       const ext = path.extname(filename).toLowerCase();
@@ -1037,20 +1254,173 @@ export class SpartaObjectStorage {
       else if (ext === '.webp') mimeType = 'image/webp';
       else if (ext === '.mp4') mimeType = 'video/mp4';
       else if (ext === '.webm') mimeType = 'video/webm';
+      else if (ext === '.mov') mimeType = 'video/quicktime';
 
-
-      // Check if thumbnail exists
-      const thumbnailFilename = `thumb-${filename}`;
-      const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
-      const thumbnailUrl = fs.existsSync(thumbnailPath) ? `/uploads/thumbnails/${thumbnailFilename}` : null;
+      // Check if thumbnail exists - try different naming patterns
+      const standardThumbFilename = `thumb-${filename}`;
+      const alternateThumbFilename = filename;  // Some systems don't use the thumb- prefix
+      
+      // List of possible thumbnail paths to check
+      const thumbnailPathsToCheck = [
+        path.join(this.thumbnailDir, standardThumbFilename),
+        path.join(this.thumbnailDir, alternateThumbFilename)
+      ];
+      
+      // Add special thumbnail locations for memory verse and miscellaneous videos
+      if (isMemoryVerse || isMiscellaneous) {
+        // For videos, try both jpg and png extensions
+        const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
+        
+        thumbnailPathsToCheck.push(
+          path.join(this.thumbnailDir, `${baseFilename}.jpg`),
+          path.join(this.thumbnailDir, `${baseFilename}.png`),
+          path.join(this.thumbnailDir, `thumb-${baseFilename}.jpg`),
+          path.join(this.thumbnailDir, `thumb-${baseFilename}.png`)
+        );
+        
+        // Add special directory paths
+        if (isMemoryVerse) {
+          thumbnailPathsToCheck.push(
+            path.join(this.thumbnailDir, 'memory_verse', filename),
+            path.join(this.thumbnailDir, 'memory_verse', `thumb-${filename}`),
+            path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse', filename),
+            path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse', `thumb-${filename}`)
+          );
+        } else if (isMiscellaneous) {
+          thumbnailPathsToCheck.push(
+            path.join(this.thumbnailDir, 'miscellaneous', filename),
+            path.join(this.thumbnailDir, 'miscellaneous', `thumb-${filename}`),
+            path.join(process.cwd(), 'uploads', 'thumbnails', 'miscellaneous', filename),
+            path.join(process.cwd(), 'uploads', 'thumbnails', 'miscellaneous', `thumb-${filename}`)
+          );
+        }
+      }
+      
+      // Check if thumbnail exists in any of the paths
+      let thumbnailUrl = null;
+      let thumbnailPath = path.join(this.thumbnailDir, standardThumbFilename);
+      
+      for (const pathToCheck of thumbnailPathsToCheck) {
+        if (fs.existsSync(pathToCheck)) {
+          // Use the relative path structure for URL
+          const relPath = pathToCheck.replace(process.cwd(), '').replace(/^\//, '');
+          thumbnailUrl = `/${relPath}`;
+          thumbnailPath = pathToCheck;
+          console.log(`Found thumbnail at: ${pathToCheck}`);
+          break;
+        }
+      }
+      
+      // If thumbnail doesn't exist locally, check in object storage
+      if (!thumbnailUrl && this.objectStorage) {
+        // Generate potential thumbnail keys to check in object storage
+        const thumbnailKeys = [
+          `uploads/thumbnails/${standardThumbFilename}`,
+          `uploads/thumbnails/${alternateThumbFilename}`
+        ];
+        
+        // Add keys for special directories
+        if (isMemoryVerse) {
+          thumbnailKeys.push(
+            `uploads/thumbnails/memory_verse/${standardThumbFilename}`,
+            `uploads/thumbnails/memory_verse/${alternateThumbFilename}`,
+            `memory_verse/thumbnails/${standardThumbFilename}`
+          );
+        } else if (isMiscellaneous) {
+          thumbnailKeys.push(
+            `uploads/thumbnails/miscellaneous/${standardThumbFilename}`,
+            `uploads/thumbnails/miscellaneous/${alternateThumbFilename}`,
+            `miscellaneous/thumbnails/${standardThumbFilename}`
+          );
+        }
+        
+        // Try each key in object storage
+        let objectExists = false;
+        let foundKey = '';
+        let foundUrl = '';
+        
+        for (const key of thumbnailKeys) {
+          try {
+            const exists = await this.objectStorage.exists(key);
+            if (exists) {
+              objectExists = true;
+              foundKey = key;
+              
+              // Determine URL based on key structure
+              if (key.includes('memory_verse')) {
+                foundUrl = `/uploads/thumbnails/memory_verse/${standardThumbFilename}`;
+              } else if (key.includes('miscellaneous')) {
+                foundUrl = `/uploads/thumbnails/miscellaneous/${standardThumbFilename}`;
+              } else {
+                foundUrl = `/uploads/thumbnails/${standardThumbFilename}`;
+              }
+              
+              console.log(`Found thumbnail in object storage with key: ${foundKey}`);
+              break;
+            }
+          } catch (error) {
+            console.log(`Error checking thumbnail key ${key} in object storage:`, error);
+          }
+        }
+        
+        if (objectExists && foundKey) {
+          thumbnailUrl = foundUrl;
+          
+          // Set the correct local path based on the foundUrl
+          const localThumbPath = path.join(process.cwd(), foundUrl.substring(1));
+          thumbnailPath = localThumbPath;
+          
+          // Try to download and cache the thumbnail
+          try {
+            console.log(`Downloading thumbnail from object storage with key: ${foundKey}`);
+            const thumbnailData = await this.objectStorage.downloadAsBytes(foundKey);
+            
+            if (thumbnailData) {
+              // Ensure thumbnail directory exists
+              const thumbDir = path.dirname(thumbnailPath);
+              if (!fs.existsSync(thumbDir)) {
+                fs.mkdirSync(thumbDir, { recursive: true });
+              }
+              
+              // Convert the result to a Buffer if needed
+              let buffer: Buffer;
+              if (Buffer.isBuffer(thumbnailData)) {
+                buffer = thumbnailData;
+                console.log(`Downloaded ${buffer.length} bytes from object storage for thumbnail`);
+              } else if (Array.isArray(thumbnailData) && Buffer.isBuffer(thumbnailData[0])) {
+                buffer = thumbnailData[0];
+                console.log(`Downloaded ${buffer.length} bytes array from object storage for thumbnail`);
+              } else {
+                console.warn('Unexpected thumbnail data format from object storage:', typeof thumbnailData);
+                // Create an empty buffer as fallback
+                buffer = Buffer.from([]);
+              }
+              
+              if (buffer.length === 0) {
+                console.error(`Downloaded empty buffer for thumbnail from object storage: ${foundKey}`);
+              }
+              
+              // Cache the thumbnail locally
+              fs.writeFileSync(thumbnailPath, buffer);
+              console.log(`Cached thumbnail from object storage to local path: ${thumbnailPath}`);
+            }
+          } catch (downloadError) {
+            console.error(`Failed to download thumbnail from object storage: ${foundKey}`, downloadError);
+            // We'll still use the URL, but it won't be cached locally
+          }
+        } else {
+          console.log(`Thumbnail not found in object storage with any key`);
+        }
+      }
 
       return {
         url: fileUrl,
         thumbnailUrl,
         filename,
         mimeType,
-        size: stats.size,
-        path: filePath
+        size: fileSize || (stats ? stats.size : 1024), // Use fileSize if available, otherwise use stats.size or fallback to 1024
+        path: actualFilePath, // Use the actual file path that was found
+        fromObjectStorage: fromObjectStorage
       };
     } catch (error) {
       logger.error('Error getting file info:', error instanceof Error ? error : new Error(String(error)));

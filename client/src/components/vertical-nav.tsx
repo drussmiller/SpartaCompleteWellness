@@ -8,7 +8,8 @@ import {
   Settings, 
   HelpCircle,
   WifiOff,
-  Heart
+  Heart,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,6 +52,7 @@ export const VerticalNav = () => {
       path: "/prayer-requests",
       count: prayerRequestCount || 0
     },
+    { icon: Database, label: "Storage", path: "/storage-test" },
     { icon: Menu, label: "Menu", path: "/menu" },
   ];
 

@@ -117,6 +117,74 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Register user role routes
   router.use(userRoleRouter);
+  
+  // Configure memory-based multer for testing file uploads
+  const memoryStorage = multer.memoryStorage();
+  const memoryUpload = multer({
+    storage: memoryStorage,
+    limits: { 
+      fileSize: 100 * 1024 * 1024, // 100MB limit for video uploads
+      fieldSize: 25 * 1024 * 1024 // 25MB per field
+    },
+    fileFilter: (req, file, cb) => {
+      // Allow images and videos
+      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    }
+  });
+  
+  // Test endpoint for file upload to verify object storage integration
+  router.post('/api/upload-test', memoryUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const file = req.file;
+      const isVideo = file.mimetype.startsWith('video/');
+      
+      console.log('Test upload received:', {
+        originalname: file.originalname,
+        size: file.size,
+        mimetype: file.mimetype,
+        isVideo
+      });
+      
+      // Pass the buffer to storeFile - this will store in both local filesystem and Object Storage
+      const fileInfo = await spartaStorage.storeFile(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        isVideo
+      );
+
+      console.log('File stored successfully:', fileInfo);
+      
+      // Now try to retrieve the file info to verify it was stored correctly
+      const retrievedInfo = await spartaStorage.getFileInfo(fileInfo.url);
+      
+      console.log('File retrieval test:', {
+        stored: fileInfo,
+        retrieved: retrievedInfo,
+        match: retrievedInfo ? 'File was retrieved successfully' : 'File retrieval failed'
+      });
+
+      return res.json({
+        ...fileInfo,
+        retrievalTest: retrievedInfo ? 'success' : 'failed'
+      });
+    } catch (error) {
+      console.error('Error in test file upload:', error);
+      logger.error('Error in test file upload:', error instanceof Error ? error : new Error(String(error)));
+      return res.status(500).json({ 
+        error: 'Test file upload failed', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
 
   // Endpoint to get current progress for a specific user (for admin dashboard)
   router.get("/api/users/:userId/progress", authenticate, async (req, res) => {
