@@ -4,8 +4,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 
 export default function StorageTestPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card>
+    <div className="w-full">
+      <Card className="border-0 rounded-none">
         <CardHeader>
           <CardTitle>Hybrid Storage System Test</CardTitle>
           <CardDescription>
