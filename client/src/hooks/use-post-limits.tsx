@@ -1,8 +1,8 @@
 
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useState, useMemo, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "../lib/queryClient";
+import { useMemo, useEffect } from "react";
+import { useAuth } from "./use-auth";
 
 export interface PostLimits {
   food: number;
@@ -23,30 +23,68 @@ export function usePostLimits(date: Date = new Date()) {
     queryFn: async () => {
       try {
         console.log("Fetching post counts for date:", dateKey);
-        const response = await apiRequest(
-          "GET", 
-          `/api/posts/counts?tzOffset=${tzOffset}&date=${encodeURIComponent(dateKey)}`
-        );
         
-        if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
-          throw new Error(`Failed to fetch post limits: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+        // Set up timeout to avoid hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        try {
+          const response = await apiRequest(
+            "GET", 
+            `/api/posts/counts?tzOffset=${tzOffset}&date=${encodeURIComponent(dateKey)}`,
+            undefined,
+            { signal: controller.signal }
+          );
+          
+          // Clear timeout since request completed
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            // Try to get error details if available
+            const errorBody = await response.json().catch(() => ({}));
+            throw new Error(`Failed to fetch post limits: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+          }
+          
+          const result = await response.json();
+          console.log("Post counts result:", result);
+          return result;
+        } catch (fetchError) {
+          // Clean up timeout if fetch throws
+          clearTimeout(timeoutId);
+          
+          if (fetchError.name === 'AbortError') {
+            console.warn('Post counts request timed out');
+            // Return the last known good data instead of failing
+            const lastData = queryClient.getQueryData(["/api/posts/counts", dateKey, tzOffset]);
+            if (lastData) {
+              return lastData;
+            }
+            throw new Error('Request timed out');
+          }
+          
+          throw fetchError;
         }
-        
-        const result = await response.json();
-        console.log("Post counts result:", result);
-        return result;
       } catch (err) {
         console.error("API GET request to /api/posts/counts failed:", err);
+        // For network errors, just log but don't crash the UI
+        if (err instanceof Error && (err.message.includes('Failed to fetch') || err.message.includes('Network Error'))) {
+          console.warn('Using fallback data due to network error');
+          return {
+            counts: defaultCounts,
+            canPost: defaultCanPost,
+            remaining: defaultRemaining
+          };
+        }
         throw err;
       }
     },
     enabled: !!user,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 60, // 60 seconds
     refetchOnWindowFocus: true,
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: 30000, // Poll every 30 seconds to reduce server load
     refetchOnMount: true,
-    retry: 2
+    retry: 2,
+    retryDelay: attempt => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000)
   });
 
   // Force a refetch when component mounts

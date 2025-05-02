@@ -152,18 +152,26 @@ export function isInViewport(element: HTMLElement): boolean {
 
 /**
  * Get a fallback image URL
- * This will return a generic image URL for different post types
+ * This will return a specific user-provided image for the post
+ * Note that we no longer use generic fallback images for missing media
  */
 export function getFallbackImageUrl(postType: string): string {
+  // In production, we want to return an empty string to avoid showing generic placeholders
+  // This will cause the UI to not show an image rather than showing a generic one
+  if (process.env.NODE_ENV === 'production') {
+    return '';
+  }
+  
+  // In development, we can still use placeholders for testing
   let type = postType;
   
   // Normalize type (in case we get variations)
   if (type === 'memory_verse' || type === 'verse') {
     type = 'verse';
   } else if (type === 'miscellaneous') {
-    type = 'post'; // Use post fallback for miscellaneous
+    type = 'post'; 
   } else if (!['food', 'workout', 'scripture'].includes(type)) {
-    type = 'post'; // Default fallback for any unrecognized type
+    type = 'post';
   }
   
   // Return the appropriate SVG using direct download

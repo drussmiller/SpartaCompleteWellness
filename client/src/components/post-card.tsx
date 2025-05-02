@@ -243,26 +243,23 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       console.error(`Direct Object Storage access failed for video: ${directUrl}`);
                       
                       // Try shared environment version
-                      const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
+                      const sharedPath = post.mediaUrl ? post.mediaUrl.replace('/uploads/', '/shared/uploads/') : '';
                       const sharedUrl = createDirectDownloadUrl(sharedPath);
                       console.log(`Trying shared path with direct access: ${sharedUrl}`);
                       
                       video.src = sharedUrl;
                       
-                      // Final fallback - try poster image instead
+                      // Final fallback - hide video container
                       video.onerror = () => {
                         console.error(`All video sources failed for post ${post.id}`);
-                        // Just rely on the poster image at this point
-                        video.controls = false;
                         
-                        // Add a play button overlay that shows error message when clicked
-                        const container = video.parentElement;
-                        if (container) {
-                          const overlay = document.createElement('div');
-                          overlay.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-50';
-                          overlay.innerHTML = '<div class="text-white text-center p-4">Video unavailable</div>';
-                          container.appendChild(overlay);
+                        // Hide the video container instead of showing generic message
+                        const mediaContainer = video.closest('.relative.overflow-hidden') as HTMLElement;
+                        if (mediaContainer && mediaContainer.parentElement) {
+                          mediaContainer.style.display = 'none';
                         }
+                        
+                        video.onerror = null; // Clear error handler
                       };
                     };
                   }
@@ -290,7 +287,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       console.error(`Direct Object Storage access failed for image: ${directUrl}`);
                       
                       // Try shared environment version with direct access
-                      const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
+                      const sharedPath = post.mediaUrl ? post.mediaUrl.replace('/uploads/', '/shared/uploads/') : '';
                       const sharedUrl = createDirectDownloadUrl(sharedPath);
                       console.log(`Trying shared path with direct access: ${sharedUrl}`);
                       
@@ -306,21 +303,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         
                         img.src = thumbnailUrl;
                         
-                        // Final fallback to type-specific placeholder
+                        // In production, we don't show generic placeholders
                         img.onerror = () => {
-                          console.error(`All fallbacks failed for post ${post.id}. Using type-specific placeholder.`);
+                          console.error(`All image fallbacks failed for post ${post.id}`);
                           
-                          // Use the built-in type-specific placeholder
-                          const fallbackUrl = getFallbackImageUrl(post.type);
-                          console.log(`Using fallback image: ${fallbackUrl}`);
-                          img.src = fallbackUrl;
+                          // Hide the image container and show only text content
+                          const mediaContainer = img.closest('.relative.overflow-hidden') as HTMLElement;
+                          if (mediaContainer && mediaContainer.parentElement) {
+                            mediaContainer.style.display = 'none';
+                          }
                           
-                          // Absolute last resort - use inline SVG
-                          img.onerror = () => {
-                            console.error(`Even fallback image failed. Using inline SVG.`);
-                            img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle'%3E${post.type} Image%3C/text%3E%3C/svg%3E`;
-                            img.onerror = null; // Clear error handler after final fallback
-                          };
+                          img.onerror = null; // Clear error handler
                         };
                       };
                     };
