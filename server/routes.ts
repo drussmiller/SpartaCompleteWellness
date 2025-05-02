@@ -310,7 +310,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Modify the post counts endpoint to correctly handle timezones and counts
+  // Optimized post counts endpoint to prevent 502 errors
   router.get("/api/posts/counts", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -340,62 +340,63 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Add timezone offset back to get UTC times for query
       const queryStartTime = new Date(startOfDay.getTime() + (tzOffset * 60000));
       const queryEndTime = new Date(endOfDay.getTime() + (tzOffset * 60000));
-
-      // Query posts for the specified date by type
-      const result = await db
-        .select({
-          type: posts.type,
-          count: sql<number>`count(*)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            gte(posts.createdAt, queryStartTime),
-            lt(posts.createdAt, queryEndTime),
-            isNull(posts.parentId), // Don't count comments
-            sql`${posts.type} IN ('food', 'workout', 'scripture', 'memory_verse')` // Explicitly filter only these types
-          )
+      
+      // Use faster query approach - combine all counts in a single query
+      // This helps prevent 502 errors that were occurring with multiple queries
+      const queryStartTimeWeek = new Date(startOfWeek.getTime() + (tzOffset * 60000));
+      const queryEndTimeWeek = new Date(endOfWeek.getTime() + (tzOffset * 60000));
+      
+      // Get all post counts for today and aggregate weekly data in a single query
+      const allPostCounts = await db.execute(sql`
+        WITH daily_counts AS (
+          SELECT 
+            type, 
+            COUNT(*) as count
+          FROM posts
+          WHERE user_id = ${req.user.id}
+            AND created_at >= ${queryStartTime.toISOString()}
+            AND created_at < ${queryEndTime.toISOString()}
+            AND parent_id IS NULL
+            AND type IN ('food', 'workout', 'scripture', 'memory_verse', 'miscellaneous')
+          GROUP BY type
+        ),
+        workout_week AS (
+          SELECT 
+            COUNT(*) as count, 
+            COALESCE(SUM(points), 0) as points
+          FROM posts
+          WHERE user_id = ${req.user.id}
+            AND type = 'workout'
+            AND created_at >= ${queryStartTimeWeek.toISOString()}
+            AND created_at < ${queryEndTimeWeek.toISOString()}
+            AND parent_id IS NULL
+        ),
+        memory_verse_week AS (
+          SELECT COUNT(*) as count
+          FROM posts
+          WHERE user_id = ${req.user.id}
+            AND type = 'memory_verse'
+            AND created_at >= ${queryStartTimeWeek.toISOString()}
+            AND created_at < ${queryEndTimeWeek.toISOString()}
+            AND parent_id IS NULL
         )
-        .groupBy(posts.type);
-
-      // Get workout posts for the entire week
-      const workoutWeekResult = await db
-        .select({
-          count: sql<number>`count(*)::integer`,
-          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            eq(posts.type, 'workout'),
-            gte(posts.createdAt, startOfWeek),
-            lt(posts.createdAt, endOfWeek),
-            isNull(posts.parentId)
-          )
-        );
-
-      const workoutWeekCount = workoutWeekResult[0]?.count || 0;
-      const workoutWeekPoints = workoutWeekResult[0]?.points || 0;
-
-      // Get memory verse posts for the week
-      const memoryVerseWeekResult = await db
-        .select({
-          count: sql<number>`count(*)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            eq(posts.type, 'memory_verse'),
-            gte(posts.createdAt, startOfWeek),
-            lt(posts.createdAt, endOfWeek),
-            isNull(posts.parentId)
-          )
-        );
-
-      const memoryVerseWeekCount = memoryVerseWeekResult[0]?.count || 0;
+        SELECT 
+          (SELECT json_object_agg(type, count) FROM daily_counts) as daily_counts,
+          (SELECT row_to_json(workout_week) FROM workout_week) as workout_week,
+          (SELECT row_to_json(memory_verse_week) FROM memory_verse_week) as memory_verse_week
+      `);
+      
+      // Extract results safely with default values
+      const row = allPostCounts.rows[0] || {};
+      const dailyCounts = row.daily_counts || {};
+      
+      // Type safety for nested objects
+      const workoutWeekData: Record<string, any> = row.workout_week || {count: "0", points: "0"};
+      const memoryVerseWeekData: Record<string, any> = row.memory_verse_week || {count: "0"};
+      
+      const workoutWeekCount = parseInt(String(workoutWeekData.count || "0")) || 0;
+      const workoutWeekPoints = parseInt(String(workoutWeekData.points || "0")) || 0;
+      const memoryVerseWeekCount = parseInt(String(memoryVerseWeekData.count || "0")) || 0;
 
       // Initialize counts with zeros
       const counts = {
@@ -406,12 +407,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         miscellaneous: 0
       };
 
-      // Update counts from query results
-      result.forEach(row => {
-        if (row.type in counts) {
-          counts[row.type as keyof typeof counts] = Number(row.count);
-        }
-      });
+      // Update counts from optimized query result
+      if (dailyCounts) {
+        Object.entries(dailyCounts).forEach(([type, count]: [string, unknown]) => {
+          if (type in counts) {
+            counts[type as keyof typeof counts] = parseInt(count as string) || 0;
+          }
+        });
+      }
 
       // Define maximum posts allowed per type
       const maxPosts = {

@@ -185,12 +185,11 @@ export function checkImageExists(url: string): Promise<boolean> {
         cache: 'no-store' // Avoid caching to get fresh results
       })
         .then(response => {
-          // Log response details for debugging
-          console.log(`Check for ${testUrl}: ${response.status} ${response.statusText}`);
+          // Don't log, just return the status
           return response.ok || response.status === 206; // 206 is Partial Content, which is success for Range request
         })
-        .catch(error => {
-          console.log(`Error checking ${testUrl}:`, error);
+        .catch(() => {
+          // Silently fail - no logs
           return false;
         });
     };
@@ -215,11 +214,11 @@ export function checkImageExists(url: string): Promise<boolean> {
         cache: 'no-store' // Avoid caching to get fresh results
       })
         .then(response => {
-          console.log(`Direct Object Storage check for ${path}: ${response.status} ${response.statusText}`);
+          // Silent success
           return response.ok || response.status === 206; // 206 is Partial Content, which is success for Range request
         })
-        .catch(error => {
-          console.log(`Error checking direct Object Storage for ${path}:`, error);
+        .catch(() => {
+          // Silent fail
           return false;
         });
     };
@@ -265,27 +264,24 @@ export function checkImageExists(url: string): Promise<boolean> {
       // First try the direct Object Storage approach
       const existsInObjectStorage = await checkViaObjectStorageRoute(url);
       if (existsInObjectStorage) {
-        console.log(`Image exists in Object Storage: ${url}`);
+        // Image exists
         resolve(true);
         return;
       }
       
       // Get all possible paths to try
       const paths = getPathVariations(url);
-      console.log(`Trying ${paths.length} path variations for: ${url}`);
       
       // Try each path in sequence
       for (const path of paths) {
         const exists = await checkUrl(path);
         if (exists) {
-          console.log(`Image exists at: ${path}`);
           resolve(true);
           return;
         }
       }
       
       // No path worked, resolve false
-      console.log(`Image does not exist in any variation: ${url}`);
       resolve(false);
     };
     
@@ -320,8 +316,7 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
       preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
         // If thumbnail fails, try original
         preloadImage(post.mediaUrl).catch(() => {
-          // Log error but don't attempt to load generic fallback images
-          console.error('Failed to preload image:', post.mediaUrl);
+          // Silent failure - no logging
         });
       });
     }

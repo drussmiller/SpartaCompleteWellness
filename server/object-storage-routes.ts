@@ -46,8 +46,8 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       const fileInfo = await spartaStorage.getFileInfo(`/${cleanKey}`);
       
       if (!fileInfo || !fileInfo.exists) {
-        // If not found in Object Storage, return 404
-        logger.info(`File not found in Object Storage: ${cleanKey}`);
+        // If not found in Object Storage, return 404 without excessive logging
+        // We're silently handling 404s to reduce console noise
         return res.status(404).json({
           success: false,
           message: 'File not found in Object Storage',
@@ -73,7 +73,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     
     // If we reach here, we couldn't find the file in Object Storage
     // No longer check filesystem as requested by user
-    logger.info(`No file found in Object Storage and no filesystem fallback as configured`);
+    // Silent 404 response - don't log to reduce noise for expected 404s
     return res.status(404).json({
       success: false,
       message: 'File not found',

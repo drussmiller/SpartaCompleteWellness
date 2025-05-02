@@ -297,75 +297,27 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
                 onError={(e) => {
-                  const img = e.currentTarget;
-                  console.error("Failed to load image:", post.mediaUrl);
+                  // Simply hide the image container without any retries
+                  // This is the most reliable approach with the strict Object Storage requirements
+                  const img = e.currentTarget as HTMLImageElement;
                   
-                  // Try using direct Object Storage access explicitly
-                  if (post.mediaUrl && post.mediaUrl.startsWith('/')) {
-                    const directUrl = createDirectDownloadUrl(post.mediaUrl);
-                    console.log(`Trying direct Object Storage access for image: ${directUrl}`);
-                    img.src = directUrl;
-                    
-                    // If direct access fails, try shared path
-                    img.onerror = () => {
-                      console.error(`Direct Object Storage access failed for image: ${directUrl}`);
-                      
-                      // Try shared environment version with direct access
-                      const sharedPath = post.mediaUrl ? post.mediaUrl.replace('/uploads/', '/shared/uploads/') : '';
-                      const sharedUrl = createDirectDownloadUrl(sharedPath);
-                      console.log(`Trying shared path with direct access: ${sharedUrl}`);
-                      
-                      img.src = sharedUrl;
-                      
-                      // Try thumbnail as fallback
-                      img.onerror = () => {
-                        console.error(`Shared path with direct access failed for: ${sharedUrl}`);
-                        
-                        // Try thumbnail with direct access
-                        const thumbnailUrl = getThumbnailUrl(post.mediaUrl);
-                        console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
-                        
-                        img.src = thumbnailUrl;
-                        
-                        // In production, we don't show generic placeholders
-                        img.onerror = () => {
-                          console.error(`All image fallbacks failed for post ${post.id}`);
-                          
-                          // Immediately hide the entire media container rather than showing generic content
-                          const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                          if (mediaContainer) {
-                            mediaContainer.style.display = 'none';
-                          } else {
-                            // If we can't find the container, hide the image itself
-                            img.style.display = 'none';
-                          }
-                          
-                          // Also check and hide any parent div with the bg-gray-50 class
-                          const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
-                          if (bgContainer) {
-                            bgContainer.style.display = 'none';
-                          }
-                          
-                          img.onerror = null; // Clear error handler
-                        };
-                      };
-                    };
+                  // Hide the parent container if found
+                  const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
+                  if (mediaContainer) {
+                    mediaContainer.style.display = 'none';
                   } else {
-                    // If the mediaUrl isn't a local path that can be handled, hide container immediately
-                    const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                    if (mediaContainer) {
-                      mediaContainer.style.display = 'none';
-                    } else {
-                      // If we can't find the container, hide the image itself
-                      img.style.display = 'none';
-                    }
-                    
-                    // Also check and hide any parent div with the bg-gray-50 class
-                    const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
-                    if (bgContainer) {
-                      bgContainer.style.display = 'none';
-                    }
+                    // If container not found, hide the image itself
+                    img.style.display = 'none';
                   }
+                  
+                  // Also hide any background container
+                  const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
+                  if (bgContainer) {
+                    bgContainer.style.display = 'none';
+                  }
+                  
+                  // Prevent further error handlers from firing
+                  img.onerror = null;
                 }}
               />
             )}
