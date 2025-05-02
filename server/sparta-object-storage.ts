@@ -319,19 +319,30 @@ export class SpartaObjectStorage {
           }
         }
         
-        // Always store locally as well for backward compatibility
-        fs.writeFileSync(filePath, fileBuffer);
-        console.log(`File written successfully to ${filePath}`);
-        logger.info(`File written successfully to ${filePath}`);
+        // Store locally only if Object Storage is not available
+        if (!this.objectStorage) {
+          fs.writeFileSync(filePath, fileBuffer);
+          console.log(`File written successfully to ${filePath} (Object Storage not available)`);
+          logger.info(`File written successfully to ${filePath} (Object Storage not available)`);
+        } else {
+          console.log(`Skipping local file storage to save space, using Object Storage only`);
+          logger.info(`Skipping local file storage to save space, using Object Storage only`);
+        }
       } catch (writeError) {
         console.error(`Error writing file to ${filePath}:`, writeError);
         logger.error(`Error writing file to ${filePath}:`, writeError);
         throw writeError;
       }
 
-      // Get file size
-      const stats = fs.statSync(filePath);
-      logger.info(`File size: ${stats.size} bytes`);
+      // Get file size or use buffer size if the file doesn't exist on disk
+      let fileSize = 0;
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        fileSize = stats.size;
+      } else {
+        fileSize = fileBuffer.length;
+      }
+      logger.info(`File size: ${fileSize} bytes`);
 
       let thumbnailUrl = null;
 
@@ -531,7 +542,7 @@ export class SpartaObjectStorage {
         thumbnailUrl,
         filename: safeFilename,
         mimeType,
-        size: stats.size,
+        size: fileSize,
         path: filePath
       };
     } catch (error) {
