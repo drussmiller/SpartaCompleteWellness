@@ -628,6 +628,33 @@ export class SpartaObjectStorage {
         logger.error(`Thumbnail file was not created at ${targetPath} despite no errors`);
         throw new Error('Thumbnail was not created');
       }
+      
+      // Directly upload the thumbnail to Object Storage here
+      if (this.objectStorage) {
+        try {
+          const thumbnailBasename = path.basename(targetPath);
+          
+          // Store in both environment-specific and shared paths
+          const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+          const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+          
+          const thumbnailBuffer = fs.readFileSync(targetPath);
+          
+          // Upload with environment-specific key
+          console.log(`Uploading thumbnail to Object Storage with env-specific key: ${envSpecificKey}`);
+          await this.objectStorage.uploadFromBytes(envSpecificKey, thumbnailBuffer);
+          
+          // Upload with shared key
+          console.log(`Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
+          await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
+          
+          console.log(`Successfully uploaded thumbnail to Object Storage in both locations`);
+        } catch (objStoreError) {
+          console.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
+          logger.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
+          // Continue with local thumbnail only
+        }
+      }
     } catch (error) {
       console.error('Error creating thumbnail:', error);
       logger.error('Error creating thumbnail:', error instanceof Error ? error : new Error(String(error)));
@@ -639,6 +666,33 @@ export class SpartaObjectStorage {
         fs.copyFileSync(sourcePath, targetPath);
         console.log(`Created fallback thumbnail by copying original file to ${targetPath}`);
         logger.info(`Created fallback thumbnail by copying original file to ${targetPath}`);
+        
+        // Try to upload the fallback thumbnail to Object Storage
+        if (this.objectStorage) {
+          try {
+            const thumbnailBasename = path.basename(targetPath);
+            
+            // Store in both environment-specific and shared paths
+            const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+            const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+            
+            const thumbnailBuffer = fs.readFileSync(targetPath);
+            
+            // Upload with environment-specific key
+            console.log(`Uploading fallback thumbnail to Object Storage with env-specific key: ${envSpecificKey}`);
+            await this.objectStorage.uploadFromBytes(envSpecificKey, thumbnailBuffer);
+            
+            // Upload with shared key
+            console.log(`Uploading fallback thumbnail to Object Storage with shared key: ${sharedKey}`);
+            await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
+            
+            console.log(`Successfully uploaded fallback thumbnail to Object Storage in both locations`);
+          } catch (objStoreError) {
+            console.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
+            logger.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
+            // Continue with local thumbnail only
+          }
+        }
       } catch (fallbackError) {
         console.error('Failed to create fallback thumbnail:', fallbackError);
         logger.error('Failed to create fallback thumbnail:', fallbackError);
