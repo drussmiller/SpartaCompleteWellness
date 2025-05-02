@@ -253,9 +253,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       video.onerror = () => {
                         console.error(`All video sources failed for post ${post.id}`);
                         
-                        // Hide the video container instead of showing generic message
-                        const mediaContainer = video.closest('.relative.overflow-hidden') as HTMLElement;
-                        if (mediaContainer && mediaContainer.parentElement) {
+                        // Hide the entire media container rather than showing generic content
+                        const mediaContainer = video.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
+                        if (mediaContainer) {
                           mediaContainer.style.display = 'none';
                         }
                         
@@ -307,9 +307,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         img.onerror = () => {
                           console.error(`All image fallbacks failed for post ${post.id}`);
                           
-                          // Hide the image container and show only text content
-                          const mediaContainer = img.closest('.relative.overflow-hidden') as HTMLElement;
-                          if (mediaContainer && mediaContainer.parentElement) {
+                          // Hide the entire media container rather than showing generic content
+                          const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
+                          if (mediaContainer) {
                             mediaContainer.style.display = 'none';
                           }
                           

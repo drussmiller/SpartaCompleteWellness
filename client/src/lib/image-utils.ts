@@ -152,30 +152,13 @@ export function isInViewport(element: HTMLElement): boolean {
 
 /**
  * Get a fallback image URL
- * This will return a specific user-provided image for the post
- * Note that we no longer use generic fallback images for missing media
+ * This function now always returns an empty string to never show generic placeholders
+ * as requested by the user
  */
 export function getFallbackImageUrl(postType: string): string {
-  // In production, we want to return an empty string to avoid showing generic placeholders
-  // This will cause the UI to not show an image rather than showing a generic one
-  if (process.env.NODE_ENV === 'production') {
-    return '';
-  }
-  
-  // In development, we can still use placeholders for testing
-  let type = postType;
-  
-  // Normalize type (in case we get variations)
-  if (type === 'memory_verse' || type === 'verse') {
-    type = 'verse';
-  } else if (type === 'miscellaneous') {
-    type = 'post'; 
-  } else if (!['food', 'workout', 'scripture'].includes(type)) {
-    type = 'post';
-  }
-  
-  // Return the appropriate SVG using direct download
-  return createDirectDownloadUrl(`/uploads/default-${type}.svg`);
+  // Always return empty string to avoid showing generic placeholders
+  // This will cause the UI to hide the image container rather than showing a generic one
+  return '';
 }
 
 /**
@@ -337,14 +320,8 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
       preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
         // If thumbnail fails, try original
         preloadImage(post.mediaUrl).catch(() => {
-          // If original fails, try the fallback
-          if (post.type) {
-            preloadImage(getFallbackImageUrl(post.type)).catch(() => {
-              console.error('Failed to preload all image options:', post.mediaUrl);
-            });
-          } else {
-            console.error('Failed to preload image:', post.mediaUrl);
-          }
+          // Log error but don't attempt to load generic fallback images
+          console.error('Failed to preload image:', post.mediaUrl);
         });
       });
     }
@@ -359,12 +336,7 @@ export function optimizeImageLoading(posts: any[], visibleCount: number = 5): vo
           preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
             // Try original next
             preloadImage(post.mediaUrl).catch(() => {
-              // Silently try the fallback
-              if (post.type) {
-                preloadImage(getFallbackImageUrl(post.type)).catch(() => {
-                  // Silent failure for non-visible posts
-                });
-              }
+              // Silent failure for non-visible posts - no fallback images
             });
           });
         }, index * 100);
