@@ -281,7 +281,32 @@ app.use('/api', (req, res, next) => {
               
               try {
                 // Using the downloadAsBytes method from the Client class
-                const fileBuffer = await objectStorage.downloadAsBytes(storageKey);
+                const result = await objectStorage.downloadAsBytes(storageKey);
+                
+                // Handle different response formats from Object Storage client
+                let fileBuffer: Buffer | null = null;
+                
+                // First check if result is a Buffer directly
+                if (Buffer.isBuffer(result)) {
+                  fileBuffer = result;
+                  console.log(`Object Storage returned a Buffer directly (size: ${fileBuffer.length} bytes)`);
+                } 
+                // Then check if result is an object with ok property (newer format)
+                else if (result && typeof result === 'object' && 'ok' in result) {
+                  if (result.ok === true && result.value) {
+                    // Check if the value property is a Buffer
+                    if (Buffer.isBuffer(result.value)) {
+                      fileBuffer = result.value;
+                      console.log(`Object Storage returned a Result object with Buffer value (size: ${fileBuffer.length} bytes)`);
+                    } else {
+                      console.error(`Object Storage result has non-Buffer value:`, typeof result.value);
+                    }
+                  } else {
+                    console.error(`Object Storage result indicates failure:`, result.error || 'Unknown error');
+                  }
+                } else {
+                  console.error(`Unknown Object Storage result format:`, typeof result);
+                }
                 
                 if (fileBuffer) {
                   // Determine content type based on file extension
