@@ -1,5 +1,10 @@
 
 /**
+ * Production server URL for cross-environment access
+ */
+export const PROD_URL = "https://sparta.replit.app";
+
+/**
  * Get the thumbnail URL for an image with size optimization
  */
 export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
@@ -10,6 +15,13 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
   // Handle SVG files - use them directly without thumbnailing
   if (originalUrl.endsWith('.svg')) {
     return originalUrl;
+  }
+  
+  // Handle shared uploads path
+  if (originalUrl.startsWith('/shared/uploads/')) {
+    // Convert to regular upload path for thumbnail generation
+    const standardPath = originalUrl.replace('/shared/uploads/', '/uploads/');
+    return getThumbnailUrl(standardPath, size);
   }
   
   // Handle regular images that need thumbnailing
@@ -113,16 +125,80 @@ export function getFallbackImageUrl(postType: string): string {
  */
 export function checkImageExists(url: string): Promise<boolean> {
   return new Promise((resolve) => {
-    // For SVG files and non-uploads, assume they exist
-    if (url.endsWith('.svg') || !url.startsWith('/uploads/')) {
+    // For SVG files and non-uploads/non-shared paths, assume they exist
+    if (url.endsWith('.svg') || 
+        (!url.startsWith('/uploads/') && !url.startsWith('/shared/uploads/'))) {
       resolve(true);
       return;
     }
     
-    // For regular images, do a HEAD request
-    fetch(url, { method: 'HEAD' })
-      .then(response => resolve(response.ok))
-      .catch(() => resolve(false));
+    // Try the provided URL first
+    const checkUrl = (testUrl: string): Promise<boolean> => {
+      return fetch(testUrl, { method: 'HEAD' })
+        .then(response => response.ok)
+        .catch(() => false);
+    };
+    
+    // If it's a shared path, try to check both original and shared paths
+    const checkUrlCascade = async () => {
+      // First try the URL as provided
+      const exists = await checkUrl(url);
+      if (exists) {
+        resolve(true);
+        return;
+      }
+      
+      // If it's a regular uploads path, try the shared version
+      if (url.startsWith('/uploads/')) {
+        const sharedPath = url.replace('/uploads/', '/shared/uploads/');
+        const sharedExists = await checkUrl(sharedPath);
+        if (sharedExists) {
+          resolve(true);
+          return;
+        }
+        
+        // Try the production path
+        const prodPath = `${PROD_URL}${url}`;
+        const prodExists = await checkUrl(prodPath);
+        if (prodExists) {
+          resolve(true);
+          return;
+        }
+        
+        // Try production shared path
+        const prodSharedPath = `${PROD_URL}${sharedPath}`;
+        const prodSharedExists = await checkUrl(prodSharedPath);
+        resolve(prodSharedExists);
+      } 
+      // If it's a shared path, try the regular version
+      else if (url.startsWith('/shared/uploads/')) {
+        const regularPath = url.replace('/shared/uploads/', '/uploads/');
+        const regularExists = await checkUrl(regularPath);
+        if (regularExists) {
+          resolve(true);
+          return;
+        }
+        
+        // Try the production shared path
+        const prodPath = `${PROD_URL}${url}`;
+        const prodExists = await checkUrl(prodPath);
+        if (prodExists) {
+          resolve(true);
+          return;
+        }
+        
+        // Try production regular path
+        const prodRegularPath = `${PROD_URL}${regularPath}`;
+        const prodRegularExists = await checkUrl(prodRegularPath);
+        resolve(prodRegularExists);
+      }
+      else {
+        resolve(false);
+      }
+    };
+    
+    // Start the cascade check
+    checkUrlCascade();
   });
 }
 

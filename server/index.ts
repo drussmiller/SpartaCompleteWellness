@@ -233,6 +233,60 @@ app.use('/api', (req, res, next) => {
     });
 
 
+    // Setup route for shared files from object storage
+    console.log("[Startup] Setting up shared files path handler for cross-environment compatibility");
+    app.use('/shared/uploads', async (req, res, next) => {
+      try {
+        const filePath = req.path;
+        const objectStorageKey = `shared/uploads${filePath}`;
+        
+        console.log(`Attempting to serve shared file: ${objectStorageKey}`);
+        
+        // If replit object storage is available, try to fetch from there
+        if (process.env.REPLIT_DB_ID) {
+          try {
+            const { ObjectStorageClient } = require('@replit/object-storage');
+            const objectStorage = new ObjectStorageClient();
+            const fileBuffer = await objectStorage.getBytes(objectStorageKey);
+            
+            if (fileBuffer) {
+              // Determine content type based on file extension
+              const fileExtension = path.extname(filePath).toLowerCase();
+              let contentType = 'application/octet-stream'; // default
+              
+              if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+                contentType = 'image/jpeg';
+              } else if (fileExtension === '.png') {
+                contentType = 'image/png';
+              } else if (fileExtension === '.gif') {
+                contentType = 'image/gif';
+              } else if (fileExtension === '.mp4') {
+                contentType = 'video/mp4';
+              } else if (fileExtension === '.mov') {
+                contentType = 'video/quicktime';
+              } else if (fileExtension === '.svg') {
+                contentType = 'image/svg+xml';
+              }
+              
+              res.setHeader('Content-Type', contentType);
+              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+              return res.send(fileBuffer);
+            }
+          } catch (error) {
+            console.error(`Error fetching from object storage: ${objectStorageKey}`, error);
+          }
+        }
+        
+        // If we get here, either object storage isn't available or the file wasn't found
+        // Try redirecting to the standard /uploads path as a fallback
+        const standardPath = `/uploads${filePath}`;
+        res.redirect(standardPath);
+      } catch (error) {
+        console.error('Error serving shared file:', error);
+        next();
+      }
+    });
+    
     // Serve uploads directory as static files
     const uploadsPath = path.join(process.cwd(), 'uploads');
     console.log("[Startup] Setting up static uploads directory:", uploadsPath);

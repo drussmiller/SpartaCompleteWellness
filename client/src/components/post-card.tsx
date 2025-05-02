@@ -230,6 +230,44 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   const prodUrl = `${PROD_URL}${post.mediaUrl}`;
                   console.log("Trying production URL:", prodUrl);
                   video.src = prodUrl;
+                  
+                  // Set fallback for production URL
+                  video.onerror = () => {
+                    console.error(`Production fallback also failed for video: ${prodUrl}`);
+                    
+                    // Try shared environment version from Object Storage
+                    const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
+                    console.log(`Trying shared storage path for video: ${sharedPath}`);
+                    
+                    video.src = sharedPath;
+                    
+                    // Set handler for shared path fallback
+                    video.onerror = () => {
+                      console.error(`Shared path fallback also failed for video: ${sharedPath}`);
+                      
+                      // Try production shared path
+                      const prodSharedPath = `${PROD_URL}${sharedPath}`;
+                      console.log(`Trying production shared path for video: ${prodSharedPath}`);
+                      
+                      video.src = prodSharedPath;
+                      
+                      // Final fallback - try poster image instead
+                      video.onerror = () => {
+                        console.error(`All video sources failed for post ${post.id}`);
+                        // Just rely on the poster image at this point
+                        video.controls = false;
+                        
+                        // Add a play button overlay that shows error message when clicked
+                        const container = video.parentElement;
+                        if (container) {
+                          const overlay = document.createElement('div');
+                          overlay.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-50';
+                          overlay.innerHTML = '<div class="text-white text-center p-4">Video unavailable</div>';
+                          container.appendChild(overlay);
+                        }
+                      };
+                    };
+                  };
                 }}
               />
             ) : (
@@ -254,19 +292,52 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   img.onerror = () => {
                     console.error(`Production fallback also failed for image: ${productionUrl}`);
                     
-                    // Try thumbnail as fallback
-                    const thumbnailUrl = getThumbnailUrl(post.mediaUrl);
-                    console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
+                    // Try shared environment version from Object Storage
+                    const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
+                    console.log(`Trying shared storage path: ${sharedPath}`);
                     
-                    img.src = thumbnailUrl;
+                    img.src = sharedPath;
                     
-                    // Set a final error handler for the thumbnail fallback
+                    // Set handler for shared path fallback
                     img.onerror = () => {
-                      console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
+                      console.error(`Shared path fallback also failed for: ${sharedPath}`);
                       
-                      // Use a simple data URI as final fallback
-                      img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle'%3E${post.type} Image%3C/text%3E%3C/svg%3E`;
-                      img.onerror = null; // Clear error handler after final fallback
+                      // Try production shared path
+                      const prodSharedPath = `${PROD_URL}${sharedPath}`;
+                      console.log(`Trying production shared path: ${prodSharedPath}`);
+                      
+                      img.src = prodSharedPath;
+                      
+                      // Set handler for prod shared path fallback
+                      img.onerror = () => {
+                        console.error(`Production shared path fallback also failed for: ${prodSharedPath}`);
+                        
+                        // Try thumbnail as fallback
+                        const thumbnailUrl = getThumbnailUrl(post.mediaUrl);
+                        console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
+                        
+                        img.src = thumbnailUrl;
+                        
+                        // Try shared thumbnail fallback
+                        img.onerror = () => {
+                          console.error(`Thumbnail fallback also failed. Trying shared thumbnail.`);
+                          
+                          // Try shared thumbnail path
+                          const sharedThumbPath = thumbnailUrl.replace('/uploads/', '/shared/uploads/');
+                          console.log(`Trying shared thumbnail path: ${sharedThumbPath}`);
+                          
+                          img.src = sharedThumbPath;
+                          
+                          // Final fallback to placeholder
+                          img.onerror = () => {
+                            console.error(`All fallbacks failed for post ${post.id}. Using placeholder.`);
+                            
+                            // Use a simple data URI as final fallback
+                            img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle'%3E${post.type} Image%3C/text%3E%3C/svg%3E`;
+                            img.onerror = null; // Clear error handler after final fallback
+                          };
+                        };
+                      };
                     };
                   };
                 }}

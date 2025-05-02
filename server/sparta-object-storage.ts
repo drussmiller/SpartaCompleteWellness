@@ -306,12 +306,36 @@ export class SpartaObjectStorage {
         if (this.objectStorage) {
           try {
             // Create a key based on path structure to maintain same organization
+            // Create environment-agnostic keys by removing env-specific parts
             const relativePath = filePath.replace(this.baseDir, '').replace(/^\/+/, '');
-            objectStorageKey = `uploads/${relativePath}`;
             
-            console.log(`Storing file in Replit Object Storage with key: ${objectStorageKey}`);
-            await this.objectStorage.uploadFromBytes(objectStorageKey, fileBuffer);
-            console.log(`File stored successfully in Replit Object Storage with key: ${objectStorageKey}`);
+            // Store with both environment-specific and environment-agnostic keys
+            // The environment-agnostic key has 'shared/' prefix and works across environments
+            const envSpecificKey = `uploads/${relativePath}`;
+            const sharedKey = `shared/uploads/${relativePath}`;
+            
+            logger.info(`Cross-environment storage: Storing file in dual format`, {
+              envSpecificKey,
+              sharedKey,
+              fileSize: fileBuffer.length,
+              mimeType
+            });
+            
+            // Store in both formats so it's accessible in both environments
+            console.log(`Storing file in Replit Object Storage with environment-specific key: ${envSpecificKey}`);
+            await this.objectStorage.uploadFromBytes(envSpecificKey, fileBuffer);
+            
+            console.log(`Storing file in Replit Object Storage with shared key: ${sharedKey}`);
+            await this.objectStorage.uploadFromBytes(sharedKey, fileBuffer);
+            
+            // Use the environment-specific key for URLs (backward compatibility)
+            objectStorageKey = envSpecificKey;
+            console.log(`File stored successfully in Replit Object Storage - available in both environments`);
+            logger.info(`Cross-environment storage complete: File stored with both keys successfully`, {
+              envSpecificKey,
+              sharedKey,
+              fileSize: fileBuffer.length
+            });
           } catch (objStorageError) {
             console.error(`Error storing file in Replit Object Storage:`, objStorageError);
             logger.error(`Error storing file in Replit Object Storage:`, objStorageError);
@@ -494,12 +518,22 @@ export class SpartaObjectStorage {
         if (thumbnailUrl && fs.existsSync(thumbnailPath) && this.objectStorage) {
           try {
             const thumbnailBasename = path.basename(thumbnailPath);
-            const objectStorageKey = `uploads/thumbnails/${thumbnailBasename}`;
             
-            console.log(`Uploading thumbnail to Object Storage with key: ${objectStorageKey}`);
+            // Store in both environment-specific and shared paths
+            const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+            const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+            
             const thumbnailBuffer = fs.readFileSync(thumbnailPath);
-            await this.objectStorage.uploadFromBytes(objectStorageKey, thumbnailBuffer);
-            console.log(`Successfully uploaded thumbnail to Object Storage`);
+            
+            // Upload with environment-specific key
+            console.log(`Uploading thumbnail to Object Storage with env-specific key: ${envSpecificKey}`);
+            await this.objectStorage.uploadFromBytes(envSpecificKey, thumbnailBuffer);
+            
+            // Upload with shared key
+            console.log(`Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
+            await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
+            
+            console.log(`Successfully uploaded thumbnail to Object Storage in both locations`);
           } catch (objStoreError) {
             console.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
             // Continue with local thumbnail only
