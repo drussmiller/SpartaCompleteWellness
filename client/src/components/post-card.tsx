@@ -253,15 +253,39 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       video.onerror = () => {
                         console.error(`All video sources failed for post ${post.id}`);
                         
-                        // Hide the entire media container rather than showing generic content
+                        // Immediately hide the entire media container rather than showing generic content
                         const mediaContainer = video.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
                         if (mediaContainer) {
                           mediaContainer.style.display = 'none';
+                        } else {
+                          // If we can't find the container, hide the video itself
+                          video.style.display = 'none';
+                        }
+                        
+                        // Also check and hide any parent div with the bg-gray-50 class
+                        const bgContainer = video.closest('.bg-gray-50') as HTMLElement;
+                        if (bgContainer) {
+                          bgContainer.style.display = 'none';
                         }
                         
                         video.onerror = null; // Clear error handler
                       };
                     };
+                  } else {
+                    // If the mediaUrl isn't a local path that can be handled, hide container immediately
+                    const mediaContainer = video.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
+                    if (mediaContainer) {
+                      mediaContainer.style.display = 'none';
+                    } else {
+                      // If we can't find the container, hide the video itself
+                      video.style.display = 'none';
+                    }
+                    
+                    // Also check and hide any parent div with the bg-gray-50 class
+                    const bgContainer = video.closest('.bg-gray-50') as HTMLElement;
+                    if (bgContainer) {
+                      bgContainer.style.display = 'none';
+                    }
                   }
                 }}
               />
@@ -307,16 +331,40 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         img.onerror = () => {
                           console.error(`All image fallbacks failed for post ${post.id}`);
                           
-                          // Hide the entire media container rather than showing generic content
+                          // Immediately hide the entire media container rather than showing generic content
                           const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
                           if (mediaContainer) {
                             mediaContainer.style.display = 'none';
+                          } else {
+                            // If we can't find the container, hide the image itself
+                            img.style.display = 'none';
+                          }
+                          
+                          // Also check and hide any parent div with the bg-gray-50 class
+                          const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
+                          if (bgContainer) {
+                            bgContainer.style.display = 'none';
                           }
                           
                           img.onerror = null; // Clear error handler
                         };
                       };
                     };
+                  } else {
+                    // If the mediaUrl isn't a local path that can be handled, hide container immediately
+                    const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
+                    if (mediaContainer) {
+                      mediaContainer.style.display = 'none';
+                    } else {
+                      // If we can't find the container, hide the image itself
+                      img.style.display = 'none';
+                    }
+                    
+                    // Also check and hide any parent div with the bg-gray-50 class
+                    const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
+                    if (bgContainer) {
+                      bgContainer.style.display = 'none';
+                    }
                   }
                 }}
               />

@@ -99,13 +99,10 @@ objectStorageRouter.get('/direct-download', (req: Request, res: Response) => {
       }
     }
     
-    // Try default images if all else fails
-    const defaultPath = `${uploadPath}/default-post.svg`;
-    if (fs.existsSync(defaultPath)) {
-      res.setHeader('Content-Type', 'image/svg+xml');
-      logger.info(`Serving default image: ${defaultPath}`);
-      return res.sendFile(defaultPath);
-    }
+    // No longer serve default image - just return 404 as requested
+    // This ensures no generic placeholders appear in the UI
+    logger.info(`No default image fallback - returning 404 as configured`);
+    
     
     // If we reach here, we couldn't find any matching file
     logger.error(`Failed to find file for key: ${cleanKey}`);
