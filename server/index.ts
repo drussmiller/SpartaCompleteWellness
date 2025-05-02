@@ -331,17 +331,14 @@ app.use('/api', (req, res, next) => {
           return res.send(fileBuffer);
         }
         
-        // If we get here, we couldn't find the file in Object Storage
-        // Check if it exists locally as a last resort
-        const localPath = path.join(process.cwd(), 'uploads', filePath);
-        if (fs.existsSync(localPath)) {
-          console.log(`Found file locally at ${localPath}, serving directly`);
-          return res.sendFile(localPath);
-        }
-        
-        // File not found anywhere, redirect to standard uploads path
-        console.log(`File not found in Object Storage or locally, redirecting to standard path: /uploads${filePath}`);
-        res.redirect(`/uploads${filePath}`);
+        // No longer check filesystem as requested - Object Storage only
+        // Return a proper 404 response
+        console.log(`File ${filePath} not found in Object Storage and no filesystem fallback as configured`);
+        return res.status(404).json({
+          success: false,
+          message: 'File not found in Object Storage',
+          path: filePath
+        });
         
       } catch (error) {
         console.error('Error serving shared file:', error);
@@ -349,17 +346,20 @@ app.use('/api', (req, res, next) => {
       }
     });
     
-    // Serve uploads directory as static files
-    const uploadsPath = path.join(process.cwd(), 'uploads');
-    console.log("[Startup] Setting up static uploads directory:", uploadsPath);
-    app.use('/uploads', express.static(uploadsPath, {
-      // Set maximum cache age to 1 day
-      maxAge: '1d',
-      // Don't transform paths
-      fallthrough: false,
-      // Return 404 if file not found
-      redirect: false
-    }));
+    // Replace static file serving with an Object Storage middleware
+    // This ensures we never serve files from the filesystem directly
+    console.log("[Startup] Setting up Object Storage-only uploads handler");
+    app.use('/uploads', (req, res) => {
+      // Return 404 with JSON response and redirect to Object Storage
+      const filePath = req.path;
+      console.log(`[Object Storage Only] Redirecting filesystem request to Object Storage: ${filePath}`);
+      
+      // Create the appropriate Object Storage URL
+      const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${filePath}`;
+      
+      // Send a 302 redirect to the Object Storage endpoint
+      return res.redirect(302, objectStorageUrl);
+    });
 
     // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {

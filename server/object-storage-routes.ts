@@ -19,10 +19,10 @@ const objectStorage = new ObjectStorage.Client({
 });
 
 /**
- * Direct route to serve files from the local filesystem
- * This is a fallback approach since the Object Storage API is having issues
+ * Direct route to serve files exclusively from Object Storage
+ * This route no longer falls back to the local filesystem as requested by user
  */
-objectStorageRouter.get('/direct-download', (req: Request, res: Response) => {
+objectStorageRouter.get('/direct-download', async (req: Request, res: Response) => {
   const { key } = req.query;
   
   if (!key || typeof key !== 'string') {
@@ -35,77 +35,45 @@ objectStorageRouter.get('/direct-download', (req: Request, res: Response) => {
   try {
     // Clean key (remove leading slash if present)
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
-    logger.info(`Direct file serving for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
+    logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
     
-    // Define potential file paths in order of preference
-    const basePath = '/home/runner/workspace';
-    const uploadPath = `${basePath}/uploads`;
+    // Get reference to SpartaObjectStorage
+    const { spartaStorage } = await import('./sparta-object-storage');
     
-    // First try the standard path
-    if (fs.existsSync(`${basePath}/${cleanKey}`)) {
-      const filePath = `${basePath}/${cleanKey}`;
-      const contentType = getContentType(filePath);
-      res.setHeader('Content-Type', contentType);
-      logger.info(`Found file at standard path: ${filePath}`);
-      return res.sendFile(filePath);
-    }
-    
-    // Try uploads directory paths
-    if (!cleanKey.startsWith('uploads/') && cleanKey.includes('/')) {
-      const filename = cleanKey.split('/').pop() || '';
-      const uploadFilePath = `${uploadPath}/${filename}`;
+    // Try to get file from Object Storage only - no filesystem fallback
+    try {
+      // Try to fetch from Object Storage
+      const fileInfo = await spartaStorage.getFileInfo(`/${cleanKey}`);
       
-      if (fs.existsSync(uploadFilePath)) {
-        const contentType = getContentType(uploadFilePath);
+      if (!fileInfo || !fileInfo.exists) {
+        // If not found in Object Storage, return 404
+        logger.info(`File not found in Object Storage: ${cleanKey}`);
+        return res.status(404).json({
+          success: false,
+          message: 'File not found in Object Storage',
+          key: cleanKey
+        });
+      }
+      
+      // If we have the file in Object Storage, stream it
+      if (fileInfo.objectStorageUrl) {
+        // Return the direct Object Storage URL if available
+        logger.info(`Redirecting to Object Storage URL: ${fileInfo.objectStorageUrl}`);
+        return res.redirect(fileInfo.objectStorageUrl);
+      } else if (fileInfo.buffer) {
+        // Or send the file buffer if we have it
+        const contentType = getContentType(cleanKey);
         res.setHeader('Content-Type', contentType);
-        logger.info(`Found file in uploads directory: ${uploadFilePath}`);
-        return res.sendFile(uploadFilePath);
+        logger.info(`Serving file from Object Storage buffer: ${cleanKey}`);
+        return res.send(fileInfo.buffer);
       }
+    } catch (objError) {
+      logger.error(`Object Storage error: ${objError}`, { route: '/api/object-storage/direct-download' });
     }
     
-    // Check for thumbnails with/without thumb- prefix
-    if (cleanKey.includes('thumbnails/')) {
-      const filename = cleanKey.split('/').pop() || '';
-      const thumbDir = `${uploadPath}/thumbnails`;
-      
-      // Check with thumb- prefix
-      if (!filename.startsWith('thumb-')) {
-        const prefixedPath = `${thumbDir}/thumb-${filename}`;
-        if (fs.existsSync(prefixedPath)) {
-          const contentType = getContentType(prefixedPath);
-          res.setHeader('Content-Type', contentType);
-          logger.info(`Found thumbnail with prefix: ${prefixedPath}`);
-          return res.sendFile(prefixedPath);
-        }
-      } 
-      // Check without thumb- prefix
-      else {
-        const unprefixedPath = `${thumbDir}/${filename.substring(6)}`;
-        if (fs.existsSync(unprefixedPath)) {
-          const contentType = getContentType(unprefixedPath);
-          res.setHeader('Content-Type', contentType);
-          logger.info(`Found thumbnail without prefix: ${unprefixedPath}`);
-          return res.sendFile(unprefixedPath);
-        }
-      }
-      
-      // Check standard thumbnail path
-      const standardThumbPath = `${thumbDir}/${filename}`;
-      if (fs.existsSync(standardThumbPath)) {
-        const contentType = getContentType(standardThumbPath);
-        res.setHeader('Content-Type', contentType);
-        logger.info(`Found thumbnail at standard path: ${standardThumbPath}`);
-        return res.sendFile(standardThumbPath);
-      }
-    }
-    
-    // No longer serve default image - just return 404 as requested
-    // This ensures no generic placeholders appear in the UI
-    logger.info(`No default image fallback - returning 404 as configured`);
-    
-    
-    // If we reach here, we couldn't find any matching file
-    logger.error(`Failed to find file for key: ${cleanKey}`);
+    // If we reach here, we couldn't find the file in Object Storage
+    // No longer check filesystem as requested by user
+    logger.info(`No file found in Object Storage and no filesystem fallback as configured`);
     return res.status(404).json({
       success: false,
       message: 'File not found',
