@@ -212,7 +212,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       )}
 
       {post.mediaUrl && (
-        <div className="relative mt-2">
+        <div className="relative mt-2 w-screen -mx-4">
           <div className="w-full max-h-[500px] flex items-center justify-center bg-gray-50">
             {shouldShowAsVideo ? (
               <video

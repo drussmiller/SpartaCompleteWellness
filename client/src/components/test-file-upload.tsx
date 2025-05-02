@@ -64,13 +64,14 @@ export function TestFileUpload() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center space-x-2">
+    <div className="space-y-6 w-full max-w-full">
+      <div className="space-y-2 w-full">
+        <div className="flex items-center space-x-2 w-full">
           <Input 
             type="file" 
             onChange={handleFileChange} 
             disabled={uploading}
+            className="w-full"
           />
           <Button 
             onClick={handleUpload} 
