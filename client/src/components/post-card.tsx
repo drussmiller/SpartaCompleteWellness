@@ -23,14 +23,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
-import { 
-  getThumbnailUrl, 
-  getFallbackImageUrl, 
-  checkImageExists, 
-  generateImagePlaceholder,
-  mediaService,
-  PROD_URL
-} from "../lib/image-utils";
+import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
 
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
@@ -93,12 +86,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [videoLoadAttempts, setVideoLoadAttempts] = useState(0);
   const [videoLoadError, setVideoLoadError] = useState<string | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  
-  // Reset image loaded state when the post changes
-  useEffect(() => {
-    setImageLoaded(false);
-  }, [post.id, post.mediaUrl]);
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
@@ -366,7 +353,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <Avatar>
             <AvatarImage
               key={`avatar-${authorData.id}-${avatarKey}`}
-              src={authorData.imageUrl ? mediaService.getImageUrl(authorData.imageUrl) : `https://api.dicebear.com/7.x/initials/svg?seed=${avatarSeed}`}
+              src={authorData.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${avatarSeed}`}
             />
             <AvatarFallback>{displayName[0].toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -450,8 +437,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 )}
                 <video
                   key={`video-${post.id}-${videoLoadAttempts}`}
-                  src={mediaService.getImageUrl(post.mediaUrl)}
-                  poster={mediaService.getImageUrl(getThumbnailUrl(post.mediaUrl, 'medium'))}
+                  src={post.mediaUrl}
+                  poster={getThumbnailUrl(post.mediaUrl, 'medium')}
                   controls
                   preload="metadata"
                   className="w-full h-full object-contain"
@@ -477,72 +464,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     setVideoLoadAttempts(prev => prev + 1);
                     
                     const videoEl = e.target as HTMLVideoElement;
-                    
-                    // First try the production URL directly
-                    if (videoLoadAttempts === 1) {
-                      const productionUrl = `${PROD_URL}${post.mediaUrl}`;
-                      console.log(`Video load error - trying production URL: ${productionUrl}`);
-                      
-                      // Change the src attribute
-                      videoEl.src = productionUrl;
-                      
-                      // Try to reload the video
-                      videoEl.load();
-                      return;
-                    }
-                    
-                    // Show a placeholder when all other attempts fail (after a few retries)
-                    if (videoLoadAttempts >= 2) {
-                      // Try to show a nice placeholder instead of a broken video element
-                      const container = videoEl.parentElement;
-                      
-                      if (container) {
-                        // Hide the video element and error banner
-                        videoEl.style.display = 'none';
-                        const errorBanner = container.querySelector('div.bg-red-500');
-                        if (errorBanner) {
-                          errorBanner.remove();
-                        }
-                        
-                        // Create a placeholder image if one doesn't already exist
-                        if (!container.querySelector('.video-placeholder')) {
-                          // Create a placeholder image
-                          const placeholderImg = document.createElement('img');
-                          placeholderImg.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Video`);
-                          placeholderImg.alt = "Video could not be loaded";
-                          placeholderImg.className = "max-w-full h-auto object-contain rounded-md video-placeholder";
-                          
-                          // Add it to the container
-                          container.appendChild(placeholderImg);
-                          
-                          // Add a caption
-                          const caption = document.createElement('p');
-                          caption.className = "text-center text-xs text-gray-500 mt-2";
-                          caption.textContent = "Video could not be loaded - Click to see the post";
-                          container.appendChild(caption);
-                        }
-                        
-                        // Log warning for debugging
-                        console.warn(`Using placeholder for missing video in post ${post.id}: ${post.mediaUrl}`);
-                        return; // Don't continue with the alternative URL attempts
-                      }
-                    }
-                    
                     // Try alternative URLs in case the path is wrong
                     const filename = post.mediaUrl?.split('/').pop();
                     if (filename) {
-                      // Try different path combinations with the mediaService
+                      // Try different path combinations
                       const alternativeUrls = [
                         `/uploads/${filename}`,
                         `/uploads/videos/${filename}`,
                         `/uploads/memory_verse/${filename}`,
                         `/uploads/miscellaneous/${filename}`,
-                      ].map(url => mediaService.getImageUrl(url));
+                      ];
                       
                       // Add more detailed logging including post ID
                       console.log(`Trying alternative URLs for ${post.type} video (post ID: ${post.id}):`, {
                         originalUrl: post.mediaUrl,
-                        originalProcessed: mediaService.getImageUrl(post.mediaUrl),
                         alternativeUrls,
                         filename,
                         postType: post.type,
@@ -647,50 +582,41 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     }
                   }}
                 />
-              </div>
             ) : (
               <img
-                src={mediaService.getImageUrl(post.mediaUrl)}
+                src={getThumbnailUrl(post.mediaUrl, 'small')}
+                data-full-src={post.mediaUrl}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  console.error("Failed to load image:", post.mediaUrl);
-                  
-                  // Try to load directly from production URL
-                  const productionUrl = `${PROD_URL}${post.mediaUrl}`;
-                  console.log(`Trying production URL: ${productionUrl}`);
-                  
-                  // Use production URL as first fallback
-                  img.src = productionUrl;
-                  
-                  // Set a one-time error handler for the fallback
-                  img.onerror = () => {
-                    console.error(`Production fallback also failed for image: ${productionUrl}`);
-                    
-                    // Try thumbnail as fallback
-                    const thumbnailUrl = mediaService.getThumbnailUrl(post.mediaUrl);
-                    console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
-                    
-                    img.src = thumbnailUrl;
-                    
-                    // Set a final error handler for the thumbnail fallback
-                    img.onerror = () => {
-                      console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
-                      
-                      // Use a placeholder image as final fallback
-                      img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
-                      img.onerror = null; // Clear error handler after final fallback
+                onLoad={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (isInViewport(img)) {
+                    const mediumUrl = getThumbnailUrl(post.mediaUrl, 'medium');
+                    // Preload medium size
+                    const preloadImg = new Image();
+                    preloadImg.onload = () => {
+                      img.src = mediumUrl;
                     };
-                  };
+                    preloadImg.src = mediumUrl;
+                  }
                 }}
-                />
-              </div>
+                onError={(e) => {
+                  console.error("Failed to load image:", post.mediaUrl);
+                  const img = e.currentTarget;
+                  img.style.display = 'none';
+                  
+                  // Add a minimal message instead
+                  const container = img.parentElement;
+                  if (container) {
+                    container.style.minHeight = 'auto';
+                    container.style.background = 'transparent';
+                  }
+                }}
+              />
             )}
           </div>
-        </div>
       )}
 
       <div className="px-4 mt-4">

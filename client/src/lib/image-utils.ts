@@ -1,216 +1,10 @@
 
 /**
- * Constants for cross-environment image handling
+ * Get the thumbnail URL for an image with size optimization
  */
-export const PROD_URL = 'https://sparta-faith.replit.app';
-let cachedFileStatus: Record<string, boolean> = {};
-
-/**
- * Media Service to handle cross-environment image loading
- * This ensures images work in both development and production
- * 
- * This integrates with the server-side SpartaObjectStorage to provide
- * consistent media access across environments
- */
-class MediaService {
-  private prodUrl: string;
-  private localServerUrl: string;
-  private cachedResults: Record<string, string> = {};
-  private cachedLocalChecks: Record<string, boolean> = {};
-  
-  constructor(productionUrl: string) {
-    this.prodUrl = productionUrl;
-    // Local server URL is based on current window location
-    this.localServerUrl = window.location.origin;
-  }
-
-  /**
-   * Gets the proper URL for an image, handles cross-environment compatibility
-   * Always tries production URL first since that's where our actual images are
-   */
-  getImageUrl(path: string | null): string {
-    if (!path) return generateImagePlaceholder('No image available');
-    
-    // If path is already a full URL or data URI, return it as is
-    if (path.startsWith('http') || path.startsWith('data:')) {
-      return path;
-    }
-    
-    // If we've already processed this path, return the cached result
-    if (this.cachedResults[path]) {
-      return this.cachedResults[path];
-    }
-    
-    // Normalize the path (remove any leading slash)
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // First try using the server-side object storage if available
-    // by using a relative URL that will go through the local server's getFileUrl method
-    if (this.cachedLocalChecks[path] === true) {
-      // We've previously confirmed this exists locally
-      const result = `${normalizedPath}`;
-      this.cachedResults[path] = result;
-      return result;
-    } else if (this.cachedLocalChecks[path] === false) {
-      // We've previously confirmed this does NOT exist locally, use production URL
-      const result = `${this.prodUrl}${normalizedPath}`;
-      this.cachedResults[path] = result;
-      return result;
-    }
-    
-    // Try to check if this file exists locally first before defaulting to production
-    this.checkImageExistsLocally(normalizedPath)
-      .then(exists => {
-        // Update cache for future calls
-        this.cachedLocalChecks[path] = exists;
-        
-        // If needed, update the cached result for future calls
-        if (!exists) {
-          this.cachedResults[path] = `${this.prodUrl}${normalizedPath}`;
-        }
-      })
-      .catch(() => {
-        // If error, assume it doesn't exist locally
-        this.cachedLocalChecks[path] = false;
-        this.cachedResults[path] = `${this.prodUrl}${normalizedPath}`;
-      });
-    
-    // Use production URL by default for immediate response
-    // This will be used until the async check completes
-    const result = `${this.prodUrl}${normalizedPath}`;
-    
-    // Cache the result
-    this.cachedResults[path] = result;
-    return result;
-  }
-  
-  /**
-   * Attempt to check if an image exists locally by making a HEAD request
-   */
-  private async checkImageExistsLocally(path: string): Promise<boolean> {
-    try {
-      // First check if it's already in cache
-      const cacheKey = `exists:${path}`;
-      if (cachedFileStatus[cacheKey] !== undefined) {
-        return cachedFileStatus[cacheKey];
-      }
-      
-      // Use AbortController for timeout to improve browser compatibility
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-      
-      try {
-        // Make a HEAD request to check if the file exists
-        console.debug(`Checking if file exists locally: ${path}`);
-        const response = await fetch(path, {
-          method: 'HEAD',
-          headers: {
-            // Add cache control to ensure we're not getting cached responses
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          signal: controller.signal
-        });
-        
-        // Clear timeout since the request completed
-        clearTimeout(timeoutId);
-        
-        // If the file exists, check its size from the Content-Length header
-        if (response.ok) {
-          const contentLength = response.headers.get('Content-Length');
-          const size = contentLength ? parseInt(contentLength, 10) : 0;
-          
-          // If size is 0, file exists but is empty
-          if (size === 0) {
-            console.warn(`File exists but is empty (0 bytes): ${path}`);
-            cachedFileStatus[cacheKey] = false;
-            return false;
-          }
-        }
-        
-        // Cache the result to avoid future requests
-        const exists = response.ok;
-        cachedFileStatus[cacheKey] = exists;
-        console.debug(`File ${path} exists locally: ${exists}`);
-        return exists;
-      } catch (fetchError: any) { // Type as any to access name property safely
-        // Clear timeout to prevent memory leaks
-        clearTimeout(timeoutId);
-        
-        // If the request was aborted due to timeout, log and return false
-        if (fetchError.name === 'AbortError') {
-          console.warn(`Request timeout checking if file exists: ${path}`);
-          cachedFileStatus[cacheKey] = false;
-          return false;
-        }
-        
-        // Re-throw for handling in the outer catch block
-        throw fetchError;
-      }
-    } catch (error) {
-      console.warn(`Failed to check if image exists locally: ${path}`, error);
-      // Make sure cacheKey is in scope
-      const errorCacheKey = `exists:${path}`;
-      cachedFileStatus[errorCacheKey] = false;
-      return false;
-    }
-  }
-  
-  /**
-   * Gets a URL for a thumbnail of the given media
-   */
-  getThumbnailUrl(originalPath: string | null, size: 'small' | 'medium' = 'small'): string {
-    if (!originalPath) return generateImagePlaceholder('No thumbnail');
-    
-    // If it's a data URI or already a thumbnail URL, return as is
-    if (originalPath.startsWith('data:')) {
-      return originalPath;
-    }
-    
-    const basePath = originalPath.startsWith('http') ? 
-      new URL(originalPath).pathname : originalPath;
-      
-    // Extract the filename from the path
-    const filename = basePath.split('/').pop() || '';
-    
-    // Create the thumbnail path using the server's convention (thumb-{filename})
-    const thumbnailFilename = `thumb-${filename}`;
-    const thumbnailPath = `/uploads/thumbnails/${thumbnailFilename}`;
-    
-    // Use the getImageUrl method to handle the environment specifics
-    return this.getImageUrl(thumbnailPath);
-  }
-  
-  /**
-   * Get a URL for a video poster image
-   */
-  getVideoPosterUrl(videoPath: string | null): string {
-    if (!videoPath) return generateImagePlaceholder('Video'); 
-    
-    // Get the appropriate thumbnail
-    return this.getThumbnailUrl(videoPath);
-  }
-}
-
-// Create a singleton instance
-export const mediaService = new MediaService(PROD_URL);
-
-/**
- * Gets a thumbnail URL for an image or creates a default SVG placeholder
- * 
- * @param originalUrl - The original URL of the image or video
- * @param size - The desired thumbnail size
- * @param tryRemote - Whether to try remote URLs if local ones fail
- * @returns The URL of the appropriate thumbnail or a placeholder SVG
- */
-export function getThumbnailUrl(
-  originalUrl: string | null, 
-  size: 'small' | 'medium' | 'large' = 'medium',
-  tryRemote: boolean = true
-): string {
+export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
   if (!originalUrl) {
-    // Return a simple data URI SVG placeholder instead of empty string
-    return generateImagePlaceholder('No image available');
+    return '';
   }
   
   // Handle SVG files - use them directly without thumbnailing
@@ -263,62 +57,21 @@ export function getThumbnailUrl(
       
       const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
       
-      // Generate local thumbnail path
-      const localThumbPath = isOldFormatImage
-        ? `/uploads/thumbnails/${filename}`
-        : `/uploads/thumbnails/thumb-${filename}`;
-        
-      // Check cache to see if we know this file exists locally
-      const cacheKey = `thumb:${localThumbPath}`;
-      if (cachedFileStatus[cacheKey] === false && tryRemote) {
-        // If we know it's missing locally, go straight to production URL
-        return `${PROD_URL}${localThumbPath}`;
+      if (isOldFormatImage) {
+        // Old format - no "thumb-" prefix
+        return `/uploads/thumbnails/${filename}`;
+      } else {
+        // New format - with "thumb-" prefix
+        return `/uploads/thumbnails/thumb-${filename}`;
       }
-      
-      // Return the local thumbnail path - we'll handle fallbacks in the image component
-      return localThumbPath;
     } else {
-      // For medium/large sizes, check if we know the original is missing
-      const cacheKey = `orig:${originalUrl}`;
-      if (cachedFileStatus[cacheKey] === false && tryRemote) {
-        // If we know it's missing locally, go straight to production URL
-        return `${PROD_URL}${originalUrl}`;
-      }
-      
-      // Return the original URL - we'll handle fallbacks in the image component
+      // For medium/large sizes or when size isn't specified, use original
       return originalUrl;
     }
   }
   
   // For any other URLs, return as is
   return originalUrl;
-}
-
-/**
- * Generates a data URI for an SVG placeholder image with customizable text
- * 
- * @param text - Text to display in the placeholder
- * @returns - Data URI for an SVG image
- */
-export function generateImagePlaceholder(text: string = 'Image'): string {
-  // Use consistent brand colors for placeholders
-  const bgColor = '#f0f0f0';
-  const textColor = '#888888';
-  
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
-      <rect width="100%" height="100%" fill="${bgColor}"/>
-      <text x="50%" y="50%" fill="${textColor}" font-family="Arial, sans-serif" font-size="16" 
-        text-anchor="middle" dominant-baseline="middle">${text}</text>
-    </svg>
-  `.trim();
-  
-  // Convert to a data URI
-  const encoded = encodeURIComponent(svg)
-    .replace(/'/g, '%27')
-    .replace(/"/g, '%22');
-    
-  return `data:image/svg+xml;charset=UTF-8,${encoded}`;
 }
 
 /**
@@ -366,56 +119,10 @@ export function checkImageExists(url: string): Promise<boolean> {
       return;
     }
     
-    // Use a cached result if available
-    const cacheKey = `exists:${url}`;
-    if (cachedFileStatus[cacheKey] !== undefined) {
-      resolve(cachedFileStatus[cacheKey]);
-      return;
-    }
-    
-    // Use AbortController for timeout to improve browser compatibility
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
-    
     // For regular images, do a HEAD request
-    fetch(url, { 
-      method: 'HEAD',
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      },
-      signal: controller.signal
-    })
-      .then(response => {
-        clearTimeout(timeoutId);
-        
-        // Check if file exists and is not empty
-        if (response.ok) {
-          const contentLength = response.headers.get('Content-Length');
-          const size = contentLength ? parseInt(contentLength, 10) : 0;
-          
-          if (size === 0) {
-            console.warn(`File exists but is empty (0 bytes): ${url}`);
-            cachedFileStatus[cacheKey] = false;
-            resolve(false);
-            return;
-          }
-        }
-        
-        const exists = response.ok;
-        cachedFileStatus[cacheKey] = exists;
-        resolve(exists);
-      })
-      .catch((error: any) => { // Type as any to access name property safely
-        clearTimeout(timeoutId);
-        if (error && error.name === 'AbortError') {
-          console.warn(`Request timeout checking if image exists: ${url}`);
-        } else {
-          console.warn(`Error checking if image exists: ${url}`, error);
-        }
-        cachedFileStatus[cacheKey] = false;
-        resolve(false);
-      });
+    fetch(url, { method: 'HEAD' })
+      .then(response => resolve(response.ok))
+      .catch(() => resolve(false));
   });
 }
 

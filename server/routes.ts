@@ -1259,60 +1259,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
-  // Admin endpoint to synchronize media files between environments
-  router.get("/api/admin/sync-media", authenticate, async (req, res) => {
-    try {
-      // Check if user is an admin
-      if (!req.user || !req.user.isAdmin) {
-        return res.status(403).json({ message: "Admin privileges required" });
-      }
-      
-      logger.info(`Media synchronization requested by admin user ${req.user.id}`);
-      
-      try {
-        // Import the synchronization module dynamically
-        const syncMediaFilesModule = await import('./sync-media-files');
-        const syncMediaFiles = syncMediaFilesModule.syncMediaFiles;
-        
-        // Send response immediately
-        res.json({
-          message: "Media synchronization started",
-          status: "processing",
-          startedAt: new Date().toISOString()
-        });
-        
-        // Execute the synchronization process after responding
-        syncMediaFiles()
-          .then((stats) => {
-            logger.info(`Media synchronization completed by admin ${req.user.id}`, {
-              emptyFilesRemoved: stats.emptyFilesRemoved,
-              totalProcessed: stats.total,
-              existing: stats.existing,
-              downloaded: stats.downloaded,
-              failed: stats.failed,
-              thumbnailsGenerated: stats.thumbnailsGenerated
-            });
-          })
-          .catch(error => {
-            logger.error(`Media synchronization failed for admin ${req.user.id}:`, error);
-          });
-      } catch (importError) {
-        logger.error(`Failed to import sync-media-files module:`, importError);
-        return res.status(500).json({ 
-          message: "Failed to start media synchronization", 
-          error: importError instanceof Error ? importError.message : String(importError)
-        });
-      }
-        
-    } catch (error) {
-      logger.error('Error initiating media synchronization:', error);
-      res.status(500).json({
-        message: "Failed to start media synchronization",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-  
   // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {
@@ -1323,33 +1269,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Memory verse video repair process initiated by user ${req.user.id}`);
       
-      try {
-        // Import the memory verse repair script dynamically
-        const memoryVerseRepairModule = await import('./memory-verse-repair');
-        const repairMemoryVerseVideos = memoryVerseRepairModule.repairMemoryVerseVideos;
-        
-        // Run the repair process asynchronously
-        res.json({ 
-          message: "Memory verse repair process started",
-          status: "running",
-          startedAt: new Date().toISOString()
-        });
-        
-        // Execute the repair after sending the response
-        repairMemoryVerseVideos()
-          .then(() => {
-            logger.info('Memory verse repair process completed successfully');
-          })
-          .catch(err => {
-            logger.error('Error in memory verse repair process:', err);
-          });
-      } catch (importError) {
-        logger.error(`Failed to import memory-verse-repair module:`, importError);
-        return res.status(500).json({ 
-          message: "Failed to start memory verse repair", 
-          error: importError instanceof Error ? importError.message : String(importError)
-        });
-      }
+      // Import the memory verse repair script
+      const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
+      
+      // Run the repair process asynchronously
+      res.json({ 
+        message: "Memory verse repair process started",
+        status: "running",
+        startedAt: new Date().toISOString()
+      });
+      
+      // Execute the repair after sending the response
+      repairMemoryVerseVideos().then(() => {
+        logger.info('Memory verse repair process completed successfully');
+      }).catch(err => {
+        logger.error('Error in memory verse repair process:', err);
+      });
     } catch (error) {
       logger.error('Error initiating memory verse repair:', error);
       res.status(500).json({
@@ -1587,43 +1522,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.info(`Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`);
       
       // Fix circular references by explicitly mapping the result objects before serializing to JSON
-      // Also handle missing image files by checking for existence when needed
-      const safeResults = result.map(post => {
-        let mediaUrl = post.mediaUrl;
-        
-        // If there's a media URL, check if the file exists on disk or apply default handling
-        if (mediaUrl) {
-          // Convert URL path to filesystem path
-          const relativePath = mediaUrl.startsWith('/') ? mediaUrl.substring(1) : mediaUrl;
-          const fullPath = path.resolve(process.cwd(), relativePath);
-          
-          // Log file checks for debugging
-          logger.debug(`Checking file existence for post ${post.id}: ${fullPath}`);
-          
-          // Keep the URL as is even if file is missing - client will handle missing images gracefully
-          // Just log it for tracking purposes
-          if (!fs.existsSync(fullPath)) {
-            logger.warn(`File not found for post ${post.id}: ${mediaUrl} (path: ${fullPath})`);
-          }
-        }
-        
-        return {
-          id: post.id,
-          content: post.content,
-          type: post.type,
-          mediaUrl: mediaUrl, // Use original URL regardless
-          createdAt: post.createdAt,
-          parentId: post.parentId,
-          points: post.points,
-          userId: post.userId,
-          author: post.author ? {
-            id: post.author.id,
-            username: post.author.username,
-            imageUrl: post.author.imageUrl,
-            isAdmin: post.author.isAdmin
-          } : null
-        };
-      });
+      const safeResults = result.map(post => ({
+        id: post.id,
+        content: post.content,
+        type: post.type,
+        mediaUrl: post.mediaUrl,
+        createdAt: post.createdAt,
+        parentId: post.parentId,
+        points: post.points,
+        userId: post.userId,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          imageUrl: post.author.imageUrl,
+          isAdmin: post.author.isAdmin
+        } : null
+      }));
       
       res.json(safeResults);
     } catch (error) {
@@ -1688,30 +1602,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.set('Content-Type', 'application/json');
       
       // Fix circular references by mapping the post object before serializing
-      // Also handle missing image files gracefully
-      let mediaUrl = post.mediaUrl;
-      
-      // If there's a media URL, check if the file exists on disk
-      if (mediaUrl) {
-        // Convert URL path to filesystem path
-        const relativePath = mediaUrl.startsWith('/') ? mediaUrl.substring(1) : mediaUrl;
-        const fullPath = path.resolve(process.cwd(), relativePath);
-        
-        // Log file checks for debugging
-        logger.debug(`Checking file existence for single post ${post.id}: ${fullPath}`);
-        
-        // Keep the URL as is even if file is missing - client will handle missing images gracefully
-        // Just log it for tracking purposes
-        if (!fs.existsSync(fullPath)) {
-          logger.warn(`File not found for single post ${post.id}: ${mediaUrl} (path: ${fullPath})`);
-        }
-      }
-      
       const safePost = {
         id: post.id,
         content: post.content,
         type: post.type,
-        mediaUrl: mediaUrl, // Use original URL regardless
+        mediaUrl: post.mediaUrl,
         createdAt: post.createdAt,
         parentId: post.parentId,
         points: post.points,
@@ -1886,8 +1781,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
-  // Media synchronization endpoint - admin only is already defined earlier in the file (line ~1263)
   
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {

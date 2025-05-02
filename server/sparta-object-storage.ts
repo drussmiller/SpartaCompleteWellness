@@ -4,48 +4,30 @@ import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from './logger';
 import ffmpeg from 'fluent-ffmpeg';
-import * as https from 'https';
-import { STORAGE_CONFIG } from './sync-media-files';
 
 /**
- * Enhanced SpartaObjectStorage provides a unified interface for handling media files
- * across development and production environments, implementing an Object Storage
- * approach that ensures consistent access to files regardless of environment.
- * 
- * Features:
- * - Transparent file access across environments
- * - Automatic fallback to production server for missing files
- * - Thumbnail generation for images and videos
- * - Consistent file naming and organization
- * 
- * Usage:
- * - Direct access to files: spartaStorage.getFileUrl(path)
- * - Store new files: await spartaStorage.storeFile(fileData, filename, mimeType)
- * - Delete files: await spartaStorage.deleteFile(fileUrl)
+ * SpartaObjectStorage provides a unified interface for handling file objects
+ * such as images and other media files with proper error handling and logging.
  */
 export class SpartaObjectStorage {
   private baseDir: string;
   private thumbnailDir: string;
   private allowedTypes: string[];
-  private productionBaseUrl: string;
 
   /**
    * Creates a new SpartaObjectStorage instance
    * @param baseDir Base directory to store original uploads
    * @param thumbnailDir Directory to store thumbnails
    * @param allowedTypes Array of allowed mime types
-   * @param productionBaseUrl Base URL of production server for fallback image loading
    */
   constructor(
     baseDir: string = path.resolve(process.cwd(), 'uploads'),
     thumbnailDir: string = path.resolve(process.cwd(), 'uploads', 'thumbnails'),
-    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'application/octet-stream'], // Added more video types and octet-stream
-    productionBaseUrl: string = STORAGE_CONFIG.PROD_BASE_URL
+    allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'application/octet-stream'] // Added more video types and octet-stream
   ) {
     this.baseDir = baseDir;
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
-    this.productionBaseUrl = productionBaseUrl;
 
     // Ensure we're using absolute paths to avoid any path resolution issues
     console.log("SpartaObjectStorage initialized with paths:", {
@@ -53,91 +35,11 @@ export class SpartaObjectStorage {
       thumbnailDir: this.thumbnailDir,
       cwd: process.cwd(),
       absoluteBaseDir: path.resolve(this.baseDir),
-      absoluteThumbnailDir: path.resolve(this.thumbnailDir),
-      productionBaseUrl: this.productionBaseUrl
+      absoluteThumbnailDir: path.resolve(this.thumbnailDir)
     });
 
     // Ensure directories exist
     this.ensureDirectories();
-  }
-  
-  /**
-   * Gets a file URL with cross-environment support
-   * This method provides a unified way to access files regardless of where they're stored
-   * 
-   * @param fileUrl The original URL or path to the file
-   * @param tryFallback Whether to try fallback to production server if file not found locally
-   * @returns A URL that can be used to access the file
-   */
-  /**
-   * Checks if a file exists and has content (non-zero size)
-   * 
-   * @param filePath The path to the file
-   * @returns True if file exists and has content, false otherwise
-   */
-  isValidFile(filePath: string): boolean {
-    try {
-      // Normalize the path
-      let normalizedPath = filePath.trim();
-      if (normalizedPath.startsWith('/')) {
-        normalizedPath = normalizedPath.substring(1);
-      }
-      
-      // Get absolute path
-      const absolutePath = path.join(process.cwd(), normalizedPath);
-      
-      // Check if file exists
-      if (!fs.existsSync(absolutePath)) {
-        return false;
-      }
-      
-      // Check if file has content (non-zero size)
-      const stats = fs.statSync(absolutePath);
-      return stats.isFile() && stats.size > 0;
-    } catch (error) {
-      logger.error(`Error checking file validity: ${error instanceof Error ? error.message : String(error)}`);
-      return false;
-    }
-  }
-
-  getFileUrl(fileUrl: string, tryFallback: boolean = true): string {
-    // If it's null or empty, return empty string
-    if (!fileUrl) return '';
-    
-    // If it's already an absolute URL, return as is
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-      return fileUrl;
-    }
-    
-    // Normalize the path (remove leading slashes, etc.)
-    let normalizedPath = fileUrl.trim();
-    if (normalizedPath.startsWith('/')) {
-      normalizedPath = normalizedPath.substring(1);
-    }
-    
-    // Check if the file exists locally and has content
-    const localPath = path.join(process.cwd(), normalizedPath);
-    
-    if (fs.existsSync(localPath)) {
-      // Check if file is empty (0 bytes)
-      const stats = fs.statSync(localPath);
-      if (stats.size === 0) {
-        logger.warn(`Found empty file at ${localPath}, falling back to production URL`);
-        // File exists but is empty, try fallback if enabled
-        if (tryFallback) {
-          return `${this.productionBaseUrl}/${normalizedPath}`;
-        }
-      } else {
-        // File exists locally and has content, use local path
-        return `/${normalizedPath}`;
-      }
-    } else if (tryFallback) {
-      // File doesn't exist locally, use production URL
-      return `${this.productionBaseUrl}/${normalizedPath}`;
-    }
-    
-    // If fallback is disabled and file doesn't exist locally, return original URL
-    return `/${normalizedPath}`;
   }
 
   /**
