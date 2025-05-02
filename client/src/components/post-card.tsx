@@ -649,61 +649,43 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 />
               </div>
             ) : (
-              <div className="relative w-full h-full flex items-center justify-center">
-                {/* Use a placeholder div until image loads to prevent content flashing */}
-                <div 
-                  className="w-full min-h-[200px] h-full flex items-center justify-center bg-gray-50"
-                  style={{
-                    display: imageLoaded ? 'none' : 'flex'
-                  }}
-                >
-                  <div className="text-gray-400 animate-pulse">Loading image...</div>
-                </div>
-                
-                <img
-                  src={mediaService.getImageUrl(post.mediaUrl)}
-                  alt={post.type === 'food' ? "Food image" : post.type === 'workout' ? "Workout image" : `${post.type} image`}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-contain cursor-pointer"
-                  style={{
-                    display: imageLoaded ? 'block' : 'none'
-                  }}
-                  onLoad={() => {
-                    setImageLoaded(true);
-                  }}
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    console.error("Failed to load image:", post.mediaUrl);
+              <img
+                src={mediaService.getImageUrl(post.mediaUrl)}
+                alt={`${post.type} post content`}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-contain cursor-pointer"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  console.error("Failed to load image:", post.mediaUrl);
+                  
+                  // Try to load directly from production URL
+                  const productionUrl = `${PROD_URL}${post.mediaUrl}`;
+                  console.log(`Trying production URL: ${productionUrl}`);
+                  
+                  // Use production URL as first fallback
+                  img.src = productionUrl;
+                  
+                  // Set a one-time error handler for the fallback
+                  img.onerror = () => {
+                    console.error(`Production fallback also failed for image: ${productionUrl}`);
                     
-                    // Try to load directly from production URL
-                    const productionUrl = `${PROD_URL}${post.mediaUrl}`;
-                    console.log(`Trying production URL: ${productionUrl}`);
+                    // Try thumbnail as fallback
+                    const thumbnailUrl = mediaService.getThumbnailUrl(post.mediaUrl);
+                    console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
                     
-                    // Use production URL as first fallback
-                    img.src = productionUrl;
+                    img.src = thumbnailUrl;
                     
-                    // Set a one-time error handler for the fallback
+                    // Set a final error handler for the thumbnail fallback
                     img.onerror = () => {
-                      console.error(`Production fallback also failed for image: ${productionUrl}`);
+                      console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
                       
-                      // Try thumbnail as fallback
-                      const thumbnailUrl = mediaService.getThumbnailUrl(post.mediaUrl);
-                      console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
-                      
-                      img.src = thumbnailUrl;
-                      
-                      // Set a final error handler for the thumbnail fallback
-                      img.onerror = () => {
-                        console.error(`Thumbnail fallback also failed. Using placeholder for post ${post.id}`);
-                        
-                        // Use a placeholder image as final fallback
-                        img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
-                        img.onerror = null; // Clear error handler after final fallback
-                        setImageLoaded(true); // Show the placeholder
-                      };
+                      // Use a placeholder image as final fallback
+                      img.src = generateImagePlaceholder(`${post.type.charAt(0).toUpperCase() + post.type.slice(1)} Image`);
+                      img.onerror = null; // Clear error handler after final fallback
                     };
-                  }}
+                  };
+                }}
                 />
               </div>
             )}
