@@ -46,6 +46,7 @@ import { prayerRoutes } from './prayer-routes';
 // However, since the router.use(messageRouter) call appears first, these routes will be handled by the consolidated version
 import { messageRouter } from './message-routes';
 import { userRoleRouter } from './user-role-route';
+import { objectStorageRouter } from './object-storage-routes';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const uploadDir = path.resolve(process.cwd(), 'uploads');
@@ -117,6 +118,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   
   // Register user role routes
   router.use(userRoleRouter);
+  
+  // Register Object Storage routes for debugging
+  router.use('/api/object-storage', objectStorageRouter);
   
   // Configure memory-based multer for testing file uploads
   const memoryStorage = multer.memoryStorage();

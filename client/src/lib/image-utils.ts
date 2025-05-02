@@ -1,8 +1,47 @@
 
+import { createDirectDownloadUrl } from './object-storage-utils';
+
 /**
  * Production server URL for cross-environment access
  */
 export const PROD_URL = "https://sparta.replit.app";
+
+/**
+ * Get an image URL with direct Object Storage access
+ * This is used for most media files in the app
+ * @param originalUrl The original URL of the image
+ * @returns A URL that works with Object Storage
+ */
+export function getImageUrl(originalUrl: string | null): string {
+  if (!originalUrl) {
+    return '';
+  }
+  
+  // Handle SVG files directly
+  if (originalUrl.endsWith('.svg')) {
+    return originalUrl;
+  }
+  
+  // Handle absolute external URLs (like https://example.com/image.jpg)
+  if (originalUrl.startsWith('http') && !originalUrl.includes('sparta.replit.app')) {
+    return originalUrl;
+  }
+  
+  // Handle production URLs by converting to local paths
+  if (originalUrl.startsWith('https://sparta.replit.app/')) {
+    // Convert to local path for direct access
+    const localPath = originalUrl.replace('https://sparta.replit.app', '');
+    return createDirectDownloadUrl(localPath);
+  }
+  
+  // For local paths, use direct Object Storage access
+  if (originalUrl.startsWith('/')) {
+    return createDirectDownloadUrl(originalUrl);
+  }
+  
+  // For any other format, return as is
+  return originalUrl;
+}
 
 /**
  * Get the thumbnail URL for an image with size optimization
@@ -22,6 +61,13 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     // Convert to regular upload path for thumbnail generation
     const standardPath = originalUrl.replace('/shared/uploads/', '/uploads/');
     return getThumbnailUrl(standardPath, size);
+  }
+  
+  // Handle direct URLs from production
+  if (originalUrl.startsWith('https://sparta.replit.app/')) {
+    // Convert to local path for thumbnail generation
+    const localPath = originalUrl.replace('https://sparta.replit.app', '');
+    return getThumbnailUrl(localPath, size);
   }
   
   // Handle regular images that need thumbnailing
@@ -51,13 +97,13 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
       // Return in order of preference: poster image, thumbs, or original
       if (size === 'medium' || size === 'large') {
         // For medium/large, prioritize the poster image since it's higher quality
-        return posterPath;
+        return createDirectDownloadUrl(posterPath);
       } else if (size === 'small') {
         // For small, try thumbnail first, then poster
-        return prefixedThumbPath;
+        return createDirectDownloadUrl(prefixedThumbPath);
       } else {
         // Default fallback
-        return posterPath;
+        return createDirectDownloadUrl(posterPath);
       }
     }
     
@@ -71,18 +117,23 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
       
       if (isOldFormatImage) {
         // Old format - no "thumb-" prefix
-        return `/uploads/thumbnails/${filename}`;
+        return createDirectDownloadUrl(`/uploads/thumbnails/${filename}`);
       } else {
         // New format - with "thumb-" prefix
-        return `/uploads/thumbnails/thumb-${filename}`;
+        return createDirectDownloadUrl(`/uploads/thumbnails/thumb-${filename}`);
       }
     } else {
       // For medium/large sizes or when size isn't specified, use original
-      return originalUrl;
+      return createDirectDownloadUrl(originalUrl);
     }
   }
   
-  // For any other URLs, return as is
+  // For any other URLs, check if it's a relative path that needs direct download
+  if (originalUrl.startsWith('/')) {
+    return createDirectDownloadUrl(originalUrl);
+  }
+  
+  // For absolute URLs (external), return as is
   return originalUrl;
 }
 
@@ -115,8 +166,8 @@ export function getFallbackImageUrl(postType: string): string {
     type = 'post'; // Default fallback for any unrecognized type
   }
   
-  // Return the appropriate SVG
-  return `/uploads/default-${type}.svg`;
+  // Return the appropriate SVG using direct download
+  return createDirectDownloadUrl(`/uploads/default-${type}.svg`);
 }
 
 /**
@@ -127,78 +178,128 @@ export function checkImageExists(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     // For SVG files and non-uploads/non-shared paths, assume they exist
     if (url.endsWith('.svg') || 
-        (!url.startsWith('/uploads/') && !url.startsWith('/shared/uploads/'))) {
+        (!url.startsWith('/uploads/') && 
+         !url.startsWith('/shared/uploads/') && 
+         !url.includes('sparta.replit.app'))) {
       resolve(true);
       return;
     }
     
-    // Try the provided URL first
+    // Try the provided URL first using a more reliable GET method instead of HEAD
+    // HEAD requests may be rejected by some servers or may not properly check existence
     const checkUrl = (testUrl: string): Promise<boolean> => {
-      return fetch(testUrl, { method: 'HEAD' })
-        .then(response => response.ok)
-        .catch(() => false);
+      return fetch(testUrl, { 
+        method: 'GET', 
+        headers: { 'Range': 'bytes=0-0' }, // Only request the first byte to minimize bandwidth
+        cache: 'no-store' // Avoid caching to get fresh results
+      })
+        .then(response => {
+          // Log response details for debugging
+          console.log(`Check for ${testUrl}: ${response.status} ${response.statusText}`);
+          return response.ok || response.status === 206; // 206 is Partial Content, which is success for Range request
+        })
+        .catch(error => {
+          console.log(`Error checking ${testUrl}:`, error);
+          return false;
+        });
     };
     
-    // If it's a shared path, try to check both original and shared paths
-    const checkUrlCascade = async () => {
-      // First try the URL as provided
-      const exists = await checkUrl(url);
-      if (exists) {
+    // Check using direct Object Storage download route
+    const checkViaObjectStorageRoute = (originalUrl: string): Promise<boolean> => {
+      // Normalize URL to get the path
+      let path = originalUrl;
+      
+      // Handle production URLs
+      if (path.startsWith('https://sparta.replit.app')) {
+        path = path.replace('https://sparta.replit.app', '');
+      }
+      
+      // Create the direct download URL
+      const directUrl = createDirectDownloadUrl(path);
+      
+      // Try the direct download URL
+      return fetch(directUrl, { 
+        method: 'GET', 
+        headers: { 'Range': 'bytes=0-0' }, // Only request the first byte to minimize bandwidth 
+        cache: 'no-store' // Avoid caching to get fresh results
+      })
+        .then(response => {
+          console.log(`Direct Object Storage check for ${path}: ${response.status} ${response.statusText}`);
+          return response.ok || response.status === 206; // 206 is Partial Content, which is success for Range request
+        })
+        .catch(error => {
+          console.log(`Error checking direct Object Storage for ${path}:`, error);
+          return false;
+        });
+    };
+    
+    // Get all possible paths to try based on the URL
+    const getPathVariations = (baseUrl: string): string[] => {
+      // Normalize URL
+      let normalizedUrl = baseUrl;
+      
+      // Handle production URLs
+      if (normalizedUrl.startsWith('https://sparta.replit.app')) {
+        normalizedUrl = normalizedUrl.replace('https://sparta.replit.app', '');
+      }
+      
+      const variations = [baseUrl]; // Original URL is first to try
+      
+      // Generate all possible variants
+      if (normalizedUrl.startsWith('/uploads/')) {
+        // Regular path - add shared version
+        const sharedPath = normalizedUrl.replace('/uploads/', '/shared/uploads/');
+        variations.push(sharedPath);
+        
+        // Add production versions
+        variations.push(`${PROD_URL}${normalizedUrl}`);
+        variations.push(`${PROD_URL}${sharedPath}`);
+      } 
+      else if (normalizedUrl.startsWith('/shared/uploads/')) {
+        // Shared path - add regular version
+        const regularPath = normalizedUrl.replace('/shared/uploads/', '/uploads/');
+        variations.push(regularPath);
+        
+        // Add production versions
+        variations.push(`${PROD_URL}${normalizedUrl}`);
+        variations.push(`${PROD_URL}${regularPath}`);
+      }
+      
+      // Return unique paths only
+      return Array.from(new Set(variations));
+    };
+    
+    // Try all path variations in sequence
+    const tryPaths = async () => {
+      // First try the direct Object Storage approach
+      const existsInObjectStorage = await checkViaObjectStorageRoute(url);
+      if (existsInObjectStorage) {
+        console.log(`Image exists in Object Storage: ${url}`);
         resolve(true);
         return;
       }
       
-      // If it's a regular uploads path, try the shared version
-      if (url.startsWith('/uploads/')) {
-        const sharedPath = url.replace('/uploads/', '/shared/uploads/');
-        const sharedExists = await checkUrl(sharedPath);
-        if (sharedExists) {
+      // Get all possible paths to try
+      const paths = getPathVariations(url);
+      console.log(`Trying ${paths.length} path variations for: ${url}`);
+      
+      // Try each path in sequence
+      for (const path of paths) {
+        const exists = await checkUrl(path);
+        if (exists) {
+          console.log(`Image exists at: ${path}`);
           resolve(true);
           return;
         }
-        
-        // Try the production path
-        const prodPath = `${PROD_URL}${url}`;
-        const prodExists = await checkUrl(prodPath);
-        if (prodExists) {
-          resolve(true);
-          return;
-        }
-        
-        // Try production shared path
-        const prodSharedPath = `${PROD_URL}${sharedPath}`;
-        const prodSharedExists = await checkUrl(prodSharedPath);
-        resolve(prodSharedExists);
-      } 
-      // If it's a shared path, try the regular version
-      else if (url.startsWith('/shared/uploads/')) {
-        const regularPath = url.replace('/shared/uploads/', '/uploads/');
-        const regularExists = await checkUrl(regularPath);
-        if (regularExists) {
-          resolve(true);
-          return;
-        }
-        
-        // Try the production shared path
-        const prodPath = `${PROD_URL}${url}`;
-        const prodExists = await checkUrl(prodPath);
-        if (prodExists) {
-          resolve(true);
-          return;
-        }
-        
-        // Try production regular path
-        const prodRegularPath = `${PROD_URL}${regularPath}`;
-        const prodRegularExists = await checkUrl(prodRegularPath);
-        resolve(prodRegularExists);
       }
-      else {
-        resolve(false);
-      }
+      
+      // No path worked, resolve false
+      console.log(`Image does not exist in any variation: ${url}`);
+      resolve(false);
     };
     
     // Start the cascade check
-    checkUrlCascade();
+    tryPaths();
   });
 }
 

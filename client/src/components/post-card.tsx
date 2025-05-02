@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
+import { createDirectDownloadUrl } from "../lib/object-storage-utils";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -148,11 +149,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
-  // Simple function to get image URL with fallbacks
+  // Use direct download URL for images from Object Storage
   const getImageUrl = (url: string | null): string => {
     if (!url) return '';
     
-    // Try local URL first
+    // Check if this is an Object Storage URL
+    if (url.includes('uploads/') || url.includes('thumbnails/')) {
+      return createDirectDownloadUrl(url);
+    }
+    
+    // For external URLs, use as-is
     return url;
   };
 
@@ -221,35 +227,27 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 poster={getThumbnailUrl(post.mediaUrl)}
                 playsInline
                 preload="metadata"
-                src={post.mediaUrl}
+                src={getImageUrl(post.mediaUrl)}
                 onError={(e) => {
                   console.error("Video load error:", e);
                   const video = e.currentTarget;
                   
-                  // Try production URL
-                  const prodUrl = `${PROD_URL}${post.mediaUrl}`;
-                  console.log("Trying production URL:", prodUrl);
-                  video.src = prodUrl;
-                  
-                  // Set fallback for production URL
-                  video.onerror = () => {
-                    console.error(`Production fallback also failed for video: ${prodUrl}`);
+                  // Try using direct Object Storage access explicitly
+                  if (post.mediaUrl && post.mediaUrl.startsWith('/')) {
+                    const directUrl = createDirectDownloadUrl(post.mediaUrl);
+                    console.log(`Trying direct Object Storage access for video: ${directUrl}`);
+                    video.src = directUrl;
                     
-                    // Try shared environment version from Object Storage
-                    const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
-                    console.log(`Trying shared storage path for video: ${sharedPath}`);
-                    
-                    video.src = sharedPath;
-                    
-                    // Set handler for shared path fallback
+                    // If direct access fails, try shared path
                     video.onerror = () => {
-                      console.error(`Shared path fallback also failed for video: ${sharedPath}`);
+                      console.error(`Direct Object Storage access failed for video: ${directUrl}`);
                       
-                      // Try production shared path
-                      const prodSharedPath = `${PROD_URL}${sharedPath}`;
-                      console.log(`Trying production shared path for video: ${prodSharedPath}`);
+                      // Try shared environment version
+                      const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
+                      const sharedUrl = createDirectDownloadUrl(sharedPath);
+                      console.log(`Trying shared path with direct access: ${sharedUrl}`);
                       
-                      video.src = prodSharedPath;
+                      video.src = sharedUrl;
                       
                       // Final fallback - try poster image instead
                       video.onerror = () => {
@@ -267,12 +265,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         }
                       };
                     };
-                  };
+                  }
                 }}
               />
             ) : (
               <img
-                src={post.mediaUrl}
+                src={getImageUrl(post.mediaUrl)}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
@@ -281,65 +279,52 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   const img = e.currentTarget;
                   console.error("Failed to load image:", post.mediaUrl);
                   
-                  // Try to load directly from production URL
-                  const productionUrl = `${PROD_URL}${post.mediaUrl}`;
-                  console.log(`Trying production URL: ${productionUrl}`);
-                  
-                  // Use production URL as first fallback
-                  img.src = productionUrl;
-                  
-                  // Set a one-time error handler for the fallback
-                  img.onerror = () => {
-                    console.error(`Production fallback also failed for image: ${productionUrl}`);
+                  // Try using direct Object Storage access explicitly
+                  if (post.mediaUrl && post.mediaUrl.startsWith('/')) {
+                    const directUrl = createDirectDownloadUrl(post.mediaUrl);
+                    console.log(`Trying direct Object Storage access for image: ${directUrl}`);
+                    img.src = directUrl;
                     
-                    // Try shared environment version from Object Storage
-                    const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
-                    console.log(`Trying shared storage path: ${sharedPath}`);
-                    
-                    img.src = sharedPath;
-                    
-                    // Set handler for shared path fallback
+                    // If direct access fails, try shared path
                     img.onerror = () => {
-                      console.error(`Shared path fallback also failed for: ${sharedPath}`);
+                      console.error(`Direct Object Storage access failed for image: ${directUrl}`);
                       
-                      // Try production shared path
-                      const prodSharedPath = `${PROD_URL}${sharedPath}`;
-                      console.log(`Trying production shared path: ${prodSharedPath}`);
+                      // Try shared environment version with direct access
+                      const sharedPath = post.mediaUrl.replace('/uploads/', '/shared/uploads/');
+                      const sharedUrl = createDirectDownloadUrl(sharedPath);
+                      console.log(`Trying shared path with direct access: ${sharedUrl}`);
                       
-                      img.src = prodSharedPath;
+                      img.src = sharedUrl;
                       
-                      // Set handler for prod shared path fallback
+                      // Try thumbnail as fallback
                       img.onerror = () => {
-                        console.error(`Production shared path fallback also failed for: ${prodSharedPath}`);
+                        console.error(`Shared path with direct access failed for: ${sharedUrl}`);
                         
-                        // Try thumbnail as fallback
+                        // Try thumbnail with direct access
                         const thumbnailUrl = getThumbnailUrl(post.mediaUrl);
                         console.log(`Trying thumbnail fallback: ${thumbnailUrl}`);
                         
                         img.src = thumbnailUrl;
                         
-                        // Try shared thumbnail fallback
+                        // Final fallback to type-specific placeholder
                         img.onerror = () => {
-                          console.error(`Thumbnail fallback also failed. Trying shared thumbnail.`);
+                          console.error(`All fallbacks failed for post ${post.id}. Using type-specific placeholder.`);
                           
-                          // Try shared thumbnail path
-                          const sharedThumbPath = thumbnailUrl.replace('/uploads/', '/shared/uploads/');
-                          console.log(`Trying shared thumbnail path: ${sharedThumbPath}`);
+                          // Use the built-in type-specific placeholder
+                          const fallbackUrl = getFallbackImageUrl(post.type);
+                          console.log(`Using fallback image: ${fallbackUrl}`);
+                          img.src = fallbackUrl;
                           
-                          img.src = sharedThumbPath;
-                          
-                          // Final fallback to placeholder
+                          // Absolute last resort - use inline SVG
                           img.onerror = () => {
-                            console.error(`All fallbacks failed for post ${post.id}. Using placeholder.`);
-                            
-                            // Use a simple data URI as final fallback
+                            console.error(`Even fallback image failed. Using inline SVG.`);
                             img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' text-anchor='middle' dominant-baseline='middle'%3E${post.type} Image%3C/text%3E%3C/svg%3E`;
                             img.onerror = null; // Clear error handler after final fallback
                           };
                         };
                       };
                     };
-                  };
+                  }
                 }}
               />
             )}
