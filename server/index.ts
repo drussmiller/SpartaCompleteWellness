@@ -14,6 +14,12 @@ const execAsync = promisify(exec);
 
 const app = express();
 
+// Define initial port and server vars
+let port: number = 5000;
+
+// Declare scheduleDailyScoreCheck function
+let scheduleDailyScoreCheck: () => void;
+
 // Increase timeouts and add keep-alive
 const serverTimeout = 14400000; // 4 hours
 app.use((req, res, next) => {
@@ -80,8 +86,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Update the scheduleDailyScoreCheck function
-const scheduleDailyScoreCheck = () => {
+// Define the scheduleDailyScoreCheck function
+scheduleDailyScoreCheck = () => {
   const now = new Date();
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -238,48 +244,95 @@ app.use('/api', (req, res, next) => {
     app.use('/shared/uploads', async (req, res, next) => {
       try {
         const filePath = req.path;
-        const objectStorageKey = `shared/uploads${filePath}`;
         
-        console.log(`Attempting to serve shared file: ${objectStorageKey}`);
+        // Build possible storage keys - check both the prefixed and non-prefixed versions
+        const sharedKey = `shared/uploads${filePath}`;
+        const regularKey = `uploads${filePath}`;
+        
+        console.log(`Attempting to serve shared file: ${sharedKey}`);
         
         // If replit object storage is available, try to fetch from there
         if (process.env.REPLIT_DB_ID) {
           try {
-            const { ObjectStorageClient } = require('@replit/object-storage');
-            const objectStorage = new ObjectStorageClient();
-            const fileBuffer = await objectStorage.getBytes(objectStorageKey);
+            // Use the Client class from the module (not default)
+            const { Client } = require('@replit/object-storage');
+            const objectStorage = new Client();
             
-            if (fileBuffer) {
-              // Determine content type based on file extension
-              const fileExtension = path.extname(filePath).toLowerCase();
-              let contentType = 'application/octet-stream'; // default
+            // Import fs for file checking
+            const fs = require('fs');
+            
+            // First check if the shared file exists
+            console.log(`Checking if ${sharedKey} exists in Object Storage...`);
+            let exists = await objectStorage.exists(sharedKey);
+            let storageKey = sharedKey;
+            
+            // If shared key doesn't exist, try the regular key
+            if (!exists) {
+              console.log(`${sharedKey} not found, checking ${regularKey}...`);
+              exists = await objectStorage.exists(regularKey);
+              storageKey = regularKey;
+            }
+            
+            console.log(`File exists in Object Storage: ${exists} (using key: ${storageKey})`);
+            
+            if (exists) {
+              // Fetch the file from object storage
+              console.log(`Fetching ${storageKey} from Object Storage...`);
               
-              if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
-                contentType = 'image/jpeg';
-              } else if (fileExtension === '.png') {
-                contentType = 'image/png';
-              } else if (fileExtension === '.gif') {
-                contentType = 'image/gif';
-              } else if (fileExtension === '.mp4') {
-                contentType = 'video/mp4';
-              } else if (fileExtension === '.mov') {
-                contentType = 'video/quicktime';
-              } else if (fileExtension === '.svg') {
-                contentType = 'image/svg+xml';
+              try {
+                // Using the downloadAsBytes method from the Client class
+                const fileBuffer = await objectStorage.downloadAsBytes(storageKey);
+                
+                if (fileBuffer) {
+                  // Determine content type based on file extension
+                  const fileExtension = path.extname(filePath).toLowerCase();
+                  let contentType = 'application/octet-stream'; // default
+                  
+                  if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+                    contentType = 'image/jpeg';
+                  } else if (fileExtension === '.png') {
+                    contentType = 'image/png';
+                  } else if (fileExtension === '.gif') {
+                    contentType = 'image/gif';
+                  } else if (fileExtension === '.mp4') {
+                    contentType = 'video/mp4';
+                  } else if (fileExtension === '.mov') {
+                    contentType = 'video/quicktime';
+                  } else if (fileExtension === '.svg') {
+                    contentType = 'image/svg+xml';
+                  } else if (fileExtension === '.webp') {
+                    contentType = 'image/webp';
+                  }
+                
+                  console.log(`SUCCESS: Serving file ${storageKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
+                  res.setHeader('Content-Type', contentType);
+                  res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+                  return res.send(fileBuffer);
+                } else {
+                  console.error(`File exists in Object Storage but couldn't be retrieved: ${storageKey}`);
+                }
+              } catch (error) {
+                console.error(`Error accessing Object Storage:`, error);
               }
+            } else {
+              console.log(`File not found in Object Storage under any key`);
               
-              res.setHeader('Content-Type', contentType);
-              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
-              return res.send(fileBuffer);
+              // Check if the file exists locally as a last resort
+              const localPath = path.join(process.cwd(), 'uploads', filePath);
+              if (fs.existsSync(localPath)) {
+                console.log(`Found file locally at ${localPath}, serving directly`);
+                return res.sendFile(localPath);
+              }
             }
           } catch (error) {
-            console.error(`Error fetching from object storage: ${objectStorageKey}`, error);
+            console.error(`Error with Object Storage:`, error);
           }
         }
         
         // If we get here, either object storage isn't available or the file wasn't found
-        // Try redirecting to the standard /uploads path as a fallback
+        // Try the local path as a fallback
         const standardPath = `/uploads${filePath}`;
+        console.log(`No file found in Object Storage, falling back to local path: ${standardPath}`);
         res.redirect(standardPath);
       } catch (error) {
         console.error('Error serving shared file:', error);
@@ -312,7 +365,7 @@ app.use('/api', (req, res, next) => {
 
     // Try alternative ports if 5000 is busy
     const ports = [5000, 5001, 5002, 5003];
-    let port = ports[0];
+    // Initial port already declared at the top of file
 
     // Handle port selection
     const findAvailablePort = async () => {
