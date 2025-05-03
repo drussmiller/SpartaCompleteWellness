@@ -27,10 +27,22 @@ export function getImageUrl(originalUrl: string | null): string {
     return originalUrl;
   }
   
-  // Handle production URLs by converting to local paths
+  // Convert uploads/ paths to shared/uploads/ for consistency
+  if (originalUrl.startsWith('/uploads/') && !originalUrl.startsWith('/shared/')) {
+    const sharedPath = `/shared${originalUrl}`;
+    return createDirectDownloadUrl(sharedPath);
+  }
+  
+  // Handle production URLs by converting to local shared paths
   if (originalUrl.startsWith('https://sparta.replit.app/')) {
     // Convert to local path for direct access
-    const localPath = originalUrl.replace('https://sparta.replit.app', '');
+    let localPath = originalUrl.replace('https://sparta.replit.app', '');
+    
+    // Ensure it uses shared paths for uploads
+    if (localPath.startsWith('/uploads/') && !localPath.startsWith('/shared/')) {
+      localPath = `/shared${localPath}`;
+    }
+    
     return createDirectDownloadUrl(localPath);
   }
   
@@ -56,22 +68,8 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     return originalUrl;
   }
   
-  // Handle shared uploads path
+  // Handle shared uploads path - keep it as shared
   if (originalUrl.startsWith('/shared/uploads/')) {
-    // Convert to regular upload path for thumbnail generation
-    const standardPath = originalUrl.replace('/shared/uploads/', '/uploads/');
-    return getThumbnailUrl(standardPath, size);
-  }
-  
-  // Handle direct URLs from production
-  if (originalUrl.startsWith('https://sparta.replit.app/')) {
-    // Convert to local path for thumbnail generation
-    const localPath = originalUrl.replace('https://sparta.replit.app', '');
-    return getThumbnailUrl(localPath, size);
-  }
-  
-  // Handle regular images that need thumbnailing
-  if (originalUrl.startsWith('/uploads/')) {
     const filename = originalUrl.split('/').pop() || '';
     
     // Check if this is a special video type (memory verse or miscellaneous)
@@ -87,12 +85,12 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     if (isVideo) {
       // First try looking for a poster image (most reliable)
       const baseName = filename.substring(0, filename.lastIndexOf('.'));
-      const posterPath = `/uploads/${baseName}.poster.jpg`;
+      const posterPath = `/shared/uploads/${baseName}.poster.jpg`;
       
       // For thumbnails, try both with and without the thumb- prefix
       const thumbFilename = `thumb-${filename}`;
-      const normalThumbPath = `/uploads/thumbnails/${filename}`;
-      const prefixedThumbPath = `/uploads/thumbnails/${thumbFilename}`;
+      const normalThumbPath = `/shared/uploads/thumbnails/${filename}`;
+      const prefixedThumbPath = `/shared/uploads/thumbnails/${thumbFilename}`;
       
       // Return in order of preference: poster image, thumbs, or original
       if (size === 'medium' || size === 'large') {
@@ -117,15 +115,35 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
       
       if (isOldFormatImage) {
         // Old format - no "thumb-" prefix
-        return createDirectDownloadUrl(`/uploads/thumbnails/${filename}`);
+        return createDirectDownloadUrl(`/shared/uploads/thumbnails/${filename}`);
       } else {
         // New format - with "thumb-" prefix
-        return createDirectDownloadUrl(`/uploads/thumbnails/thumb-${filename}`);
+        return createDirectDownloadUrl(`/shared/uploads/thumbnails/thumb-${filename}`);
       }
     } else {
       // For medium/large sizes or when size isn't specified, use original
       return createDirectDownloadUrl(originalUrl);
     }
+  }
+  
+  // Handle direct URLs from production
+  if (originalUrl.startsWith('https://sparta.replit.app/')) {
+    // Convert to local path for thumbnail generation
+    let localPath = originalUrl.replace('https://sparta.replit.app', '');
+    
+    // Ensure we use shared paths for uploads
+    if (localPath.startsWith('/uploads/') && !localPath.startsWith('/shared/')) {
+      localPath = `/shared${localPath}`;
+    }
+    
+    return getThumbnailUrl(localPath, size);
+  }
+  
+  // Handle regular images that need thumbnailing
+  if (originalUrl.startsWith('/uploads/')) {
+    // Convert uploads to shared/uploads - this is the new standard
+    const sharedUrl = `/shared${originalUrl}`;
+    return getThumbnailUrl(sharedUrl, size);
   }
   
   // For any other URLs, check if it's a relative path that needs direct download

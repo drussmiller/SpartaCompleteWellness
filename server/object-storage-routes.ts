@@ -37,35 +37,91 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
     logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
     
-    // Get reference to SpartaObjectStorage
-    const { spartaStorage } = await import('./sparta-object-storage');
+    // Create array of possible keys to try
+    const keysToTry = [];
     
-    // Try to get file from Object Storage only - no filesystem fallback
+    // Always check shared path first as that's our primary storage location now
+    if (!cleanKey.startsWith('shared/')) {
+      keysToTry.push(`shared/${cleanKey}`);
+    }
+    
+    // Then try the original key if it doesn't have shared already
+    keysToTry.push(cleanKey);
+    
+    // For thumbnails, we may have keys with or without 'thumb-' prefix, so check both
+    if (cleanKey.includes('/thumbnails/') && !cleanKey.includes('/thumbnails/thumb-')) {
+      const pathParts = cleanKey.split('/thumbnails/');
+      if (pathParts.length === 2) {
+        const thumbKey = `${pathParts[0]}/thumbnails/thumb-${pathParts[1]}`;
+        keysToTry.push(thumbKey);
+        
+        // Also try with shared prefix if needed
+        if (!thumbKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${thumbKey}`);
+        }
+      }
+    }
+    
+    // Log keys we're going to try
+    logger.info(`Will try the following keys: ${JSON.stringify(keysToTry)}`, { route: '/api/object-storage/direct-download' });
+    
     try {
-      // Try to fetch from Object Storage
-      const fileInfo = await spartaStorage.getFileInfo(`/${cleanKey}`);
-      
-      if (!fileInfo || !fileInfo.exists) {
-        // If not found in Object Storage, return 404 without excessive logging
-        // We're silently handling 404s to reduce console noise
-        return res.status(404).json({
-          success: false,
-          message: 'File not found in Object Storage',
-          key: cleanKey
-        });
+      // Try to directly serve from Object Storage without using spartaStorage
+      for (const tryKey of keysToTry) {
+        try {
+          logger.info(`Attempting direct Object Storage access for: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+          const data = await objectStorage.downloadAsBytes(tryKey);
+          
+          if (data && Buffer.isBuffer(data)) {
+            const contentType = getContentType(tryKey);
+            res.setHeader('Content-Type', contentType);
+            logger.info(`Successfully serving file directly from Object Storage: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+            return res.send(data);
+          }
+        } catch (err) {
+          // Just log and continue to the next key
+          logger.info(`Key ${tryKey} not found in Object Storage, trying next option`, { route: '/api/object-storage/direct-download' });
+        }
       }
       
-      // If we have the file in Object Storage, stream it
-      if (fileInfo.objectStorageUrl) {
-        // Return the direct Object Storage URL if available
-        logger.info(`Redirecting to Object Storage URL: ${fileInfo.objectStorageUrl}`);
-        return res.redirect(fileInfo.objectStorageUrl);
-      } else if (fileInfo.buffer) {
-        // Or send the file buffer if we have it
-        const contentType = getContentType(cleanKey);
-        res.setHeader('Content-Type', contentType);
-        logger.info(`Serving file from Object Storage buffer: ${cleanKey}`);
-        return res.send(fileInfo.buffer);
+      // If direct access failed, try using spartaStorage as fallback
+      const { spartaStorage } = await import('./sparta-object-storage');
+      
+      // Try to get file with spartaStorage
+      for (const tryKey of keysToTry) {
+        try {
+          const fileInfo = await spartaStorage.getFileInfo(`/${tryKey}`);
+          
+          if (fileInfo) {
+            logger.info(`Found file with spartaStorage at key: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+            
+            // Try to serve from filesystem cache if available
+            if (fs.existsSync(fileInfo.path)) {
+              const contentType = getContentType(tryKey);
+              res.setHeader('Content-Type', contentType);
+              logger.info(`Serving file from filesystem cache: ${fileInfo.path}`, { route: '/api/object-storage/direct-download' });
+              return res.sendFile(fileInfo.path);
+            } else {
+              // Try one more direct access attempt with the key we know worked in spartaStorage
+              try {
+                const directKey = tryKey.startsWith('shared/') ? tryKey : `shared/${tryKey}`;
+                logger.info(`Last attempt to fetch directly from Object Storage with key: ${directKey}`, { route: '/api/object-storage/direct-download' });
+                const data = await objectStorage.downloadAsBytes(directKey);
+                
+                if (data && Buffer.isBuffer(data)) {
+                  const contentType = getContentType(tryKey);
+                  res.setHeader('Content-Type', contentType);
+                  logger.info(`Last-chance success serving directly from Object Storage: ${directKey}`, { route: '/api/object-storage/direct-download' });
+                  return res.send(data);
+                }
+              } catch (lastError) {
+                logger.error(`Final direct access attempt failed: ${lastError}`, { route: '/api/object-storage/direct-download' });
+              }
+            }
+          }
+        } catch (objError) {
+          logger.info(`Failed to get file info for key ${tryKey}: ${objError}`, { route: '/api/object-storage/direct-download' });
+        }
       }
     } catch (objError) {
       logger.error(`Object Storage error: ${objError}`, { route: '/api/object-storage/direct-download' });

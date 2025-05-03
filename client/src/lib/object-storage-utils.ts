@@ -14,8 +14,12 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Remove leading slash if present (keys in Object Storage don't start with /)
   const cleanKey = key.startsWith('/') ? key.substring(1) : key;
   
+  // Always use the shared Object Storage path to save space
+  // Only add the shared/ prefix if it's not already there
+  const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
+  
   // Return the URL with the key as a query parameter
-  return `/api/object-storage/direct-download?key=${encodeURIComponent(cleanKey)}`;
+  return `/api/object-storage/direct-download?key=${encodeURIComponent(sharedKey)}`;
 }
 
 /**
@@ -26,9 +30,12 @@ export async function checkFileExists(key: string): Promise<boolean> {
   // Remove leading slash if present
   const cleanKey = key.startsWith('/') ? key.substring(1) : key;
   
+  // Always use shared path if not provided
+  const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
+  
   try {
     // First, try a HEAD request to the direct download endpoint
-    const response = await fetch(`/api/object-storage/direct-download?key=${encodeURIComponent(cleanKey)}`, {
+    const response = await fetch(`/api/object-storage/direct-download?key=${encodeURIComponent(sharedKey)}`, {
       method: 'HEAD'
     });
     
@@ -47,8 +54,11 @@ export async function listFiles(prefix: string): Promise<string[]> {
   // Remove leading slash if present
   const cleanPrefix = prefix.startsWith('/') ? prefix.substring(1) : prefix;
   
+  // Always use shared path if not provided
+  const sharedPrefix = cleanPrefix.startsWith('shared/') ? cleanPrefix : `shared/${cleanPrefix}`;
+  
   try {
-    const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(cleanPrefix)}`);
+    const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(sharedPrefix)}`);
     if (!response.ok) {
       throw new Error(`Failed to list files: ${response.status} ${response.statusText}`);
     }
