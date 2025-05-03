@@ -83,7 +83,33 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
     
     // For videos, check for poster image first, then thumbnails
     if (isVideo) {
-      // First try looking for a poster image (most reliable)
+      // For MOV files, use the JPG thumbnail versions which work better in all browsers
+      if (filename.toLowerCase().endsWith('.mov')) {
+        const baseName = filename.substring(0, filename.lastIndexOf('.'));
+        
+        // For MOV files, we have several options to try:
+        // 1. A jpg version of the poster
+        const posterJpgPath = `/shared/uploads/${baseName}.poster.jpg`;
+        
+        // 2. A jpg thumbnail with thumb- prefix 
+        const jpgThumbName = `thumb-${baseName}.jpg`;
+        const jpgThumbPath = `/shared/uploads/thumbnails/${jpgThumbName}`;
+        
+        // 3. The original MOV thumbnail
+        const thumbFilename = `thumb-${filename}`;
+        const prefixedThumbPath = `/shared/uploads/thumbnails/${thumbFilename}`;
+        
+        // Return in order of preference based on size
+        if (size === 'medium' || size === 'large') {
+          // For medium/large, prioritize the poster jpg since it's higher quality
+          return createDirectDownloadUrl(posterJpgPath);
+        } else {
+          // For small, use JPG thumbnail
+          return createDirectDownloadUrl(jpgThumbPath);
+        }
+      }
+      
+      // For non-MOV videos
       const baseName = filename.substring(0, filename.lastIndexOf('.'));
       const posterPath = `/shared/uploads/${baseName}.poster.jpg`;
       

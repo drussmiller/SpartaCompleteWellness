@@ -945,28 +945,74 @@ export class SpartaObjectStorage {
                   console.log(`Creating placeholder thumbnail for MOV file: ${targetPath}`);
                   
                   // Create a default video thumbnail as SVG for .mov files
-                  const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+                  const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
                   
                   try {
+                    // Make sure the thumbnail directory exists
+                    const thumbDir = path.dirname(targetPath);
+                    if (!fs.existsSync(thumbDir)) {
+                      fs.mkdirSync(thumbDir, { recursive: true });
+                    }
+                    
+                    // Write the thumbnail file
                     fs.writeFileSync(targetPath, videoSvg);
                     console.log(`Created placeholder thumbnail for MOV file at ${targetPath}`);
                     
-                    // Upload the thumbnail to Object Storage
+                    // Also create a JPEG version with the same filename but .jpg extension
+                    // This helps with apps that expect jpg thumbnails
+                    const jpgThumbPath = targetPath.replace('.mov', '.jpg');
+                    fs.writeFileSync(jpgThumbPath, videoSvg);
+                    console.log(`Created additional JPG thumbnail at ${jpgThumbPath}`);
+                    
+                    // Create a poster image version
+                    const posterFilename = filename.replace('.mov', '.poster.jpg');
+                    const posterPath = path.join(path.dirname(videoPath), posterFilename);
+                    fs.writeFileSync(posterPath, videoSvg);
+                    console.log(`Created poster image at ${posterPath}`);
+                    
+                    // Upload all created files to Object Storage
                     if (this.objectStorage) {
                       const thumbnailBasename = path.basename(targetPath);
+                      const jpgThumbBasename = thumbnailBasename.replace('.mov', '.jpg');
+                      const posterBasename = filename.replace('.mov', '.poster.jpg');
                       
                       // Store only in shared path to save space
-                      const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                      const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                      const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
+                      const sharedPosterKey = `shared/uploads/${posterBasename}`;
                       
-                      console.log(`Uploading placeholder MOV thumbnail to Object Storage with shared key: ${sharedKey}`);
+                      // Also create a non-prefixed version for apps that don't expect the thumb- prefix
+                      const nonPrefixedThumbPath = targetPath.replace('thumb-', '');
+                      const nonPrefixedBasename = path.basename(nonPrefixedThumbPath);
+                      const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
                       
-                      this.objectStorage.uploadFromBytes(sharedKey, videoSvg)
-                        .then(() => {
-                          console.log(`Successfully uploaded MOV thumbnail to Object Storage`);
-                        })
-                        .catch(objStoreError => {
-                          console.error(`Failed to upload MOV thumbnail to Object Storage:`, objStoreError);
-                        });
+                      // Write the non-prefixed version
+                      fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
+                      console.log(`Created non-prefixed thumbnail at ${nonPrefixedThumbPath}`);
+                      
+                      console.log(`Uploading MOV thumbnails to Object Storage with shared keys`);
+                      
+                      const uploadPromises = [
+                        this.objectStorage.uploadFromBytes(sharedThumbKey, videoSvg)
+                          .then(() => console.log(`Uploaded MOV thumbnail to ${sharedThumbKey}`))
+                          .catch(e => console.error(`Failed to upload to ${sharedThumbKey}:`, e)),
+                          
+                        this.objectStorage.uploadFromBytes(sharedJpgThumbKey, videoSvg)
+                          .then(() => console.log(`Uploaded JPG thumbnail to ${sharedJpgThumbKey}`))
+                          .catch(e => console.error(`Failed to upload to ${sharedJpgThumbKey}:`, e)),
+                          
+                        this.objectStorage.uploadFromBytes(sharedPosterKey, videoSvg)
+                          .then(() => console.log(`Uploaded poster to ${sharedPosterKey}`))
+                          .catch(e => console.error(`Failed to upload to ${sharedPosterKey}:`, e)),
+                          
+                        this.objectStorage.uploadFromBytes(sharedNonPrefixedKey, videoSvg)
+                          .then(() => console.log(`Uploaded non-prefixed thumbnail to ${sharedNonPrefixedKey}`))
+                          .catch(e => console.error(`Failed to upload to ${sharedNonPrefixedKey}:`, e))
+                      ];
+                      
+                      Promise.all(uploadPromises)
+                        .then(() => console.log(`Successfully uploaded all MOV thumbnails to Object Storage`))
+                        .catch(error => console.error(`Error in one or more thumbnail uploads:`, error));
                     }
                     
                     resolve();
