@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { handleFailedPosterLoad, getMemoryVersePoster } from '@/lib/memory-verse-utils';
+import { handleFailedPosterLoad, getVideoPoster } from '@/lib/memory-verse-utils';
 
 interface VideoPlayerProps {
   src: string;
@@ -26,13 +26,13 @@ export function VideoPlayer({
   disablePictureInPicture = false,
   controlsList = 'nodownload'
 }: VideoPlayerProps) {
-  // Try to get memory verse poster if it's a MOV file
-  const memoryVersePoster = src?.toLowerCase().endsWith('.mov') 
-    ? getMemoryVersePoster(src) 
+  // Try to get video poster if it's a MOV file using the more general utility function
+  const videoPoster = src?.toLowerCase().endsWith('.mov') 
+    ? getVideoPoster(src) 
     : undefined;
   
-  // Use memory verse poster as default if available, otherwise use provided poster
-  const poster = memoryVersePoster || initialPoster;
+  // Use automatically detected poster as default if available, otherwise use provided poster
+  const poster = videoPoster || initialPoster;
   
   // Add key based on poster URL to force re-render when poster changes
   const key = `video-${src?.split('/').pop()}-${poster ? Date.now() : 'no-poster'}`;
@@ -47,12 +47,12 @@ export function VideoPlayer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Log if we're using a memory verse poster
+  // Log if we're using an auto-detected poster
   useEffect(() => {
-    if (memoryVersePoster) {
-      console.log("Using memory verse poster:", memoryVersePoster);
+    if (videoPoster) {
+      console.log("Using auto-detected video poster:", videoPoster);
     }
-  }, [memoryVersePoster]);
+  }, [videoPoster]);
 
   // Show controls when mouse moves over the video
   const showControls = () => {
