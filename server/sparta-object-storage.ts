@@ -1036,7 +1036,7 @@ export class SpartaObjectStorage {
                         // Store only in shared path to save space
                         const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                         const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
-                        const sharedPosterKey = `shared/uploads/${posterBasename}`;
+                        const sharedPosterKey = `shared/uploads/thumbnails/${posterBasename}`;
                         const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
                         
                         console.log(`Uploading MOV thumbnails to Object Storage with shared keys`);
@@ -1129,7 +1129,7 @@ export class SpartaObjectStorage {
                       
                       const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                       const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
-                      const sharedPosterKey = `shared/uploads/${posterBasename}`;
+                      const sharedPosterKey = `shared/uploads/thumbnails/${posterBasename}`;
                       const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
                       
                       this.objectStorage.uploadFromBytes(sharedThumbKey, videoSvg)
