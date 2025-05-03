@@ -29,6 +29,26 @@ import { VideoPlayer } from "@/components/ui/video-player";
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
 
+/**
+ * Direct forced poster image generator for MOV files
+ * This is a brute-force approach to ensure thumbnails always display
+ */
+function getVideoPoster(mediaUrl: string | null): string | undefined {
+  if (!mediaUrl) return undefined;
+  
+  // For MOV files, use multiple formats to ensure at least one works
+  if (mediaUrl.toLowerCase().endsWith('.mov')) {
+    const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
+    const fileName = baseName.split('/').pop();
+    
+    // Return a versioned URL to avoid caching
+    return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileName}.poster.jpg&v=${Date.now()}`;
+  }
+  
+  // For other file types, use the regular thumbnail URL
+  return getThumbnailUrl(mediaUrl);
+}
+
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
   if (!url) {
@@ -232,9 +252,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <div className="w-full max-h-[500px] video-container">
                 {/* Import and use VideoPlayer instead of standard video element */}
                 <VideoPlayer 
-                  key={`video-${post.id}-${triggerReload}`} 
+                  key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
                   src={getImageUrl(post.mediaUrl)}
-                  poster={getThumbnailUrl(post.mediaUrl)}
+                  poster={getVideoPoster(post.mediaUrl)}
                   className="w-full h-full object-contain max-h-[500px]"
                   preload="metadata"
                   playsInline
