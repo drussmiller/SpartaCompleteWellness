@@ -246,6 +246,101 @@ objectStorageRouter.get('/fix-thumbnails', async (req: Request, res: Response) =
 });
 
 /**
+ * Fix route specifically for poster.jpg files that may be in the wrong location
+ * This scans uploads directory for .poster.jpg files and moves them to thumbnails directory
+ */
+objectStorageRouter.get('/fix-poster-thumbnails', async (req: Request, res: Response) => {
+  try {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const thumbnailsDir = path.join(process.cwd(), 'uploads', 'thumbnails');
+    const sharedUploadsDir = path.join(process.cwd(), 'shared', 'uploads');
+    const sharedThumbnailsDir = path.join(process.cwd(), 'shared', 'uploads', 'thumbnails');
+    
+    logger.info('Starting poster thumbnail fix process', { route: '/api/object-storage/fix-poster-thumbnails' });
+    
+    // Make sure thumbnails directories exist
+    if (!fs.existsSync(thumbnailsDir)) {
+      fs.mkdirSync(thumbnailsDir, { recursive: true });
+    }
+    if (!fs.existsSync(sharedThumbnailsDir)) {
+      fs.mkdirSync(sharedThumbnailsDir, { recursive: true });
+    }
+
+    // Helper function to scan directory and fix files
+    const fixDirectoryPosterThumbnails = async (dir: string, targetDir: string) => {
+      const found: string[] = [];
+      const moved: string[] = [];
+      const errors: string[] = [];
+      
+      try {
+        // Get all files in the directory
+        const files = fs.readdirSync(dir);
+        
+        // Find .poster.jpg files
+        for (const file of files) {
+          if (file.includes('.poster.jpg')) {
+            found.push(file);
+            
+            try {
+              const sourcePath = path.join(dir, file);
+              const targetPath = path.join(targetDir, file);
+              
+              // Read the source file
+              const fileContent = fs.readFileSync(sourcePath);
+              
+              // Write to the thumbnails directory
+              fs.writeFileSync(targetPath, fileContent);
+              
+              // Log success
+              logger.info(`Moved ${file} to thumbnails directory`, { action: 'fix-poster-thumbnails' });
+              moved.push(file);
+              
+              // Upload to object storage if available
+              if (objectStorage) {
+                try {
+                  const sharedKey = `shared/uploads/thumbnails/${file}`;
+                  await objectStorage.uploadFromBytes(sharedKey, fileContent);
+                  logger.info(`Uploaded ${file} to Object Storage at ${sharedKey}`, { action: 'fix-poster-thumbnails' });
+                } catch (uploadError) {
+                  logger.error(`Failed to upload ${file} to Object Storage: ${uploadError}`, { action: 'fix-poster-thumbnails' });
+                  errors.push(`Upload error for ${file}: ${uploadError}`);
+                }
+              }
+            } catch (moveError) {
+              logger.error(`Failed to move ${file}: ${moveError}`, { action: 'fix-poster-thumbnails' });
+              errors.push(`Move error for ${file}: ${moveError}`);
+            }
+          }
+        }
+      } catch (dirError) {
+        logger.error(`Error scanning directory ${dir}: ${dirError}`, { action: 'fix-poster-thumbnails' });
+        errors.push(`Directory error for ${dir}: ${dirError}`);
+      }
+      
+      return { found, moved, errors };
+    };
+    
+    // Fix poster thumbnails in main and shared uploads directories
+    const regularResult = await fixDirectoryPosterThumbnails(uploadsDir, thumbnailsDir);
+    const sharedResult = await fixDirectoryPosterThumbnails(sharedUploadsDir, sharedThumbnailsDir);
+    
+    // Return results
+    res.json({
+      success: true,
+      message: 'Poster thumbnail fix completed',
+      regular: regularResult,
+      shared: sharedResult
+    });
+  } catch (error) {
+    logger.error(`Error fixing poster thumbnails: ${error}`, { action: 'fix-poster-thumbnails' });
+    res.status(500).json({
+      success: false,
+      message: `Error fixing poster thumbnails: ${error}`
+    });
+  }
+});
+
+/**
  * List all files in Object Storage matching a path/prefix
  */
 objectStorageRouter.get('/list', async (req: Request, res: Response) => {
