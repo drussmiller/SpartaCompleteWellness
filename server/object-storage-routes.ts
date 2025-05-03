@@ -284,6 +284,70 @@ objectStorageRouter.get('/list', async (req: Request, res: Response) => {
 });
 
 /**
+ * Check for specific thumbnail patterns to help debug thumbnail issues
+ */
+objectStorageRouter.get('/check-thumb-paths', async (req: Request, res: Response) => {
+  try {
+    // Get the file path or ID from query param
+    const fileId = req.query.fileId || req.query.path || req.query.file;
+    
+    if (!fileId || typeof fileId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing fileId parameter'
+      });
+    }
+    
+    const results: Record<string, boolean> = {};
+    
+    // Clean the ID - remove any path information if present
+    const baseFilename = path.basename(fileId);
+    
+    // Test different path patterns for thumbnails
+    const patterns = [
+      `shared/uploads/thumbnails/${baseFilename}.jpg`,
+      `shared/uploads/thumbnails/${baseFilename}.mov`,
+      `shared/uploads/thumbnails/${baseFilename}.poster.jpg`,
+      `shared/uploads/thumbnails/thumb-${baseFilename}.jpg`,
+      `shared/uploads/thumbnails/thumb-${baseFilename}.mov`,
+      `uploads/thumbnails/${baseFilename}.jpg`,
+      `uploads/thumbnails/${baseFilename}.mov`,
+      `uploads/thumbnails/${baseFilename}.poster.jpg`,
+      `uploads/thumbnails/thumb-${baseFilename}.jpg`,
+      `uploads/thumbnails/thumb-${baseFilename}.mov`,
+    ];
+    
+    logger.info(`Checking thumbnail paths for file ID: ${baseFilename}`, { route: '/api/object-storage/check-thumb-paths' });
+    
+    // Check each pattern
+    for (const pattern of patterns) {
+      try {
+        const exists = await objectStorage.exists(pattern);
+        results[pattern] = exists;
+        logger.info(`Object Storage exists check for ${pattern} returned ok:${exists}`);
+      } catch (err) {
+        results[pattern] = false;
+        logger.error(`Error checking pattern ${pattern}: ${err}`);
+      }
+    }
+    
+    return res.json({
+      success: true,
+      message: "Thumbnail path check completed",
+      fileId: baseFilename,
+      results
+    });
+  } catch (error) {
+    logger.error(`Error checking thumbnail paths: ${error}`, { route: '/api/object-storage/check-thumb-paths' });
+    return res.status(500).json({
+      success: false,
+      message: 'Error checking thumbnail paths',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
  * Helper function to guess content type based on file extension
  */
 function getContentType(filename: string): string {

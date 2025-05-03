@@ -1975,6 +1975,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             targetThumbPath = path.join(thumbDir, `thumb-${path.basename(post.mediaUrl)}`);
           }
           
+          // Log paths for debugging
+          logger.info(`Processing MOV file for post ${post.id}:`, {
+            originalPath: post.mediaUrl,
+            sourceMovPath,
+            targetThumbPath
+          });
+          
           logger.info(`Repairing thumbnails for post ${post.id}, file: ${sourceMovPath}`);
           
           try {

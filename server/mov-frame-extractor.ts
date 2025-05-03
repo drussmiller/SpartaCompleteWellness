@@ -95,8 +95,14 @@ export async function createAllMovThumbnailVariants(
   // Define paths for all variants
   const jpgThumbPath = targetThumbPath.replace('.mov', '.jpg');
   const movThumbPath = targetThumbPath;
-  const posterFilename = filename.replace('.mov', '.poster.jpg');
+  
+  // For poster path, ensure we use the .poster.jpg extension
+  // This is critical for proper thumbnails display in the UI
+  const fileBase = path.basename(filename, '.mov');
+  const posterFilename = `${fileBase}.poster.jpg`;
   const posterPath = path.join(path.dirname(sourceMovPath), posterFilename);
+  
+  // For non-prefixed path (regular thumbnail)
   const nonPrefixedThumbPath = targetThumbPath.replace('thumb-', '');
   
   // Create result object for easier access
