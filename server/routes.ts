@@ -1636,69 +1636,122 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
       
       const postId = parseInt(req.params.id);
+      logger.info(`Fetching post with ID: ${postId}`);
+      
       if (isNaN(postId)) {
+        logger.error(`Invalid post ID format: ${req.params.id}`);
         return res.status(400).send(JSON.stringify({ message: "Invalid post ID" }));
       }
       
-      // Get the post with author info using a db query
-      const result = await db
-        .select({
-          id: posts.id,
-          content: posts.content,
-          type: posts.type,
-          mediaUrl: posts.mediaUrl,
-          createdAt: posts.createdAt,
-          parentId: posts.parentId,
-          points: posts.points,
-          userId: posts.userId,
-          author: {
-            id: users.id,
-            username: users.username,
-            email: users.email,
-            imageUrl: users.imageUrl,
-            isAdmin: users.isAdmin
-          }
-        })
-        .from(posts)
-        .leftJoin(users, eq(posts.userId, users.id))
-        .where(eq(posts.id, postId))
-        .limit(1);
-      
-      if (!result || result.length === 0) {
-        return res.status(404).send(JSON.stringify({ message: "Post not found" }));
+      try {
+        // Get the post with author info using a db query
+        const result = await db
+          .select({
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            author: {
+              id: users.id,
+              username: users.username,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              isAdmin: users.isAdmin
+            }
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(eq(posts.id, postId))
+          .limit(1);
+        
+        if (!result || result.length === 0) {
+          logger.error(`Post not found with ID: ${postId}`);
+          return res.status(404).send(JSON.stringify({ message: "Post not found" }));
+        }
+        
+        const post = result[0];
+        
+        // Log the media URL for debugging
+        if (post.mediaUrl) {
+          logger.info(`Post ${postId} has media URL: ${post.mediaUrl}`);
+        }
+      } catch (dbError) {
+        logger.error(`Database error when fetching post ${postId}:`, dbError);
+        return res.status(500).send(JSON.stringify({ 
+          message: "Failed to get post due to database error",
+          error: dbError instanceof Error ? dbError.message : "Unknown database error"
+        }));
       }
       
-      const post = result[0];
+      // Get post from the previous try block
+      const post = result?.[0];
+      if (!post) {
+        logger.error(`Post not found or undefined for ID: ${postId}`);
+        return res.status(404).send(JSON.stringify({ message: "Post not found or data corrupted" }));
+      }
       
       // Log the response for debugging
-      logger.info(`Sending post ${postId}`);
+      logger.info(`Preparing post ${postId} for response`);
       
       // Double-check we're still sending as JSON (just in case)
       res.set('Content-Type', 'application/json');
       
-      // Fix circular references by mapping the post object before serializing
-      const safePost = {
-        id: post.id,
-        content: post.content,
-        type: post.type,
-        mediaUrl: post.mediaUrl,
-        createdAt: post.createdAt,
-        parentId: post.parentId,
-        points: post.points,
-        userId: post.userId,
-        author: post.author ? {
-          id: post.author.id,
-          username: post.author.username,
-          imageUrl: post.author.imageUrl,
-          isAdmin: post.author.isAdmin
-        } : null
-      };
-      
-      // Manually stringify the JSON to ensure it's not transformed in any way
-      const jsonString = JSON.stringify(safePost);
-      
-      // Send the manual JSON response
-      return res.send(jsonString);
+      try {
+        // Validate and clean up the mediaUrl field if needed
+        if (post.mediaUrl) {
+          // Check if the mediaUrl is a proper string and not null
+          if (typeof post.mediaUrl !== 'string') {
+            logger.error(`Invalid mediaUrl type for post ${postId}: ${typeof post.mediaUrl}`);
+            post.mediaUrl = null; // Reset to null if it's an invalid type
+          } else if (post.mediaUrl.includes('.mov') && post.type === 'memory_verse') {
+            // Log memory verse video detection
+            logger.info(`Memory verse video detected for post ${postId}: ${post.mediaUrl}`);
+            
+            // Check for potential thumbnail path issues
+            if (post.mediaUrl.includes('/thumb-')) {
+              logger.warn(`Memory verse using thumbnail path: ${post.mediaUrl}, fixing...`);
+              // Fix the path by removing the thumb- prefix if needed
+              post.mediaUrl = post.mediaUrl.replace('/thumb-', '/');
+            }
+          }
+        }
+        
+        // Fix circular references by mapping the post object before serializing
+        const safePost = {
+          id: post.id,
+          content: post.content,
+          type: post.type,
+          mediaUrl: post.mediaUrl,
+          createdAt: post.createdAt,
+          parentId: post.parentId,
+          points: post.points,
+          userId: post.userId,
+          author: post.author ? {
+            id: post.author.id,
+            username: post.author.username,
+            imageUrl: post.author.imageUrl,
+            isAdmin: post.author.isAdmin
+          } : null
+        };
+        
+        logger.info(`Successfully prepared post ${postId} for response`);
+        
+        // Manually stringify the JSON to ensure it's not transformed in any way
+        const jsonString = JSON.stringify(safePost);
+        
+        // Send the manual JSON response
+        return res.send(jsonString);
+      } catch (serializationError) {
+        logger.error(`Error serializing post ${postId}:`, serializationError);
+        return res.status(500).send(JSON.stringify({
+          message: "Error processing post data",
+          error: serializationError instanceof Error ? serializationError.message : "Unknown serialization error"
+        }));
+      }
     } catch (error) {
       logger.error('Error getting post:', error);
       
