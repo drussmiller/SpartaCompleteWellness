@@ -276,9 +276,14 @@ objectStorageRouter.get('/fix-poster-thumbnails', async (req: Request, res: Resp
         // Get all files in the directory
         const files = fs.readdirSync(dir);
         
-        // Find .poster.jpg files
+        // Find .poster.jpg files as well as normal .jpg that match MOV files
         for (const file of files) {
-          if (file.includes('.poster.jpg')) {
+          // Handle both poster jpg files and regular jpg files that might be thumbnails
+          const isMovThumbnail = (file.endsWith('.jpg') || file.endsWith('.jpeg')) && 
+                                (file.includes('.poster.') || // Check for .poster.jpg format
+                                 (file.match(/^\d+-[a-z0-9]+\.jpg$/) && !file.includes('thumb-'))); // Or timestamp-hash.jpg format
+          
+          if (isMovThumbnail) {
             found.push(file);
             
             try {
@@ -301,6 +306,21 @@ objectStorageRouter.get('/fix-poster-thumbnails', async (req: Request, res: Resp
                   const sharedKey = `shared/uploads/thumbnails/${file}`;
                   await objectStorage.uploadFromBytes(sharedKey, fileContent);
                   logger.info(`Uploaded ${file} to Object Storage at ${sharedKey}`, { action: 'fix-poster-thumbnails' });
+                  
+                  // Also create a ".poster.jpg" version if this is a regular jpg
+                  if (!file.includes('.poster.')) {
+                    const baseName = file.substring(0, file.lastIndexOf('.'));
+                    const posterName = `${baseName}.poster.jpg`;
+                    const posterPath = path.join(targetDir, posterName);
+                    
+                    // Copy to poster filename in local filesystem
+                    fs.writeFileSync(posterPath, fileContent);
+                    
+                    // Also upload to object storage with poster name
+                    const posterKey = `shared/uploads/thumbnails/${posterName}`;
+                    await objectStorage.uploadFromBytes(posterKey, fileContent);
+                    logger.info(`Created and uploaded poster duplicate at ${posterKey}`, { action: 'fix-poster-thumbnails' });
+                  }
                 } catch (uploadError) {
                   logger.error(`Failed to upload ${file} to Object Storage: ${uploadError}`, { action: 'fix-poster-thumbnails' });
                   errors.push(`Upload error for ${file}: ${uploadError}`);

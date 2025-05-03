@@ -88,22 +88,29 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
         const baseName = filename.substring(0, filename.lastIndexOf('.'));
         
         // For MOV files, we have several options to try:
-        // 1. A jpg version of the poster
-        const posterJpgPath = `/shared/uploads/${baseName}.poster.jpg`;
+        // 1. A jpg version of the poster (check both locations - new version in thumbnails dir, old version in uploads dir)
+        const posterJpgPathInThumbnails = `/shared/uploads/thumbnails/${baseName}.poster.jpg`;
+        const posterJpgPathInUploads = `/shared/uploads/${baseName}.poster.jpg`;
         
         // 2. A jpg thumbnail with thumb- prefix 
         const jpgThumbName = `thumb-${baseName}.jpg`;
         const jpgThumbPath = `/shared/uploads/thumbnails/${jpgThumbName}`;
         
-        // 3. The original MOV thumbnail
+        // 3. A jpg version without .poster in the name
+        const regularJpgPath = `/shared/uploads/thumbnails/${baseName}.jpg`;
+        
+        // 4. The original MOV thumbnail
         const thumbFilename = `thumb-${filename}`;
         const prefixedThumbPath = `/shared/uploads/thumbnails/${thumbFilename}`;
         
         // Return in order of preference based on size
         if (size === 'medium' || size === 'large') {
-          // For medium/large, prioritize the poster jpg since it's higher quality
-          console.log(`Using poster JPG for MOV file: ${posterJpgPath}`);
-          return createDirectDownloadUrl(posterJpgPath);
+          // For medium/large, try all poster formats in priority order
+          console.log(`Finding best poster JPG for MOV file: ${posterJpgPathInThumbnails}`);
+          
+          // We'll return the first path but use object-storage-routes.ts to try multiple paths
+          // It will automatically try all path variations including both locations
+          return createDirectDownloadUrl(posterJpgPathInThumbnails);
         } else {
           // For small, use JPG thumbnail
           console.log(`Using JPG thumbnail for MOV file: ${jpgThumbPath}`);
