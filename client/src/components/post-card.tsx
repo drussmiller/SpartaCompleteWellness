@@ -239,6 +239,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   preload="metadata"
                   playsInline
                   controlsList="nodownload"
+                  onLoad={() => {
+                    console.log("Video loaded successfully for post", post.id);
+                  }}
                   onError={(error: Error) => {
                     console.error(`Error loading video for post ${post.id}:`, error);
                     

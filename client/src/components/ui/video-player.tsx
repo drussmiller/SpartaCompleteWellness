@@ -74,6 +74,37 @@ export function VideoPlayer({
   
   const handlePosterError = () => {
     console.error("Failed to load video poster:", poster);
+    
+    // Try to generate a thumbnail using the server-side API if this is a MOV file
+    if (src && src.toLowerCase().endsWith('.mov')) {
+      console.log("Attempting to generate thumbnail via API for MOV file:", src);
+      
+      // Extract the file URL from the src
+      const fileUrl = src.includes('/api/object-storage/direct-download') 
+        ? new URL(src).searchParams.get('fileUrl')
+        : src;
+        
+      if (fileUrl) {
+        // Call our custom thumbnail generation API
+        fetch(`/api/object-storage/generate-thumbnail?fileUrl=${encodeURIComponent(fileUrl)}`)
+          .then(response => response.json())
+          .then(data => {
+            console.log("Thumbnail generation response:", data);
+            if (data.success) {
+              // Force reload the video to use the new thumbnail
+              const video = videoRef.current;
+              if (video) {
+                // Force the video element to reload with the new poster
+                video.load();
+              }
+            }
+          })
+          .catch(error => {
+            console.error("Error generating thumbnail:", error);
+          });
+      }
+    }
+    
     // If poster fails to load, try to generate one from the video
     if (!generatedPoster && videoRef.current) {
       // Set a small time to grab the first frame

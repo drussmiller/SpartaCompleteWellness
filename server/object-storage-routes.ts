@@ -570,6 +570,121 @@ objectStorageRouter.get('/generate-video-thumbnails', async (req: Request, res: 
 /**
  * Check for specific thumbnail patterns to help debug thumbnail issues
  */
+/**
+ * Force generate a thumbnail for a specific MOV file
+ * This route is for direct thumbnail regeneration when thumbnails aren't displaying properly
+ */
+objectStorageRouter.get('/generate-thumbnail', async (req: Request, res: Response) => {
+  try {
+    const { fileUrl } = req.query;
+    
+    if (!fileUrl || typeof fileUrl !== 'string') {
+      return res.status(400).json({ error: 'fileUrl is required' });
+    }
+    
+    // Normalize the path - strip off any prefix paths
+    const normalizedPath = fileUrl.includes('/uploads/') 
+      ? fileUrl.substring(fileUrl.indexOf('/uploads/') + 9) 
+      : fileUrl;
+    
+    // Only work with MOV files
+    if (!normalizedPath.toLowerCase().endsWith('.mov')) {
+      return res.status(400).json({ error: 'Only MOV files are supported for this operation' });
+    }
+    
+    // Determine the base filename without extension
+    const baseName = normalizedPath.substring(0, normalizedPath.lastIndexOf('.'));
+    
+    // Define source and target paths
+    const sourcePath = path.join(uploadsDir, normalizedPath);
+    const targetBaseName = baseName;
+    
+    // Create poster JPG thumbnails in multiple formats
+    const posterJpgPathInUploads = path.join(uploadsDir, `${targetBaseName}.poster.jpg`);
+    const posterJpgPathInThumbnails = path.join(thumbnailsDir, `${targetBaseName}.poster.jpg`);
+    const regularJpgPath = path.join(thumbnailsDir, `${targetBaseName}.jpg`);
+    
+    // Check if source file exists
+    if (!fs.existsSync(sourcePath)) {
+      return res.status(404).json({ error: `Source file not found at ${sourcePath}` });
+    }
+    
+    // Create thumbnails directory if it doesn't exist
+    if (!fs.existsSync(thumbnailsDir)) {
+      fs.mkdirSync(thumbnailsDir, { recursive: true });
+    }
+    
+    // Extract a frame using ffmpeg
+    try {
+      // First try directly with ffmpeg for a high-quality frame
+      await extractMovFrame(sourcePath, posterJpgPathInUploads);
+      
+      // Copy extracted frame to all variations
+      const fileContent = fs.readFileSync(posterJpgPathInUploads);
+      fs.writeFileSync(posterJpgPathInThumbnails, fileContent);
+      fs.writeFileSync(regularJpgPath, fileContent);
+      
+      // Upload to object storage if available
+      if (objectStorage) {
+        const sharedPosterJpgKey = `shared/uploads/${targetBaseName}.poster.jpg`;
+        const sharedThumbnailPosterJpgKey = `shared/uploads/thumbnails/${targetBaseName}.poster.jpg`;
+        const sharedThumbnailJpgKey = `shared/uploads/thumbnails/${targetBaseName}.jpg`;
+        
+        await objectStorage.uploadFromBytes(sharedPosterJpgKey, fileContent);
+        await objectStorage.uploadFromBytes(sharedThumbnailPosterJpgKey, fileContent);
+        await objectStorage.uploadFromBytes(sharedThumbnailJpgKey, fileContent);
+      }
+      
+      // Return success with all created paths
+      return res.status(200).json({
+        success: true,
+        fileUrl,
+        thumbnails: {
+          posterJpgInUploads: posterJpgPathInUploads,
+          posterJpgInThumbnails: posterJpgPathInThumbnails,
+          regularJpg: regularJpgPath
+        }
+      });
+    } catch (error: any) {
+      // If ffmpeg fails, try to generate a fallback SVG thumbnail
+      logger.error(`Error extracting frame from MOV: ${error.message}`);
+      
+      // Create fallback SVG with timestamp to prevent caching
+      const timestamp = Date.now();
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+        <rect width="640" height="480" fill="#333" />
+        <text x="320" y="240" font-family="Arial" font-size="24" fill="#fff" text-anchor="middle">
+          Video preview unavailable (${timestamp})
+        </text>
+      </svg>`;
+      
+      // Write SVG files to all variants
+      fs.writeFileSync(posterJpgPathInUploads.replace('.jpg', '.svg'), svgContent);
+      fs.writeFileSync(posterJpgPathInThumbnails.replace('.jpg', '.svg'), svgContent);
+      fs.writeFileSync(regularJpgPath.replace('.jpg', '.svg'), svgContent);
+      
+      // Upload SVG to object storage
+      if (objectStorage) {
+        const sharedPosterSvgKey = `shared/uploads/${targetBaseName}.poster.svg`;
+        const sharedThumbnailPosterSvgKey = `shared/uploads/thumbnails/${targetBaseName}.poster.svg`;
+        const sharedThumbnailSvgKey = `shared/uploads/thumbnails/${targetBaseName}.svg`;
+        
+        await objectStorage.uploadFromBytes(sharedPosterSvgKey, Buffer.from(svgContent));
+        await objectStorage.uploadFromBytes(sharedThumbnailPosterSvgKey, Buffer.from(svgContent));
+        await objectStorage.uploadFromBytes(sharedThumbnailSvgKey, Buffer.from(svgContent));
+      }
+      
+      return res.status(500).json({
+        error: `Failed to extract frame with ffmpeg: ${error.message}`,
+        fallback: 'Generated SVG fallbacks instead'
+      });
+    }
+  } catch (error: any) {
+    logger.error(`Error in generate-thumbnail: ${error.message}`);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 objectStorageRouter.get('/check-thumb-paths', async (req: Request, res: Response) => {
   try {
     // Get the file path or ID from query param
