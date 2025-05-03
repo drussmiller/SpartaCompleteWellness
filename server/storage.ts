@@ -286,7 +286,72 @@ export const storage = {
 
   async deletePost(id: number): Promise<void> {
     try {
+      // First, get the post to check if it has media that needs to be deleted
+      const postToDelete = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl,
+          is_video: posts.is_video
+        })
+        .from(posts)
+        .where(eq(posts.id, id))
+        .limit(1);
+      
+      // Delete the post record from the database
       await db.delete(posts).where(eq(posts.id, id));
+      
+      // If the post had media, delete the media files from Object Storage
+      if (postToDelete.length > 0 && postToDelete[0].mediaUrl) {
+        const mediaUrl = postToDelete[0].mediaUrl;
+        const isVideo = postToDelete[0].is_video;
+        
+        try {
+          // Import the SpartaObjectStorage utility
+          const { spartaStorage } = await import('./sparta-object-storage');
+          
+          // Delete the media file
+          await spartaStorage.deleteFile(mediaUrl);
+          
+          // If it's a video, also try to delete associated files (poster, thumbnails)
+          if (isVideo) {
+            // Delete the poster image if it exists
+            const filename = mediaUrl.split('/').pop() || '';
+            const baseName = filename.substring(0, filename.lastIndexOf('.'));
+            const posterUrl = mediaUrl.replace(filename, `${baseName}.poster.jpg`);
+            
+            try {
+              await spartaStorage.deleteFile(posterUrl);
+              logger.debug(`Deleted poster image for post ${id}: ${posterUrl}`);
+            } catch (err) {
+              // Ignore errors for poster deletion - it might not exist
+              logger.debug(`Could not delete poster image for post ${id}: ${posterUrl}`);
+            }
+            
+            // Delete thumbnails (both formats - with and without thumb- prefix)
+            const thumbPath = mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
+            const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
+            
+            try {
+              await spartaStorage.deleteFile(thumbPath);
+              logger.debug(`Deleted thumbnail for post ${id}: ${thumbPath}`);
+            } catch (err) {
+              // Ignore errors for thumbnail deletion - it might not exist
+              logger.debug(`Could not delete thumbnail for post ${id}: ${thumbPath}`);
+            }
+            
+            try {
+              await spartaStorage.deleteFile(prefixedThumbPath);
+              logger.debug(`Deleted prefixed thumbnail for post ${id}: ${prefixedThumbPath}`);
+            } catch (err) {
+              // Ignore errors for prefixed thumbnail deletion - it might not exist
+              logger.debug(`Could not delete prefixed thumbnail for post ${id}: ${prefixedThumbPath}`);
+            }
+          }
+        } catch (mediaError) {
+          // Log but don't throw - we want to continue even if media deletion fails
+          logger.error(`Error deleting media for post ${id}: ${mediaError}`);
+        }
+      }
     } catch (error) {
       logger.error(`Failed to delete post ${id}: ${error}`);
       throw error;
@@ -335,9 +400,28 @@ export const storage = {
       throw error;
     }
   },
-  // Add deleteUser method to storage adapter
+  // Delete a user and all their associated data
   async deleteUser(userId: number): Promise<void> {
     try {
+      // Import the SpartaObjectStorage utility for media deletion
+      const { spartaStorage } = await import('./sparta-object-storage');
+
+      // First, get all posts by this user that have media to delete
+      const postsWithMedia = await db
+        .select({
+          id: posts.id, 
+          mediaUrl: posts.mediaUrl,
+          is_video: posts.is_video
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            sql`${posts.mediaUrl} IS NOT NULL`
+          )
+        );
+
+      // Now delete everything in a transaction
       await db.transaction(async (tx) => {
         // Delete all reactions by this user
         await tx
@@ -367,6 +451,56 @@ export const storage = {
           .delete(users)
           .where(eq(users.id, userId));
       });
+
+      // After the transaction completes successfully, clean up the media files
+      for (const post of postsWithMedia) {
+        if (post.mediaUrl) {
+          try {
+            // Delete the main media file
+            await spartaStorage.deleteFile(post.mediaUrl);
+            logger.debug(`Deleted media file for post ${post.id}: ${post.mediaUrl}`);
+
+            // If it's a video, also try to delete associated files (poster, thumbnails)
+            if (post.is_video) {
+              // Delete the poster image if it exists
+              const filename = post.mediaUrl.split('/').pop() || '';
+              const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const posterUrl = post.mediaUrl.replace(filename, `${baseName}.poster.jpg`);
+              
+              try {
+                await spartaStorage.deleteFile(posterUrl);
+                logger.debug(`Deleted poster image for post ${post.id}: ${posterUrl}`);
+              } catch (err) {
+                // Ignore errors for poster deletion - it might not exist
+                logger.debug(`Could not delete poster image for post ${post.id}: ${posterUrl}`);
+              }
+              
+              // Delete thumbnails (both formats - with and without thumb- prefix)
+              const thumbPath = post.mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
+              const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
+              
+              try {
+                await spartaStorage.deleteFile(thumbPath);
+                logger.debug(`Deleted thumbnail for post ${post.id}: ${thumbPath}`);
+              } catch (err) {
+                // Ignore errors for thumbnail deletion - it might not exist
+                logger.debug(`Could not delete thumbnail for post ${post.id}: ${thumbPath}`);
+              }
+              
+              try {
+                await spartaStorage.deleteFile(prefixedThumbPath);
+                logger.debug(`Deleted prefixed thumbnail for post ${post.id}: ${prefixedThumbPath}`);
+              } catch (err) {
+                // Ignore errors for prefixed thumbnail deletion - it might not exist
+                logger.debug(`Could not delete prefixed thumbnail for post ${post.id}: ${prefixedThumbPath}`);
+              }
+            }
+          } catch (mediaError) {
+            // Log but don't throw - we want to continue even if some media deletion fails
+            logger.error(`Error deleting media for post ${post.id}: ${mediaError}`);
+          }
+        }
+      }
     } catch (error) {
       logger.error(`Failed to delete user ${userId}: ${error}`);
       throw error;
