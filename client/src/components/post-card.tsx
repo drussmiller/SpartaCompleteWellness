@@ -25,30 +25,10 @@ import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
 import { createDirectDownloadUrl } from "../lib/object-storage-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { generateMemoryVerseThumbnails, getMemoryVersePoster } from "@/lib/memory-verse-utils";
+import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
-
-/**
- * Direct forced poster image generator for MOV files
- * This is a brute-force approach to ensure thumbnails always display
- */
-function getVideoPoster(mediaUrl: string | null): string | undefined {
-  if (!mediaUrl) return undefined;
-  
-  // For MOV files, use multiple formats to ensure at least one works
-  if (mediaUrl.toLowerCase().endsWith('.mov')) {
-    const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
-    const fileName = baseName.split('/').pop();
-    
-    // Return a versioned URL to avoid caching
-    return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileName}.poster.jpg&v=${Date.now()}`;
-  }
-  
-  // For other file types, use the regular thumbnail URL
-  return getThumbnailUrl(mediaUrl);
-}
 
 // Helper function to check if a file URL is likely a video
 function isLikelyVideo(url: string, content?: string | null): boolean {
@@ -178,14 +158,28 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
-  // Generate and request memory verse thumbnails on component mount
+  // Generate and request video thumbnails on component mount
   useEffect(() => {
-    // Only run for memory verse posts
-    if (post.type === 'memory_verse' && post.mediaUrl && post.mediaUrl.toLowerCase().endsWith('.mov')) {
-      console.log("Memory verse post detected, generating thumbnails:", post.id);
+    // Run for both memory verse and miscellaneous video posts
+    if (post.mediaUrl && 
+        (post.type === 'memory_verse' || 
+         (post.type === 'miscellaneous' && post.is_video)) && 
+        post.mediaUrl.toLowerCase().endsWith('.mov')) {
+      
+      console.log(`${post.type} video post detected, generating thumbnails:`, post.id);
+      
+      // Choose the appropriate API endpoint based on post type
+      const endpoint = post.type === 'memory_verse' 
+        ? '/api/memory-verse-thumbnails'
+        : '/api/object-storage/generate-thumbnail';
+      
+      // Add the file URL for miscellaneous posts
+      const url = post.type === 'memory_verse'
+        ? endpoint
+        : `${endpoint}?fileUrl=${encodeURIComponent(post.mediaUrl)}`;
       
       // Call the thumbnail generation API
-      fetch('/api/memory-verse-thumbnails')
+      fetch(url)
         .then(response => response.json())
         .then(data => {
           console.log("Thumbnail generation response:", data);
@@ -196,7 +190,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           console.error("Error generating thumbnails:", error);
         });
     }
-  }, [post.id, post.type, post.mediaUrl]);
+  }, [post.id, post.type, post.mediaUrl, post.is_video]);
   
   // Use direct download URL for images from Object Storage
   const getImageUrl = (url: string | null): string => {
