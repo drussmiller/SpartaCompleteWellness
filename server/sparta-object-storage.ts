@@ -536,7 +536,7 @@ export class SpartaObjectStorage {
         try {
           console.log(`Attempting to create a fallback thumbnail for ${safeFilename}`);
           fs.copyFileSync(filePath, thumbnailPath);
-          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
           console.log(`Created fallback thumbnail by copying original file to ${thumbnailPath}`);
           logger.info(`Created fallback thumbnail for ${safeFilename} after error`);
         } catch (fallbackError) {
@@ -548,16 +548,16 @@ export class SpartaObjectStorage {
 
       logger.info(`Successfully stored file ${safeFilename}`);
 
-      // Determine which URL path should be used based on directory structure
-      let urlPath = `/uploads/${safeFilename}`;
+      // Determine which URL path should be used based on directory structure - ONLY use shared paths
+      let urlPath = `/shared/uploads/${safeFilename}`;
       
       // Use the same logic as above for directory paths
       if (isMemoryVideo) {
-        urlPath = `/uploads/memory_verse/${safeFilename}`;
-        console.log("Using memory_verse URL path:", urlPath);
+        urlPath = `/shared/uploads/memory_verse/${safeFilename}`;
+        console.log("Using shared memory_verse URL path:", urlPath);
       } else if (isMiscVideo) {
-        urlPath = `/uploads/miscellaneous/${safeFilename}`;
-        console.log("Using miscellaneous URL path:", urlPath);
+        urlPath = `/shared/uploads/miscellaneous/${safeFilename}`;
+        console.log("Using shared miscellaneous URL path:", urlPath);
       }
       
       return {
@@ -588,10 +588,9 @@ export class SpartaObjectStorage {
       if (!fs.existsSync(sourcePath) && this.objectStorage) {
         console.log(`Source file not found locally: ${sourcePath}. Attempting to retrieve from Object Storage.`);
         
-        // Extract the filename and prepare possible keys
+        // Extract the filename and prepare possible keys - ONLY using shared paths
         const fileName = path.basename(sourcePath);
         const objectStorageKeys = [
-          `uploads/${fileName}`,
           `shared/uploads/${fileName}`,
           fileName
         ];
@@ -770,9 +769,8 @@ export class SpartaObjectStorage {
             const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
             const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
             
-            // Prepare possible Object Storage keys to check
+            // Prepare possible Object Storage keys to check - ONLY using shared paths
             let objectStorageKeys = [
-              `uploads/${filename}`,
               `shared/uploads/${filename}`,
               filename
             ];
@@ -780,13 +778,11 @@ export class SpartaObjectStorage {
             // Add special directory keys if needed
             if (isMemoryVerse) {
               objectStorageKeys.push(
-                `uploads/memory_verse/${filename}`,
                 `shared/uploads/memory_verse/${filename}`,
                 `memory_verse/${filename}`
               );
             } else if (isMiscellaneousVideo) {
               objectStorageKeys.push(
-                `uploads/miscellaneous/${filename}`,
                 `shared/uploads/miscellaneous/${filename}`,
                 `miscellaneous/${filename}`
               );
@@ -794,7 +790,6 @@ export class SpartaObjectStorage {
             
             // Also add video-specific paths
             objectStorageKeys.push(
-              `uploads/videos/${filename}`,
               `shared/uploads/videos/${filename}`,
               `videos/${filename}`
             );
@@ -1684,20 +1679,22 @@ export class SpartaObjectStorage {
         }
       }
       
-      // Get possible object storage keys to check
+      // Get possible object storage keys to check - ONLY using shared paths
       let objectStorageKeys = [
-        fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl  // Standard key
+        fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl,  // Standard key
+        // Always add shared path versions
+        `shared/uploads/${filename}`
       ];
       
       // Add keys for special directories
       if (isMemoryVerse) {
         objectStorageKeys.push(
-          `uploads/memory_verse/${filename}`,
+          `shared/uploads/memory_verse/${filename}`,
           `memory_verse/${filename}`
         );
       } else if (isMiscellaneous) {
         objectStorageKeys.push(
-          `uploads/miscellaneous/${filename}`,
+          `shared/uploads/miscellaneous/${filename}`,
           `miscellaneous/${filename}`
         );
       }
@@ -1890,23 +1887,23 @@ export class SpartaObjectStorage {
       
       // If thumbnail doesn't exist locally, check in object storage
       if (!thumbnailUrl && this.objectStorage) {
-        // Generate potential thumbnail keys to check in object storage
+        // Generate potential thumbnail keys to check in object storage - ONLY using shared paths
         const thumbnailKeys = [
-          `uploads/thumbnails/${standardThumbFilename}`,
-          `uploads/thumbnails/${alternateThumbFilename}`
+          `shared/uploads/thumbnails/${standardThumbFilename}`,
+          `shared/uploads/thumbnails/${alternateThumbFilename}`
         ];
         
         // Add keys for special directories
         if (isMemoryVerse) {
           thumbnailKeys.push(
-            `uploads/thumbnails/memory_verse/${standardThumbFilename}`,
-            `uploads/thumbnails/memory_verse/${alternateThumbFilename}`,
+            `shared/uploads/thumbnails/memory_verse/${standardThumbFilename}`,
+            `shared/uploads/thumbnails/memory_verse/${alternateThumbFilename}`,
             `memory_verse/thumbnails/${standardThumbFilename}`
           );
         } else if (isMiscellaneous) {
           thumbnailKeys.push(
-            `uploads/thumbnails/miscellaneous/${standardThumbFilename}`,
-            `uploads/thumbnails/miscellaneous/${alternateThumbFilename}`,
+            `shared/uploads/thumbnails/miscellaneous/${standardThumbFilename}`,
+            `shared/uploads/thumbnails/miscellaneous/${alternateThumbFilename}`,
             `miscellaneous/thumbnails/${standardThumbFilename}`
           );
         }
@@ -1941,13 +1938,13 @@ export class SpartaObjectStorage {
               objectExists = true;
               foundKey = key;
               
-              // Determine URL based on key structure
+              // Determine URL based on key structure - always use shared paths
               if (key.includes('memory_verse')) {
-                foundUrl = `/uploads/thumbnails/memory_verse/${standardThumbFilename}`;
+                foundUrl = `/shared/uploads/thumbnails/memory_verse/${standardThumbFilename}`;
               } else if (key.includes('miscellaneous')) {
-                foundUrl = `/uploads/thumbnails/miscellaneous/${standardThumbFilename}`;
+                foundUrl = `/shared/uploads/thumbnails/miscellaneous/${standardThumbFilename}`;
               } else {
-                foundUrl = `/uploads/thumbnails/${standardThumbFilename}`;
+                foundUrl = `/shared/uploads/thumbnails/${standardThumbFilename}`;
               }
               
               console.log(`Found thumbnail in object storage with key: ${foundKey}`);
