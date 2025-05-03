@@ -309,30 +309,24 @@ export class SpartaObjectStorage {
             // Create environment-agnostic keys by removing env-specific parts
             const relativePath = filePath.replace(this.baseDir, '').replace(/^\/+/, '');
             
-            // Store with both environment-specific and environment-agnostic keys
+            // Only store with shared key to save space
             // The environment-agnostic key has 'shared/' prefix and works across environments
-            const envSpecificKey = `uploads/${relativePath}`;
             const sharedKey = `shared/uploads/${relativePath}`;
             
-            logger.info(`Cross-environment storage: Storing file in dual format`, {
-              envSpecificKey,
+            logger.info(`Object Storage: Storing file with shared key`, {
               sharedKey,
               fileSize: fileBuffer.length,
               mimeType
             });
             
-            // Store in both formats so it's accessible in both environments
-            console.log(`Storing file in Replit Object Storage with environment-specific key: ${envSpecificKey}`);
-            await this.objectStorage.uploadFromBytes(envSpecificKey, fileBuffer);
-            
+            // Store only with shared key to save space
             console.log(`Storing file in Replit Object Storage with shared key: ${sharedKey}`);
             await this.objectStorage.uploadFromBytes(sharedKey, fileBuffer);
             
-            // Use the environment-specific key for URLs (backward compatibility)
-            objectStorageKey = envSpecificKey;
-            console.log(`File stored successfully in Replit Object Storage - available in both environments`);
-            logger.info(`Cross-environment storage complete: File stored with both keys successfully`, {
-              envSpecificKey,
+            // Use the shared key for URLs
+            objectStorageKey = sharedKey;
+            console.log(`File stored successfully in Replit Object Storage with shared key`);
+            logger.info(`File stored successfully with shared key`, {
               sharedKey,
               fileSize: fileBuffer.length
             });
@@ -519,21 +513,16 @@ export class SpartaObjectStorage {
           try {
             const thumbnailBasename = path.basename(thumbnailPath);
             
-            // Store in both environment-specific and shared paths
-            const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+            // Store only in the shared path to save space
             const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
             
             const thumbnailBuffer = fs.readFileSync(thumbnailPath);
             
-            // Upload with environment-specific key
-            console.log(`Uploading thumbnail to Object Storage with env-specific key: ${envSpecificKey}`);
-            await this.objectStorage.uploadFromBytes(envSpecificKey, thumbnailBuffer);
-            
-            // Upload with shared key
+            // Upload with shared key only
             console.log(`Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
             await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
             
-            console.log(`Successfully uploaded thumbnail to Object Storage in both locations`);
+            console.log(`Successfully uploaded thumbnail to Object Storage with shared key`);
           } catch (objStoreError) {
             console.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
             // Continue with local thumbnail only
@@ -701,21 +690,16 @@ export class SpartaObjectStorage {
         try {
           const thumbnailBasename = path.basename(targetPath);
           
-          // Store in both environment-specific and shared paths
-          const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+          // Store only in shared path to save space
           const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
           
           const thumbnailBuffer = fs.readFileSync(targetPath);
           
-          // Upload with environment-specific key
-          console.log(`Uploading thumbnail to Object Storage with env-specific key: ${envSpecificKey}`);
-          await this.objectStorage.uploadFromBytes(envSpecificKey, thumbnailBuffer);
-          
-          // Upload with shared key
+          // Upload with shared key only
           console.log(`Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
           await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
           
-          console.log(`Successfully uploaded thumbnail to Object Storage in both locations`);
+          console.log(`Successfully uploaded thumbnail to Object Storage with shared key`);
         } catch (objStoreError) {
           console.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
           logger.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
@@ -739,21 +723,16 @@ export class SpartaObjectStorage {
           try {
             const thumbnailBasename = path.basename(targetPath);
             
-            // Store in both environment-specific and shared paths
-            const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+            // Store only in shared path to save space
             const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
             
             const thumbnailBuffer = fs.readFileSync(targetPath);
             
-            // Upload with environment-specific key
-            console.log(`Uploading fallback thumbnail to Object Storage with env-specific key: ${envSpecificKey}`);
-            await this.objectStorage.uploadFromBytes(envSpecificKey, thumbnailBuffer);
-            
-            // Upload with shared key
+            // Upload with shared key only
             console.log(`Uploading fallback thumbnail to Object Storage with shared key: ${sharedKey}`);
             await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
             
-            console.log(`Successfully uploaded fallback thumbnail to Object Storage in both locations`);
+            console.log(`Successfully uploaded fallback thumbnail to Object Storage with shared key`);
           } catch (objStoreError) {
             console.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
             logger.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
@@ -981,14 +960,12 @@ export class SpartaObjectStorage {
                     if (this.objectStorage) {
                       const thumbnailBasename = path.basename(targetPath);
                       
-                      // Store in both environment-specific and shared paths
-                      const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                      // Store only in shared path to save space
                       const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                       
-                      console.log(`Uploading placeholder MOV thumbnail to Object Storage with key: ${envSpecificKey}`);
+                      console.log(`Uploading placeholder MOV thumbnail to Object Storage with shared key: ${sharedKey}`);
                       
-                      this.objectStorage.uploadFromBytes(envSpecificKey, videoSvg)
-                        .then(() => this.objectStorage!.uploadFromBytes(sharedKey, videoSvg))
+                      this.objectStorage.uploadFromBytes(sharedKey, videoSvg)
                         .then(() => {
                           console.log(`Successfully uploaded MOV thumbnail to Object Storage`);
                         })
@@ -1040,14 +1017,12 @@ export class SpartaObjectStorage {
                         
                         const thumbnailBasename = path.basename(targetPath);
                         
-                        // Store in both environment-specific and shared paths
-                        const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                        // Store only in shared path to save space
                         const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                         
-                        console.log(`[${processId}] Uploading thumbnail to Object Storage with key: ${envSpecificKey}`);
+                        console.log(`[${processId}] Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
                         
-                        this.objectStorage!.uploadFromBytes(envSpecificKey, thumbnailBuffer)
-                          .then(() => this.objectStorage!.uploadFromBytes(sharedKey, thumbnailBuffer))
+                        this.objectStorage!.uploadFromBytes(sharedKey, thumbnailBuffer)
                           .then(() => {
                             console.log(`[${processId}] Successfully uploaded video thumbnail to Object Storage`);
                             resolve();
@@ -1082,14 +1057,12 @@ export class SpartaObjectStorage {
                       if (this.objectStorage) {
                         const thumbnailBasename = path.basename(targetPath);
                         
-                        // Store in both environment-specific and shared paths
-                        const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                        // Store only in shared path to save space
                         const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                         
-                        console.log(`[${processId}] Uploading fallback thumbnail to Object Storage with key: ${envSpecificKey}`);
+                        console.log(`[${processId}] Uploading fallback thumbnail to Object Storage with shared key: ${sharedKey}`);
                         
-                        this.objectStorage.uploadFromBytes(envSpecificKey, videoSvg)
-                          .then(() => this.objectStorage!.uploadFromBytes(sharedKey, videoSvg))
+                        this.objectStorage.uploadFromBytes(sharedKey, videoSvg)
                           .then(() => {
                             console.log(`[${processId}] Successfully uploaded fallback thumbnail to Object Storage`);
                             resolve();
@@ -1130,12 +1103,10 @@ export class SpartaObjectStorage {
                     if (this.objectStorage) {
                       const thumbnailBasename = path.basename(targetPath);
                       
-                      // Store in both environment-specific and shared paths
-                      const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                      // Store only in shared path to save space
                       const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                       
-                      this.objectStorage.uploadFromBytes(envSpecificKey, videoSvg)
-                        .then(() => this.objectStorage!.uploadFromBytes(sharedKey, videoSvg))
+                      this.objectStorage.uploadFromBytes(sharedKey, videoSvg)
                         .then(() => {
                           console.log(`[${processId}] Successfully uploaded timeout fallback thumbnail to Object Storage`);
                         })
