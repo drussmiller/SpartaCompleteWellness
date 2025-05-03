@@ -22,6 +22,10 @@ const objectStorage = new ObjectStorage.Client({
 /**
  * Direct route to serve files exclusively from Object Storage
  * This route no longer falls back to the local filesystem as requested by user
+ * 
+ * Key enhancement for thumbnail handling: 
+ * - For any file ending in .mov, .mov.poster.jpg, or similar special formats,
+ *   this route will check for thumbnail variants in different locations
  */
 objectStorageRouter.get('/direct-download', async (req: Request, res: Response) => {
   // Extract the key parameter from query string - support all variations of parameter names
@@ -393,6 +397,171 @@ objectStorageRouter.get('/list', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Error listing files in Object Storage',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
+ * Generate thumbnails for existing video files
+ * This route helps repair missing thumbnails for videos
+ */
+objectStorageRouter.get('/generate-video-thumbnails', async (req: Request, res: Response) => {
+  try {
+    // Path parameters - you can provide a specific post ID or generate for all
+    const postId = req.query.postId as string;
+    const specificVideoPath = req.query.path as string;
+    
+    logger.info(`Starting video thumbnail generation${postId ? ` for post ${postId}` : ' for all videos'}`, 
+      { route: '/api/object-storage/generate-video-thumbnails' });
+    
+    if (specificVideoPath) {
+      // Process a single specific video file
+      const { spartaStorage } = await import('./sparta-object-storage');
+      const { extractMovFrame } = await import('./mov-frame-extractor');
+      
+      const videoPath = specificVideoPath.startsWith('/') ? specificVideoPath.substring(1) : specificVideoPath;
+      const baseDir = process.cwd();
+      const fullVideoPath = path.join(baseDir, videoPath);
+      
+      // Create thumbnail path - put it in the thumbnails directory
+      const parsedPath = path.parse(videoPath);
+      const thumbnailFilename = `${parsedPath.name}.poster.jpg`;
+      const thumbnailPath = path.join(baseDir, 'uploads', 'thumbnails', thumbnailFilename);
+      const sharedThumbnailPath = path.join(baseDir, 'shared', 'uploads', 'thumbnails', thumbnailFilename);
+      
+      // Create directories if they don't exist
+      if (!fs.existsSync(path.dirname(thumbnailPath))) {
+        fs.mkdirSync(path.dirname(thumbnailPath), { recursive: true });
+      }
+      if (!fs.existsSync(path.dirname(sharedThumbnailPath))) {
+        fs.mkdirSync(path.dirname(sharedThumbnailPath), { recursive: true });
+      }
+      
+      // Generate the thumbnail
+      try {
+        await extractMovFrame(fullVideoPath, thumbnailPath);
+        logger.info(`Generated thumbnail for ${videoPath} at ${thumbnailPath}`, 
+          { route: '/api/object-storage/generate-video-thumbnails' });
+        
+        // Copy to shared location for consistency
+        fs.copyFileSync(thumbnailPath, sharedThumbnailPath);
+        logger.info(`Copied thumbnail to shared location at ${sharedThumbnailPath}`, 
+          { route: '/api/object-storage/generate-video-thumbnails' });
+        
+        // Upload to Object Storage
+        if (objectStorage) {
+          const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
+          const thumbnailData = fs.readFileSync(thumbnailPath);
+          await objectStorage.upload(thumbnailKey, thumbnailData);
+          logger.info(`Uploaded thumbnail to Object Storage at key: ${thumbnailKey}`, 
+            { route: '/api/object-storage/generate-video-thumbnails' });
+        }
+        
+        return res.json({
+          success: true,
+          message: 'Thumbnail generated successfully',
+          paths: {
+            original: thumbnailPath,
+            shared: sharedThumbnailPath,
+            objectStorage: `shared/uploads/thumbnails/${thumbnailFilename}`
+          }
+        });
+      } catch (extractError) {
+        logger.error(`Error extracting frame: ${extractError}`, 
+          { route: '/api/object-storage/generate-video-thumbnails' });
+        return res.status(500).json({
+          success: false,
+          message: 'Error generating thumbnail',
+          error: extractError instanceof Error ? extractError.message : String(extractError)
+        });
+      }
+    } else if (postId) {
+      // Process videos for a specific post
+      const { db } = await import('./db');
+      const { posts } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      // Find the post
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, parseInt(postId, 10)));
+      
+      if (!post || !post.image_url) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found or has no media'
+        });
+      }
+      
+      // Check if it's a video
+      if (!post.image_url.toLowerCase().endsWith('.mov') && !post.is_video) {
+        return res.status(400).json({
+          success: false,
+          message: 'Post does not contain a video'
+        });
+      }
+      
+      // Process the video (reuse existing code)
+      const redirectUrl = `/api/object-storage/generate-video-thumbnails?path=${encodeURIComponent(post.image_url)}`;
+      
+      return res.redirect(redirectUrl);
+    } else {
+      // No specific path or post ID was provided
+      // Find and process all memory verse videos (these are definitely videos)
+      const { db } = await import('./db');
+      const { posts } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const memoryVersePosts = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.type, 'memory_verse'));
+      
+      const results = {
+        total: memoryVersePosts.length,
+        processed: 0,
+        succeeded: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
+      
+      for (const post of memoryVersePosts) {
+        if (!post.image_url) continue;
+        
+        results.processed++;
+        
+        try {
+          // Make internal request to process each video
+          const response = await fetch(
+            `http://localhost:5000/api/object-storage/generate-video-thumbnails?path=${encodeURIComponent(post.image_url)}`
+          );
+          
+          if (response.ok) {
+            results.succeeded++;
+          } else {
+            results.failed++;
+            const error = await response.text();
+            results.errors.push(`Post ${post.id}: ${error}`);
+          }
+        } catch (error) {
+          results.failed++;
+          results.errors.push(`Post ${post.id}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Thumbnail generation process completed',
+        results
+      });
+    }
+  } catch (error) {
+    logger.error(`Error in thumbnail generation: ${error}`, { route: '/api/object-storage/generate-video-thumbnails' });
+    return res.status(500).json({
+      success: false,
+      message: 'Error running thumbnail generation',
       error: error instanceof Error ? error.message : String(error)
     });
   }

@@ -25,6 +25,8 @@ export function VideoPlayer({
   disablePictureInPicture = false,
   controlsList = 'nodownload'
 }: VideoPlayerProps) {
+  // Add key based on poster URL to force re-render when poster changes
+  const key = `video-${src?.split('/').pop()}-${poster ? Date.now() : 'no-poster'}`;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -62,6 +64,20 @@ export function VideoPlayer({
         console.error("Error playing video:", err);
         if (onError) onError(err);
       });
+    }
+  };
+  
+  // Log when poster loads or fails to help with debugging
+  const handlePosterLoaded = () => {
+    console.log("Video poster loaded successfully:", poster);
+  };
+  
+  const handlePosterError = () => {
+    console.error("Failed to load video poster:", poster);
+    // If poster fails to load, try to generate one from the video
+    if (!generatedPoster && videoRef.current) {
+      // Set a small time to grab the first frame
+      videoRef.current.currentTime = 0.1;
     }
   };
 
@@ -208,7 +224,19 @@ export function VideoPlayer({
         style={{ display: 'none' }}
       />
       
+      {/* Preload poster image */}
+      {poster && (
+        <img
+          src={poster}
+          alt="Video thumbnail"
+          className="hidden"
+          onLoad={handlePosterLoaded}
+          onError={handlePosterError}
+        />
+      )}
+      
       <video
+        key={key} /* Add key to force re-render when poster changes */
         ref={videoRef}
         src={src}
         poster={poster || generatedPoster || undefined}
@@ -218,6 +246,13 @@ export function VideoPlayer({
         controlsList={controlsList}
         disablePictureInPicture={disablePictureInPicture}
         onClick={() => togglePlay()}
+        onLoadedMetadata={() => {
+          console.log("Video metadata loaded, poster:", poster || generatedPoster);
+        }}
+        onError={(e) => {
+          console.error("Video failed to load:", src);
+          if (onError) onError(new Error("Failed to load video"));
+        }}
       />
 
       {/* Loading indicator */}

@@ -101,7 +101,13 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
         const jpgThumbName = `thumb-${baseName}.jpg`;
         const jpgThumbPath = `/shared/uploads/thumbnails/${jpgThumbName}`;
         
-        // 5. The original MOV thumbnail (least preferred, often doesn't work well)
+        // 5. Check for filename-only.jpg pattern in thumbnails directory
+        const filenameOnly = filename.split('/').pop() || '';
+        const filenameWithoutExt = filenameOnly.substring(0, filenameOnly.lastIndexOf('.'));
+        const fileOnlyJpgPath = `/shared/uploads/thumbnails/${filenameWithoutExt}.jpg`;
+        const fileOnlyPosterJpgPath = `/shared/uploads/thumbnails/${filenameWithoutExt}.poster.jpg`;
+        
+        // 6. The original MOV thumbnail (least preferred, often doesn't work well)
         const thumbFilename = `thumb-${filename}`;
         const prefixedThumbPath = `/shared/uploads/thumbnails/${thumbFilename}`;
         
@@ -112,9 +118,23 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
           
           // Note: our object-storage-routes.ts service will automatically try all these paths in sequence:
           // 1. posterJpgPathInThumbnails (primary)
-          // 2. posterJpgPathInUploads (fallback)
-          // 3. regularJpgPath (fallback)
-          // 4. Original MOV (last resort)
+          // 2. fileOnlyPosterJpgPath (new fallback)
+          // 3. posterJpgPathInUploads (fallback)
+          // 4. regularJpgPath (fallback)
+          // 5. fileOnlyJpgPath (new fallback)
+          // 6. Original MOV (last resort)
+          
+          // Try to preload potential fallback paths to improve caching
+          try {
+            const img1 = new Image();
+            img1.src = createDirectDownloadUrl(fileOnlyPosterJpgPath);
+            
+            const img2 = new Image();
+            img2.src = createDirectDownloadUrl(posterJpgPathInUploads);
+          } catch (e) {
+            // Ignore preload errors
+          }
+          
           return createDirectDownloadUrl(posterJpgPathInThumbnails);
         } else {
           // For small thumbnails, use the JPG thumbnail version
@@ -123,8 +143,22 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
           // Note: our object-storage-routes.ts service will automatically try:
           // 1. jpgThumbPath (primary for small thumbnails)
           // 2. regularJpgPath (fallback)
-          // 3. posterJpgPathInThumbnails (another fallback)
-          // 4. Original MOV (last resort)
+          // 3. fileOnlyJpgPath (new fallback)
+          // 4. posterJpgPathInThumbnails (another fallback)
+          // 5. fileOnlyPosterJpgPath (new fallback)
+          // 6. Original MOV (last resort)
+          
+          // Try to preload potential fallback paths to improve caching
+          try {
+            const img1 = new Image();
+            img1.src = createDirectDownloadUrl(regularJpgPath);
+            
+            const img2 = new Image();
+            img2.src = createDirectDownloadUrl(fileOnlyJpgPath);
+          } catch (e) {
+            // Ignore preload errors
+          }
+          
           return createDirectDownloadUrl(jpgThumbPath);
         }
       }

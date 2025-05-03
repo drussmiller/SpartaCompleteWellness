@@ -85,6 +85,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [triggerReload, setTriggerReload] = useState(0);
   
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -231,6 +232,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <div className="w-full max-h-[500px] video-container">
                 {/* Import and use VideoPlayer instead of standard video element */}
                 <VideoPlayer 
+                  key={`video-${post.id}-${triggerReload}`} 
                   src={getImageUrl(post.mediaUrl)}
                   poster={getThumbnailUrl(post.mediaUrl)}
                   className="w-full h-full object-contain max-h-[500px]"
@@ -240,10 +242,36 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   onError={(error: Error) => {
                     console.error(`Error loading video for post ${post.id}:`, error);
                     
-                    // Hide the container on error
-                    const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
-                    if (container) {
-                      container.style.display = 'none';
+                    // Try with different formats as fallback - first try directly with .jpg extension
+                    const mediaUrl = post.mediaUrl || '';
+                    if (mediaUrl.toLowerCase().endsWith('.mov')) {
+                      const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
+                      console.log(`Trying alternative thumbnail for video ${post.id}:`, baseName);
+                      
+                      // Try to manually preload the correct thumbnail using image tag approach
+                      const img = new Image();
+                      img.onload = () => {
+                        console.log('Alternative thumbnail loaded successfully');
+                        // Reload the component to use the now-cached image
+                        setTriggerReload(prev => prev + 1);
+                      };
+                      img.onerror = () => {
+                        console.error('Alternative thumbnail failed to load');
+                        // Hide the container on all errors
+                        const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
+                        if (container) {
+                          container.style.display = 'none';
+                        }
+                      };
+                      
+                      // Try direct formats without using the utility functions
+                      img.src = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseName.split('/').pop()}.poster.jpg`;
+                    } else {
+                      // For non-MOV files or if we can't extract baseName, just hide
+                      const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
+                      if (container) {
+                        container.style.display = 'none';
+                      }
                     }
                   }}
                 />
