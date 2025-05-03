@@ -99,6 +99,56 @@ export class SpartaObjectStorage {
   }
 
   /**
+   * Store a buffer directly as a file
+   * @param buffer Buffer containing file data
+   * @param filename Filename to store with (should include the extension)
+   * @param mimeType MIME type of the file
+   * @returns Promise with the URL of the stored file
+   */
+  async storeBuffer(
+    buffer: Buffer,
+    filename: string,
+    mimeType: string = 'image/jpeg'
+  ): Promise<string> {
+    try {
+      // Ensure the buffer is valid
+      if (!buffer || buffer.length === 0) {
+        throw new Error('Invalid buffer provided for storing');
+      }
+
+      logger.info(`Storing buffer as ${filename}, size: ${buffer.length} bytes, mime: ${mimeType}`);
+
+      // Generate object storage key for the file - use shared uploads path for everything
+      const sharedKey = `shared/uploads/${filename}`;
+      
+      // Store in Object Storage if available
+      if (this.objectStorage) {
+        await this.objectStorage.uploadFromBytes(sharedKey, buffer);
+        logger.info(`Stored buffer to Object Storage: ${sharedKey}`);
+      }
+      
+      // Local filesystem path
+      const localPath = path.join(this.baseDir, filename);
+      
+      // Ensure directory exists
+      const dirname = path.dirname(localPath);
+      if (!fs.existsSync(dirname)) {
+        fs.mkdirSync(dirname, { recursive: true });
+      }
+      
+      // Store locally as a backup
+      fs.writeFileSync(localPath, buffer);
+      logger.info(`Stored buffer to filesystem: ${localPath}`);
+      
+      // Return the public URL
+      return `/uploads/${filename}`;
+    } catch (error) {
+      logger.error(`Error storing buffer as ${filename}:`, error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
+  }
+
+  /**
    * Stores a file from a Buffer or local path
    * @param fileData Buffer containing file data or path to local file
    * @param originalFilename Original filename from upload

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { handleFailedPosterLoad, getMemoryVersePoster } from '@/lib/memory-verse-utils';
 
 interface VideoPlayerProps {
   src: string;
@@ -16,7 +17,7 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({
   src,
-  poster,
+  poster: initialPoster,
   className,
   preload = 'metadata',
   playsInline = true,
@@ -25,6 +26,14 @@ export function VideoPlayer({
   disablePictureInPicture = false,
   controlsList = 'nodownload'
 }: VideoPlayerProps) {
+  // Try to get memory verse poster if it's a MOV file
+  const memoryVersePoster = src?.toLowerCase().endsWith('.mov') 
+    ? getMemoryVersePoster(src) 
+    : undefined;
+  
+  // Use memory verse poster as default if available, otherwise use provided poster
+  const poster = memoryVersePoster || initialPoster;
+  
   // Add key based on poster URL to force re-render when poster changes
   const key = `video-${src?.split('/').pop()}-${poster ? Date.now() : 'no-poster'}`;
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,6 +46,13 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Log if we're using a memory verse poster
+  useEffect(() => {
+    if (memoryVersePoster) {
+      console.log("Using memory verse poster:", memoryVersePoster);
+    }
+  }, [memoryVersePoster]);
 
   // Show controls when mouse moves over the video
   const showControls = () => {
@@ -72,12 +88,12 @@ export function VideoPlayer({
     console.log("Video poster loaded successfully:", poster);
   };
   
-  const handlePosterError = () => {
+  const handlePosterError = async () => {
     console.error("Failed to load video poster:", poster);
     
-    // Try to generate a thumbnail using the server-side API if this is a MOV file
+    // Try to generate a thumbnail using our memory verse utilities if this is a MOV file
     if (src && src.toLowerCase().endsWith('.mov')) {
-      console.log("Attempting to generate thumbnail via API for MOV file:", src);
+      console.log("Attempting to generate thumbnail for memory verse video:", src);
       
       // Extract the file URL from the src
       const fileUrl = src.includes('/api/object-storage/direct-download') 
@@ -85,27 +101,46 @@ export function VideoPlayer({
         : src;
         
       if (fileUrl) {
-        // Call our custom thumbnail generation API
-        fetch(`/api/object-storage/generate-thumbnail?fileUrl=${encodeURIComponent(fileUrl)}`)
-          .then(response => response.json())
-          .then(data => {
-            console.log("Thumbnail generation response:", data);
-            if (data.success) {
-              // Force reload the video to use the new thumbnail
+        try {
+          // First try the memory verse thumbnail handler for authenticated API
+          console.log("Using memory verse thumbnail handler");
+          const success = await handleFailedPosterLoad(fileUrl);
+          
+          if (success) {
+            console.log("Successfully generated memory verse thumbnails");
+            // Force reload the video with a slight delay to allow thumbnails to be processed
+            setTimeout(() => {
               const video = videoRef.current;
               if (video) {
                 // Force the video element to reload with the new poster
                 video.load();
               }
+            }, 500);
+            return;
+          }
+          
+          // If that fails, fall back to the object storage direct API
+          console.log("Falling back to object storage thumbnail generator");
+          const response = await fetch(`/api/object-storage/generate-thumbnail?fileUrl=${encodeURIComponent(fileUrl)}`);
+          const data = await response.json();
+          
+          console.log("Thumbnail generation response:", data);
+          if (data.success) {
+            // Force reload the video with the new thumbnail
+            const video = videoRef.current;
+            if (video) {
+              // Force the video element to reload with the new poster
+              video.load();
             }
-          })
-          .catch(error => {
-            console.error("Error generating thumbnail:", error);
-          });
+          }
+        } catch (error) {
+          console.error("Error generating thumbnail:", error);
+        }
       }
     }
     
-    // If poster fails to load, try to generate one from the video
+    // If poster fails to load and we couldn't generate one via API,
+    // try to generate one from the video locally as a last resort
     if (!generatedPoster && videoRef.current) {
       // Set a small time to grab the first frame
       videoRef.current.currentTime = 0.1;

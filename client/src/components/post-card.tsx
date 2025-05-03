@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
 import { createDirectDownloadUrl } from "../lib/object-storage-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
+import { generateMemoryVerseThumbnails, getMemoryVersePoster } from "@/lib/memory-verse-utils";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -177,6 +178,26 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
+  // Generate and request memory verse thumbnails on component mount
+  useEffect(() => {
+    // Only run for memory verse posts
+    if (post.type === 'memory_verse' && post.mediaUrl && post.mediaUrl.toLowerCase().endsWith('.mov')) {
+      console.log("Memory verse post detected, generating thumbnails:", post.id);
+      
+      // Call the thumbnail generation API
+      fetch('/api/memory-verse-thumbnails')
+        .then(response => response.json())
+        .then(data => {
+          console.log("Thumbnail generation response:", data);
+          // Force reload to use new thumbnails
+          setTriggerReload(prev => prev + 1);
+        })
+        .catch(error => {
+          console.error("Error generating thumbnails:", error);
+        });
+    }
+  }, [post.id, post.type, post.mediaUrl]);
+  
   // Use direct download URL for images from Object Storage
   const getImageUrl = (url: string | null): string => {
     if (!url) return '';
