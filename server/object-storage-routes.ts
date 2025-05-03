@@ -23,13 +23,21 @@ const objectStorage = new ObjectStorage.Client({
  * This route no longer falls back to the local filesystem as requested by user
  */
 objectStorageRouter.get('/direct-download', async (req: Request, res: Response) => {
-  // Support both key and fileUrl parameters for backward compatibility
-  const storageKey = req.query.key || req.query.fileUrl;
+  // Extract the key parameter from query string - support all variations of parameter names
+  const storageKey = req.query.key || req.query.fileUrl || req.query.path || req.query.file;
+  
+  // Log what parameter is actually being received for debugging
+  console.log('Object storage request params:', {
+    key: req.query.key,
+    fileUrl: req.query.fileUrl,
+    path: req.query.path,
+    file: req.query.file
+  });
   
   if (!storageKey || typeof storageKey !== 'string') {
     return res.status(400).json({
       success: false,
-      message: 'Missing or invalid storage key parameter (need "key" or "fileUrl")'
+      message: 'Missing or invalid "key" parameter'
     });
   }
   
