@@ -229,10 +229,52 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 preload="metadata"
                 src={getImageUrl(post.mediaUrl)}
                 onError={(e) => {
-                  console.error("Video load error:", e);
+                  // Silence console error logs to reduce noise in console
+                  // console.error("Video load error:", e);
                   const video = e.currentTarget;
                   
-                  // Try using direct Object Storage access explicitly
+                  // Check if this is a MOV file which might need special handling
+                  const isMovFile = post.mediaUrl?.toLowerCase().endsWith('.mov');
+                  
+                  // For MOV files, we want to prioritize the shared path
+                  if (isMovFile && post.mediaUrl) {
+                    // Always use shared path for MOV files
+                    let movPath = post.mediaUrl;
+                    if (!movPath.includes('/shared/')) {
+                      movPath = movPath.replace('/uploads/', '/shared/uploads/');
+                    }
+                    
+                    // Create direct download URL from shared path
+                    const directMovUrl = createDirectDownloadUrl(movPath);
+                    console.log(`Using shared path for MOV file: ${directMovUrl}`);
+                    video.src = directMovUrl;
+                    
+                    // If that fails, try alternative approach
+                    video.onerror = () => {
+                      // Try using a range request instead (works better for some MOV files)
+                      fetch(directMovUrl, { headers: { 'Range': 'bytes=0-' } })
+                        .then(response => {
+                          if (response.ok || response.status === 206) {
+                            console.log('Range request successful, using blob URL');
+                            return response.blob();
+                          }
+                          throw new Error('Failed to fetch video with range request');
+                        })
+                        .then(blob => {
+                          const blobUrl = URL.createObjectURL(blob);
+                          video.src = blobUrl;
+                        })
+                        .catch(err => {
+                          console.log('All MOV loading attempts failed, using fallback method');
+                          // Try regular direct access as last resort
+                          const directUrl = createDirectDownloadUrl(post.mediaUrl!);
+                          video.src = directUrl;
+                        });
+                    };
+                    return;
+                  }
+                  
+                  // For non-MOV files, use the original approach
                   if (post.mediaUrl && post.mediaUrl.startsWith('/')) {
                     const directUrl = createDirectDownloadUrl(post.mediaUrl);
                     console.log(`Trying direct Object Storage access for video: ${directUrl}`);
@@ -240,8 +282,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     
                     // If direct access fails, try shared path
                     video.onerror = () => {
-                      console.error(`Direct Object Storage access failed for video: ${directUrl}`);
-                      
                       // Try shared environment version
                       const sharedPath = post.mediaUrl ? post.mediaUrl.replace('/uploads/', '/shared/uploads/') : '';
                       const sharedUrl = createDirectDownloadUrl(sharedPath);

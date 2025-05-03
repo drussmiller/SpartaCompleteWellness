@@ -102,9 +102,11 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
         // Return in order of preference based on size
         if (size === 'medium' || size === 'large') {
           // For medium/large, prioritize the poster jpg since it's higher quality
+          console.log(`Using poster JPG for MOV file: ${posterJpgPath}`);
           return createDirectDownloadUrl(posterJpgPath);
         } else {
           // For small, use JPG thumbnail
+          console.log(`Using JPG thumbnail for MOV file: ${jpgThumbPath}`);
           return createDirectDownloadUrl(jpgThumbPath);
         }
       }

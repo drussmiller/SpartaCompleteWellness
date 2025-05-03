@@ -18,8 +18,15 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Only add the shared/ prefix if it's not already there
   const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
   
+  // Special handling for MOV files - use JPG versions for thumbnails
+  if (sharedKey.toLowerCase().endsWith('.mov') && sharedKey.includes('/thumbnails/')) {
+    const jpgKey = sharedKey.replace(/\.mov$/i, '.jpg');
+    console.log(`Converting MOV thumbnail to JPG: ${jpgKey}`);
+    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(jpgKey)}`;
+  }
+  
   // Return the URL with the key as a query parameter
-  return `/api/object-storage/direct-download?key=${encodeURIComponent(sharedKey)}`;
+  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(sharedKey)}`;
 }
 
 /**
@@ -33,13 +40,30 @@ export async function checkFileExists(key: string): Promise<boolean> {
   // Always use shared path if not provided
   const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
   
+  // Special handling for MOV files - check for JPG version for thumbnails
+  let keysToTry = [sharedKey];
+  if (sharedKey.toLowerCase().endsWith('.mov') && sharedKey.includes('/thumbnails/')) {
+    const jpgKey = sharedKey.replace(/\.mov$/i, '.jpg');
+    keysToTry.unshift(jpgKey); // Try JPG first for better browser compatibility
+  }
+  
   try {
-    // First, try a HEAD request to the direct download endpoint
-    const response = await fetch(`/api/object-storage/direct-download?key=${encodeURIComponent(sharedKey)}`, {
-      method: 'HEAD'
-    });
+    // Try each key until one succeeds
+    for (const keyToTry of keysToTry) {
+      try {
+        const response = await fetch(`/api/object-storage/direct-download?fileUrl=${encodeURIComponent(keyToTry)}`, {
+          method: 'HEAD'
+        });
+        
+        if (response.ok) {
+          return true;
+        }
+      } catch (err) {
+        // Continue to next key
+      }
+    }
     
-    return response.ok;
+    return false;
   } catch (error) {
     console.error(`Error checking if file exists: ${key}`, error);
     return false;
@@ -57,14 +81,36 @@ export async function listFiles(prefix: string): Promise<string[]> {
   // Always use shared path if not provided
   const sharedPrefix = cleanPrefix.startsWith('shared/') ? cleanPrefix : `shared/${cleanPrefix}`;
   
+  // Handle special case for MOV files
+  const isMOVPrefix = sharedPrefix.toLowerCase().includes('.mov');
+  let prefixesToTry = [sharedPrefix];
+  
+  if (isMOVPrefix) {
+    // Also look for JPG versions
+    const jpgPrefix = sharedPrefix.replace(/\.mov/i, '.jpg');
+    prefixesToTry.push(jpgPrefix);
+  }
+  
+  const allFiles: string[] = [];
+  
   try {
-    const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(sharedPrefix)}`);
-    if (!response.ok) {
-      throw new Error(`Failed to list files: ${response.status} ${response.statusText}`);
+    // Try each prefix and collect all files
+    for (const prefixToTry of prefixesToTry) {
+      try {
+        const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(prefixToTry)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.files && Array.isArray(data.files)) {
+            allFiles.push(...data.files);
+          }
+        }
+      } catch (err) {
+        // Continue to next prefix
+      }
     }
     
-    const data = await response.json();
-    return data.files || [];
+    // Return unique files
+    return Array.from(new Set(allFiles));
   } catch (error) {
     console.error(`Error listing files with prefix: ${prefix}`, error);
     return [];

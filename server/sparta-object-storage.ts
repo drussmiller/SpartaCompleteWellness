@@ -940,89 +940,216 @@ export class SpartaObjectStorage {
                 console.log(`Special handling for MOV file: ${normalizedVideoPath}`);
                 
                 try {
-                  // For MOV files, we'll create a generic placeholder thumbnail
-                  // because ffmpeg often has issues with these files
-                  console.log(`Creating placeholder thumbnail for MOV file: ${targetPath}`);
+                  // For MOV files, we need to use a more specific ffmpeg approach
+                  // This will create actual frame captures instead of SVG placeholders
+                  console.log(`Creating actual frame thumbnails for MOV file using ffmpeg: ${normalizedVideoPath}`);
                   
-                  // Create a default video thumbnail as SVG for .mov files
-                  const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
+                  // First make sure the thumbnail directory exists
+                  const thumbDir = path.dirname(targetPath);
+                  if (!fs.existsSync(thumbDir)) {
+                    fs.mkdirSync(thumbDir, { recursive: true });
+                  }
                   
+                  // Define output paths
+                  const jpgThumbPath = targetPath.replace('.mov', '.jpg');
+                  const posterFilename = filename.replace('.mov', '.poster.jpg');
+                  const posterPath = path.join(path.dirname(videoPath), posterFilename);
+                  const nonPrefixedThumbPath = targetPath.replace('thumb-', '');
+                  
+                  // Generate an actual frame capture using ffmpeg
+                  // For MOV files we'll use more precise settings
+                  const ffmpeg = require('fluent-ffmpeg');
+                  
+                  console.log(`Extracting first frame from MOV file at ${normalizedVideoPath}`);
+                  
+                  // Use a Promise to track the completion of ffmpeg
+                  const generateFrameCapture = new Promise<void>((frameResolve, frameReject) => {
+                    // Set a unique process ID for logging
+                    const processId = Math.random().toString(36).substring(2, 8);
+                    
+                    // Configure ffmpeg with specific settings for MOV files
+                    const command = ffmpeg(normalizedVideoPath)
+                      .inputOptions([
+                        '-ss 0', // Seek to the very beginning
+                        '-t 0.1' // Limit input duration to improve speed
+                      ])
+                      .outputOptions([
+                        '-frames:v 1', // Extract exactly one frame
+                        '-q:v 2',      // High quality
+                        '-f image2'    // Force image output format
+                      ])
+                      .on('start', (commandLine: string) => {
+                        console.log(`[${processId}] MOV Extraction: ${commandLine}`);
+                      })
+                      .on('end', () => {
+                        console.log(`[${processId}] Successfully extracted first frame from MOV file`);
+                        frameResolve();
+                      })
+                      .on('error', (err: Error, stdout: string, stderr: string) => {
+                        console.error(`[${processId}] Error extracting frame: ${err.message}`);
+                        console.error(`[${processId}] ffmpeg stdout: ${stdout}`);
+                        console.error(`[${processId}] ffmpeg stderr: ${stderr}`);
+                        
+                        // Create a fallback thumbnail if frame extraction fails
+                        const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><text x="300" y="200" fill="#fff" text-anchor="middle" font-size="14">Video Thumbnail</text><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
+                        
+                        try {
+                          // Create all fallback versions
+                          fs.writeFileSync(jpgThumbPath, videoSvg);
+                          fs.writeFileSync(targetPath, videoSvg);
+                          fs.writeFileSync(posterPath, videoSvg);
+                          fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
+                          
+                          console.log(`[${processId}] Created fallback thumbnails after ffmpeg error`);
+                          frameResolve(); // Resolve even though we used fallbacks
+                        } catch (fbError) {
+                          console.error(`[${processId}] Failed to create fallback: ${fbError}`);
+                          frameReject(fbError);
+                        }
+                      });
+                    
+                    // Execute ffmpeg to create the JPG thumbnail
+                    command.save(jpgThumbPath);
+                  });
+                  
+                  // Wait for frame capture to complete
+                  generateFrameCapture.then(() => {
+                    // Now copy the JPG thumbnail to all required locations
+                    if (fs.existsSync(jpgThumbPath)) {
+                      console.log(`Frame capture successful, creating additional thumbnail versions`);
+                      const jpgBuffer = fs.readFileSync(jpgThumbPath);
+                      
+                      // Make copies for all required formats
+                      fs.writeFileSync(targetPath, jpgBuffer);
+                      fs.writeFileSync(posterPath, jpgBuffer);
+                      fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
+                      
+                      console.log(`Created all required thumbnail versions`);
+                      
+                      // Upload all created files to Object Storage
+                      if (this.objectStorage) {
+                        const thumbnailBasename = path.basename(targetPath);
+                        const jpgThumbBasename = path.basename(jpgThumbPath);
+                        const posterBasename = path.basename(posterPath);
+                        const nonPrefixedBasename = path.basename(nonPrefixedThumbPath);
+                        
+                        // Store only in shared path to save space
+                        const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                        const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
+                        const sharedPosterKey = `shared/uploads/${posterBasename}`;
+                        const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
+                        
+                        console.log(`Uploading MOV thumbnails to Object Storage with shared keys`);
+                        
+                        const uploadPromises = [
+                          this.objectStorage.uploadFromBytes(sharedThumbKey, jpgBuffer)
+                            .then(() => console.log(`Uploaded MOV thumbnail to ${sharedThumbKey}`))
+                            .catch(e => console.error(`Failed to upload to ${sharedThumbKey}:`, e)),
+                            
+                          this.objectStorage.uploadFromBytes(sharedJpgThumbKey, jpgBuffer)
+                            .then(() => console.log(`Uploaded JPG thumbnail to ${sharedJpgThumbKey}`))
+                            .catch(e => console.error(`Failed to upload to ${sharedJpgThumbKey}:`, e)),
+                            
+                          this.objectStorage.uploadFromBytes(sharedPosterKey, jpgBuffer)
+                            .then(() => console.log(`Uploaded poster to ${sharedPosterKey}`))
+                            .catch(e => console.error(`Failed to upload to ${sharedPosterKey}:`, e)),
+                            
+                          this.objectStorage.uploadFromBytes(sharedNonPrefixedKey, jpgBuffer)
+                            .then(() => console.log(`Uploaded non-prefixed thumbnail to ${sharedNonPrefixedKey}`))
+                            .catch(e => console.error(`Failed to upload to ${sharedNonPrefixedKey}:`, e))
+                        ];
+                        
+                        Promise.all(uploadPromises)
+                          .then(() => console.log(`Successfully uploaded all MOV thumbnails to Object Storage`))
+                          .catch(err => console.error('Error uploading thumbnails:', err));
+                        
+                        // Resolve the original promise since we've created the thumbnails
+                        resolve();
+                      } else {
+                        resolve();
+                      }
+                    } else {
+                      console.error(`Failed to create JPG thumbnail from MOV file at ${jpgThumbPath}`);
+                      
+                      // Create a fallback thumbnail if the JPG file doesn't exist
+                      const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><text x="300" y="200" fill="#fff" text-anchor="middle" font-size="14">Video Thumbnail</text><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
+                      
+                      // Create all required versions
+                      try {
+                        fs.writeFileSync(jpgThumbPath, videoSvg);
+                        fs.writeFileSync(targetPath, videoSvg);
+                        fs.writeFileSync(posterPath, videoSvg);
+                        fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
+                        
+                        console.log(`Created fallback thumbnails after ffmpeg failure`);
+                        resolve();
+                      } catch(fbError) {
+                        console.error(`Failed to create fallback thumbnails: ${fbError}`);
+                        reject(fbError);
+                      }
+                    }
+                  }).catch(err => {
+                    console.error(`Error in frame capture process: ${err}`);
+                    reject(err);
+                  });
+                  
+                  resolve();
+                } catch (movError) {
+                  console.error(`Error processing MOV file: ${movError}`);
+                  
+                  // Create fallback thumbnails if everything else fails
                   try {
+                    const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><text x="300" y="200" fill="#fff" text-anchor="middle" font-size="14">Video Thumbnail</text><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
+                    
                     // Make sure the thumbnail directory exists
                     const thumbDir = path.dirname(targetPath);
                     if (!fs.existsSync(thumbDir)) {
                       fs.mkdirSync(thumbDir, { recursive: true });
                     }
                     
-                    // Write the thumbnail file
-                    fs.writeFileSync(targetPath, videoSvg);
-                    console.log(`Created placeholder thumbnail for MOV file at ${targetPath}`);
-                    
-                    // Also create a JPEG version with the same filename but .jpg extension
-                    // This helps with apps that expect jpg thumbnails
+                    // Create all emergency fallback versions
                     const jpgThumbPath = targetPath.replace('.mov', '.jpg');
-                    fs.writeFileSync(jpgThumbPath, videoSvg);
-                    console.log(`Created additional JPG thumbnail at ${jpgThumbPath}`);
-                    
-                    // Create a poster image version
                     const posterFilename = filename.replace('.mov', '.poster.jpg');
                     const posterPath = path.join(path.dirname(videoPath), posterFilename);
-                    fs.writeFileSync(posterPath, videoSvg);
-                    console.log(`Created poster image at ${posterPath}`);
+                    const nonPrefixedThumbPath = targetPath.replace('thumb-', '');
                     
-                    // Upload all created files to Object Storage
+                    fs.writeFileSync(jpgThumbPath, videoSvg);
+                    fs.writeFileSync(targetPath, videoSvg);
+                    fs.writeFileSync(posterPath, videoSvg);
+                    fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
+                    
+                    console.log(`Created emergency fallback thumbnails after all other methods failed`);
+                    
+                    // Upload fallbacks to Object Storage
                     if (this.objectStorage) {
                       const thumbnailBasename = path.basename(targetPath);
-                      const jpgThumbBasename = thumbnailBasename.replace('.mov', '.jpg');
-                      const posterBasename = filename.replace('.mov', '.poster.jpg');
+                      const jpgThumbBasename = path.basename(jpgThumbPath);
+                      const posterBasename = path.basename(posterPath);
+                      const nonPrefixedBasename = path.basename(nonPrefixedThumbPath);
                       
-                      // Store only in shared path to save space
                       const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                       const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
                       const sharedPosterKey = `shared/uploads/${posterBasename}`;
-                      
-                      // Also create a non-prefixed version for apps that don't expect the thumb- prefix
-                      const nonPrefixedThumbPath = targetPath.replace('thumb-', '');
-                      const nonPrefixedBasename = path.basename(nonPrefixedThumbPath);
                       const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
                       
-                      // Write the non-prefixed version
-                      fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
-                      console.log(`Created non-prefixed thumbnail at ${nonPrefixedThumbPath}`);
+                      this.objectStorage.uploadFromBytes(sharedThumbKey, videoSvg)
+                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
                       
-                      console.log(`Uploading MOV thumbnails to Object Storage with shared keys`);
+                      this.objectStorage.uploadFromBytes(sharedJpgThumbKey, videoSvg)
+                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
                       
-                      const uploadPromises = [
-                        this.objectStorage.uploadFromBytes(sharedThumbKey, videoSvg)
-                          .then(() => console.log(`Uploaded MOV thumbnail to ${sharedThumbKey}`))
-                          .catch(e => console.error(`Failed to upload to ${sharedThumbKey}:`, e)),
-                          
-                        this.objectStorage.uploadFromBytes(sharedJpgThumbKey, videoSvg)
-                          .then(() => console.log(`Uploaded JPG thumbnail to ${sharedJpgThumbKey}`))
-                          .catch(e => console.error(`Failed to upload to ${sharedJpgThumbKey}:`, e)),
-                          
-                        this.objectStorage.uploadFromBytes(sharedPosterKey, videoSvg)
-                          .then(() => console.log(`Uploaded poster to ${sharedPosterKey}`))
-                          .catch(e => console.error(`Failed to upload to ${sharedPosterKey}:`, e)),
-                          
-                        this.objectStorage.uploadFromBytes(sharedNonPrefixedKey, videoSvg)
-                          .then(() => console.log(`Uploaded non-prefixed thumbnail to ${sharedNonPrefixedKey}`))
-                          .catch(e => console.error(`Failed to upload to ${sharedNonPrefixedKey}:`, e))
-                      ];
+                      this.objectStorage.uploadFromBytes(sharedPosterKey, videoSvg)
+                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
                       
-                      Promise.all(uploadPromises)
-                        .then(() => console.log(`Successfully uploaded all MOV thumbnails to Object Storage`))
-                        .catch(error => console.error(`Error in one or more thumbnail uploads:`, error));
+                      this.objectStorage.uploadFromBytes(sharedNonPrefixedKey, videoSvg)
+                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
                     }
                     
                     resolve();
-                  } catch (writeError) {
-                    console.error(`Error writing placeholder thumbnail: ${writeError}`);
-                    reject(writeError);
+                  } catch (fallbackErr) {
+                    console.error(`Failed to create emergency fallbacks:`, fallbackErr);
+                    reject(fallbackErr);
                   }
-                } catch (movError) {
-                  console.error(`Error creating MOV placeholder: ${movError}`);
-                  reject(movError);
                 }
               } else {
                 // For non-MOV files, use ffmpeg to extract a frame

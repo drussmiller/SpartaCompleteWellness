@@ -23,29 +23,44 @@ const objectStorage = new ObjectStorage.Client({
  * This route no longer falls back to the local filesystem as requested by user
  */
 objectStorageRouter.get('/direct-download', async (req: Request, res: Response) => {
-  const { key } = req.query;
+  // Support both key and fileUrl parameters for backward compatibility
+  const storageKey = req.query.key || req.query.fileUrl;
   
-  if (!key || typeof key !== 'string') {
+  if (!storageKey || typeof storageKey !== 'string') {
     return res.status(400).json({
       success: false,
-      message: 'Missing or invalid "key" parameter'
+      message: 'Missing or invalid storage key parameter (need "key" or "fileUrl")'
     });
   }
   
   try {
     // Clean key (remove leading slash if present)
-    const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+    const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
     logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
     
     // Create array of possible keys to try
     const keysToTry = [];
     
-    // Always check shared path first as that's our primary storage location now
+    // Special handling for MOV files - always check JPG version first for thumbnails
+    if (cleanKey.toLowerCase().endsWith('.mov')) {
+      const jpgKey = cleanKey.replace(/\.mov$/i, '.jpg');
+      
+      // If we're accessing a thumbnail, prioritize the .jpg version
+      if (cleanKey.includes('/thumbnails/')) {
+        // Always check shared path first
+        if (!jpgKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${jpgKey}`);
+        }
+        keysToTry.push(jpgKey);
+      }
+    }
+    
+    // Always check shared path first as that's our primary storage location
     if (!cleanKey.startsWith('shared/')) {
       keysToTry.push(`shared/${cleanKey}`);
     }
     
-    // Then try the original key if it doesn't have shared already
+    // Then try the original key
     keysToTry.push(cleanKey);
     
     // For thumbnails, we may have keys with or without 'thumb-' prefix, so check both
