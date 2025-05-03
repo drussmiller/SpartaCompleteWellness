@@ -24,6 +24,7 @@ import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
 import { createDirectDownloadUrl } from "../lib/object-storage-utils";
+import { VideoPlayer } from "@/components/ui/video-player";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -103,6 +104,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       // Fall back to URL pattern detection
       return isLikelyVideo(post.mediaUrl, post.content || undefined);
     }
+    
+    // For any post with a MOV file, force video display
+    if (post.mediaUrl && post.mediaUrl.toLowerCase().endsWith('.mov')) {
+      return true;
+    }
+    
     return false;
   }, [post.type, post.mediaUrl, post.content, post.is_video]);
 
@@ -163,7 +170,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   };
 
   return (
-    <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2">
+    <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex gap-2 items-center">
           <Avatar className="h-10 w-10 border">
@@ -221,114 +228,26 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="relative mt-2 w-screen -mx-4">
           <div className="w-full max-h-[500px] flex items-center justify-center bg-gray-50">
             {shouldShowAsVideo ? (
-              <video
-                className="w-full h-full object-contain max-h-[500px]"
-                controls
-                poster={getThumbnailUrl(post.mediaUrl)}
-                playsInline
-                preload="metadata"
-                src={getImageUrl(post.mediaUrl)}
-                onError={(e) => {
-                  // Silence console error logs to reduce noise in console
-                  // console.error("Video load error:", e);
-                  const video = e.currentTarget;
-                  
-                  // Check if this is a MOV file which might need special handling
-                  const isMovFile = post.mediaUrl?.toLowerCase().endsWith('.mov');
-                  
-                  // For MOV files, we want to prioritize the shared path
-                  if (isMovFile && post.mediaUrl) {
-                    // Always use shared path for MOV files
-                    let movPath = post.mediaUrl;
-                    if (!movPath.includes('/shared/')) {
-                      movPath = movPath.replace('/uploads/', '/shared/uploads/');
+              <div className="w-full max-h-[500px] video-container">
+                {/* Import and use VideoPlayer instead of standard video element */}
+                <VideoPlayer 
+                  src={getImageUrl(post.mediaUrl)}
+                  poster={getThumbnailUrl(post.mediaUrl)}
+                  className="w-full h-full object-contain max-h-[500px]"
+                  preload="metadata"
+                  playsInline
+                  controlsList="nodownload"
+                  onError={(error: Error) => {
+                    console.error(`Error loading video for post ${post.id}:`, error);
+                    
+                    // Hide the container on error
+                    const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
+                    if (container) {
+                      container.style.display = 'none';
                     }
-                    
-                    // Create direct download URL from shared path
-                    const directMovUrl = createDirectDownloadUrl(movPath);
-                    console.log(`Using shared path for MOV file: ${directMovUrl}`);
-                    video.src = directMovUrl;
-                    
-                    // If that fails, try alternative approach
-                    video.onerror = () => {
-                      // Try using a range request instead (works better for some MOV files)
-                      fetch(directMovUrl, { headers: { 'Range': 'bytes=0-' } })
-                        .then(response => {
-                          if (response.ok || response.status === 206) {
-                            console.log('Range request successful, using blob URL');
-                            return response.blob();
-                          }
-                          throw new Error('Failed to fetch video with range request');
-                        })
-                        .then(blob => {
-                          const blobUrl = URL.createObjectURL(blob);
-                          video.src = blobUrl;
-                        })
-                        .catch(err => {
-                          console.log('All MOV loading attempts failed, using fallback method');
-                          // Try regular direct access as last resort
-                          const directUrl = createDirectDownloadUrl(post.mediaUrl!);
-                          video.src = directUrl;
-                        });
-                    };
-                    return;
-                  }
-                  
-                  // For non-MOV files, use the original approach
-                  if (post.mediaUrl && post.mediaUrl.startsWith('/')) {
-                    const directUrl = createDirectDownloadUrl(post.mediaUrl);
-                    console.log(`Trying direct Object Storage access for video: ${directUrl}`);
-                    video.src = directUrl;
-                    
-                    // If direct access fails, try shared path
-                    video.onerror = () => {
-                      // Try shared environment version
-                      const sharedPath = post.mediaUrl ? post.mediaUrl.replace('/uploads/', '/shared/uploads/') : '';
-                      const sharedUrl = createDirectDownloadUrl(sharedPath);
-                      console.log(`Trying shared path with direct access: ${sharedUrl}`);
-                      
-                      video.src = sharedUrl;
-                      
-                      // Final fallback - hide video container
-                      video.onerror = () => {
-                        console.error(`All video sources failed for post ${post.id}`);
-                        
-                        // Immediately hide the entire media container rather than showing generic content
-                        const mediaContainer = video.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                        if (mediaContainer) {
-                          mediaContainer.style.display = 'none';
-                        } else {
-                          // If we can't find the container, hide the video itself
-                          video.style.display = 'none';
-                        }
-                        
-                        // Also check and hide any parent div with the bg-gray-50 class
-                        const bgContainer = video.closest('.bg-gray-50') as HTMLElement;
-                        if (bgContainer) {
-                          bgContainer.style.display = 'none';
-                        }
-                        
-                        video.onerror = null; // Clear error handler
-                      };
-                    };
-                  } else {
-                    // If the mediaUrl isn't a local path that can be handled, hide container immediately
-                    const mediaContainer = video.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                    if (mediaContainer) {
-                      mediaContainer.style.display = 'none';
-                    } else {
-                      // If we can't find the container, hide the video itself
-                      video.style.display = 'none';
-                    }
-                    
-                    // Also check and hide any parent div with the bg-gray-50 class
-                    const bgContainer = video.closest('.bg-gray-50') as HTMLElement;
-                    if (bgContainer) {
-                      bgContainer.style.display = 'none';
-                    }
-                  }
-                }}
-              />
+                  }}
+                />
+              </div>
             ) : (
               <img
                 src={getImageUrl(post.mediaUrl)}

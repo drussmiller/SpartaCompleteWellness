@@ -87,33 +87,44 @@ export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'med
       if (filename.toLowerCase().endsWith('.mov')) {
         const baseName = filename.substring(0, filename.lastIndexOf('.'));
         
-        // For MOV files, we have several options to try:
-        // 1. A jpg version of the poster (check both locations - new version in thumbnails dir, old version in uploads dir)
+        // For MOV files, we have several options to try in priority order:
+        // 1. A jpg version of the poster in thumbnails dir (new location)
         const posterJpgPathInThumbnails = `/shared/uploads/thumbnails/${baseName}.poster.jpg`;
+        
+        // 2. A jpg version of the poster in uploads dir (old location)
         const posterJpgPathInUploads = `/shared/uploads/${baseName}.poster.jpg`;
         
-        // 2. A jpg thumbnail with thumb- prefix 
+        // 3. A jpg version without .poster in the name (simple name format)
+        const regularJpgPath = `/shared/uploads/thumbnails/${baseName}.jpg`;
+        
+        // 4. A jpg thumbnail with thumb- prefix (standard thumbnail format)
         const jpgThumbName = `thumb-${baseName}.jpg`;
         const jpgThumbPath = `/shared/uploads/thumbnails/${jpgThumbName}`;
         
-        // 3. A jpg version without .poster in the name
-        const regularJpgPath = `/shared/uploads/thumbnails/${baseName}.jpg`;
-        
-        // 4. The original MOV thumbnail
+        // 5. The original MOV thumbnail (least preferred, often doesn't work well)
         const thumbFilename = `thumb-${filename}`;
         const prefixedThumbPath = `/shared/uploads/thumbnails/${thumbFilename}`;
         
         // Return in order of preference based on size
         if (size === 'medium' || size === 'large') {
-          // For medium/large, try all poster formats in priority order
-          console.log(`Finding best poster JPG for MOV file: ${posterJpgPathInThumbnails}`);
+          // For medium/large, use the thumbnails/poster.jpg version first
+          console.log(`Using poster JPG for MOV file (thumbnails dir): ${posterJpgPathInThumbnails}`);
           
-          // We'll return the first path but use object-storage-routes.ts to try multiple paths
-          // It will automatically try all path variations including both locations
+          // Note: our object-storage-routes.ts service will automatically try all these paths in sequence:
+          // 1. posterJpgPathInThumbnails (primary)
+          // 2. posterJpgPathInUploads (fallback)
+          // 3. regularJpgPath (fallback)
+          // 4. Original MOV (last resort)
           return createDirectDownloadUrl(posterJpgPathInThumbnails);
         } else {
-          // For small, use JPG thumbnail
+          // For small thumbnails, use the JPG thumbnail version
           console.log(`Using JPG thumbnail for MOV file: ${jpgThumbPath}`);
+          
+          // Note: our object-storage-routes.ts service will automatically try:
+          // 1. jpgThumbPath (primary for small thumbnails)
+          // 2. regularJpgPath (fallback)
+          // 3. posterJpgPathInThumbnails (another fallback)
+          // 4. Original MOV (last resort)
           return createDirectDownloadUrl(jpgThumbPath);
         }
       }
