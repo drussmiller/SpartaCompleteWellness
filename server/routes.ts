@@ -1910,6 +1910,105 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  // MOV thumbnail repair endpoint - special function for MOV files which have different issues
+  router.get("/api/admin/repair-mov-thumbnails", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      logger.info("Starting MOV thumbnail repair process");
+      
+      // Get all memory verse posts that contain MOV files
+      const result = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.type, "memory_verse"),
+            like(posts.mediaUrl, "%.mov")
+          )
+        );
+      
+      logger.info(`Found ${result.length} memory verse posts with MOV files`);
+      
+      // Import the repair function
+      const { createAllMovThumbnailVariants } = await import('./mov-frame-extractor');
+      
+      const repairStats = {
+        total: result.length,
+        processed: 0,
+        success: 0,
+        fallback: 0,
+        failed: 0
+      };
+      
+      // Process each post with MOV files
+      for (const post of result) {
+        try {
+          // Skip posts with no media URL
+          if (!post.mediaUrl) {
+            logger.warn(`Post ${post.id} has empty mediaUrl but is marked as memory_verse with MOV`);
+            repairStats.processed++;
+            continue;
+          }
+          
+          // Get file paths
+          let sourceMovPath = '';
+          let targetThumbPath = '';
+          
+          if (post.mediaUrl.startsWith('/uploads/')) {
+            // Fix file path
+            sourceMovPath = path.join(process.cwd(), post.mediaUrl);
+            
+            // Get thumbnail path
+            const filename = path.basename(post.mediaUrl);
+            const thumbDir = path.join(process.cwd(), 'uploads', 'thumbnails');
+            targetThumbPath = path.join(thumbDir, `thumb-${filename}`);
+          } else {
+            // Handle other paths
+            sourceMovPath = path.join(process.cwd(), 'uploads', path.basename(post.mediaUrl));
+            const thumbDir = path.join(process.cwd(), 'uploads', 'thumbnails');
+            targetThumbPath = path.join(thumbDir, `thumb-${path.basename(post.mediaUrl)}`);
+          }
+          
+          logger.info(`Repairing thumbnails for post ${post.id}, file: ${sourceMovPath}`);
+          
+          try {
+            // Try to create all thumbnail variants
+            await createAllMovThumbnailVariants(sourceMovPath, targetThumbPath);
+            repairStats.success++;
+            logger.info(`Successfully repaired thumbnails for post ${post.id}`);
+          } catch (extractError) {
+            // If extraction fails, SVG fallbacks would have been created by the function
+            repairStats.fallback++;
+            logger.warn(`Using fallback SVGs for post ${post.id}: ${extractError.message}`);
+          }
+          
+          repairStats.processed++;
+        } catch (postError) {
+          repairStats.failed++;
+          repairStats.processed++;
+          logger.error(`Failed to process post ${post.id}: ${postError.message}`);
+        }
+      }
+      
+      return res.json({
+        message: "MOV thumbnail repair completed",
+        stats: repairStats
+      });
+    } catch (error) {
+      logger.error('Error repairing MOV thumbnails:', error);
+      return res.status(500).json({
+        message: "Failed to repair MOV thumbnails",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
     try {

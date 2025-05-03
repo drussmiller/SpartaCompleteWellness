@@ -99,29 +99,59 @@ export async function createAllMovThumbnailVariants(
   const posterPath = path.join(path.dirname(sourceMovPath), posterFilename);
   const nonPrefixedThumbPath = targetThumbPath.replace('thumb-', '');
   
+  // Create result object for easier access
+  const pathsResult = {
+    jpgThumbPath,
+    movThumbPath,
+    posterPath,
+    nonPrefixedThumbPath
+  };
+  
   try {
+    // Check if source file exists and is readable
+    if (!fs.existsSync(sourceMovPath)) {
+      logger.error(`Source MOV file does not exist: ${sourceMovPath}`);
+      await createFallbackSvgThumbnails(pathsResult);
+      return pathsResult;
+    }
+    
+    const sourceStats = fs.statSync(sourceMovPath);
+    if (sourceStats.size === 0) {
+      logger.error(`Source MOV file is empty: ${sourceMovPath}`);
+      await createFallbackSvgThumbnails(pathsResult);
+      return pathsResult;
+    }
+    
     // Extract the frame to the JPG path first
-    await extractMovFrame(sourceMovPath, jpgThumbPath);
-    
-    // Read the JPG data
-    const jpgBuffer = fs.readFileSync(jpgThumbPath);
-    
-    // Copy to all other paths
-    fs.writeFileSync(movThumbPath, jpgBuffer);
-    fs.writeFileSync(posterPath, jpgBuffer);
-    fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
-    
-    logger.info(`Created all MOV thumbnail variants for ${filename}`);
-    
-    return {
-      jpgThumbPath,
-      movThumbPath,
-      posterPath,
-      nonPrefixedThumbPath
-    };
+    try {
+      await extractMovFrame(sourceMovPath, jpgThumbPath);
+      
+      // Read the JPG data
+      const jpgBuffer = fs.readFileSync(jpgThumbPath);
+      
+      // Copy to all other paths
+      fs.writeFileSync(movThumbPath, jpgBuffer);
+      fs.writeFileSync(posterPath, jpgBuffer);
+      fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
+      
+      logger.info(`Created all MOV thumbnail variants for ${filename}`);
+      
+      return pathsResult;
+    } catch (extractError) {
+      logger.error(`Failed to extract frame, creating fallback thumbnails: ${extractError}`, { sourceFile: filename });
+      // If frame extraction fails, create SVG fallbacks
+      await createFallbackSvgThumbnails(pathsResult);
+      return pathsResult;
+    }
   } catch (error) {
     logger.error(`Failed to create MOV thumbnail variants: ${error}`, { sourceFile: filename });
-    throw error;
+    // In case of any other error, create SVG fallbacks as a last resort
+    try {
+      await createFallbackSvgThumbnails(pathsResult);
+    } catch (svgError) {
+      logger.error(`Even fallback SVG creation failed: ${svgError}`, { sourceFile: filename });
+    }
+    return pathsResult;
   }
 }
 
