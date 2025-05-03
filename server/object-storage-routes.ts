@@ -10,6 +10,7 @@ import * as ObjectStorage from '@replit/object-storage';
 import { logger } from './logger';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fixAllThumbnails } from './fix-mov-thumbnails';
 
 export const objectStorageRouter = express.Router();
 
@@ -49,17 +50,32 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     // Create array of possible keys to try
     const keysToTry = [];
     
-    // Special handling for MOV files - always check JPG version first for thumbnails
+    // Special handling for MOV files - check multiple formats
     if (cleanKey.toLowerCase().endsWith('.mov')) {
+      // Try different extensions in preferred order
+      const svgKey = cleanKey.replace(/\.mov$/i, '.svg');
       const jpgKey = cleanKey.replace(/\.mov$/i, '.jpg');
+      const pngKey = cleanKey.replace(/\.mov$/i, '.png');
       
-      // If we're accessing a thumbnail, prioritize the .jpg version
+      // If we're accessing a thumbnail, prioritize images over video
       if (cleanKey.includes('/thumbnails/')) {
-        // Always check shared path first
+        // Always check shared path first - SVG highest priority as it's our fallback format
+        if (!svgKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${svgKey}`);
+        }
+        keysToTry.push(svgKey);
+        
+        // Then try JPG
         if (!jpgKey.startsWith('shared/')) {
           keysToTry.push(`shared/${jpgKey}`);
         }
         keysToTry.push(jpgKey);
+        
+        // Then PNG
+        if (!pngKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${pngKey}`);
+        }
+        keysToTry.push(pngKey);
       }
     }
     
@@ -194,6 +210,36 @@ objectStorageRouter.get('/test', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to run Object Storage API test',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
+ * Fix route for SVG thumbnails that have .mov extension
+ * This will scan and fix all misnamed SVG files
+ */
+objectStorageRouter.get('/fix-thumbnails', async (req: Request, res: Response) => {
+  try {
+    logger.info('Starting thumbnail fix process', { route: '/api/object-storage/fix-thumbnails' });
+    
+    // Import the fix function dynamically to avoid circular dependencies
+    const { fixAllThumbnails } = await import('./fix-mov-thumbnails');
+    
+    // Run the fix
+    const results = await fixAllThumbnails();
+    
+    // Return results
+    return res.json({
+      success: true,
+      message: 'Thumbnail fix process completed',
+      results
+    });
+  } catch (error) {
+    logger.error(`Error fixing thumbnails: ${error}`, { route: '/api/object-storage/fix-thumbnails' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fix thumbnails',
       error: error instanceof Error ? error.message : String(error)
     });
   }

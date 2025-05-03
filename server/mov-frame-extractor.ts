@@ -137,12 +137,13 @@ export async function createFallbackSvgThumbnails(targetPaths: {
   posterPath: string,
   nonPrefixedThumbPath: string
 }): Promise<void> {
+  // Create a simpler video play icon SVG - removed text for cleaner look
   const videoSvg = Buffer.from(
     '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">' +
     '<rect width="600" height="400" fill="#3A57E8"/>' +
     '<circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/>' +
-    '<text x="300" y="200" fill="#fff" text-anchor="middle" font-size="14">Video Thumbnail</text>' +
-    '<polygon points="270,160 270,240 350,200" fill="#fff"/></svg>'
+    '<circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>' +
+    '<polygon points="290,180 290,220 320,200" fill="#fff"/></svg>'
   );
   
   try {
@@ -154,13 +155,37 @@ export async function createFallbackSvgThumbnails(targetPaths: {
       }
     });
     
-    // Write SVG to all paths
-    fs.writeFileSync(targetPaths.jpgThumbPath, videoSvg);
-    fs.writeFileSync(targetPaths.movThumbPath, videoSvg);
-    fs.writeFileSync(targetPaths.posterPath, videoSvg);
-    fs.writeFileSync(targetPaths.nonPrefixedThumbPath, videoSvg);
+    // Fix paths to always use svg extension for proper content-type handling
+    const fixPathExtension = (originalPath: string): string => {
+      // Replace problematic extensions with svg
+      const fixedPath = originalPath
+        .replace(/\.mov$/i, '.svg') // Replace .mov with .svg
+        .replace(/\.mp4$/i, '.svg') // Replace .mp4 with .svg
+        .replace(/\.webm$/i, '.svg'); // Replace .webm with .svg
+      
+      return fixedPath;
+    };
     
-    logger.info('Created fallback SVG thumbnails for video');
+    // Ensure all paths have svg extension and create them
+    const jpgPath = fixPathExtension(targetPaths.jpgThumbPath);
+    const movPath = fixPathExtension(targetPaths.movThumbPath);
+    const posterPath = fixPathExtension(targetPaths.posterPath);
+    const nonPrefixedPath = fixPathExtension(targetPaths.nonPrefixedThumbPath);
+    
+    // Write SVG to all fixed paths
+    fs.writeFileSync(jpgPath, videoSvg);
+    fs.writeFileSync(movPath, videoSvg);
+    fs.writeFileSync(posterPath, videoSvg);
+    fs.writeFileSync(nonPrefixedPath, videoSvg);
+    
+    logger.info('Created fallback SVG thumbnails for video', { 
+      paths: {
+        jpgPath,
+        movPath,
+        posterPath,
+        nonPrefixedPath
+      }
+    });
   } catch (error) {
     logger.error(`Failed to create fallback SVG thumbnails: ${error}`);
     throw error;
