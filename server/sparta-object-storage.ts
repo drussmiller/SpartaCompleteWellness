@@ -595,8 +595,75 @@ export class SpartaObjectStorage {
     try {
       console.log(`Attempting to create thumbnail from ${sourcePath} to ${targetPath}`);
       
-      // Check if source file exists
-      if (!fs.existsSync(sourcePath)) {
+      // Check if source file exists locally
+      if (!fs.existsSync(sourcePath) && this.objectStorage) {
+        console.log(`Source file not found locally: ${sourcePath}. Attempting to retrieve from Object Storage.`);
+        
+        // Extract the filename and prepare possible keys
+        const fileName = path.basename(sourcePath);
+        const objectStorageKeys = [
+          `uploads/${fileName}`,
+          `shared/uploads/${fileName}`,
+          fileName
+        ];
+        
+        let foundKey = '';
+        let fileBuffer: Buffer | null = null;
+        
+        // Try each potential key
+        for (const key of objectStorageKeys) {
+          try {
+            console.log(`Checking if file exists in Object Storage with key: ${key}`);
+            const exists = await this.objectStorage.exists(key);
+            
+            if (exists) {
+              foundKey = key;
+              console.log(`Found file in Object Storage with key: ${key}`);
+              
+              // Download the file
+              console.log(`Downloading file from Object Storage with key: ${key}`);
+              const result = await this.objectStorage.downloadAsBytes(key);
+              
+              // Handle different response formats from Object Storage client
+              if (Buffer.isBuffer(result)) {
+                fileBuffer = result;
+              } else if (result && typeof result === 'object' && 'ok' in result) {
+                if (result.ok === true && result.value) {
+                  if (Buffer.isBuffer(result.value)) {
+                    fileBuffer = result.value;
+                  } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+                    fileBuffer = result.value[0];
+                  }
+                }
+              } else if (Array.isArray(result) && Buffer.isBuffer(result[0])) {
+                fileBuffer = result[0];
+              }
+              
+              if (fileBuffer) {
+                console.log(`Successfully downloaded file from Object Storage (${fileBuffer.length} bytes)`);
+                break;
+              }
+            }
+          } catch (err) {
+            console.log(`Error checking key ${key} in Object Storage:`, err);
+          }
+        }
+        
+        if (fileBuffer) {
+          // Ensure source directory exists
+          const sourceDir = path.dirname(sourcePath);
+          if (!fs.existsSync(sourceDir)) {
+            fs.mkdirSync(sourceDir, { recursive: true });
+          }
+          
+          // Write the file locally
+          fs.writeFileSync(sourcePath, fileBuffer);
+          console.log(`Successfully downloaded and cached file from Object Storage to ${sourcePath}`);
+        } else {
+          console.error(`Could not find or download source file from Object Storage`);
+          throw new Error(`Source file not found locally or in Object Storage: ${sourcePath}`);
+        }
+      } else if (!fs.existsSync(sourcePath)) {
         console.error(`Source file not found: ${sourcePath}`);
         logger.error(`Source file not found: ${sourcePath}`);
         throw new Error(`Source file not found: ${sourcePath}`);
@@ -714,62 +781,483 @@ export class SpartaObjectStorage {
         
         // Check if source file exists with detailed logging
         if (!fs.existsSync(videoPath)) {
-          const error = new Error(`Source video file not found: ${videoPath}`);
-          console.error(error.message);
-          logger.error(error.message);
+          console.log(`Source video file not found locally: ${videoPath}`);
           
-          // Check if the directory exists
-          const dir = path.dirname(videoPath);
-          console.log(`Directory exists for video path: ${fs.existsSync(dir)}, path: ${dir}`);
-          
-          // Try to list files in the directory to see what's actually there
-          try {
-            if (fs.existsSync(dir)) {
-              const files = fs.readdirSync(dir);
-              console.log(`Files in directory ${dir}:`, files);
-            }
-          } catch (readDirError) {
-            console.error(`Error listing directory ${dir}:`, readDirError);
-          }
-          
-          // Try to find the video in alternative locations (for memory verse or miscellaneous videos)
-          const filename = path.basename(videoPath);
-          const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
-          const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
-          
-          if (isMemoryVerse || isMiscellaneousVideo) {
-            // Look for the file in common alternate locations
-            const alternateLocations = [
-              path.join(process.cwd(), 'uploads', filename),
-              path.join(process.cwd(), 'uploads', 'videos', filename),
-              path.join(process.cwd(), 'uploads', 'memory_verse', filename),
-              path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
+          // Try to find the video in Object Storage if available
+          if (this.objectStorage) {
+            console.log(`Attempting to retrieve video from Object Storage...`);
+            
+            const filename = path.basename(videoPath);
+            const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+            const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
+            
+            // Prepare possible Object Storage keys to check
+            let objectStorageKeys = [
+              `uploads/${filename}`,
+              `shared/uploads/${filename}`,
+              filename
             ];
             
-            console.log(`Checking alternate locations for ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video: ${filename}`);
-            let foundAlternate = false;
-            
-            for (const alternate of alternateLocations) {
-              console.log(`Checking alternate path: ${alternate}`);
-              if (fs.existsSync(alternate)) {
-                console.log(`Found video at alternate path: ${alternate}`);
-                // Use this path instead
-                videoPath = alternate;
-                foundAlternate = true;
-                break;
-              }
+            // Add special directory keys if needed
+            if (isMemoryVerse) {
+              objectStorageKeys.push(
+                `uploads/memory_verse/${filename}`,
+                `shared/uploads/memory_verse/${filename}`,
+                `memory_verse/${filename}`
+              );
+            } else if (isMiscellaneousVideo) {
+              objectStorageKeys.push(
+                `uploads/miscellaneous/${filename}`,
+                `shared/uploads/miscellaneous/${filename}`,
+                `miscellaneous/${filename}`
+              );
             }
             
-            if (foundAlternate) {
-              console.log(`Using alternate video path: ${videoPath}`);
+            // Also add video-specific paths
+            objectStorageKeys.push(
+              `uploads/videos/${filename}`,
+              `shared/uploads/videos/${filename}`,
+              `videos/${filename}`
+            );
+            
+            console.log(`Checking Object Storage with keys:`, objectStorageKeys);
+            
+            // Try to find and download the video from Object Storage
+            let foundInObjectStorage = false;
+            let fileBuffer: Buffer | null = null;
+            let foundKey = '';
+            
+            // We need to wrap this in a Promise to work with our Promise-based approach
+            const checkObjectStorage = async () => {
+              for (const key of objectStorageKeys) {
+                try {
+                  console.log(`Checking if video exists in Object Storage with key: ${key}`);
+                  const exists = await this.objectStorage!.exists(key);
+                  
+                  if (exists) {
+                    foundKey = key;
+                    console.log(`Found video in Object Storage with key: ${key}`);
+                    
+                    // Download the file
+                    console.log(`Downloading video from Object Storage with key: ${key}`);
+                    const result = await this.objectStorage!.downloadAsBytes(key);
+                    
+                    // Handle different response formats from Object Storage client
+                    if (Buffer.isBuffer(result)) {
+                      fileBuffer = result;
+                    } else if (result && typeof result === 'object' && 'ok' in result) {
+                      if (result.ok === true && result.value) {
+                        if (Buffer.isBuffer(result.value)) {
+                          fileBuffer = result.value;
+                        } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+                          fileBuffer = result.value[0];
+                        }
+                      }
+                    } else if (Array.isArray(result) && Buffer.isBuffer(result[0])) {
+                      fileBuffer = result[0];
+                    }
+                    
+                    if (fileBuffer) {
+                      console.log(`Successfully downloaded video from Object Storage (${fileBuffer.length} bytes)`);
+                      foundInObjectStorage = true;
+                      break;
+                    }
+                  }
+                } catch (err) {
+                  console.log(`Error checking key ${key} in Object Storage:`, err);
+                }
+              }
+              
+              if (fileBuffer) {
+                // Ensure source directory exists
+                const sourceDir = path.dirname(videoPath);
+                if (!fs.existsSync(sourceDir)) {
+                  fs.mkdirSync(sourceDir, { recursive: true });
+                }
+                
+                // Write the file locally
+                fs.writeFileSync(videoPath, fileBuffer);
+                console.log(`Successfully downloaded and cached video from Object Storage to ${videoPath}`);
+                return true;
+              }
+              
+              return false;
+            };
+            
+            // Execute the async function and continue only if we found the file
+            checkObjectStorage().then(found => {
+              if (found) {
+                // Continue with thumbnail generation
+                continueWithThumbnailGeneration();
+              } else {
+                // Try local file fallbacks before giving up
+                tryLocalFallbacks();
+              }
+            }).catch(objStoreError => {
+              console.error(`Error accessing Object Storage:`, objStoreError);
+              // Fall back to local file search
+              tryLocalFallbacks();
+            });
+            
+            // This function handles the actual thumbnail generation once we have the source file
+            const continueWithThumbnailGeneration = () => {
+              // Log file details
+              try {
+                const stats = fs.statSync(videoPath);
+                console.log(`Video file stats:`, {
+                  size: stats.size,
+                  isFile: stats.isFile(),
+                  created: stats.birthtime,
+                  absolutePath: path.resolve(videoPath)
+                });
+              } catch (statError) {
+                console.error(`Error getting video file stats: ${statError}`);
+              }
+              
+              // Make sure the thumbnails directory exists
+              const thumbnailDir = path.dirname(targetPath);
+              if (!fs.existsSync(thumbnailDir)) {
+                console.log(`Creating thumbnails directory: ${thumbnailDir}`);
+                fs.mkdirSync(thumbnailDir, { recursive: true });
+              }
+              
+              // Special handling for video types - ensure the path is correct
+              const filename = path.basename(videoPath);
+              const isMemoryVerseFilename = filename.toLowerCase().includes('memory_verse');
+              const isMiscellaneousVideoFilename = filename.toLowerCase().includes('miscellaneous');
+              
+              // For memory verse or miscellaneous videos, copy the file to uploads directory if needed
+              if (isMemoryVerseFilename || isMiscellaneousVideoFilename) {
+                const uploadsDir = path.join(process.cwd(), 'uploads');
+                const correctPath = path.join(uploadsDir, filename);
+                
+                if (videoPath !== correctPath && fs.existsSync(videoPath)) {
+                  try {
+                    // Ensure destination directory exists
+                    if (!fs.existsSync(uploadsDir)) {
+                      fs.mkdirSync(uploadsDir, { recursive: true });
+                    }
+                    // Copy the file to ensure it's in the right place
+                    fs.copyFileSync(videoPath, correctPath);
+                    console.log(`Copied video to standard uploads directory: ${correctPath}`);
+                    
+                    // Use the new path for thumbnail generation
+                    videoPath = correctPath;
+                  } catch (copyError) {
+                    console.error(`Error copying video to standard uploads directory: ${copyError}`);
+                  }
+                }
+              }
+              
+              // Now we can attempt to generate the thumbnail from the video
+              console.log(`Generating thumbnail from video using ffmpeg: ${videoPath} -> ${targetPath}`);
+              
+              // Sometimes the video path contains spaces, so use the path module to normalize
+              const normalizedVideoPath = path.normalize(videoPath);
+              
+              // Create a random ID for this process
+              const processId = Math.random().toString(36).substring(2, 8);
+              
+              // Use ffmpeg to extract a thumbnail at 1 second
+              // For MOV files, use a different approach to avoid issues
+              const isMovFile = normalizedVideoPath.toLowerCase().endsWith('.mov');
+              
+              if (isMovFile) {
+                console.log(`Special handling for MOV file: ${normalizedVideoPath}`);
+                
+                try {
+                  // For MOV files, we'll create a generic placeholder thumbnail
+                  // because ffmpeg often has issues with these files
+                  console.log(`Creating placeholder thumbnail for MOV file: ${targetPath}`);
+                  
+                  // Create a default video thumbnail as SVG for .mov files
+                  const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+                  
+                  try {
+                    fs.writeFileSync(targetPath, videoSvg);
+                    console.log(`Created placeholder thumbnail for MOV file at ${targetPath}`);
+                    
+                    // Upload the thumbnail to Object Storage
+                    if (this.objectStorage) {
+                      const thumbnailBasename = path.basename(targetPath);
+                      
+                      // Store in both environment-specific and shared paths
+                      const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                      const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                      
+                      console.log(`Uploading placeholder MOV thumbnail to Object Storage with key: ${envSpecificKey}`);
+                      
+                      this.objectStorage.uploadFromBytes(envSpecificKey, videoSvg)
+                        .then(() => this.objectStorage!.uploadFromBytes(sharedKey, videoSvg))
+                        .then(() => {
+                          console.log(`Successfully uploaded MOV thumbnail to Object Storage`);
+                        })
+                        .catch(objStoreError => {
+                          console.error(`Failed to upload MOV thumbnail to Object Storage:`, objStoreError);
+                        });
+                    }
+                    
+                    resolve();
+                  } catch (writeError) {
+                    console.error(`Error writing placeholder thumbnail: ${writeError}`);
+                    reject(writeError);
+                  }
+                } catch (movError) {
+                  console.error(`Error creating MOV placeholder: ${movError}`);
+                  reject(movError);
+                }
+              } else {
+                // For non-MOV files, use ffmpeg to extract a frame
+                const ffmpeg = require('fluent-ffmpeg');
+                  
+                console.log(`[${processId}] Starting ffmpeg process for ${normalizedVideoPath}`);
+                
+                const command = ffmpeg(normalizedVideoPath)
+                  .on('start', (commandLine: string) => {
+                    console.log(`[${processId}] Executing ffmpeg command: ${commandLine}`);
+                  })
+                  .on('end', () => {
+                    console.log(`[${processId}] Successfully created video thumbnail at ${targetPath}`);
+                    logger.info(`Created video thumbnail at ${targetPath}`);
+                    
+                    // Check if the thumbnail was actually created
+                    if (!fs.existsSync(targetPath)) {
+                      console.error(`[${processId}] Thumbnail file doesn't exist after ffmpeg completion: ${targetPath}`);
+                      reject(new Error('Thumbnail file not created by ffmpeg'));
+                      return;
+                    }
+                    
+                    // Upload the thumbnail to Object Storage
+                    if (this.objectStorage) {
+                      // Capture the thumbnail into a buffer
+                      fs.readFile(targetPath, (readErr, thumbnailBuffer) => {
+                        if (readErr) {
+                          console.error(`[${processId}] Error reading thumbnail for upload: ${readErr}`);
+                          // We can still resolve since the local thumbnail was created
+                          resolve();
+                          return;
+                        }
+                        
+                        const thumbnailBasename = path.basename(targetPath);
+                        
+                        // Store in both environment-specific and shared paths
+                        const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                        const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                        
+                        console.log(`[${processId}] Uploading thumbnail to Object Storage with key: ${envSpecificKey}`);
+                        
+                        this.objectStorage!.uploadFromBytes(envSpecificKey, thumbnailBuffer)
+                          .then(() => this.objectStorage!.uploadFromBytes(sharedKey, thumbnailBuffer))
+                          .then(() => {
+                            console.log(`[${processId}] Successfully uploaded video thumbnail to Object Storage`);
+                            resolve();
+                          })
+                          .catch(objStoreError => {
+                            console.error(`[${processId}] Failed to upload thumbnail to Object Storage:`, objStoreError);
+                            // We can still resolve since the local thumbnail was created
+                            resolve();
+                          });
+                      });
+                    } else {
+                      resolve();
+                    }
+                  })
+                  .on('error', (err: Error, stdout: string, stderr: string) => {
+                    console.error(`[${processId}] Error creating video thumbnail: ${err.message}`);
+                    console.error(`[${processId}] ffmpeg stdout: ${stdout}`);
+                    console.error(`[${processId}] ffmpeg stderr: ${stderr}`);
+                    logger.error(`Error creating video thumbnail: ${err.message}`, { stderr });
+                    
+                    // Instead of failing completely, try to create a fallback thumbnail
+                    console.log(`[${processId}] Creating fallback thumbnail`);
+                    
+                    // Create a default video thumbnail as SVG for failed conversions
+                    const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#6366f1"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+                    
+                    try {
+                      fs.writeFileSync(targetPath, videoSvg);
+                      console.log(`[${processId}] Created fallback thumbnail at ${targetPath}`);
+                      
+                      // Upload the fallback thumbnail to Object Storage
+                      if (this.objectStorage) {
+                        const thumbnailBasename = path.basename(targetPath);
+                        
+                        // Store in both environment-specific and shared paths
+                        const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                        const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                        
+                        console.log(`[${processId}] Uploading fallback thumbnail to Object Storage with key: ${envSpecificKey}`);
+                        
+                        this.objectStorage.uploadFromBytes(envSpecificKey, videoSvg)
+                          .then(() => this.objectStorage!.uploadFromBytes(sharedKey, videoSvg))
+                          .then(() => {
+                            console.log(`[${processId}] Successfully uploaded fallback thumbnail to Object Storage`);
+                            resolve();
+                          })
+                          .catch(objStoreError => {
+                            console.error(`[${processId}] Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
+                            // We can still resolve since the local thumbnail was created
+                            resolve();
+                          });
+                      } else {
+                        resolve();
+                      }
+                    } catch (writeError) {
+                      console.error(`[${processId}] Error writing fallback thumbnail: ${writeError}`);
+                      reject(writeError);
+                    }
+                  })
+                  .screenshots({
+                    count: 1,
+                    folder: path.dirname(targetPath),
+                    filename: path.basename(targetPath),
+                    timemarks: ['1'],     // Take screenshot at 1 second
+                    size: '600x?'         // Resize to 600px width, maintain aspect ratio
+                  });
+                
+                // Create a timeout to prevent hanging
+                const timeout = setTimeout(() => {
+                  console.error(`[${processId}] Thumbnail generation timeout after 60s for ${normalizedVideoPath}`);
+                  
+                  // Try to create a fallback thumbnail
+                  try {
+                    // Create a default video thumbnail
+                    const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#dc2626"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
+                    fs.writeFileSync(targetPath, videoSvg);
+                    console.log(`[${processId}] Created timeout fallback thumbnail at ${targetPath}`);
+                    
+                    // Upload the fallback thumbnail to Object Storage
+                    if (this.objectStorage) {
+                      const thumbnailBasename = path.basename(targetPath);
+                      
+                      // Store in both environment-specific and shared paths
+                      const envSpecificKey = `uploads/thumbnails/${thumbnailBasename}`;
+                      const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                      
+                      this.objectStorage.uploadFromBytes(envSpecificKey, videoSvg)
+                        .then(() => this.objectStorage!.uploadFromBytes(sharedKey, videoSvg))
+                        .then(() => {
+                          console.log(`[${processId}] Successfully uploaded timeout fallback thumbnail to Object Storage`);
+                        })
+                        .catch(objStoreError => {
+                          console.error(`[${processId}] Failed to upload timeout fallback thumbnail to Object Storage:`, objStoreError);
+                        });
+                    }
+                    
+                    resolve();
+                  } catch (fallbackError) {
+                    console.error(`[${processId}] Failed to create fallback thumbnail after timeout: ${fallbackError}`);
+                    reject(fallbackError);
+                  }
+                }, 60000); // 60 second timeout
+                
+                // Clear the timeout when the process completes or errors
+                command.on('end', () => clearTimeout(timeout));
+                command.on('error', () => clearTimeout(timeout));
+              }
+            };
+            
+            // This function tries local fallbacks if Object Storage retrieval fails
+            const tryLocalFallbacks = () => {
+              // Try to find the video in alternative locations (for memory verse or miscellaneous videos)
+              if (isMemoryVerse || isMiscellaneousVideo) {
+                // Look for the file in common alternate locations
+                const alternateLocations = [
+                  path.join(process.cwd(), 'uploads', filename),
+                  path.join(process.cwd(), 'uploads', 'videos', filename),
+                  path.join(process.cwd(), 'uploads', 'memory_verse', filename),
+                  path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
+                ];
+                
+                console.log(`Checking alternate locations for ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video: ${filename}`);
+                let foundAlternate = false;
+                
+                for (const alternate of alternateLocations) {
+                  console.log(`Checking alternate path: ${alternate}`);
+                  if (fs.existsSync(alternate)) {
+                    console.log(`Found video at alternate path: ${alternate}`);
+                    // Use this path instead
+                    videoPath = alternate;
+                    foundAlternate = true;
+                    break;
+                  }
+                }
+                
+                if (foundAlternate) {
+                  console.log(`Using alternate video path: ${videoPath}`);
+                  continueWithThumbnailGeneration();
+                } else {
+                  const error = new Error(`Source video file not found: ${videoPath}`);
+                  console.error(`Could not find video in any alternate locations`);
+                  reject(error);
+                }
+              } else {
+                const error = new Error(`Source video file not found: ${videoPath}`);
+                reject(error);
+              }
+            };
+            
+            // We'll handle the rest of the method through our callback structure
+            return;
+          } else {
+            // If no Object Storage, fall back to checking local files
+            const error = new Error(`Source video file not found: ${videoPath}`);
+            console.error(error.message);
+            logger.error(error.message);
+            
+            // Check if the directory exists
+            const dir = path.dirname(videoPath);
+            console.log(`Directory exists for video path: ${fs.existsSync(dir)}, path: ${dir}`);
+            
+            // Try to list files in the directory to see what's actually there
+            try {
+              if (fs.existsSync(dir)) {
+                const files = fs.readdirSync(dir);
+                console.log(`Files in directory ${dir}:`, files);
+              }
+            } catch (readDirError) {
+              console.error(`Error listing directory ${dir}:`, readDirError);
+            }
+            
+            // Try to find the video in alternative locations (for memory verse or miscellaneous videos)
+            const filename = path.basename(videoPath);
+            const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+            const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
+            
+            if (isMemoryVerse || isMiscellaneousVideo) {
+              // Look for the file in common alternate locations
+              const alternateLocations = [
+                path.join(process.cwd(), 'uploads', filename),
+                path.join(process.cwd(), 'uploads', 'videos', filename),
+                path.join(process.cwd(), 'uploads', 'memory_verse', filename),
+                path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
+              ];
+              
+              console.log(`Checking alternate locations for ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video: ${filename}`);
+              let foundAlternate = false;
+              
+              for (const alternate of alternateLocations) {
+                console.log(`Checking alternate path: ${alternate}`);
+                if (fs.existsSync(alternate)) {
+                  console.log(`Found video at alternate path: ${alternate}`);
+                  // Use this path instead
+                  videoPath = alternate;
+                  foundAlternate = true;
+                  break;
+                }
+              }
+              
+              if (foundAlternate) {
+                console.log(`Using alternate video path: ${videoPath}`);
+              } else {
+                console.error(`Could not find video in any alternate locations`);
+                reject(error);
+                return;
+              }
             } else {
-              console.error(`Could not find video in any alternate locations`);
               reject(error);
               return;
             }
-          } else {
-            reject(error);
-            return;
           }
         }
         
