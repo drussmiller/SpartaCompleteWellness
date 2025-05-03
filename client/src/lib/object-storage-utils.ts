@@ -20,9 +20,25 @@ export function createDirectDownloadUrl(key: string | null): string {
   
   // Special handling for MOV files - use JPG versions for thumbnails
   if (sharedKey.toLowerCase().endsWith('.mov') && sharedKey.includes('/thumbnails/')) {
-    const jpgKey = sharedKey.replace(/\.mov$/i, '.jpg');
-    console.log(`Converting MOV thumbnail to JPG: ${jpgKey}`);
-    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(jpgKey)}`;
+    // If this is a thumbnail for a MOV file, we need to prioritize the JPG version
+    
+    // Check if this is a thumb-prefixed version
+    const isThumbPrefixed = sharedKey.includes('thumb-');
+    
+    // Create multiple alternatives to try for maximum compatibility
+    // First: Try the .poster.jpg version in thumbnails directory (best quality)
+    let baseKey = sharedKey;
+    if (isThumbPrefixed) {
+      // Remove the thumb- prefix first if it exists
+      baseKey = sharedKey.replace('thumb-', '');
+    }
+    
+    // Convert the extension
+    const baseNameWithoutExt = baseKey.substring(0, baseKey.lastIndexOf('.'));
+    const posterJpgKey = `${baseNameWithoutExt}.poster.jpg`;
+    
+    console.log(`Using poster JPG for MOV thumbnail: ${posterJpgKey}`);
+    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(posterJpgKey)}`;
   }
   
   // Return the URL with the key as a query parameter
@@ -40,11 +56,30 @@ export async function checkFileExists(key: string): Promise<boolean> {
   // Always use shared path if not provided
   const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
   
-  // Special handling for MOV files - check for JPG version for thumbnails
+  // Special handling for MOV files - check for all possible variations of thumbnails
   let keysToTry = [sharedKey];
   if (sharedKey.toLowerCase().endsWith('.mov') && sharedKey.includes('/thumbnails/')) {
-    const jpgKey = sharedKey.replace(/\.mov$/i, '.jpg');
-    keysToTry.unshift(jpgKey); // Try JPG first for better browser compatibility
+    // Check if this is a thumb-prefixed version
+    const isThumbPrefixed = sharedKey.includes('thumb-');
+    
+    // First try the poster.jpg version
+    let baseKey = sharedKey;
+    if (isThumbPrefixed) {
+      // Remove the thumb- prefix if it exists
+      baseKey = sharedKey.replace('thumb-', '');
+    }
+    
+    // Create all possible variations
+    const baseNameWithoutExt = baseKey.substring(0, baseKey.lastIndexOf('.'));
+    const posterJpgKey = `${baseNameWithoutExt}.poster.jpg`;
+    const regularJpgKey = `${baseNameWithoutExt}.jpg`;
+    
+    // Add all variations to the keys to try with most preferred first
+    keysToTry = [
+      posterJpgKey,     // First try poster.jpg version - best quality
+      regularJpgKey,    // Then try regular jpg version
+      sharedKey         // Finally try the original key (MOV)
+    ];
   }
   
   try {
