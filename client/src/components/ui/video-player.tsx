@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getVideoPoster } from '@/lib/memory-verse-utils';
 
@@ -30,135 +30,40 @@ export function VideoPlayer({
   const videoPoster = src?.toLowerCase().endsWith('.mov') ? getVideoPoster(src) : undefined;
   const poster = videoPoster || initialPoster;
   
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [showControls, setShowControls] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Format time to display
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  // Handle video playback
-  const togglePlay = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  // Handle thumbnail click - Facebook style implementation
+  const handleThumbnailClick = () => {
+    console.log("Thumbnail clicked, showing video player");
+    setShowVideo(true);
     
-    if (!videoRef.current) return;
-    
-    try {
-      if (videoRef.current.paused) {
-        console.log("Playing video");
-        const playPromise = videoRef.current.play();
-        
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              console.log("Video started successfully");
-              setIsPlaying(true);
-              
-              // Auto-hide controls after delay when playing
-              if (controlsTimeoutRef.current) {
-                clearTimeout(controlsTimeoutRef.current);
-              }
-              
-              controlsTimeoutRef.current = setTimeout(() => {
-                setShowControls(false);
-              }, 3000);
-            })
-            .catch(error => {
-              console.error("Play error:", error);
-              setIsPlaying(false);
-              if (onError) onError(new Error(`Failed to play: ${error.message}`));
-            });
-        }
-      } else {
-        console.log("Pausing video");
-        videoRef.current.pause();
-        setIsPlaying(false);
-        
-        // Always show controls when paused
-        setShowControls(true);
-        
-        // Clear any auto-hide timeout
-        if (controlsTimeoutRef.current) {
-          clearTimeout(controlsTimeoutRef.current);
-          controlsTimeoutRef.current = null;
-        }
+    // Start video playback after showing
+    setTimeout(() => {
+      if (videoRef.current) {
+        console.log("Starting video playback");
+        videoRef.current.play()
+          .then(() => {
+            console.log("Video playback started successfully");
+          })
+          .catch(error => {
+            console.error("Error playing video:", error);
+            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+          });
       }
-    } catch (error) {
-      console.error("Toggle play error:", error);
-      if (onError) onError(new Error(`Play/pause error: ${error}`));
-    }
-  };
-
-  // Toggle mute state
-  const toggleMute = () => {
-    if (!videoRef.current) return;
-    
-    videoRef.current.muted = !isMuted;
-    setIsMuted(!isMuted);
-  };
-
-  // Update progress bar
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!videoRef.current) return;
-    
-    const newTime = parseFloat(e.target.value);
-    videoRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
+    }, 50);
   };
   
-  // Show/hide controls on mobile touch
-  const handleVideoTap = () => {
-    // Toggle controls visibility when video is tapped
-    setShowControls(!showControls);
-    
-    // If playing, set a timeout to hide controls
-    if (isPlaying) {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-      
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    }
-  };
-  
-  // Clean up timeouts
-  useEffect(() => {
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
-  }, []);
-  
-  // Set up video event listeners
+  // Set up video loaded event
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     
-    const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-    };
-    
-    const handleDurationChange = () => {
-      setDuration(video.duration);
-    };
-    
-    const handleLoadedData = () => {
+    const handleVideoLoaded = () => {
       console.log("Video data loaded");
       setLoading(false);
-      setDuration(video.duration);
       if (onLoad) onLoad();
     };
     
@@ -167,109 +72,59 @@ export function VideoPlayer({
       if (onError) onError(new Error("Video failed to load"));
     };
     
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('durationchange', handleDurationChange);
-    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('loadeddata', handleVideoLoaded);
     video.addEventListener('error', handleError);
     
     return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('durationchange', handleDurationChange);
-      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('loadeddata', handleVideoLoaded);
       video.removeEventListener('error', handleError);
     };
   }, [onLoad, onError]);
 
   return (
     <div 
+      ref={containerRef}
       className={cn("relative rounded-md overflow-hidden", className)}
-      onClick={handleVideoTap}
     >
-      {/* Hidden video element without controls */}
+      {/* Thumbnail image that gets clicked to start the video */}
+      {!showVideo && (
+        <div className="relative w-full">
+          <img 
+            src={poster} 
+            alt="Video thumbnail" 
+            className="w-full h-full object-contain cursor-pointer"
+            onClick={handleThumbnailClick}
+          />
+          
+          {/* Play button overlay on thumbnail */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+            <div 
+              className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60 transition-colors"
+              onClick={handleThumbnailClick}
+            >
+              <Play size={40} className="text-white" fill="white" />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Video player (initially hidden) */}
       <video
         ref={videoRef}
         src={src}
-        poster={poster}
         preload={preload}
         playsInline={playsInline}
-        className="w-full h-full object-contain"
-        controls={false}
+        className={cn(
+          "w-full h-full object-contain",
+          showVideo ? "block" : "hidden"
+        )}
+        controls={true}
         controlsList={controlsList}
         disablePictureInPicture={disablePictureInPicture}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
       />
       
-      {/* Play/pause overlay button */}
-      {!isPlaying && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center"
-          onClick={(e) => { 
-            e.stopPropagation();
-            togglePlay();
-          }}
-        >
-          <div className="p-4 rounded-full bg-black/40 touch-manipulation">
-            <Play size={40} className="text-white" fill="white" />
-          </div>
-        </div>
-      )}
-      
-      {/* Mobile-friendly custom controls */}
-      {showControls && (
-        <div 
-          className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 touch-manipulation"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Progress bar */}
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer touch-manipulation"
-            style={{
-              background: `linear-gradient(to right, white ${(currentTime / (duration || 1)) * 100}%, gray ${(currentTime / (duration || 1)) * 100}%)`,
-            }}
-          />
-          
-          {/* Controls row */}
-          <div className="flex items-center justify-between mt-1">
-            <div className="flex items-center space-x-2">
-              {/* Play/pause button */}
-              <button 
-                onClick={() => togglePlay()}
-                className="p-1 text-white focus:outline-none touch-manipulation"
-              >
-                {isPlaying ? 
-                  <Pause className="w-6 h-6" /> : 
-                  <Play className="w-6 h-6" />
-                }
-              </button>
-              
-              {/* Mute/unmute button */}
-              <button
-                onClick={toggleMute}
-                className="p-1 text-white focus:outline-none touch-manipulation"
-              >
-                {isMuted ? 
-                  <VolumeX className="w-6 h-6" /> : 
-                  <Volume2 className="w-6 h-6" />
-                }
-              </button>
-            </div>
-            
-            {/* Time display */}
-            <div className="text-white text-xs">
-              {formatTime(currentTime)} / {formatTime(duration || 0)}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Loading indicator */}
-      {loading && (
+      {/* Loading indicator - only shown when video is visible and loading */}
+      {showVideo && loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
           <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
         </div>
