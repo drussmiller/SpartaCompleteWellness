@@ -93,7 +93,7 @@ export function VideoPlayer({
     
     // Try to generate a thumbnail using our memory verse utilities if this is a MOV file
     if (src && src.toLowerCase().endsWith('.mov')) {
-      console.log("Attempting to generate thumbnail for memory verse video:", src);
+      console.log("Attempting to generate thumbnail for video:", src);
       
       // Extract the file URL from the src
       const fileUrl = src.includes('/api/object-storage/direct-download') 
@@ -102,35 +102,50 @@ export function VideoPlayer({
         
       if (fileUrl) {
         try {
-          // First try the memory verse thumbnail handler for authenticated API
-          console.log("Using memory verse thumbnail handler");
+          // First try the more general utility for all video types (memory verse or miscellaneous)
+          console.log("Using shared video thumbnail handler");
           const success = await handleFailedPosterLoad(fileUrl);
           
           if (success) {
-            console.log("Successfully generated memory verse thumbnails");
+            console.log("Successfully generated video thumbnails");
             // Force reload the video with a slight delay to allow thumbnails to be processed
             setTimeout(() => {
               const video = videoRef.current;
               if (video) {
                 // Force the video element to reload with the new poster
                 video.load();
+                // Set currentTime to 0 to ensure first frame is shown
+                video.currentTime = 0;
               }
             }, 500);
             return;
           }
           
-          // If that fails, fall back to the object storage direct API
-          console.log("Falling back to object storage thumbnail generator");
+          // If that fails, try a manual direct approach with object storage
+          console.log("Trying direct thumbnail generation with object storage API");
           const response = await fetch(`/api/object-storage/generate-thumbnail?fileUrl=${encodeURIComponent(fileUrl)}`);
           const data = await response.json();
           
-          console.log("Thumbnail generation response:", data);
-          if (data.success) {
-            // Force reload the video with the new thumbnail
-            const video = videoRef.current;
-            if (video) {
-              // Force the video element to reload with the new poster
-              video.load();
+          console.log("Direct thumbnail generation response:", data);
+          if (data && data.success) {
+            // Try one more time with more aggressive caching parameter to get fresh thumbnail
+            const timestamp = Date.now();
+            const baseFilename = fileUrl.split('/').pop()?.split('.')[0];
+            
+            if (baseFilename) {
+              // Preload the thumbnail image
+              const img = new Image();
+              img.onload = () => {
+                console.log("Successfully loaded fresh thumbnail");
+                // Force reload the video with the new thumbnail
+                const video = videoRef.current;
+                if (video) {
+                  video.load();
+                  // Set currentTime to 0 to ensure first frame is shown
+                  video.currentTime = 0;
+                }
+              };
+              img.src = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseFilename}.poster.jpg&v=${timestamp}`;
             }
           }
         } catch (error) {
@@ -142,8 +157,8 @@ export function VideoPlayer({
     // If poster fails to load and we couldn't generate one via API,
     // try to generate one from the video locally as a last resort
     if (!generatedPoster && videoRef.current) {
-      // Set a small time to grab the first frame
-      videoRef.current.currentTime = 0.1;
+      // Set time to 0 to grab the first frame
+      videoRef.current.currentTime = 0;
     }
   };
 
@@ -314,12 +329,28 @@ export function VideoPlayer({
         onClick={() => togglePlay()}
         onLoadedMetadata={() => {
           console.log("Video metadata loaded, poster:", poster || generatedPoster);
+          // Immediately set the currentTime to 0 to ensure the first frame is shown
+          if (videoRef.current && !isPlaying) {
+            videoRef.current.currentTime = 0;
+          }
         }}
         onError={(e) => {
           console.error("Video failed to load:", src);
           if (onError) onError(new Error("Failed to load video"));
         }}
       />
+
+      {/* Large centered play button overlay when not playing */}
+      {!isPlaying && !loading && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center cursor-pointer"
+          onClick={() => togglePlay()}
+        >
+          <div className="p-4 rounded-full bg-primary/80 shadow-lg transform transition-transform hover:scale-110">
+            <Play className="h-10 w-10 text-white" />
+          </div>
+        </div>
+      )}
 
       {/* Loading indicator */}
       {loading && (

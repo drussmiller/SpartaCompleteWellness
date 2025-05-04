@@ -95,9 +95,13 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
   // This follows the naming convention used by the server-side thumbnail generator
   const posterFilename = `${fileBase}.poster.jpg`;
   
-  // Start with the thumbnails directory
-  // This matches the server-side path construction in createAllMovThumbnailVariants
-  const posterUrl = `/uploads/thumbnails/${posterFilename}`;
+  // Use direct download to access the thumbnail from object storage
+  // Add a random query parameter to bypass caching
+  const timestamp = Date.now();
+  const posterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${posterFilename}&v=${timestamp}`;
+  
+  // Log the poster URL
+  console.log(`Using video poster from: ${posterUrl} for video: ${mediaUrl}`);
   
   return posterUrl;
 }
