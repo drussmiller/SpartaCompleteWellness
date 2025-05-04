@@ -2588,6 +2588,93 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(500).json({ message: "Error fetching memory verse videos" });
     }
   });
+  
+  /**
+   * Generate thumbnail for a specific video file
+   * This endpoint takes a video URL or ID and generates a high-quality thumbnail for it
+   * using our enhanced frame extraction technique that tries multiple frame positions
+   */
+  router.post('/api/generate-thumbnail', authenticate, async (req: Request, res: Response) => {
+    try {
+      // Get either a video URL or a post ID from the request
+      const { videoUrl, postId } = req.body;
+      
+      if (!videoUrl && !postId) {
+        return res.status(400).json({ success: false, message: 'Either videoUrl or postId is required' });
+      }
+      
+      let targetPath: string | null = null;
+      
+      // If a post ID was provided, look up its video path
+      if (postId) {
+        const post = await db.query.posts.findFirst({
+          where: eq(posts.id, parseInt(postId, 10))
+        });
+        
+        if (!post || !post.mediaUrl || !post.is_video) {
+          return res.status(404).json({ success: false, message: 'Post not found or does not contain a video' });
+        }
+        
+        targetPath = post.mediaUrl;
+      } else {
+        // Use the provided video URL directly
+        targetPath = videoUrl;
+      }
+      
+      // Make sure the path is valid
+      if (!targetPath) {
+        return res.status(400).json({ success: false, message: 'Invalid video path' });
+      }
+      
+      logger.info(`Generating thumbnails for video: ${targetPath}`, { userId: req.user?.id });
+      
+      // Resolve the full file path from the relative path/URL
+      const baseDir = '/home/runner/workspace/uploads';
+      const filePath = path.join(baseDir, targetPath.replace(/^shared\/uploads\//, ''));
+      
+      // Check if the video file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, message: 'Video file not found' });
+      }
+      
+      // Generate thumbnail paths
+      const filename = path.basename(filePath);
+      const thumbnailsDir = path.join(baseDir, '..', 'shared', 'uploads', 'thumbnails');
+      const thumbPath = path.join(thumbnailsDir, `thumb-${filename}`);
+      
+      // Import the needed functions if they're not already imported
+      const { createAllMovThumbnailVariants } = await import('./mov-frame-extractor');
+      
+      // Extract thumbnails with improved quality and multiple frame positions
+      try {
+        // Use the enhanced createAllMovThumbnailVariants function to generate high-quality thumbnails
+        logger.info(`Using enhanced thumbnail extraction with multiple frame positions for: ${filename}`);
+        const { jpgThumbPath, posterPath, nonPrefixedThumbPath } = await createAllMovThumbnailVariants(filePath, thumbPath);
+        
+        // Check file sizes of generated thumbnails to ensure they're good quality
+        const jpgStats = fs.existsSync(jpgThumbPath) ? fs.statSync(jpgThumbPath).size : 0;
+        const posterStats = fs.existsSync(posterPath) ? fs.statSync(posterPath).size : 0;
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Thumbnails generated successfully',
+          thumbnails: {
+            jpg: jpgThumbPath,
+            poster: posterPath,
+            nonPrefixed: nonPrefixedThumbPath,
+            jpgSize: jpgStats,
+            posterSize: posterStats
+          }
+        });
+      } catch (error) {
+        logger.error(`Error generating thumbnails: ${error}`);
+        return res.status(500).json({ success: false, message: `Error generating thumbnails: ${error}` });
+      }
+    } catch (error) {
+      logger.error(`Thumbnail generation error: ${error}`);
+      res.status(500).json({ success: false, message: 'Error during thumbnail generation.' });
+    }
+  });
 
   router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
     // Set content type early to prevent browser confusion

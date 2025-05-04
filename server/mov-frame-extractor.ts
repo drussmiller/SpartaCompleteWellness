@@ -14,15 +14,17 @@ import { logger } from './logger';
  * 
  * @param sourcePath Path to the source MOV file
  * @param outputPath Path where the extracted frame should be saved as JPG
+ * @param seekPosition Optional position (in seconds) to extract the frame from, defaults to 1.0
  * @returns Promise that resolves when frame is extracted or rejects with error
  */
 export async function extractMovFrame(
   sourcePath: string, 
-  outputPath: string
+  outputPath: string,
+  seekPosition: number = 1.0
 ): Promise<void> {
   // Generate a random process ID for logging
   const processId = Math.random().toString(36).substring(2, 8);
-  logger.info(`Starting MOV frame extraction for ${path.basename(sourcePath)}`, { processId });
+  logger.info(`Starting MOV frame extraction for ${path.basename(sourcePath)} at position ${seekPosition}s`, { processId });
   
   return new Promise<void>((resolve, reject) => {
     // Make sure the output directory exists
@@ -31,14 +33,15 @@ export async function extractMovFrame(
       fs.mkdirSync(outputDir, { recursive: true });
     }
     
-    // Configure ffmpeg with optimized settings for MOV files
+    // Configure ffmpeg with improved settings for better thumbnail quality
     const command = ffmpeg(sourcePath)
-      .seekInput(0)      // Seek to the very beginning
-      .inputOption('-t 0.1')  // Limit input duration to improve speed
+      .seekInput(seekPosition)  // Seek to a position past the initial black frame
+      .inputOption('-ss 0.5')   // Additional seek to ensure we get a good frame
       .outputOptions([
-        '-frames:v 1',  // Extract exactly one frame
-        '-q:v 2',       // High quality
-        '-f image2'     // Force image output format
+        '-frames:v 1',     // Extract exactly one frame
+        '-q:v 1',          // Highest quality (1-31, where 1 is best)
+        '-vf scale=640:-1', // Scale to 640px width while maintaining aspect ratio
+        '-f image2'        // Force image output format
       ])
       .on('start', (commandLine: string) => {
         logger.info(`FFmpeg MOV extraction command: ${commandLine}`, { processId });
@@ -129,24 +132,57 @@ export async function createAllMovThumbnailVariants(
       return pathsResult;
     }
     
-    // Extract the frame to the JPG path first
-    try {
-      await extractMovFrame(sourceMovPath, jpgThumbPath);
-      
-      // Read the JPG data
-      const jpgBuffer = fs.readFileSync(jpgThumbPath);
-      
-      // Copy to all other paths
-      fs.writeFileSync(movThumbPath, jpgBuffer);
-      fs.writeFileSync(posterPath, jpgBuffer);
-      fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
-      
+    // Define a series of frame positions to try (in seconds)
+    // This gives us multiple chances to get a good non-black frame
+    const framePositions = [1.0, 2.0, 0.5, 3.0, 0.1];
+    let success = false;
+    let lastError: any = null;
+    
+    // Try each position until we get a good frame
+    for (const position of framePositions) {
+      try {
+        const tempJpgPath = `${jpgThumbPath}.temp`;
+        
+        // Extract the frame to a temporary path first
+        await extractMovFrame(sourceMovPath, tempJpgPath, position);
+        
+        // Check if the extracted frame is valid by getting its size
+        const stats = fs.statSync(tempJpgPath);
+        
+        // Only consider it valid if the size is reasonable (> 1KB)
+        if (stats.size > 1024) {
+          // Read the valid JPG data
+          const jpgBuffer = fs.readFileSync(tempJpgPath);
+          
+          // Copy to all required paths
+          fs.writeFileSync(jpgThumbPath, jpgBuffer);
+          fs.writeFileSync(movThumbPath, jpgBuffer);
+          fs.writeFileSync(posterPath, jpgBuffer);
+          fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
+          
+          // Clean up temp file
+          try { fs.unlinkSync(tempJpgPath); } catch(e) { /* ignore cleanup errors */ }
+          
+          logger.info(`Successfully created thumbnails from frame at position ${position}s for ${filename}`);
+          success = true;
+          break;
+        } else {
+          logger.warn(`Extracted frame at ${position}s is too small (${stats.size} bytes), likely a black frame. Trying another position.`);
+          try { fs.unlinkSync(tempJpgPath); } catch(e) { /* ignore cleanup errors */ }
+        }
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Failed to extract frame at position ${position}s, trying next position: ${error}`);
+        continue;
+      }
+    }
+    
+    if (success) {
       logger.info(`Created all MOV thumbnail variants for ${filename}`);
-      
       return pathsResult;
-    } catch (extractError) {
-      logger.error(`Failed to extract frame, creating fallback thumbnails: ${extractError}`, { sourceFile: filename });
-      // If frame extraction fails, create SVG fallbacks
+    } else {
+      logger.error(`Failed to extract usable frame after trying multiple positions: ${lastError}`, { sourceFile: filename });
+      // If all frame extraction attempts fail, create SVG fallbacks
       await createFallbackSvgThumbnails(pathsResult);
       return pathsResult;
     }
