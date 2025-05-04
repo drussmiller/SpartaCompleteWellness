@@ -77,10 +77,17 @@ export function VideoPlayer({
     if (isPlaying) {
       videoRef.current.pause();
     } else {
-      videoRef.current.play().catch(err => {
-        console.error("Error playing video:", err);
-        if (onError) onError(err);
-      });
+      console.log("Attempting to play video...");
+      videoRef.current.play()
+        .then(() => {
+          console.log("Video playback started successfully");
+          // Make sure we update the state
+          setIsPlaying(true);
+        })
+        .catch(err => {
+          console.error("Error playing video:", err);
+          if (onError) onError(err);
+        });
     }
   };
   
@@ -328,7 +335,11 @@ export function VideoPlayer({
         className="w-full h-full object-contain"
         controlsList={controlsList}
         disablePictureInPicture={disablePictureInPicture}
-        onClick={() => togglePlay()}
+        onClick={(e) => {
+          e.stopPropagation(); 
+          console.log("Video element clicked, calling togglePlay()");
+          togglePlay();
+        }}
         onLoadedMetadata={() => {
           console.log("Video metadata loaded, poster:", poster || generatedPoster);
           // Immediately set the currentTime to 0 to ensure the first frame is shown
@@ -345,8 +356,7 @@ export function VideoPlayer({
       {/* Facebook-style play button overlay when not playing */}
       {!isPlaying && !loading && (
         <div 
-          className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/10"
-          onClick={() => togglePlay()}
+          className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/10 pointer-events-none"
         >
           <div className="p-6 rounded-full bg-black/40 transform transition-transform hover:scale-110">
             <Play className="h-12 w-12 text-white" fill="white" />
