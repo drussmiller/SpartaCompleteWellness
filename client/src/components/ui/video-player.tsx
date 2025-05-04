@@ -56,17 +56,13 @@ export function VideoPlayer({
 
   // Show controls when mouse moves over the video
   const showControls = () => {
+    // Always keep controls visible - don't auto-hide them
+    // This makes the player more accessible and prevents disappearing UI
     setControlsVisible(true);
     
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
-        setControlsVisible(false);
-      }
-    }, 3000);
   };
 
   // Handle play/pause
@@ -294,9 +290,8 @@ export function VideoPlayer({
       className={cn("relative group overflow-hidden rounded-md", className)}
       onMouseMove={showControls}
       onMouseLeave={() => {
-        if (isPlaying) {
-          setControlsVisible(false);
-        }
+        // Always keep controls visible for better UX
+        setControlsVisible(true);
       }}
     >
       {/* Hidden canvas for thumbnail generation */}
@@ -359,12 +354,9 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Custom controls overlay */}
+      {/* Custom controls overlay - always visible */}
       <div 
-        className={cn(
-          "absolute bottom-0 left-0 right-0 bg-black/60 text-white transition-opacity p-2",
-          controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
+        className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2"
       >
         {/* Progress bar */}
         <input
