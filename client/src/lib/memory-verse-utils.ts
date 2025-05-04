@@ -9,18 +9,49 @@
  * 
  * @param mediaUrl URL of the video
  * @param isMemoryVerse Optional flag to force using memory verse endpoint
+ * @param useEnhanced Optional flag to use the enhanced thumbnail generator (default true)
  * @returns Promise resolving to the response data or null if failed
  */
-export async function generateVideoThumbnails(mediaUrl: string, isMemoryVerse?: boolean): Promise<any> {
+export async function generateVideoThumbnails(
+  mediaUrl: string, 
+  isMemoryVerse?: boolean,
+  useEnhanced: boolean = true
+): Promise<any> {
   try {
     // Determine if this is a memory verse by URL pattern
     // We can also accept an explicit flag to override this detection
     const isMemoryVerseVideo = isMemoryVerse ?? mediaUrl.includes('memory_verse');
     
     // Log the thumbnail generation request
-    console.log(`Requesting thumbnail generation for video: ${mediaUrl}`);
+    console.log(`Requesting thumbnail generation for video: ${mediaUrl}`, {
+      isMemoryVerseVideo,
+      useEnhanced
+    });
     
-    if (isMemoryVerseVideo) {
+    // If using enhanced mode, we'll use the new dedicated thumbnail generator API
+    if (useEnhanced) {
+      console.log("Using enhanced thumbnail generator API");
+      const response = await fetch('/api/generate-thumbnail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ videoUrl: mediaUrl })
+      });
+      
+      if (!response.ok) {
+        console.error(`Enhanced thumbnail generation failed with status: ${response.status}`);
+        // Fall back to the older methods if enhanced fails
+        return generateVideoThumbnails(mediaUrl, isMemoryVerse, false);
+      }
+      
+      const data = await response.json();
+      console.log(`Enhanced thumbnail generation response:`, data);
+      
+      return data;
+    }
+    // Fall back to legacy endpoints if enhanced mode is disabled
+    else if (isMemoryVerseVideo) {
       // Use the memory verse endpoint for memory verse videos
       console.log("Using memory verse endpoint for thumbnail generation");
       const response = await fetch(`/api/memory-verse-thumbnails?mediaUrl=${encodeURIComponent(mediaUrl)}`);
@@ -87,23 +118,75 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
   const filename = urlParts[urlParts.length - 1];
   const fileBase = filename.split('.')[0];
   
-  // Check if it's a MOV file
-  const isMovFile = mediaUrl.toLowerCase().endsWith('.mov');
-  if (!isMovFile) return undefined;
+  // Check if it's a video file (support more formats than just .mov)
+  const isVideoFile = mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i);
+  if (!isVideoFile) return undefined;
   
-  // Construct the poster URL with poster suffix
-  // This follows the naming convention used by the server-side thumbnail generator
-  const posterFilename = `${fileBase}.poster.jpg`;
-  
-  // Use direct download to access the thumbnail from object storage
   // Add a random query parameter to bypass caching
   const timestamp = Date.now();
+  
+  // Try to use the enhanced direct-download API for accessing the thumbnail
+  // Construct multiple potential URLs to try:
+  // 1. Standard poster format with .poster.jpg suffix (primary choice)
+  // 2. With thumb- prefix (fallback)
+  // 3. Without special naming, just using the base filename with .jpg (last resort)
+  
+  // Primary choice - Standard poster format
+  const posterFilename = `${fileBase}.poster.jpg`;
   const posterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${posterFilename}&v=${timestamp}`;
   
-  // Log the poster URL
+  // Log the poster URL choice
   console.log(`Using video poster from: ${posterUrl} for video: ${mediaUrl}`);
   
   return posterUrl;
+}
+
+/**
+ * Generate alternative poster URLs for a video when the primary one fails
+ * This function returns an array of alternative URLs to try
+ * 
+ * @param mediaUrl URL of the video 
+ * @returns Array of alternative poster URLs to try
+ */
+export function getAlternativePosterUrls(mediaUrl: string | null): string[] {
+  if (!mediaUrl) return [];
+  
+  const alternatives: string[] = [];
+  const timestamp = Date.now();
+  
+  try {
+    // Extract the filename from the media URL
+    const urlParts = mediaUrl.split('/');
+    const filename = urlParts[urlParts.length - 1];
+    const fileBase = filename.split('.')[0];
+    const fileExt = filename.split('.').pop()?.toLowerCase();
+    
+    // Alternative 1: Using thumb- prefix with poster suffix
+    const thumbPosterFilename = `thumb-${fileBase}.poster.jpg`;
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbPosterFilename}&v=${timestamp}`);
+    
+    // Alternative 2: Using thumb- prefix without poster suffix
+    const thumbFilename = `thumb-${fileBase}.jpg`;
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbFilename}&v=${timestamp}`);
+    
+    // Alternative a3: No thumb- prefix, no poster suffix, just direct .jpg
+    const baseFilename = `${fileBase}.jpg`;
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseFilename}&v=${timestamp}`);
+    
+    // Alternative 4: Try searching in uploads directory (not thumbnails)
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.poster.jpg&v=${timestamp}`);
+    
+    // Alternative 5: Try with video-specific naming pattern
+    if (fileExt) {
+      const videoSpecificFilename = `${fileBase}.${fileExt}.poster.jpg`;
+      alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${videoSpecificFilename}&v=${timestamp}`);
+    }
+    
+  } catch (error) {
+    console.error('Error generating alternative poster URLs:', error);
+  }
+  
+  return alternatives;
 }
 
 /**
@@ -118,18 +201,51 @@ export async function handleFailedPosterLoad(mediaUrl: string): Promise<boolean>
   try {
     console.log(`Handling failed poster load for: ${mediaUrl}`);
     
-    // First try memory verse endpoint if this looks like a memory verse
-    const isMemoryVerse = mediaUrl.includes('memory_verse');
+    // Always use the enhanced thumbnail generator which will try multiple frame positions
+    // This has the best chance of generating a usable thumbnail
+    console.log(`Using enhanced thumbnail generator for failed poster: ${mediaUrl}`);
     
-    // Request thumbnail generation using the appropriate endpoint
-    const result = await generateVideoThumbnails(mediaUrl, isMemoryVerse);
+    // Request thumbnail generation using our new dedicated API endpoint
+    const result = await fetch('/api/generate-thumbnail', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ videoUrl: mediaUrl })
+    });
     
-    if (!result || !result.success) {
-      console.error('Failed to generate thumbnails on poster load failure');
-      return false;
+    if (!result.ok) {
+      console.error(`Enhanced thumbnail generation failed with status: ${result.status}`);
+      
+      // Fall back to the old method as a last resort
+      console.log('Falling back to legacy thumbnail generation method');
+      const isMemoryVerse = mediaUrl.includes('memory_verse');
+      const fallbackResult = await generateVideoThumbnails(mediaUrl, isMemoryVerse, false);
+      
+      if (!fallbackResult || !fallbackResult.success) {
+        console.error('Failed to generate thumbnails with fallback method');
+        return false;
+      }
+      
+      console.log('Successfully generated thumbnails using fallback method');
+      return true;
     }
     
-    console.log('Successfully generated thumbnails after poster load failure');
+    const data = await result.json();
+    console.log('Successfully generated thumbnails after poster load failure:', data);
+    
+    // Add a cache-busting reload of the image after a delay
+    // This helps ensure the UI shows the new thumbnail without requiring a page refresh
+    setTimeout(() => {
+      // Dispatch a custom event that VideoPlayer can listen for to refresh its poster
+      const refreshEvent = new CustomEvent('thumbnail-regenerated', { 
+        detail: { videoUrl: mediaUrl }
+      });
+      window.dispatchEvent(refreshEvent);
+      
+      console.log('Dispatched thumbnail-regenerated event');
+    }, 1000);
+    
     return true;
   } catch (error) {
     console.error('Error handling failed poster load:', error);

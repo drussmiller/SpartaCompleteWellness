@@ -18,6 +18,7 @@ interface VideoPlayerProps {
 /**
  * Creates a simplified poster URL for Windows compatibility
  * Windows can have issues with complex paths with multiple segments
+ * This function also generates alternative paths to try if the main one fails
  */
 function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
   if (!originalUrl) return undefined;
@@ -33,8 +34,14 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
       if (!fileUrl) return originalUrl;
       
       // Extract just the filename without the path
-      const filename = fileUrl.split('/').pop();
+      let filename = fileUrl.split('/').pop();
       if (!filename) return originalUrl;
+      
+      // Handle potential thumb- prefix variations
+      if (filename.startsWith('thumb-')) {
+        // Try without the thumb- prefix for better compatibility
+        filename = filename.replace('thumb-', '');
+      }
       
       // Create a simpler URL for the thumbnail
       return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${filename}`;
@@ -43,11 +50,28 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
     // For other URLs, try to simplify the path if it has poster.jpg
     if (originalUrl.includes('.poster.jpg')) {
       const parts = originalUrl.split('/');
-      const filename = parts.pop();
+      let filename = parts.pop();
       if (!filename) return originalUrl;
+      
+      // Handle potential thumb- prefix variations
+      if (filename.startsWith('thumb-')) {
+        // Try without the thumb- prefix for better compatibility
+        filename = filename.replace('thumb-', '');
+      }
       
       // Create a more direct path to the thumbnail
       return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${filename}`;
+    }
+    
+    // If URL contains .mov, try to get a poster image path for it
+    if (originalUrl.toLowerCase().endsWith('.mov')) {
+      const parts = originalUrl.split('/');
+      const filename = parts.pop();
+      if (filename) {
+        // Create a poster path using the recommended naming convention
+        const posterFilename = filename.replace('.mov', '.poster.jpg');
+        return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${posterFilename}`;
+      }
     }
     
     return originalUrl;
@@ -104,22 +128,68 @@ export function VideoPlayer({
     }, 50);
   };
   
-  // Handle poster image load error
+  // Handle poster image load error using all available alternative poster URLs
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
-    setPosterError(true);
     
-    // Try to create an alternate URL by simplifying it further
+    // Import getAlternativePosterUrls to try various alternative URLs
+    const { getAlternativePosterUrls } = require('@/lib/memory-verse-utils');
+    
+    // If we have an original src, use it to generate all possible alternative URLs
+    if (src) {
+      // Generate an array of alternative poster URLs to try
+      const alternatives = getAlternativePosterUrls(src);
+      
+      if (alternatives.length > 0) {
+        console.log(`Found ${alternatives.length} alternative poster URLs to try`);
+        
+        // Try to preload each alternative poster to find one that works
+        const tryNextAlternative = (index = 0) => {
+          if (index >= alternatives.length) {
+            // If we've tried all alternatives and none worked, show the fallback
+            console.warn("All alternative poster URLs failed to load");
+            setPosterError(true);
+            return;
+          }
+          
+          const altPoster = alternatives[index];
+          console.log(`Trying alternative poster URL #${index + 1}:`, altPoster);
+          
+          // Create a new image element to test if the alternative URL works
+          const img = new Image();
+          img.onload = () => {
+            console.log(`Alternative poster URL #${index + 1} loaded successfully`);
+            setSimplifiedPoster(altPoster);
+            setPosterError(false); // Reset error state since we found a working URL
+          };
+          img.onerror = () => {
+            console.warn(`Alternative poster URL #${index + 1} failed to load`);
+            // Try the next alternative
+            tryNextAlternative(index + 1);
+          };
+          img.src = altPoster;
+        };
+        
+        // Start trying alternatives
+        tryNextAlternative();
+        return;
+      }
+    }
+    
+    // Fallback to basic replacement logic if the advanced alternatives fail
     if (simplifiedPoster && simplifiedPoster.includes('thumb-')) {
       // Try alternate naming format without the 'thumb-' prefix
       const altPoster = simplifiedPoster.replace('thumb-', '');
-      console.log("Trying alternate poster URL:", altPoster);
+      console.log("Trying basic alternate poster URL:", altPoster);
       setSimplifiedPoster(altPoster);
     } else if (simplifiedPoster && simplifiedPoster.includes('.poster.jpg')) {
       // Try using the base filename without .poster.jpg
       const basePoster = simplifiedPoster.replace('.poster.jpg', '.jpg');
-      console.log("Trying base poster URL:", basePoster);
+      console.log("Trying basic alternate poster URL:", basePoster);
       setSimplifiedPoster(basePoster);
+    } else {
+      // If we've exhausted all options, show the fallback
+      setPosterError(true);
     }
   };
   
@@ -147,6 +217,52 @@ export function VideoPlayer({
       video.removeEventListener('error', handleError);
     };
   }, [onLoad, onError]);
+  
+  // Listen for thumbnail regeneration events
+  useEffect(() => {
+    if (!src) return;
+    
+    const handleThumbnailRegenerated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ videoUrl: string }>;
+      
+      // Check if this event is for our video
+      if (customEvent.detail?.videoUrl === src) {
+        console.log('Thumbnail regenerated for this video, refreshing poster');
+        
+        // Reset poster error state
+        setPosterError(false);
+        
+        // Add a cache-busting timestamp to force a reload of the image
+        if (simplifiedPoster) {
+          const timestamp = Date.now();
+          const refreshedPoster = simplifiedPoster.includes('?') 
+            ? simplifiedPoster.replace(/(\?|&)v=\d+/, `$1v=${timestamp}`)
+            : `${simplifiedPoster}?v=${timestamp}`;
+            
+          console.log('Refreshing poster with URL:', refreshedPoster);
+          setSimplifiedPoster(refreshedPoster);
+        }
+        // If no poster was set, try to generate one from the video URL
+        else if (src) {
+          // Import getVideoPoster to generate the poster URL
+          const { getVideoPoster } = require('@/lib/memory-verse-utils');
+          const newPoster = getVideoPoster(src);
+          
+          if (newPoster) {
+            console.log('Setting new poster URL after regeneration:', newPoster);
+            setSimplifiedPoster(newPoster);
+          }
+        }
+      }
+    };
+    
+    // Add event listener for thumbnail-regenerated custom event
+    window.addEventListener('thumbnail-regenerated', handleThumbnailRegenerated);
+    
+    return () => {
+      window.removeEventListener('thumbnail-regenerated', handleThumbnailRegenerated);
+    };
+  }, [src, simplifiedPoster]);
 
   return (
     <div 
@@ -166,12 +282,17 @@ export function VideoPlayer({
               onError={handlePosterError}
             />
           ) : (
-            /* Fallback for when poster fails to load */
+            /* Improved colorful fallback for when poster fails to load */
             <div 
-              className="w-full h-full min-h-[200px] bg-gray-800 flex items-center justify-center"
+              className="w-full h-full min-h-[200px] bg-gradient-to-r from-blue-600 to-purple-600 flex flex-col items-center justify-center"
               onClick={handleThumbnailClick}
             >
-              <div className="text-white text-sm mb-8">Video Preview</div>
+              <div className="bg-black/30 p-4 rounded-lg flex flex-col items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <div className="text-white text-md font-medium">Video Preview</div>
+              </div>
             </div>
           )}
           

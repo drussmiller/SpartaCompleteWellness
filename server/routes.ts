@@ -48,6 +48,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { messageRouter } from './message-routes';
 import { userRoleRouter } from './user-role-route';
 import { objectStorageRouter } from './object-storage-routes';
+import { createAllMovThumbnailVariants } from './mov-frame-extractor';
 
 // Configure multer for file uploads - ensure directory matches SpartaObjectStorage
 const uploadDir = path.resolve(process.cwd(), 'uploads');
@@ -2017,6 +2018,115 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
   
+  /**
+   * Generate thumbnail for a specific video file
+   * This endpoint takes a video URL or ID and generates a high-quality thumbnail for it
+   * using our enhanced frame extraction technique that tries multiple frame positions
+   */
+  router.post('/api/generate-thumbnail', authenticate, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      // Get the video URL from the request body
+      const videoUrl = req.body.videoUrl;
+      if (!videoUrl) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No video URL provided' 
+        });
+      }
+
+      logger.info(`Thumbnail generation requested for video: ${videoUrl}`, {
+        userId: req.user.id,
+        route: '/api/generate-thumbnail'
+      });
+
+      // Check if the video URL is valid and accessible
+      // Extract the filename from the URL
+      const filename = videoUrl.split('/').pop();
+      if (!filename) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid video URL format' 
+        });
+      }
+
+      // Determine the full path to the video file
+      // First look in the shared uploads directory 
+      let videoPath = path.join(process.cwd(), 'uploads', filename);
+      
+      // Check if the file exists, if not try alternate paths
+      if (!fs.existsSync(videoPath)) {
+        // Try with 'shared/uploads' path which is used in production
+        videoPath = path.join(process.cwd(), 'shared', 'uploads', filename);
+        
+        if (!fs.existsSync(videoPath)) {
+          // If still not found, check if it's already an absolute path
+          if (fs.existsSync(videoUrl)) {
+            videoPath = videoUrl;
+          } else {
+            // Final attempt: try to fetch the file info from object storage
+            const fileInfo = await spartaStorage.getFileInfo(videoUrl);
+            if (!fileInfo) {
+              return res.status(404).json({ 
+                success: false, 
+                message: 'Video file not found' 
+              });
+            }
+            // If we have file info but can't access the file directly, we'll try the URL
+            videoPath = videoUrl;
+          }
+        }
+      }
+
+      // Prepare the thumbnail paths
+      const fileBase = path.basename(filename, path.extname(filename));
+      const thumbnailBaseName = `${fileBase}.poster.jpg`;
+      
+      // Make sure the thumbnails directory exists
+      const thumbnailsDir = path.join(process.cwd(), 'shared', 'uploads', 'thumbnails');
+      if (!fs.existsSync(thumbnailsDir)) {
+        fs.mkdirSync(thumbnailsDir, { recursive: true });
+      }
+      
+      const thumbnailPath = path.join(thumbnailsDir, thumbnailBaseName);
+
+      logger.info(`Generating thumbnails for ${videoPath} to ${thumbnailPath}`, {
+        userId: req.user.id,
+        route: '/api/generate-thumbnail'
+      });
+
+      // Generate thumbnails using our enhanced function
+      const result = await createAllMovThumbnailVariants(videoPath, thumbnailPath);
+
+      logger.info(`Thumbnail generation complete`, {
+        userId: req.user.id,
+        route: '/api/generate-thumbnail',
+        result
+      });
+
+      // Return success and thumbnail URLs
+      return res.json({
+        success: true,
+        message: 'Thumbnails generated successfully',
+        thumbnailUrls: result.paths,
+        originalVideo: videoUrl
+      });
+    } catch (error) {
+      logger.error('Error generating thumbnails:', error, {
+        route: '/api/generate-thumbnail'
+      });
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Error generating thumbnails',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   /**
    * Memory verse thumbnail generation endpoint
    * This endpoint generates thumbnails for memory verse videos and returns a success status
