@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { handleFailedPosterLoad, getVideoPoster } from '@/lib/memory-verse-utils';
 
@@ -54,14 +54,19 @@ export function VideoPlayer({
     }
   }, [videoPoster]);
 
-  // Show controls when mouse moves over the video
+  // Show controls when mouse moves over the video - Facebook style
   const showControls = () => {
-    // Always keep controls visible - don't auto-hide them
-    // This makes the player more accessible and prevents disappearing UI
     setControlsVisible(true);
     
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
+    }
+    
+    // Hide controls after 2.5 seconds if video is playing (Facebook behavior)
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, 2500);
     }
   };
 
@@ -290,8 +295,10 @@ export function VideoPlayer({
       className={cn("relative group overflow-hidden rounded-md", className)}
       onMouseMove={showControls}
       onMouseLeave={() => {
-        // Always keep controls visible for better UX
-        setControlsVisible(true);
+        // Hide controls when mouse leaves if video is playing (Facebook behavior)
+        if (isPlaying) {
+          setControlsVisible(false);
+        }
       }}
     >
       {/* Hidden canvas for thumbnail generation */}
@@ -335,14 +342,14 @@ export function VideoPlayer({
         }}
       />
 
-      {/* Large centered play button overlay when not playing */}
+      {/* Facebook-style play button overlay when not playing */}
       {!isPlaying && !loading && (
         <div 
-          className="absolute inset-0 flex items-center justify-center cursor-pointer"
+          className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/10"
           onClick={() => togglePlay()}
         >
-          <div className="p-4 rounded-full bg-primary/80 shadow-lg transform transition-transform hover:scale-110">
-            <Play className="h-10 w-10 text-white" />
+          <div className="p-6 rounded-full bg-black/40 transform transition-transform hover:scale-110">
+            <Play className="h-12 w-12 text-white" fill="white" />
           </div>
         </div>
       )}
@@ -350,64 +357,78 @@ export function VideoPlayer({
       {/* Loading indicator */}
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
 
-      {/* Custom controls overlay - always visible */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2"
-      >
-        {/* Progress bar */}
-        <input
-          type="range"
-          min="0"
-          max={duration || 100}
-          value={currentTime}
-          onChange={handleProgressChange}
-          className="w-full h-1 bg-gray-400 rounded-full appearance-none cursor-pointer"
-          style={{
-            backgroundSize: `${(currentTime / (duration || 1)) * 100}% 100%`,
-            backgroundImage: 'linear-gradient(#8A2BE2, #8A2BE2)'
-          }}
-        />
-        
-        {/* Controls buttons */}
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePlay();
-              }} 
-              className="p-1 hover:bg-white/20 rounded-full"
-            >
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-            </button>
-            
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMute();
-              }}
-              className="p-1 hover:bg-white/20 rounded-full"
-            >
-              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-            </button>
-            
-            <span className="text-xs">
-              {formatTime(currentTime)} / {formatTime(duration || 0)}
-            </span>
-          </div>
+      {/* Facebook-style progress bar - thin line at the bottom */}
+      <div className="absolute bottom-0 left-0 right-0 w-full h-1.5 bg-gray-500/30">
+        <div 
+          className="h-full bg-white relative" 
+          style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+        >
+          {/* Small circle handle at the end of the progress bar */}
+          <div className={cn(
+            "absolute -right-1.5 -top-1 w-4 h-4 bg-white rounded-full transform scale-0 transition-transform",
+            controlsVisible ? "scale-100" : "scale-0"
+          )}></div>
+        </div>
+      </div>
+
+      {/* Facebook-style minimal controls - only shown when hovering */}
+      <div className={cn(
+        "absolute bottom-2 left-0 right-0 flex items-center justify-between px-4",
+        controlsVisible ? "opacity-100 transition-opacity duration-200" : "opacity-0 pointer-events-none transition-opacity duration-200"
+      )}>
+        {/* Left controls */}
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlay();
+            }} 
+            className="text-white hover:text-gray-300 focus:outline-none"
+          >
+            {isPlaying ? 
+              <Pause size={20} fill="currentColor" /> : 
+              <Play size={20} fill="currentColor" />
+            }
+          </button>
           
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="text-white hover:text-gray-300 focus:outline-none"
+          >
+            {isMuted ? 
+              <VolumeX size={20} /> : 
+              <Volume2 size={20} />
+            }
+          </button>
+          
+          <span className="text-white text-xs">
+            {formatTime(currentTime)} / {formatTime(duration || 0)}
+          </span>
+        </div>
+        
+        {/* Right controls */}
+        <div className="flex items-center space-x-2">
           <button 
             onClick={(e) => {
               e.stopPropagation();
               toggleFullscreen();
             }}
-            className="p-1 hover:bg-white/20 rounded-full"
+            className="text-white hover:text-gray-300 focus:outline-none"
           >
-            <Maximize size={16} />
+            <Maximize size={20} />
+          </button>
+          
+          <button 
+            className="text-white hover:text-gray-300 focus:outline-none"
+          >
+            <MoreVertical size={20} />
           </button>
         </div>
       </div>
