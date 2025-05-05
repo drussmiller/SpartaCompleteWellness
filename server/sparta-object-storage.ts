@@ -1876,19 +1876,34 @@ export class SpartaObjectStorage {
           // Process each potential key
           for (const key of objStoreKeysToDelete) {
             try {
-              // Check if the file exists before trying to delete it
-              const existsResult = await this.objectStorage.exists(key);
-              const fileExists = existsResult && (existsResult === true || 
-                (typeof existsResult === 'object' && 'ok' in existsResult && existsResult.ok && existsResult.value === true));
-              
-              if (fileExists) {
-                console.log(`Found file in Object Storage with key: ${key}, deleting it...`);
+              // Using direct delete method instead of checking existence first
+              // This is more efficient and will handle errors properly
+              try {
+                console.log(`Attempting to delete file from Object Storage with key: ${key}`);
                 const deleteResult = await this.objectStorage.delete(key);
-                console.log(`Deleted file from Object Storage with key: ${key}, result:`, deleteResult);
-                logger.info(`Deleted file from Object Storage with key: ${key}`);
-                foundFile = true;
-              } else {
-                console.log(`File not found in Object Storage with key: ${key}`);
+                
+                // A successful delete will have a status of 200
+                const isSuccess = typeof deleteResult === 'object' && 
+                  'response' in deleteResult && 
+                  deleteResult.response && 
+                  'status' in deleteResult.response && 
+                  deleteResult.response.status === 200;
+                
+                if (isSuccess) {
+                  console.log(`Successfully deleted file from Object Storage with key: ${key}`);
+                  logger.info(`Deleted file from Object Storage with key: ${key}`);
+                  foundFile = true;
+                } else {
+                  console.log(`File deletion attempt for key ${key} returned:`, deleteResult);
+                }
+              } catch (deleteErr) {
+                // Check if the error is a 404 (not found) - this is normal and expected for some files
+                if (deleteErr && typeof deleteErr === 'object' && 'status' in deleteErr && deleteErr.status === 404) {
+                  console.log(`File not found in Object Storage with key: ${key} (404)`);
+                } else {
+                  // Log other errors but continue trying other keys
+                  console.error(`Error during deletion attempt for key ${key}:`, deleteErr);
+                }
               }
             } catch (objStoreErr) {
               console.error(`Error deleting file from Object Storage with key ${key}:`, objStoreErr);
