@@ -1882,12 +1882,17 @@ export class SpartaObjectStorage {
                 console.log(`Attempting to delete file from Object Storage with key: ${key}`);
                 const deleteResult = await this.objectStorage.delete(key);
                 
-                // A successful delete will have a status of 200
-                const isSuccess = typeof deleteResult === 'object' && 
-                  'response' in deleteResult && 
-                  deleteResult.response && 
-                  'status' in deleteResult.response && 
-                  deleteResult.response.status === 200;
+                // A successful delete will either have ok:true in the result object
+                // or a response.status of 200 (for different versions of the client)
+                const isSuccess = 
+                  (typeof deleteResult === 'object' && 
+                   'ok' in deleteResult && 
+                   deleteResult.ok === true) || 
+                  (typeof deleteResult === 'object' && 
+                   'response' in deleteResult && 
+                   deleteResult.response && 
+                   'status' in deleteResult.response && 
+                   deleteResult.response.status === 200);
                 
                 if (isSuccess) {
                   console.log(`Successfully deleted file from Object Storage with key: ${key}`);
@@ -1898,7 +1903,20 @@ export class SpartaObjectStorage {
                 }
               } catch (deleteErr) {
                 // Check if the error is a 404 (not found) - this is normal and expected for some files
-                if (deleteErr && typeof deleteErr === 'object' && 'status' in deleteErr && deleteErr.status === 404) {
+                // The error structure can vary based on Object Storage client version
+                const is404Error = 
+                  (deleteErr && 
+                   typeof deleteErr === 'object' && 
+                   ('status' in deleteErr && deleteErr.status === 404)) || 
+                  (deleteErr && 
+                   typeof deleteErr === 'object' && 
+                   'error' in deleteErr && 
+                   typeof deleteErr.error === 'object' && 
+                   deleteErr.error &&
+                   'statusCode' in deleteErr.error && 
+                   deleteErr.error.statusCode === 404);
+                
+                if (is404Error) {
                   console.log(`File not found in Object Storage with key: ${key} (404)`);
                 } else {
                   // Log other errors but continue trying other keys

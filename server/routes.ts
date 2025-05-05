@@ -3736,21 +3736,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             
             // For MOV files, also try deleting the JPG version of the thumbnail
             if (fileExt.toLowerCase() === '.mov') {
-              const jpgThumbPath = thumbPath.replace('.mov', '.jpg');
-              const prefixedJpgThumbPath = prefixedThumbPath.replace('.mov', '.jpg');
+              // Create additional path variations specifically for MOV files
+              const variations = [
+                // Basic JPG versions
+                thumbPath.replace('.mov', '.jpg'),
+                prefixedThumbPath.replace('.mov', '.jpg'),
+                
+                // Poster versions
+                mediaUrl.replace(filename, `${baseName}.poster.jpg`),
+                
+                // With full path prefixes
+                `shared/uploads/${filename}`,
+                `shared/uploads/${baseName}.jpg`,
+                `shared/uploads/${baseName}.poster.jpg`,
+                `shared/uploads/thumbnails/${filename}`,
+                `shared/uploads/thumbnails/${baseName}.jpg`,
+                `shared/uploads/thumbnails/thumb-${filename}`,
+                `shared/uploads/thumbnails/thumb-${baseName}.jpg`
+              ];
               
-              try {
-                await spartaStorage.deleteFile(jpgThumbPath);
-                logger.info(`Deleted JPG thumbnail: ${jpgThumbPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete JPG thumbnail: ${jpgThumbPath}`);
+              // Also try MOV files in memory_verse special directory
+              if (mediaUrl.includes('memory_verse') || post.type === 'memory_verse') {
+                variations.push(
+                  `shared/uploads/memory_verse/${filename}`,
+                  `shared/uploads/memory_verse/${baseName}.jpg`,
+                  `shared/uploads/thumbnails/memory_verse/${filename}`,
+                  `shared/uploads/thumbnails/memory_verse/${baseName}.jpg`,
+                  `shared/uploads/thumbnails/memory_verse/thumb-${filename}`,
+                  `shared/uploads/thumbnails/memory_verse/thumb-${baseName}.jpg`
+                );
               }
               
-              try {
-                await spartaStorage.deleteFile(prefixedJpgThumbPath);
-                logger.info(`Deleted prefixed JPG thumbnail: ${prefixedJpgThumbPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete prefixed JPG thumbnail: ${prefixedJpgThumbPath}`);
+              // Delete all variations without checking existence first
+              for (const path of variations) {
+                try {
+                  await spartaStorage.deleteFile(path);
+                  logger.info(`Tried deleting variation: ${path}`);
+                } catch (err) {
+                  // Just log at debug level - we expect some paths not to exist
+                  logger.debug(`Could not delete variation: ${path}`);
+                }
               }
             }
           } else {
