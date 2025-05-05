@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getVideoPoster } from '@/lib/memory-verse-utils';
+import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
 
 interface VideoPlayerProps {
   src: string;
@@ -135,51 +135,45 @@ export function VideoPlayer({
     // Use imported getAlternativePosterUrls (no require)
     // If we have an original src, use it to generate all possible alternative URLs
     if (src) {
-      // Get alternative URLs from our utility function (imported at top of file)
-      // Generate an array of alternative poster URLs to try
-      import('@/lib/memory-verse-utils').then(utils => {
-        const alternatives = utils.getAlternativePosterUrls(src);
+      // Use the imported getAlternativePosterUrls function
+      const alternatives = getAlternativePosterUrls(src);
+      
+      if (alternatives.length > 0) {
+        console.log(`Found ${alternatives.length} alternative poster URLs to try`);
         
-        if (alternatives.length > 0) {
-          console.log(`Found ${alternatives.length} alternative poster URLs to try`);
+        // Try to preload each alternative poster to find one that works
+        const tryNextAlternative = (index = 0) => {
+          if (index >= alternatives.length) {
+            // If we've tried all alternatives and none worked, show the fallback
+            console.warn("All alternative poster URLs failed to load");
+            setPosterError(true);
+            return;
+          }
           
-          // Try to preload each alternative poster to find one that works
-          const tryNextAlternative = (index = 0) => {
-            if (index >= alternatives.length) {
-              // If we've tried all alternatives and none worked, show the fallback
-              console.warn("All alternative poster URLs failed to load");
-              setPosterError(true);
-              return;
-            }
-            
-            const altPoster = alternatives[index];
-            console.log(`Trying alternative poster URL #${index + 1}:`, altPoster);
-            
-            // Create a new image element to test if the alternative URL works
-            const img = new Image();
-            img.onload = () => {
-              console.log(`Alternative poster URL #${index + 1} loaded successfully`);
-              setSimplifiedPoster(altPoster);
-              setPosterError(false); // Reset error state since we found a working URL
-            };
-            img.onerror = () => {
-              console.warn(`Alternative poster URL #${index + 1} failed to load`);
-              // Try the next alternative
-              tryNextAlternative(index + 1);
-            };
-            img.src = altPoster;
+          const altPoster = alternatives[index];
+          console.log(`Trying alternative poster URL #${index + 1}:`, altPoster);
+          
+          // Create a new image element to test if the alternative URL works
+          const img = new Image();
+          img.onload = () => {
+            console.log(`Alternative poster URL #${index + 1} loaded successfully`);
+            setSimplifiedPoster(altPoster);
+            setPosterError(false); // Reset error state since we found a working URL
           };
-          
-          // Start trying alternatives
-          tryNextAlternative();
-        } else {
-          // No alternatives found, show fallback
-          setPosterError(true);
-        }
-      }).catch(err => {
-        console.error('Error importing memory-verse-utils:', err);
+          img.onerror = () => {
+            console.warn(`Alternative poster URL #${index + 1} failed to load`);
+            // Try the next alternative
+            tryNextAlternative(index + 1);
+          };
+          img.src = altPoster;
+        };
+        
+        // Start trying alternatives
+        tryNextAlternative();
+      } else {
+        // No alternatives found, show fallback
         setPosterError(true);
-      });
+      }
       
       return;
     }
@@ -252,17 +246,13 @@ export function VideoPlayer({
         }
         // If no poster was set, try to generate one from the video URL
         else if (src) {
-          // Import getVideoPoster to generate the poster URL (using dynamic import)
-          import('@/lib/memory-verse-utils').then(utils => {
-            const newPoster = utils.getVideoPoster(src);
-            
-            if (newPoster) {
-              console.log('Setting new poster URL after regeneration:', newPoster);
-              setSimplifiedPoster(newPoster);
-            }
-          }).catch(err => {
-            console.error('Error importing memory-verse-utils for regeneration:', err);
-          });
+          // Use imported getVideoPoster directly
+          const newPoster = getVideoPoster(src);
+          
+          if (newPoster) {
+            console.log('Setting new poster URL after regeneration:', newPoster);
+            setSimplifiedPoster(newPoster);
+          }
         }
       }
     };
