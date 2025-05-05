@@ -285,16 +285,20 @@ export function VideoPlayer({
               onError={handlePosterError}
             />
           ) : (
-            /* Improved colorful fallback for when poster fails to load */
+            /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
-              className="w-full h-full min-h-[200px] bg-gradient-to-r from-blue-600 to-purple-600 flex flex-col items-center justify-center"
+              className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
               onClick={handleThumbnailClick}
+              style={{
+                background: posterError ? 
+                  "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
+                  "black"
+              }}
             >
-              <div className="bg-black/30 p-4 rounded-lg flex flex-col items-center">
+              <div className="p-4 rounded-lg flex flex-col items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
                   <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
-                <div className="text-white text-md font-medium">Video Preview</div>
               </div>
             </div>
           )}
