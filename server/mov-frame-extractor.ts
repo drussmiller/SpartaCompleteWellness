@@ -164,7 +164,7 @@ export async function createAllMovThumbnailVariants(
           // Read the valid JPG data
           const jpgBuffer = fs.readFileSync(tempJpgPath);
           
-          // Copy to all required paths
+          // Copy to all required local paths
           fs.writeFileSync(jpgThumbPath, jpgBuffer);
           fs.writeFileSync(movThumbPath, jpgBuffer);
           fs.writeFileSync(posterPath, jpgBuffer);
@@ -182,9 +182,67 @@ export async function createAllMovThumbnailVariants(
             fs.mkdirSync(sharedDir, { recursive: true });
           }
           
-          // Write to the additional poster files
+          // Write to the additional poster files locally
           fs.writeFileSync(uploadsMainPosterPath, jpgBuffer);
           fs.writeFileSync(uploadsSharedPosterPath, jpgBuffer);
+          
+          // IMPORTANT: Also upload thumbnails to Object Storage
+          try {
+            // Import spartaStorage to avoid circular dependencies
+            const { spartaStorage } = await import('./sparta-object-storage');
+            
+            // Prepare thumbnail paths for object storage, following the same pattern the user expects
+            const jpgThumbFilename = path.basename(jpgThumbPath);
+            const movThumbFilename = path.basename(movThumbPath);
+            const posterFilename = path.basename(posterPath);
+            const nonPrefixedThumbFilename = path.basename(nonPrefixedThumbPath);
+            const uploadsMainPosterFilename = path.basename(uploadsMainPosterPath);
+            const uploadsSharedPosterFilename = path.basename(uploadsSharedPosterPath);
+            
+            // Store in object storage - these calls will create the appropriate shared URLs
+            logger.info(`Uploading thumbnail images to Object Storage for ${filename}`);
+            
+            // Upload all variations for maximum compatibility
+            await spartaStorage.storeBuffer(
+              jpgBuffer, 
+              jpgThumbFilename,
+              'image/jpeg',
+              true, // skipLocalStorage = true (only store in Object Storage)
+              `shared/uploads/thumbnails/${jpgThumbFilename}`
+            );
+            
+            await spartaStorage.storeBuffer(
+              jpgBuffer, 
+              posterFilename,
+              'image/jpeg',
+              true, 
+              `shared/uploads/thumbnails/${posterFilename}`
+            );
+            
+            await spartaStorage.storeBuffer(
+              jpgBuffer, 
+              uploadsMainPosterFilename,
+              'image/jpeg',
+              true, 
+              `shared/uploads/${uploadsMainPosterFilename}`
+            );
+            
+            await spartaStorage.storeBuffer(
+              jpgBuffer, 
+              uploadsSharedPosterFilename,
+              'image/jpeg',
+              true, 
+              `shared/uploads/${uploadsSharedPosterFilename}`
+            );
+            
+            logger.info(`Successfully uploaded all thumbnail variations to Object Storage for ${filename}`);
+          } catch (objStorageError) {
+            logger.error(`Failed to upload thumbnails to Object Storage: ${objStorageError}`, { 
+              sourceFile: filename,
+              error: objStorageError
+            });
+            // Continue with local files even if object storage upload fails
+          }
           
           logger.info(`Created additional poster files at:
             - ${uploadsMainPosterPath}
@@ -283,7 +341,7 @@ export async function createFallbackSvgThumbnails(targetPaths: {
     const uploadsSharedPosterPath = targetPaths.uploadsSharedPosterPath ? 
       fixPathExtension(targetPaths.uploadsSharedPosterPath) : null;
     
-    // Write SVG to all fixed paths
+    // Write SVG to all fixed paths locally
     fs.writeFileSync(jpgPath, videoSvg);
     fs.writeFileSync(movPath, videoSvg);
     fs.writeFileSync(posterPath, videoSvg);
@@ -298,6 +356,82 @@ export async function createFallbackSvgThumbnails(targetPaths: {
     if (uploadsSharedPosterPath) {
       fs.writeFileSync(uploadsSharedPosterPath, videoSvg);
       logger.info(`Created fallback SVG at ${uploadsSharedPosterPath}`);
+    }
+    
+    // IMPORTANT: Also upload SVGs to Object Storage
+    try {
+      // Import spartaStorage to avoid circular dependencies
+      const { spartaStorage } = await import('./sparta-object-storage');
+      
+      // Upload all SVG files to Object Storage
+      logger.info(`Uploading fallback SVG files to Object Storage`);
+      
+      // Function to extract the relative path for Object Storage
+      const getStorageKey = (fullPath: string): string => {
+        const parts = fullPath.split('uploads');
+        if (parts.length > 1) {
+          return `shared/uploads${parts[1]}`;
+        }
+        return `shared/uploads/${path.basename(fullPath)}`;
+      };
+      
+      // Upload all variations
+      await spartaStorage.storeBuffer(
+        videoSvg, 
+        path.basename(jpgPath),
+        'image/svg+xml',
+        true, // skipLocalStorage = true (only store in object storage)
+        getStorageKey(jpgPath)
+      );
+      
+      await spartaStorage.storeBuffer(
+        videoSvg, 
+        path.basename(movPath),
+        'image/svg+xml',
+        true,
+        getStorageKey(movPath)
+      );
+      
+      await spartaStorage.storeBuffer(
+        videoSvg, 
+        path.basename(posterPath),
+        'image/svg+xml',
+        true,
+        getStorageKey(posterPath)
+      );
+      
+      await spartaStorage.storeBuffer(
+        videoSvg, 
+        path.basename(nonPrefixedPath),
+        'image/svg+xml',
+        true,
+        getStorageKey(nonPrefixedPath)
+      );
+      
+      if (uploadsMainPosterPath) {
+        await spartaStorage.storeBuffer(
+          videoSvg, 
+          path.basename(uploadsMainPosterPath),
+          'image/svg+xml',
+          true,
+          getStorageKey(uploadsMainPosterPath)
+        );
+      }
+      
+      if (uploadsSharedPosterPath) {
+        await spartaStorage.storeBuffer(
+          videoSvg, 
+          path.basename(uploadsSharedPosterPath),
+          'image/svg+xml',
+          true,
+          getStorageKey(uploadsSharedPosterPath)
+        );
+      }
+      
+      logger.info(`Successfully uploaded all SVG fallbacks to Object Storage`);
+    } catch (objStorageError) {
+      logger.error(`Failed to upload SVG fallbacks to Object Storage: ${objStorageError}`);
+      // Continue with local files even if object storage upload fails
     }
     
     logger.info('Created fallback SVG thumbnails for video', { 

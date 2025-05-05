@@ -108,7 +108,9 @@ export class SpartaObjectStorage {
   async storeBuffer(
     buffer: Buffer,
     filename: string,
-    mimeType: string = 'image/jpeg'
+    mimeType: string = 'image/jpeg',
+    skipLocalStorage: boolean = false,
+    customKey?: string
   ): Promise<string> {
     try {
       // Ensure the buffer is valid
@@ -119,28 +121,40 @@ export class SpartaObjectStorage {
       logger.info(`Storing buffer as ${filename}, size: ${buffer.length} bytes, mime: ${mimeType}`);
 
       // Generate object storage key for the file - use shared uploads path for everything
-      const sharedKey = `shared/uploads/${filename}`;
+      const sharedKey = customKey || `shared/uploads/${filename}`;
       
       // Store in Object Storage if available
       if (this.objectStorage) {
+        console.log(`Uploading buffer to Object Storage with key: ${sharedKey}`);
         await this.objectStorage.uploadFromBytes(sharedKey, buffer);
         logger.info(`Stored buffer to Object Storage: ${sharedKey}`);
       }
       
-      // Local filesystem path
-      const localPath = path.join(this.baseDir, filename);
-      
-      // Ensure directory exists
-      const dirname = path.dirname(localPath);
-      if (!fs.existsSync(dirname)) {
-        fs.mkdirSync(dirname, { recursive: true });
+      // Skip local storage if requested (to save disk space)
+      if (!skipLocalStorage) {
+        // Local filesystem path
+        const localPath = path.join(this.baseDir, filename);
+        
+        // Ensure directory exists
+        const dirname = path.dirname(localPath);
+        if (!fs.existsSync(dirname)) {
+          fs.mkdirSync(dirname, { recursive: true });
+        }
+        
+        // Store locally as a backup
+        fs.writeFileSync(localPath, buffer);
+        logger.info(`Stored buffer to filesystem: ${localPath}`);
+      } else {
+        logger.info(`Skipping local storage for buffer as requested, only stored in Object Storage: ${sharedKey}`);
       }
       
-      // Store locally as a backup
-      fs.writeFileSync(localPath, buffer);
-      logger.info(`Stored buffer to filesystem: ${localPath}`);
-      
-      // Return the public URL
+      // Return the public URL - use the custom path if provided, otherwise use default
+      if (customKey) {
+        // Extract filename from custom key for URL
+        const keyParts = customKey.split('/');
+        const filenameFromKey = keyParts[keyParts.length - 1];
+        return `/uploads/${filenameFromKey}`;
+      }
       return `/uploads/${filename}`;
     } catch (error) {
       logger.error(`Error storing buffer as ${filename}:`, error instanceof Error ? error : new Error(String(error)));

@@ -2111,7 +2111,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       return res.json({
         success: true,
         message: 'Thumbnails generated successfully',
-        thumbnailUrls: result.paths,
+        // Properly expose all paths for client-side use
+        thumbnailUrls: {
+          poster: `/uploads/thumbnails/${path.basename(result.posterPath)}`,
+          thumbnail: `/uploads/thumbnails/${path.basename(result.jpgThumbPath)}`,
+          // Include direct references to the poster files in uploads directory
+          mainPoster: result.uploadsMainPosterPath ? 
+            `/uploads/${path.basename(result.uploadsMainPosterPath)}` : undefined,
+          sharedPoster: result.uploadsSharedPosterPath ? 
+            `/uploads/${path.basename(result.uploadsSharedPosterPath)}` : undefined
+        },
+        // Include the full paths for debugging
+        debugPaths: result,
         originalVideo: videoUrl
       });
     } catch (error) {
@@ -2768,7 +2779,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(200).json({ 
           success: true, 
           message: 'Thumbnails generated successfully',
-          thumbnails: {
+          // Properly expose all paths for client-side use with relative URLs
+          thumbnailUrls: {
+            poster: `/uploads/thumbnails/${path.basename(posterPath)}`,
+            thumbnail: `/uploads/thumbnails/${path.basename(jpgThumbPath)}`,
+            nonPrefixed: `/uploads/thumbnails/${path.basename(nonPrefixedThumbPath)}`
+          },
+          // Include the full paths and stats for debugging
+          debugPaths: {
             jpg: jpgThumbPath,
             poster: posterPath,
             nonPrefixed: nonPrefixedThumbPath,
