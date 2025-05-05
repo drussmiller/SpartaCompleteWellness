@@ -195,7 +195,22 @@ export function CreatePostDialog({
                 
                 // Convert the data URL to a Blob that we can send to the server
                 const thumbnailBlob = dataURLToBlob(videoThumbnail);
-                formData.append("thumbnail", thumbnailBlob, `${videoFile.name}.poster.jpg`);
+                
+                // Create a clean filename without any special characters
+                const cleanFilename = videoFile.name.replace(/[^a-zA-Z0-9.]/g, '-');
+                
+                // Add the main poster thumbnail
+                formData.append("thumbnail", thumbnailBlob, `${cleanFilename}.poster.jpg`);
+                console.log(`Added poster thumbnail as: ${cleanFilename}.poster.jpg`);
+                
+                // Also add JPG version with thumb- prefix for consistent naming
+                formData.append("thumbnail_alt", thumbnailBlob, `thumb-${cleanFilename}`);
+                console.log(`Added thumb- prefixed thumbnail`);
+                
+                // Add a plain JPG version with the same basename for direct access
+                const baseFilename = cleanFilename.replace(/\.mov$/i, '.jpg');
+                formData.append("thumbnail_jpg", thumbnailBlob, baseFilename);
+                console.log(`Added pure JPG thumbnail: ${baseFilename}`);
               } else {
                 console.warn("No video thumbnail available when uploading video");
               }

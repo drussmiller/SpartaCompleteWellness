@@ -2806,7 +2806,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   router.post("/api/posts", authenticate, upload.fields([
     { name: 'image', maxCount: 1 }, 
-    { name: 'thumbnail', maxCount: 1 }
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'thumbnail_alt', maxCount: 1 },
+    { name: 'thumbnail_jpg', maxCount: 1 },
+    { name: 'jpg_thumbnail', maxCount: 1 }
   ]), async (req, res) => {
     // Set content type early to prevent browser confusion
     res.set({
@@ -2823,6 +2826,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
     const imageFile = files && files['image'] && files['image'][0];
     const thumbnailFile = files && files['thumbnail'] && files['thumbnail'][0];
+    const thumbnailAltFile = files && files['thumbnail_alt'] && files['thumbnail_alt'][0];
+    const thumbnailJpgFile = files && files['thumbnail_jpg'] && files['thumbnail_jpg'][0];
+    const jpgThumbnailFile = files && files['jpg_thumbnail'] && files['jpg_thumbnail'][0];
     
     console.log("POST /api/posts - Request received", {
       hasImageFile: !!imageFile,
@@ -3248,13 +3254,70 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             });
               
             // Store the main file (image or video)
+            // Collect all thumbnail files to process
+            const thumbnailFiles = [
+              { file: thumbnailFile, type: 'primary' },
+              { file: thumbnailAltFile, type: 'alt' },
+              { file: thumbnailJpgFile, type: 'jpg' },
+              { file: jpgThumbnailFile, type: 'jpg_thumbnail' }
+            ].filter(t => t.file);
+            
+            console.log(`Found ${thumbnailFiles.length} thumbnail files to process`, 
+              thumbnailFiles.map(t => ({ type: t.type, name: t.file.originalname }))
+            );
+            
+            // Use the primary thumbnail for the storeFile call
             const fileInfo = await spartaStorage.storeFile(
               filePath,
               imageFile.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
               isVideo, // Pass flag for video handling
-              thumbnailFile ? thumbnailFile.path : undefined  // Pass the thumbnail path if available
+              thumbnailFile ? thumbnailFile.path : undefined  // Pass the primary thumbnail path if available
             );
+            
+            // If we have additional thumbnails, process them after the main file is stored
+            if (thumbnailFiles.length > 1) {
+              try {
+                for (const { file, type } of thumbnailFiles) {
+                  // Skip the primary thumbnail as it was already processed
+                  if (type === 'primary') continue;
+                  
+                  console.log(`Processing additional ${type} thumbnail: ${file.originalname}`);
+                  
+                  // Generate thumbnail path based on the main file pattern
+                  const mainFileName = path.basename(fileInfo.path);
+                  const thumbnailDir = path.join(process.cwd(), 'uploads', 'thumbnails');
+                  
+                  // Ensure the directory exists
+                  if (!fs.existsSync(thumbnailDir)) {
+                    fs.mkdirSync(thumbnailDir, { recursive: true });
+                  }
+                  
+                  // For each thumbnail type, copy to appropriate locations
+                  const thumbnailDest = path.join(thumbnailDir, file.originalname);
+                  
+                  try {
+                    fs.copyFileSync(file.path, thumbnailDest);
+                    console.log(`Copied ${type} thumbnail to ${thumbnailDest}`);
+                    
+                    // Also upload to Object Storage if available
+                    const { objectStorage } = await import('@replit/object-storage');
+                    if (objectStorage) {
+                      const objectKey = `shared/uploads/thumbnails/${file.originalname}`;
+                      await objectStorage.uploadFromFs(file.path, objectKey);
+                      console.log(`Uploaded ${type} thumbnail to Object Storage: ${objectKey}`);
+                    }
+                  } catch (err) {
+                    console.error(`Error processing ${type} thumbnail:`, err);
+                    logger.error(`Error processing ${type} thumbnail: ${err instanceof Error ? err.message : String(err)}`);
+                  }
+                }
+              } catch (additionalThumbError) {
+                // Log but don't fail the whole operation if additional thumbnail processing fails
+                console.error("Error processing additional thumbnails:", additionalThumbError);
+                logger.error("Error processing additional thumbnails:", additionalThumbError);
+              }
+            }
             
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
