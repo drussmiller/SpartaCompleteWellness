@@ -1,0 +1,137 @@
+// Delete associated media files if they exist
+if (post.mediaUrl) {
+  try {
+    // Get the base filename to help with deleting related files
+    const mediaUrl = post.mediaUrl;
+    const filename = mediaUrl.split('/').pop() || '';
+    const baseName = filename.substring(0, filename.lastIndexOf('.'));
+    const fileExt = filename.substring(filename.lastIndexOf('.'));
+    
+    console.log(`Deleting files associated with post ${postId}: ${mediaUrl}`);
+    logger.info(`Deleting files associated with post ${postId}: ${mediaUrl}`);
+
+    // First normalize mediaUrl to ensure proper object storage path format
+    // The key should be in format: 'shared/uploads/TIMESTAMP-HASH.ext'
+    let mainPath = mediaUrl;
+    
+    // If the mediaUrl doesn't start with 'shared/', convert it
+    if (!mainPath.startsWith('shared/')) {
+      // Remove any leading slashes
+      while (mainPath.startsWith('/')) {
+        mainPath = mainPath.substring(1);
+      }
+      
+      // Add 'shared/' if needed
+      if (!mainPath.startsWith('shared/')) {
+        mainPath = 'shared/' + mainPath;
+      }
+    }
+    
+    console.log(`Using normalized path for Object Storage deletion: ${mainPath}`);
+    
+    // 1. Start with the main media file
+    try {
+      await spartaStorage.deleteFile(mainPath);
+      logger.info(`Deleted main media file: ${mainPath}`);
+    } catch (err) {
+      logger.warn(`Error deleting main media file: ${mainPath}`, err);
+    }
+    
+    // 2. If it's a video file, delete associated files with a focused approach
+    if (post.is_video || fileExt.toLowerCase() === '.mov') {
+      // Create a minimal set of highly-likely paths based on actual usage
+      const thumbPaths = [];
+      
+      // Only add paths that are actually used in the system
+      // For MOV files we need special handling
+      if (fileExt.toLowerCase() === '.mov') {
+        // Timestamp-based filenames - extract the timestamp part for accurate deletion
+        const timestampMatch = filename.match(/^\d+/);
+        if (timestampMatch && timestampMatch[0]) {
+          const timestamp = timestampMatch[0];
+          console.log(`Found timestamp in filename: ${timestamp}`);
+          
+          // Add the main path again to ensure deletion
+          thumbPaths.push(mainPath);
+          
+          // JPG poster variations (most commonly used)
+          thumbPaths.push(mainPath.replace('.mov', '.jpg'));
+          thumbPaths.push(mainPath.replace('.mov', '.poster.jpg'));
+          
+          // Main thumbnail directory variations
+          const inThumbnails = mainPath.replace('/uploads/', '/uploads/thumbnails/');
+          thumbPaths.push(inThumbnails);
+          thumbPaths.push(inThumbnails.replace('.mov', '.jpg'));
+          
+          // Prefixed thumb- versions
+          const withThumbPrefix = inThumbnails.replace(filename, `thumb-${filename}`);
+          thumbPaths.push(withThumbPrefix);
+          thumbPaths.push(withThumbPrefix.replace('.mov', '.jpg'));
+        } else {
+          // Fallback if no timestamp is found
+          console.log(`No timestamp found in filename: ${filename}`);
+          thumbPaths.push(mainPath.replace('.mov', '.jpg'));
+          thumbPaths.push(mainPath.replace('.mov', '.poster.jpg'));
+          thumbPaths.push(mainPath.replace('/uploads/', '/uploads/thumbnails/'));
+          thumbPaths.push(mainPath.replace('/uploads/', '/uploads/thumbnails/').replace('.mov', '.jpg'));
+        }
+      } else {
+        // For other video types, just handle basic thumbnail patterns
+        thumbPaths.push(mainPath.replace('/uploads/', '/uploads/thumbnails/'));
+        thumbPaths.push(mainPath.replace('/uploads/', '/uploads/thumbnails/').replace(filename, `thumb-${filename}`));
+      }
+      
+      // Special handling for memory verse videos
+      if (mediaUrl.includes('memory_verse') || post.type === 'memory_verse') {
+        // Add memory verse specific paths
+        const memoryVersePath = mainPath.replace('/uploads/', '/uploads/memory_verse/');
+        thumbPaths.push(memoryVersePath);
+        thumbPaths.push(memoryVersePath.replace('.mov', '.jpg'));
+        thumbPaths.push(mainPath.replace('/uploads/', '/uploads/thumbnails/memory_verse/'));
+        thumbPaths.push(mainPath.replace('/uploads/', '/uploads/thumbnails/memory_verse/').replace('.mov', '.jpg'));
+      }
+      
+      // Log the minimal list of most likely paths
+      console.log(`Will attempt to delete these paths:`);
+      for (const path of thumbPaths) {
+        console.log(`  - ${path}`);
+      }
+      
+      // Delete all thumbnail variations directly without checking existence
+      for (const path of thumbPaths) {
+        try {
+          await spartaStorage.deleteFile(path);
+          logger.info(`Deleted file: ${path}`);
+        } catch (err) {
+          // Just log at debug level - we expect some paths not to exist
+          logger.debug(`Could not delete file: ${path}`);
+        }
+      }
+    } else {
+      // For non-video files, still try to delete their thumbnails
+      const thumbPath = mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
+      const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
+      
+      try {
+        await spartaStorage.deleteFile(thumbPath);
+        logger.info(`Deleted image thumbnail: ${thumbPath}`);
+      } catch (err) {
+        logger.debug(`Could not delete image thumbnail: ${thumbPath}`);
+      }
+      
+      try {
+        await spartaStorage.deleteFile(prefixedThumbPath);
+        logger.info(`Deleted prefixed image thumbnail: ${prefixedThumbPath}`);
+      } catch (err) {
+        logger.debug(`Could not delete prefixed image thumbnail: ${prefixedThumbPath}`);
+      }
+    }
+    
+    console.log(`Successfully deleted all media files for post: ${postId}`);
+    logger.info(`Successfully deleted all media files for post: ${postId}`);
+  } catch (fileError) {
+    console.error(`Error deleting media files for post ${postId}:`, fileError);
+    logger.error(`Error deleting media files for post ${postId}:`, fileError);
+    // Continue with post deletion even if file deletion fails
+  }
+}
