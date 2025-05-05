@@ -3293,17 +3293,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                     fs.mkdirSync(thumbnailDir, { recursive: true });
                   }
                   
-                  // For each thumbnail type, copy to appropriate locations
-                  const thumbnailDest = path.join(thumbnailDir, file.originalname);
+                  // For each thumbnail type, copy to appropriate locations with JPG extension
+                  const thumbnailName = file.originalname.replace(/\.[^.]+$/, '.jpg');
+                  const thumbnailDest = path.join(thumbnailDir, thumbnailName);
                   
                   try {
                     fs.copyFileSync(file.path, thumbnailDest);
-                    console.log(`Copied ${type} thumbnail to ${thumbnailDest}`);
+                    console.log(`Copied ${type} thumbnail to ${thumbnailDest} with .jpg extension`);
                     
                     // Also upload to Object Storage if available
                     const { objectStorage } = await import('@replit/object-storage');
                     if (objectStorage) {
-                      const objectKey = `shared/uploads/thumbnails/${file.originalname}`;
+                      const objectKey = `shared/uploads/thumbnails/${thumbnailName}`;
                       await objectStorage.uploadFromFs(file.path, objectKey);
                       console.log(`Uploaded ${type} thumbnail to Object Storage: ${objectKey}`);
                     }

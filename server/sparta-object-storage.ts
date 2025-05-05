@@ -430,7 +430,15 @@ export class SpartaObjectStorage {
       let thumbnailUrl = null;
 
       // Create thumbnail based on file type
-      const thumbnailFilename = `thumb-${safeFilename}`;
+      // For videos, ensure the thumbnail has a jpg extension
+      let thumbnailFilename: string;
+      if (isVideo || isVideoByExtension || mimeType.startsWith('video/')) {
+        // Ensure video thumbnails always have .jpg extension
+        const baseFileName = safeFilename.replace(/\.[^.]+$/, '');
+        thumbnailFilename = `thumb-${baseFileName}.jpg`;
+      } else {
+        thumbnailFilename = `thumb-${safeFilename}`;
+      }
       const thumbnailDirPath = path.resolve(this.thumbnailDir);
       const generatedThumbnailPath = path.join(thumbnailDirPath, thumbnailFilename);
       
@@ -454,10 +462,14 @@ export class SpartaObjectStorage {
         if (thumbnailPath && fs.existsSync(thumbnailPath)) {
           console.log(`Using provided thumbnail: ${thumbnailPath}`);
           
-          // Copy the provided thumbnail to our standard location
-          fs.copyFileSync(thumbnailPath, generatedThumbnailPath);
-          thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
-          console.log(`Copied provided thumbnail to standard location: ${generatedThumbnailPath}`);
+          // Ensure thumbnail has a jpg extension
+          const jpgThumbnailFilename = thumbnailFilename.replace(/\.[^.]+$/, '.jpg');
+          const jpgThumbnailPath = path.join(thumbnailDirPath, jpgThumbnailFilename);
+          
+          // Copy the provided thumbnail to our standard location with jpg extension
+          fs.copyFileSync(thumbnailPath, jpgThumbnailPath);
+          thumbnailUrl = `/shared/uploads/thumbnails/${jpgThumbnailFilename}`;
+          console.log(`Copied provided thumbnail to standard location: ${jpgThumbnailPath}`);
           logger.info(`Using provided thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('image/')) {
           // Process image thumbnail
