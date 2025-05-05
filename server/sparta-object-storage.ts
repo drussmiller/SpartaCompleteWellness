@@ -1774,24 +1774,46 @@ export class SpartaObjectStorage {
           const isFullUrl = fileUrl.startsWith('http://') || fileUrl.startsWith('https://');
           const isRelativePath = fileUrl.startsWith('/');
           
-          if (!isFullUrl) {
-            // If fileUrl already has 'shared/uploads/' format, use it directly
-            if (fileUrl.includes('shared/uploads/')) {
-              objStoreKeysToDelete.push(fileUrl);
-            } else if (isRelativePath) {
-              // Convert a relative path like /uploads/file.jpg to a proper key
-              const cleanPath = fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl;
-              objStoreKeysToDelete.push(`shared/${cleanPath}`);
-            } else {
-              // Standard format: add shared/uploads/ prefix
-              objStoreKeysToDelete.push(`shared/uploads/${filename}`);
-            }
-          } else {
+          // Extract the main path and filename components
+          // This works with paths like "shared/uploads/file.jpg", "/shared/uploads/file.jpg", etc.
+          let mainKey = '';
+          
+          if (isFullUrl) {
             // Extract the path from a full URL like https://example.com/uploads/file.jpg
             const urlObj = new URL(fileUrl);
             const pathParts = urlObj.pathname.split('/');
             const filenameFromUrl = pathParts[pathParts.length - 1];
-            objStoreKeysToDelete.push(`shared/uploads/${filenameFromUrl}`);
+            mainKey = `shared/uploads/${filenameFromUrl}`;
+          } else if (fileUrl.includes('shared/uploads/')) {
+            // Direct format like "shared/uploads/file.jpg"
+            mainKey = fileUrl;
+          } else if (fileUrl.includes('/shared/uploads/')) {
+            // Format with leading slash like "/shared/uploads/file.jpg"
+            mainKey = fileUrl.substring(fileUrl.indexOf('/shared/uploads/') + 1);
+          } else if (isRelativePath && fileUrl.includes('/uploads/')) {
+            // Convert a relative path like /uploads/file.jpg to a proper key
+            const uploadsIndex = fileUrl.indexOf('/uploads/');
+            const pathAfterUploads = fileUrl.substring(uploadsIndex + 1); // "uploads/file.jpg"
+            mainKey = `shared/${pathAfterUploads}`; // "shared/uploads/file.jpg"
+          } else {
+            // Standard format: add shared/uploads/ prefix
+            mainKey = `shared/uploads/${filename}`;
+          }
+          
+          // Add the main key directly
+          objStoreKeysToDelete.push(mainKey);
+          
+          // Also try alternative forms in case of inconsistent path formatting
+          if (mainKey.startsWith('shared/')) {
+            // Also try with a leading slash
+            objStoreKeysToDelete.push(`/${mainKey}`);
+          }
+          
+          if (mainKey.includes('/uploads/thumbnails/')) {
+            // If we're deleting a thumbnail directly, also try to delete the original file
+            const thumbsPattern = '/uploads/thumbnails/';
+            const originalKey = mainKey.replace(thumbsPattern, '/uploads/');
+            objStoreKeysToDelete.push(originalKey);
           }
           
           // Add thumbnail keys for original file
