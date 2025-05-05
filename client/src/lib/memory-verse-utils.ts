@@ -117,6 +117,7 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
   const urlParts = mediaUrl.split('/');
   const filename = urlParts[urlParts.length - 1];
   const fileBase = filename.split('.')[0];
+  const fileExt = filename.split('.').pop()?.toLowerCase() || '';
   
   // Check if it's a video file (support more formats than just .mov)
   const isVideoFile = mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i);
@@ -134,8 +135,11 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
   }
   
   // FIRST TRY - Original filename with proper path structure
-  // Always use the shared URL path pattern
-  const posterFilename = `${fileBase}.poster.jpg`;
+  // Try with the pattern {filename}.mov.poster.jpg first, which matches our thumbnail generator
+  const posterFilename = fileExt === 'mov' ? 
+    `${fileBase}.mov.poster.jpg` :   // Use format matching what mov-frame-extractor.ts creates
+    `${fileBase}.poster.jpg`;        // Fallback to original format
+    
   const directPosterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/${posterFilename}&v=${timestamp}`;
   
   console.log(`First attempting direct poster URL: ${directPosterUrl}`);
@@ -164,25 +168,49 @@ export function getAlternativePosterUrls(mediaUrl: string | null): string[] {
     
     // Try different paths and patterns in priority order
     
-    // 1. Try standard poster with .poster.jpg in main uploads directory
+    if (fileExt === 'mov') {
+      // For MOV files, try the specific formats our thumbnail generator creates
+      
+      // 1. First try with extension included in the pattern (.mov.poster.jpg)
+      alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.mov.poster.jpg&v=${timestamp}`);
+      
+      // 2. Try in different locations (main uploads directory)
+      alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/${fileBase}.mov.poster.jpg&v=${timestamp}`);
+      
+      // 3. Try in thumbnails directory
+      alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.mov.poster.jpg&v=${timestamp}`);
+      alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/thumbnails/${fileBase}.mov.poster.jpg&v=${timestamp}`);
+    }
+    
+    // Now try the standard formats for all video types
+    
+    // 4. Try standard poster with .poster.jpg in main uploads directory
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.poster.jpg&v=${timestamp}`);
     
-    // 2. Try in thumbnails directory
+    // 5. Try in thumbnails directory
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.poster.jpg&v=${timestamp}`);
     
-    // 3. Try with thumb- prefix in thumbnails directory
+    // 6. Try with thumb- prefix in thumbnails directory
     const thumbPosterFilename = `thumb-${fileBase}.poster.jpg`;
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbPosterFilename}&v=${timestamp}`);
     
-    // 4. Try with no poster suffix, just direct .jpg
+    // 7. Try with no poster suffix, just direct .jpg
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.jpg&v=${timestamp}`);
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.jpg&v=${timestamp}`);
     
-    // 5. Try with video-specific naming pattern
+    // 8. Try with video-specific naming pattern for any extension
     if (fileExt) {
       const videoSpecificFilename = `${fileBase}.${fileExt}.poster.jpg`;
       alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${videoSpecificFilename}&v=${timestamp}`);
     }
+    
+    // 9. For maximum compatibility, also try with regular uploads directory (without shared)
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/${fileBase}.poster.jpg&v=${timestamp}`);
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/thumbnails/${fileBase}.poster.jpg&v=${timestamp}`);
+    
+    // Log all the alternatives we're going to try
+    console.log(`Generated ${alternatives.length} alternative poster URLs to try:`, 
+      alternatives.map(url => url.split('&v=')[0]).join('\n'));
     
   } catch (error) {
     console.error('Error generating alternative poster URLs:', error);

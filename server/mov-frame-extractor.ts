@@ -103,8 +103,16 @@ export async function createAllMovThumbnailVariants(
   // This is critical for proper thumbnails display in the UI
   const fileBase = path.basename(filename, '.mov');
   const posterFilename = `${fileBase}.poster.jpg`;
-  // Store the poster in the thumbnails directory, not the original file directory
+  
+  // Store the poster in the thumbnails directory  
   const posterPath = path.join(dirname, posterFilename);
+  
+  // Also create a poster in the uploads directory (non-thumbnails)
+  // This is needed for the frontend to find the poster when using the original video path
+  const uploadsDir = path.resolve(dirname, '..');  // Go up one directory from the thumbnails dir
+  const uploadsSharedDir = path.join(dirname, '..', '..', 'shared', 'uploads');  // Path to shared/uploads 
+  const uploadsMainPosterPath = path.join(uploadsDir, posterFilename);
+  const uploadsSharedPosterPath = path.join(uploadsSharedDir, posterFilename);
   
   // For non-prefixed path (regular thumbnail)
   const nonPrefixedThumbPath = targetThumbPath.replace('thumb-', '');
@@ -114,7 +122,9 @@ export async function createAllMovThumbnailVariants(
     jpgThumbPath,
     movThumbPath,
     posterPath,
-    nonPrefixedThumbPath
+    nonPrefixedThumbPath,
+    uploadsMainPosterPath,   // Add new fields to the result object
+    uploadsSharedPosterPath
   };
   
   try {
@@ -159,6 +169,26 @@ export async function createAllMovThumbnailVariants(
           fs.writeFileSync(movThumbPath, jpgBuffer);
           fs.writeFileSync(posterPath, jpgBuffer);
           fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
+          
+          // Ensure the parent directories exist for the additional poster files
+          const uploadsDir = path.dirname(uploadsMainPosterPath);
+          const sharedDir = path.dirname(uploadsSharedPosterPath);
+          
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          
+          if (!fs.existsSync(sharedDir)) {
+            fs.mkdirSync(sharedDir, { recursive: true });
+          }
+          
+          // Write to the additional poster files
+          fs.writeFileSync(uploadsMainPosterPath, jpgBuffer);
+          fs.writeFileSync(uploadsSharedPosterPath, jpgBuffer);
+          
+          logger.info(`Created additional poster files at:
+            - ${uploadsMainPosterPath}
+            - ${uploadsSharedPosterPath}`);
           
           // Clean up temp file
           try { fs.unlinkSync(tempJpgPath); } catch(e) { /* ignore cleanup errors */ }
@@ -208,7 +238,9 @@ export async function createFallbackSvgThumbnails(targetPaths: {
   jpgThumbPath: string,
   movThumbPath: string,
   posterPath: string,
-  nonPrefixedThumbPath: string
+  nonPrefixedThumbPath: string,
+  uploadsMainPosterPath?: string,
+  uploadsSharedPosterPath?: string
 }): Promise<void> {
   // Create a simpler video play icon SVG - removed text for cleaner look
   const videoSvg = Buffer.from(
@@ -245,11 +277,28 @@ export async function createFallbackSvgThumbnails(targetPaths: {
     const posterPath = fixPathExtension(targetPaths.posterPath);
     const nonPrefixedPath = fixPathExtension(targetPaths.nonPrefixedThumbPath);
     
+    // Optional paths for the uploads directory
+    const uploadsMainPosterPath = targetPaths.uploadsMainPosterPath ? 
+      fixPathExtension(targetPaths.uploadsMainPosterPath) : null;
+    const uploadsSharedPosterPath = targetPaths.uploadsSharedPosterPath ? 
+      fixPathExtension(targetPaths.uploadsSharedPosterPath) : null;
+    
     // Write SVG to all fixed paths
     fs.writeFileSync(jpgPath, videoSvg);
     fs.writeFileSync(movPath, videoSvg);
     fs.writeFileSync(posterPath, videoSvg);
     fs.writeFileSync(nonPrefixedPath, videoSvg);
+    
+    // Write to additional paths if provided
+    if (uploadsMainPosterPath) {
+      fs.writeFileSync(uploadsMainPosterPath, videoSvg);
+      logger.info(`Created fallback SVG at ${uploadsMainPosterPath}`);
+    }
+    
+    if (uploadsSharedPosterPath) {
+      fs.writeFileSync(uploadsSharedPosterPath, videoSvg);
+      logger.info(`Created fallback SVG at ${uploadsSharedPosterPath}`);
+    }
     
     logger.info('Created fallback SVG thumbnails for video', { 
       paths: {
