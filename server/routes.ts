@@ -3686,14 +3686,98 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Delete associated media files if they exist
       if (post.mediaUrl) {
         try {
-          console.log(`Deleting file associated with post: ${post.mediaUrl}`);
-          logger.info(`Deleting file associated with post: ${post.mediaUrl}`);
-          await spartaStorage.deleteFile(post.mediaUrl);
-          console.log(`Successfully deleted media file for post: ${postId}`);
-          logger.info(`Successfully deleted media file for post: ${postId}`);
+          // Get the base filename to help with deleting related files
+          const mediaUrl = post.mediaUrl;
+          const filename = mediaUrl.split('/').pop() || '';
+          const baseName = filename.substring(0, filename.lastIndexOf('.'));
+          const fileExt = filename.substring(filename.lastIndexOf('.'));
+          
+          console.log(`Deleting files associated with post ${postId}: ${mediaUrl}`);
+          logger.info(`Deleting files associated with post ${postId}: ${mediaUrl}`);
+
+          // 1. Delete the main media file
+          await spartaStorage.deleteFile(mediaUrl);
+          logger.info(`Deleted main media file: ${mediaUrl}`);
+          
+          // 2. If it's a video (has is_video flag or MOV extension), also delete associated files
+          if (post.is_video || fileExt.toLowerCase() === '.mov') {
+            // Delete the poster image (used for video preview)
+            const posterUrl = mediaUrl.replace(filename, `${baseName}.poster.jpg`);
+            try {
+              await spartaStorage.deleteFile(posterUrl);
+              logger.info(`Deleted poster image: ${posterUrl}`);
+            } catch (err) {
+              // Ignore errors for poster deletion - it might not exist
+              logger.debug(`Could not delete poster image: ${posterUrl}`);
+            }
+            
+            // Delete thumbnails in the thumbnails directory
+            // Try both with and without the thumb- prefix
+            const thumbPath = mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
+            const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
+            
+            // Try deleting the non-prefixed thumbnail
+            try {
+              await spartaStorage.deleteFile(thumbPath);
+              logger.info(`Deleted thumbnail: ${thumbPath}`);
+            } catch (err) {
+              // Ignore errors for thumbnail deletion - it might not exist
+              logger.debug(`Could not delete thumbnail: ${thumbPath}`);
+            }
+            
+            // Try deleting the prefixed thumbnail
+            try {
+              await spartaStorage.deleteFile(prefixedThumbPath);
+              logger.info(`Deleted prefixed thumbnail: ${prefixedThumbPath}`);
+            } catch (err) {
+              // Ignore errors for prefixed thumbnail deletion - it might not exist
+              logger.debug(`Could not delete prefixed thumbnail: ${prefixedThumbPath}`);
+            }
+            
+            // For MOV files, also try deleting the JPG version of the thumbnail
+            if (fileExt.toLowerCase() === '.mov') {
+              const jpgThumbPath = thumbPath.replace('.mov', '.jpg');
+              const prefixedJpgThumbPath = prefixedThumbPath.replace('.mov', '.jpg');
+              
+              try {
+                await spartaStorage.deleteFile(jpgThumbPath);
+                logger.info(`Deleted JPG thumbnail: ${jpgThumbPath}`);
+              } catch (err) {
+                logger.debug(`Could not delete JPG thumbnail: ${jpgThumbPath}`);
+              }
+              
+              try {
+                await spartaStorage.deleteFile(prefixedJpgThumbPath);
+                logger.info(`Deleted prefixed JPG thumbnail: ${prefixedJpgThumbPath}`);
+              } catch (err) {
+                logger.debug(`Could not delete prefixed JPG thumbnail: ${prefixedJpgThumbPath}`);
+              }
+            }
+          } else {
+            // For non-video files, still try to delete their thumbnails
+            const thumbPath = mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
+            const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
+            
+            try {
+              await spartaStorage.deleteFile(thumbPath);
+              logger.info(`Deleted image thumbnail: ${thumbPath}`);
+            } catch (err) {
+              logger.debug(`Could not delete image thumbnail: ${thumbPath}`);
+            }
+            
+            try {
+              await spartaStorage.deleteFile(prefixedThumbPath);
+              logger.info(`Deleted prefixed image thumbnail: ${prefixedThumbPath}`);
+            } catch (err) {
+              logger.debug(`Could not delete prefixed image thumbnail: ${prefixedThumbPath}`);
+            }
+          }
+          
+          console.log(`Successfully deleted all media files for post: ${postId}`);
+          logger.info(`Successfully deleted all media files for post: ${postId}`);
         } catch (fileError) {
-          console.error(`Error deleting media file for post ${postId}:`, fileError);
-          logger.error(`Error deleting media file for post ${postId}:`, fileError);
+          console.error(`Error deleting media files for post ${postId}:`, fileError);
+          logger.error(`Error deleting media files for post ${postId}:`, fileError);
           // Continue with post deletion even if file deletion fails
         }
       }

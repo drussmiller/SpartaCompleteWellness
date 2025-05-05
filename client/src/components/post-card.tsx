@@ -135,10 +135,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       await apiRequest('DELETE', `/api/posts/${post.id}`);
     },
     onSuccess: () => {
-      toast({
-        title: "Post deleted",
-        description: "Your post has been successfully deleted.",
-      });
+      // Post deletion success - no toast notification as requested
+      console.log("Post deleted successfully:", post.id);
       
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });

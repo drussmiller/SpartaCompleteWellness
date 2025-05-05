@@ -440,10 +440,6 @@ export function CreatePostDialog({
           </Button>
           <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
         </div>
-        <DialogDescription className="text-center">
-          Share your wellness journey with your team
-        </DialogDescription>
-
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex flex-col">
             <FormField
@@ -600,11 +596,8 @@ export function CreatePostDialog({
                                   fieldValue: marker
                                 });
                                 
-                                // Show a success toast to confirm selection
-                                toast({
-                                  title: "Video Selected",
-                                  description: `Selected video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`,
-                                });
+                                // Log video selection without showing toast
+                                console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
                               }
                             }}
                           />
@@ -740,11 +733,8 @@ export function CreatePostDialog({
                                         fieldValue: marker
                                       });
                                       
-                                      // Show a success toast to confirm selection
-                                      toast({
-                                        title: "Video Selected",
-                                        description: `Selected video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`,
-                                      });
+                                      // Log video selection without showing toast
+                                      console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
                                     }
                                   }}
                                 />
