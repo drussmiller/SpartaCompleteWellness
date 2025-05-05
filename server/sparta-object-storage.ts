@@ -442,14 +442,14 @@ export class SpartaObjectStorage {
           
           // Copy the provided thumbnail to our standard location
           fs.copyFileSync(thumbnailPath, generatedThumbnailPath);
-          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
           console.log(`Copied provided thumbnail to standard location: ${generatedThumbnailPath}`);
           logger.info(`Using provided thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('image/')) {
           // Process image thumbnail
           console.log(`Processing image thumbnail for ${safeFilename}`);
           await this.createThumbnail(filePath, generatedThumbnailPath);
-          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
           console.log(`Image thumbnail created at ${generatedThumbnailPath}`);
           logger.info(`Created image thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('video/') || isVideo) {
@@ -488,7 +488,7 @@ export class SpartaObjectStorage {
           try {
             // Create memory verse video thumbnail
             await this.createVideoThumbnail(filePath, generatedThumbnailPath);
-            thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+            thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
             console.log(`Video thumbnail created at ${generatedThumbnailPath}`);
             logger.info(`Created video thumbnail for ${safeFilename}`);
             
