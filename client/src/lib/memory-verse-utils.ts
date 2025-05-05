@@ -125,9 +125,18 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
   // Add a random query parameter to bypass caching
   const timestamp = Date.now();
   
-  // FIRST TRY - Original filename without thumbnails directory
-  // Some videos might have thumbnails in their original location
-  const directPosterUrl = `/api/object-storage/direct-download?fileUrl=${fileBase}.poster.jpg&v=${timestamp}`;
+  // Determine the base directory part of the URL
+  let baseDir = '';
+  if (mediaUrl.includes('/shared/uploads/')) {
+    baseDir = 'shared/uploads/';
+  } else if (mediaUrl.includes('/uploads/')) {
+    baseDir = 'uploads/';
+  }
+  
+  // FIRST TRY - Original filename with proper path structure
+  // Always use the shared URL path pattern
+  const posterFilename = `${fileBase}.poster.jpg`;
+  const directPosterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/${posterFilename}&v=${timestamp}`;
   
   console.log(`First attempting direct poster URL: ${directPosterUrl}`);
   return directPosterUrl;
@@ -153,23 +162,23 @@ export function getAlternativePosterUrls(mediaUrl: string | null): string[] {
     const fileBase = filename.split('.')[0];
     const fileExt = filename.split('.').pop()?.toLowerCase();
     
-    // Try direct file path (no thumb prefix, no thumbnails directory)
+    // Try different paths and patterns in priority order
+    
+    // 1. Try standard poster with .poster.jpg in main uploads directory
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.poster.jpg&v=${timestamp}`);
     
-    // Try thumbnails directory with same name
+    // 2. Try in thumbnails directory
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.poster.jpg&v=${timestamp}`);
     
-    // Try with thumb- prefix in thumbnails directory
+    // 3. Try with thumb- prefix in thumbnails directory
     const thumbPosterFilename = `thumb-${fileBase}.poster.jpg`;
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbPosterFilename}&v=${timestamp}`);
     
-    // Try with thumb- prefix direct (no thumbnails directory)
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumb-${fileBase}.poster.jpg&v=${timestamp}`);
-    
-    // Try with no poster suffix, just direct .jpg
+    // 4. Try with no poster suffix, just direct .jpg
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.jpg&v=${timestamp}`);
+    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.jpg&v=${timestamp}`);
     
-    // Try with video-specific naming pattern
+    // 5. Try with video-specific naming pattern
     if (fileExt) {
       const videoSpecificFilename = `${fileBase}.${fileExt}.poster.jpg`;
       alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${videoSpecificFilename}&v=${timestamp}`);
