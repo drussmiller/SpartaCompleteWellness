@@ -3188,6 +3188,35 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
             
+            // Generate thumbnails for videos using the enhanced function
+            if (isVideo) {
+              try {
+                console.log(`Explicitly generating thumbnails for video using createAllMovThumbnailVariants`);
+                const { createAllMovThumbnailVariants } = await import('./mov-frame-extractor');
+                
+                // Determine the thumbnail path based on the stored file
+                const sourceFilePath = fileInfo.path;
+                const thumbnailDir = path.join(process.cwd(), 'uploads', 'thumbnails');
+                
+                // Ensure thumbnail directory exists
+                if (!fs.existsSync(thumbnailDir)) {
+                  fs.mkdirSync(thumbnailDir, { recursive: true });
+                }
+                
+                // Create thumb path using the same naming convention as elsewhere
+                const thumbFilename = `thumb-${path.basename(sourceFilePath)}`;
+                const thumbPath = path.join(thumbnailDir, thumbFilename);
+                
+                // Generate all thumbnail variants
+                console.log(`Generating thumbnails: ${sourceFilePath} -> ${thumbPath}`);
+                const thumbResults = await createAllMovThumbnailVariants(sourceFilePath, thumbPath);
+                console.log(`Thumbnail generation complete:`, thumbResults);
+              } catch (thumbError) {
+                logger.error(`Error generating video thumbnails:`, thumbError);
+                // Continue anyway to avoid failing the upload
+              }
+            }
+            
             // Verify the stored file exists in the uploads directory
             const storedFilePath = path.join(process.cwd(), fileInfo.url);
             let fileExists = fs.existsSync(storedFilePath);

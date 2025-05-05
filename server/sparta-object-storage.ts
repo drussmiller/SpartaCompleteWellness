@@ -807,17 +807,20 @@ export class SpartaObjectStorage {
       try {
         console.log(`Attempting to create video thumbnail from ${videoPath} to ${targetPath}`);
         
-        // Check if source file exists with detailed logging
-        if (!fs.existsSync(videoPath)) {
-          console.log(`Source video file not found locally: ${videoPath}`);
+        // Use local variable to avoid multiple imports of the same module
+        let movFrameExtractor: any = null;
+      
+      // Check if source file exists with detailed logging
+      if (!fs.existsSync(videoPath)) {
+        console.log(`Source video file not found locally: ${videoPath}`);
+        
+        // Try to find the video in Object Storage if available
+        if (this.objectStorage) {
+          console.log(`Attempting to retrieve video from Object Storage...`);
           
-          // Try to find the video in Object Storage if available
-          if (this.objectStorage) {
-            console.log(`Attempting to retrieve video from Object Storage...`);
-            
-            const filename = path.basename(videoPath);
-            const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
-            const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
+          const filename = path.basename(videoPath);
+          const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
+          const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
             
             // Prepare possible Object Storage keys to check - ONLY using shared paths
             let objectStorageKeys = [
