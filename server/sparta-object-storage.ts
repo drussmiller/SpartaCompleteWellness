@@ -2264,8 +2264,27 @@ export class SpartaObjectStorage {
         }
       }
 
+      // Construct a proper URL that doesn't nest API paths
+      // This fixes the issue with nested parameters in URLs
+      let finalUrl = fileUrl;
+      
+      // If the file was found in Object Storage, use a clean direct-download URL
+      if (fromObjectStorage) {
+        // Get clean path for direct-download
+        const cleanFilePath = `shared/uploads/${filename}`;
+        // Special handling for memory verse and miscellaneous videos
+        if (isMemoryVerse) {
+          finalUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/memory_verse/${filename}`;
+        } else if (isMiscellaneous) {
+          finalUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/miscellaneous/${filename}`;
+        } else {
+          finalUrl = `/api/object-storage/direct-download?fileUrl=${cleanFilePath}`;
+        }
+        console.log(`Fixed URL construction: ${fileUrl} -> ${finalUrl}`);
+      }
+      
       return {
-        url: fileUrl,
+        url: finalUrl,
         thumbnailUrl,
         filename,
         mimeType,
