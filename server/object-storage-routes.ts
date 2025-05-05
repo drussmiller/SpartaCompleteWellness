@@ -11,6 +11,7 @@ import { logger } from './logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fixAllThumbnails } from './fix-mov-thumbnails';
+import { extractMovFrame } from './mov-frame-extractor';
 
 export const objectStorageRouter = express.Router();
 
@@ -576,11 +577,25 @@ objectStorageRouter.get('/generate-video-thumbnails', async (req: Request, res: 
  */
 objectStorageRouter.get('/generate-thumbnail', async (req: Request, res: Response) => {
   try {
+    console.log('Debug: Starting generate-thumbnail endpoint');
+    console.log('Debug: Request query params:', req.query);
+    console.log('Debug: cwd:', process.cwd());
+    
     const { fileUrl } = req.query;
     
     if (!fileUrl || typeof fileUrl !== 'string') {
       return res.status(400).json({ error: 'fileUrl is required' });
     }
+    
+    // Define uploads and thumbnails directories - THESE ARE GLOBAL FOR THE ENTIRE FUNCTION
+    const baseDir = process.cwd();
+    // IMPORTANT: These variables are used elsewhere in the function, so their names must not be redefined in inner scopes
+    const UploadsDir = path.join(baseDir, 'uploads');
+    const ThumbnailsDir = path.join(baseDir, 'uploads', 'thumbnails');
+    const SharedUploadsDir = path.join(baseDir, 'shared', 'uploads');
+    const SharedThumbnailsDir = path.join(baseDir, 'shared', 'uploads', 'thumbnails');
+    
+    logger.info(`Generating thumbnail for: ${fileUrl}`, { route: '/api/object-storage/generate-thumbnail' });
     
     // Normalize the path - strip off any prefix paths
     const normalizedPath = fileUrl.includes('/uploads/') 
@@ -595,28 +610,84 @@ objectStorageRouter.get('/generate-thumbnail', async (req: Request, res: Respons
     // Determine the base filename without extension
     const baseName = normalizedPath.substring(0, normalizedPath.lastIndexOf('.'));
     
-    // Define source and target paths
-    const sourcePath = path.join(uploadsDir, normalizedPath);
+    // Define source and target paths - prefer shared directory first
+    console.log('Debug: SharedUploadsDir =', SharedUploadsDir);
+    console.log('Debug: UploadsDir =', UploadsDir);
+    console.log('Debug: normalizedPath =', normalizedPath);
+    
+    const sharedPath = path.join(SharedUploadsDir, normalizedPath);
+    const regularPath = path.join(UploadsDir, normalizedPath);
+    
+    console.log('Debug: Checking if path exists:', sharedPath);
+    const sharedExists = fs.existsSync(sharedPath);
+    console.log('Debug: Shared path exists?', sharedExists);
+    
+    console.log('Debug: Checking if path exists:', regularPath);
+    const regularExists = fs.existsSync(regularPath);
+    console.log('Debug: Regular path exists?', regularExists);
+    
+    // Try both with and without case sensitivity
+    let sourcePath = sharedExists 
+      ? sharedPath 
+      : (regularExists ? regularPath : null);
+      
+    if (!sourcePath) {
+      // Try to find a case-insensitive match
+      console.log('Debug: Trying case-insensitive search');
+      try {
+        const uploadsFiles = fs.readdirSync(UploadsDir);
+        console.log('Debug: Files in UploadsDir:', uploadsFiles);
+        
+        const normalizedBasename = path.basename(normalizedPath).toLowerCase();
+        const matchingFile = uploadsFiles.find(file => file.toLowerCase() === normalizedBasename);
+        
+        if (matchingFile) {
+          console.log('Debug: Found case-insensitive match:', matchingFile);
+          const matchPath = path.join(UploadsDir, matchingFile);
+          if (fs.existsSync(matchPath)) {
+            console.log('Debug: Using case-insensitive match path:', matchPath);
+            sourcePath = matchPath;
+          }
+        }
+      } catch (err) {
+        console.error('Debug: Error in case-insensitive search:', err);
+      }
+    }
+    
     const targetBaseName = baseName;
     
     // Create poster JPG thumbnails in multiple formats
-    const posterJpgPathInUploads = path.join(uploadsDir, `${targetBaseName}.poster.jpg`);
-    const posterJpgPathInThumbnails = path.join(thumbnailsDir, `${targetBaseName}.poster.jpg`);
-    const regularJpgPath = path.join(thumbnailsDir, `${targetBaseName}.jpg`);
+    const posterJpgPathInUploads = path.join(SharedUploadsDir, `${targetBaseName}.poster.jpg`);
+    const posterJpgPathInThumbnails = path.join(SharedThumbnailsDir, `${targetBaseName}.poster.jpg`);
+    const regularJpgPath = path.join(SharedThumbnailsDir, `${targetBaseName}.jpg`);
     
     // Check if source file exists
-    if (!fs.existsSync(sourcePath)) {
-      return res.status(404).json({ error: `Source file not found at ${sourcePath}` });
+    if (!sourcePath || !fs.existsSync(sourcePath)) {
+      return res.status(404).json({ 
+        error: `Source file not found at ${sourcePath}`,
+        checkedPaths: {
+          sharedPath,
+          regularPath,
+          sharedExists,
+          regularExists
+        }
+      });
     }
     
-    // Create thumbnails directory if it doesn't exist
-    if (!fs.existsSync(thumbnailsDir)) {
-      fs.mkdirSync(thumbnailsDir, { recursive: true });
+    // Create thumbnails directories if they don't exist
+    if (!fs.existsSync(SharedThumbnailsDir)) {
+      fs.mkdirSync(SharedThumbnailsDir, { recursive: true });
     }
     
     // Extract a frame using ffmpeg
     try {
       // First try directly with ffmpeg for a high-quality frame
+      // Make sure the directory exists first
+      const uploadsLocation = path.dirname(posterJpgPathInUploads);
+      if (!fs.existsSync(uploadsLocation)) {
+        fs.mkdirSync(uploadsLocation, { recursive: true });
+      }
+      
       await extractMovFrame(sourcePath, posterJpgPathInUploads);
       
       // Copy extracted frame to all variations
@@ -659,6 +730,17 @@ objectStorageRouter.get('/generate-thumbnail', async (req: Request, res: Respons
       </svg>`;
       
       // Write SVG files to all variants
+      // Make sure the directories exist
+      const uploadsLocation = path.dirname(posterJpgPathInUploads);
+      const thumbnailsLocation = path.dirname(posterJpgPathInThumbnails);
+      
+      if (!fs.existsSync(uploadsLocation)) {
+        fs.mkdirSync(uploadsLocation, { recursive: true });
+      }
+      if (!fs.existsSync(thumbnailsLocation)) {
+        fs.mkdirSync(thumbnailsLocation, { recursive: true });
+      }
+      
       fs.writeFileSync(posterJpgPathInUploads.replace('.jpg', '.svg'), svgContent);
       fs.writeFileSync(posterJpgPathInThumbnails.replace('.jpg', '.svg'), svgContent);
       fs.writeFileSync(regularJpgPath.replace('.jpg', '.svg'), svgContent);
