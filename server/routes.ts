@@ -2786,7 +2786,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+  router.post("/api/posts", authenticate, upload.fields([
+    { name: 'image', maxCount: 1 }, 
+    { name: 'thumbnail', maxCount: 1 }
+  ]), async (req, res) => {
     // Set content type early to prevent browser confusion
     res.set({
       'Cache-Control': 'no-store',
@@ -2798,16 +2801,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     // Initialize isVideo variable to be used throughout the route handler
     let isVideo = false;
     
+    // The files structure has changed because we're using upload.fields now
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const imageFile = files && files['image'] && files['image'][0];
+    const thumbnailFile = files && files['thumbnail'] && files['thumbnail'][0];
+    
     console.log("POST /api/posts - Request received", {
-      hasFile: !!req.file,
-      fileDetails: req.file ? {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        path: req.file.path,
-        destination: req.file.destination,
-        size: req.file.size
-      } : 'No file uploaded',
+      hasImageFile: !!imageFile,
+      hasThumbnailFile: !!thumbnailFile,
+      imageFileDetails: imageFile ? {
+        fieldname: imageFile.fieldname,
+        originalname: imageFile.originalname,
+        mimetype: imageFile.mimetype,
+        path: imageFile.path,
+        destination: imageFile.destination,
+        size: imageFile.size
+      } : 'No image file uploaded',
+      thumbnailFileDetails: thumbnailFile ? {
+        fieldname: thumbnailFile.fieldname,
+        originalname: thumbnailFile.originalname,
+        mimetype: thumbnailFile.mimetype,
+        path: thumbnailFile.path,
+        destination: thumbnailFile.destination,
+        size: thumbnailFile.size
+      } : 'No thumbnail file uploaded',
       contentType: req.headers['content-type'],
       bodyKeys: Object.keys(req.body)
     });
@@ -2820,10 +2837,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         isMemoryVersePost = parsedData.type === 'memory_verse';
         if (isMemoryVersePost) {
           console.log("Memory verse post detected:", {
-            originalname: req.file?.originalname || 'No file',
-            mimetype: req.file?.mimetype || 'No mimetype',
-            fileSize: req.file?.size || 0,
-            path: req.file?.path || 'No path'
+            hasImageFile: !!imageFile,
+            hasThumbnailFile: !!thumbnailFile,
+            imageDetails: imageFile ? {
+              originalname: imageFile.originalname,
+              mimetype: imageFile.mimetype,
+              fileSize: imageFile.size,
+              path: imageFile.path
+            } : 'No image file',
+            thumbnailDetails: thumbnailFile ? {
+              originalname: thumbnailFile.originalname,
+              mimetype: thumbnailFile.mimetype,
+              fileSize: thumbnailFile.size,
+              path: thumbnailFile.path
+            } : 'No thumbnail file'
           });
         }
       } catch (e) {
@@ -2832,18 +2859,33 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
     
     // Extra logging for debugging
-    if (req.file) {
+    if (imageFile) {
       try {
-        const stats = fs.statSync(req.file.path);
-        console.log("File stats:", {
-          exists: fs.existsSync(req.file.path),
+        const stats = fs.statSync(imageFile.path);
+        console.log("Image file stats:", {
+          exists: fs.existsSync(imageFile.path),
           size: stats.size,
           isFile: stats.isFile(),
-          path: req.file.path,
-          absolutePath: path.resolve(req.file.path)
+          path: imageFile.path,
+          absolutePath: path.resolve(imageFile.path)
         });
       } catch (statError) {
-        console.error("Error checking file:", statError);
+        console.error("Error checking image file:", statError);
+      }
+    }
+    
+    if (thumbnailFile) {
+      try {
+        const stats = fs.statSync(thumbnailFile.path);
+        console.log("Thumbnail file stats:", {
+          exists: fs.existsSync(thumbnailFile.path),
+          size: stats.size,
+          isFile: stats.isFile(),
+          path: thumbnailFile.path,
+          absolutePath: path.resolve(thumbnailFile.path)
+        });
+      } catch (statError) {
+        console.error("Error checking thumbnail file:", statError);
       }
     }
     
@@ -3044,25 +3086,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       else if (postData.type === 'scripture') {
         logger.info('Scripture post created with no media');
         mediaUrl = null;
-      } else if (req.file) {
+      } else if (imageFile) {
         try {
           // Use SpartaObjectStorage for file handling
           const { spartaStorage } = await import('./sparta-object-storage');
           
-          // Verify the file exists before proceeding
-          let filePath = req.file.path;
+          // Verify the image file exists before proceeding
+          let filePath = imageFile.path;
+          
+          // Keep track of thumbnail path if provided
+          let thumbnailPath = thumbnailFile?.path;
           
           // Verify the file exists at the path reported by multer
           if (!fs.existsSync(filePath)) {
-            logger.warn(`File not found at the reported path: ${filePath}, will search for it`);
+            logger.warn(`Image file not found at the reported path: ${filePath}, will search for it`);
             
             // Try to locate the file using alternative paths
             const fileName = path.basename(filePath);
             const possiblePaths = [
               filePath,
               path.join(process.cwd(), 'uploads', fileName),
-              path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
-              path.join(path.dirname(filePath), path.basename(req.file.originalname)),
+              path.join(process.cwd(), 'uploads', path.basename(imageFile.originalname)),
+              path.join(path.dirname(filePath), path.basename(imageFile.originalname)),
               path.join('/tmp', fileName)
             ];
             
@@ -3087,7 +3132,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Proceed if the file exists (either at original or alternative path)
           if (fs.existsSync(filePath)) {
             // Handle video files differently - check both mimetype and file extension
-            const originalFilename = req.file.originalname.toLowerCase();
+            const originalFilename = imageFile.originalname.toLowerCase();
             
             // Simplified detection for memory verse posts - rely only on the post type
             const isMemoryVersePost = postData.type === 'memory_verse';
@@ -3098,11 +3143,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             console.log("Post type detection:", {
               isMemoryVersePost,
               isMiscellaneousPost,
-              originalName: req.file.originalname
+              originalName: imageFile.originalname,
+              hasThumbnail: !!thumbnailFile
             });
             
             // Check if this is a video upload based on multiple indicators
-            const isVideoMimetype = req.file.mimetype.startsWith('video/');
+            const isVideoMimetype = imageFile.mimetype.startsWith('video/');
             const isVideoExtension = originalFilename.endsWith('.mov') || 
                                    originalFilename.endsWith('.mp4') ||
                                    originalFilename.endsWith('.webm') ||
@@ -3114,7 +3160,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             const isMiscellaneousVideo = isMiscellaneousPost && 
                                        (req.body.is_video === "true" || 
                                         req.body.selected_media_type === "video" ||
-                                        (req.file && (isVideoMimetype || isVideoExtension)));
+                                        (isVideoMimetype || isVideoExtension));
                                         
             // Combined video detection - for miscellaneous posts, only trust the explicit markers
             const isVideo = isMemoryVersePost || 
@@ -3129,10 +3175,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               isVideoMimetype,
               isVideoExtension,
               hasVideoContentType,
-              mimetype: req.file.mimetype,
-              originalFilename: req.file.originalname,
+              mimetype: imageFile.mimetype,
+              originalFilename: imageFile.originalname,
               selectedMediaType: req.body.selected_media_type,
-              isVideoFlag: req.body.is_video
+              isVideoFlag: req.body.is_video,
+              hasThumbnail: !!thumbnailFile,
+              thumbnailName: thumbnailFile?.originalname
             });
             
             // We no longer need to create a separate file with prefix here.
@@ -3141,20 +3189,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             console.log("Skipping redundant file creation - SpartaObjectStorage will handle file organization");
             
             console.log(`Processing media file:`, {
-              originalFilename: req.file.originalname,
-              mimetype: req.file.mimetype,
+              originalFilename: imageFile.originalname,
+              mimetype: imageFile.mimetype,
               isVideo: isVideo,
               isMemoryVerse: isMemoryVersePost,
-              fileSize: req.file.size,
-              path: req.file.path,
-              postType: postData.type || 'unknown'
+              fileSize: imageFile.size,
+              path: imageFile.path,
+              postType: postData.type || 'unknown',
+              hasThumbnail: !!thumbnailFile,
+              thumbnailPath: thumbnailFile?.path
             });
             
-            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
+            logger.info(`Processing media file: ${imageFile.originalname}, type: ${imageFile.mimetype}, isVideo: ${isVideo}, size: ${imageFile.size}`);
             
             // Store the file using SpartaObjectStorage (used for both images and videos)
             // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
-            let effectiveMimeType = req.file.mimetype;
+            let effectiveMimeType = imageFile.mimetype;
             
             // If it's a memory verse post but mimetype doesn't indicate a video, override it
             if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
@@ -3168,21 +3218,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             }
             
             console.log("Using effective mime type for storage:", {
-              original: req.file.mimetype,
+              original: imageFile.mimetype,
               effective: effectiveMimeType,
               isMemoryVerse: isMemoryVersePost,
               isMiscellaneous: isMiscellaneousPost,
               isVideo: isVideo,
-              wasOverridden: effectiveMimeType !== req.file.mimetype,
-              fileSize: req.file.size,
+              wasOverridden: effectiveMimeType !== imageFile.mimetype,
+              fileSize: imageFile.size,
+              hasThumbnail: !!thumbnailFile,
               formDataKeys: Object.keys(req.body || {})
             });
               
+            // Store the main file (image or video)
             const fileInfo = await spartaStorage.storeFile(
               filePath,
-              req.file.originalname,
+              imageFile.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
-              isVideo // Pass flag for video handling
+              isVideo, // Pass flag for video handling
+              thumbnailFile ? thumbnailFile.path : undefined  // Pass the thumbnail path if available
             );
             
             mediaUrl = fileInfo.url;

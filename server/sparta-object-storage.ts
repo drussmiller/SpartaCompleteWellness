@@ -160,7 +160,8 @@ export class SpartaObjectStorage {
     fileData: Buffer | string,
     originalFilename: string,
     mimeType: string,
-    isVideo: boolean = false
+    isVideo: boolean = false,
+    thumbnailPath?: string
   ): Promise<{ 
     url: string;
     thumbnailUrl: string | null;
@@ -417,12 +418,15 @@ export class SpartaObjectStorage {
       // Create thumbnail based on file type
       const thumbnailFilename = `thumb-${safeFilename}`;
       const thumbnailDirPath = path.resolve(this.thumbnailDir);
-      const thumbnailPath = path.join(thumbnailDirPath, thumbnailFilename);
+      const generatedThumbnailPath = path.join(thumbnailDirPath, thumbnailFilename);
       
-      console.log(`Preparing to create thumbnail: ${thumbnailFilename}`, {
-        thumbnailPath,
+      // Log if a custom thumbnail path was provided
+      console.log(`Thumbnail preparation:`, {
+        providedThumbnailPath: thumbnailPath,
+        generatedThumbnailPath,
         thumbnailDirPath,
-        originalDir: this.thumbnailDir
+        originalDir: this.thumbnailDir,
+        hasThumbnail: !!thumbnailPath
       });
 
       try {
@@ -432,12 +436,21 @@ export class SpartaObjectStorage {
           fs.mkdirSync(thumbnailDirPath, { recursive: true });
         }
         
-        if (mimeType.startsWith('image/')) {
+        // If a custom thumbnail is provided, use it instead of generating one
+        if (thumbnailPath && fs.existsSync(thumbnailPath)) {
+          console.log(`Using provided thumbnail: ${thumbnailPath}`);
+          
+          // Copy the provided thumbnail to our standard location
+          fs.copyFileSync(thumbnailPath, generatedThumbnailPath);
+          thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          console.log(`Copied provided thumbnail to standard location: ${generatedThumbnailPath}`);
+          logger.info(`Using provided thumbnail for ${safeFilename}`);
+        } else if (mimeType.startsWith('image/')) {
           // Process image thumbnail
           console.log(`Processing image thumbnail for ${safeFilename}`);
-          await this.createThumbnail(filePath, thumbnailPath);
+          await this.createThumbnail(filePath, generatedThumbnailPath);
           thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
-          console.log(`Image thumbnail created at ${thumbnailPath}`);
+          console.log(`Image thumbnail created at ${generatedThumbnailPath}`);
           logger.info(`Created image thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('video/') || isVideo) {
           // Process video thumbnail
@@ -448,7 +461,8 @@ export class SpartaObjectStorage {
             fileSize: fs.existsSync(filePath) ? fs.statSync(filePath).size : 'file not found',
             mimeType: mimeType,
             isVideo: isVideo,
-            isMemoryVerse: originalFilename.toLowerCase().includes('memory_verse')
+            isMemoryVerse: originalFilename.toLowerCase().includes('memory_verse'),
+            hasProvidedThumbnail: !!thumbnailPath
           });
           
           // For memory verse and miscellaneous videos, ensure we preserve the file exactly as is
@@ -473,19 +487,19 @@ export class SpartaObjectStorage {
           
           try {
             // Create memory verse video thumbnail
-            await this.createVideoThumbnail(filePath, thumbnailPath);
+            await this.createVideoThumbnail(filePath, generatedThumbnailPath);
             thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
-            console.log(`Video thumbnail created at ${thumbnailPath}`);
+            console.log(`Video thumbnail created at ${generatedThumbnailPath}`);
             logger.info(`Created video thumbnail for ${safeFilename}`);
             
             // Double-check the thumbnail was created
-            if (fs.existsSync(thumbnailPath)) {
-              console.log(`Verified thumbnail exists at ${thumbnailPath}`);
+            if (fs.existsSync(generatedThumbnailPath)) {
+              console.log(`Verified thumbnail exists at ${generatedThumbnailPath}`);
               
               // Set proper file permissions
               try {
-                fs.chmodSync(thumbnailPath, 0o644);
-                console.log(`Set proper permissions on thumbnail file: ${thumbnailPath}`);
+                fs.chmodSync(generatedThumbnailPath, 0o644);
+                console.log(`Set proper permissions on thumbnail file: ${generatedThumbnailPath}`);
               } catch (permErr) {
                 console.error(`Error setting permissions on thumbnail:`, permErr);
               }
@@ -500,7 +514,7 @@ export class SpartaObjectStorage {
                 const alternateThumbPath = path.join(thumbDirResolved, safeFilename);
                 if (!fs.existsSync(alternateThumbPath)) {
                   try {
-                    fs.copyFileSync(thumbnailPath, alternateThumbPath);
+                    fs.copyFileSync(generatedThumbnailPath, alternateThumbPath);
                     console.log(`Created alternate video thumbnail at ${alternateThumbPath}`);
                   } catch (copyError) {
                     console.error(`Error creating alternate video thumbnail:`, copyError);
@@ -508,7 +522,7 @@ export class SpartaObjectStorage {
                 }
               }
             } else {
-              console.warn(`Thumbnail was not found at ${thumbnailPath} after creation attempt`);
+              console.warn(`Thumbnail was not found at ${generatedThumbnailPath} after creation attempt`);
               
               // Create a simple SVG thumbnail as fallback
               const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
@@ -518,8 +532,8 @@ export class SpartaObjectStorage {
                 <polygon points="290,180 290,220 320,200" fill="#fff"/>
               </svg>`;
               
-              fs.writeFileSync(thumbnailPath, svgContent);
-              console.log(`Created SVG fallback thumbnail at ${thumbnailPath}`);
+              fs.writeFileSync(generatedThumbnailPath, svgContent);
+              console.log(`Created SVG fallback thumbnail at ${generatedThumbnailPath}`);
               
               // Create a copy without the thumb- prefix for memory verse or miscellaneous videos
               if (originalFilename.toLowerCase().includes('memory_verse') || 
@@ -544,29 +558,29 @@ export class SpartaObjectStorage {
               <polygon points="290,180 290,220 320,200" fill="#fff"/>
             </svg>`;
             
-            fs.writeFileSync(thumbnailPath, svgContent);
-            console.log(`Created SVG fallback thumbnail after error at ${thumbnailPath}`);
+            fs.writeFileSync(generatedThumbnailPath, svgContent);
+            console.log(`Created SVG fallback thumbnail after error at ${generatedThumbnailPath}`);
           }
         }
         
         // Verify that the thumbnail was created
-        if (thumbnailUrl && !fs.existsSync(thumbnailPath)) {
-          console.error(`Thumbnail was not created at ${thumbnailPath} despite no errors`);
+        if (thumbnailUrl && !fs.existsSync(generatedThumbnailPath)) {
+          console.error(`Thumbnail was not created at ${generatedThumbnailPath} despite no errors`);
           // Copy the original as a fallback
-          fs.copyFileSync(filePath, thumbnailPath);
-          console.log(`Created fallback thumbnail by copying original file to ${thumbnailPath}`);
+          fs.copyFileSync(filePath, generatedThumbnailPath);
+          console.log(`Created fallback thumbnail by copying original file to ${generatedThumbnailPath}`);
           logger.info(`Created fallback thumbnail for ${safeFilename} by copying original file`);
         }
         
         // Now that thumbnail is created (or fallback is in place), upload to Object Storage
-        if (thumbnailUrl && fs.existsSync(thumbnailPath) && this.objectStorage) {
+        if (thumbnailUrl && fs.existsSync(generatedThumbnailPath) && this.objectStorage) {
           try {
-            const thumbnailBasename = path.basename(thumbnailPath);
+            const thumbnailBasename = path.basename(generatedThumbnailPath);
             
             // Store only in the shared path to save space
             const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
             
-            const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+            const thumbnailBuffer = fs.readFileSync(generatedThumbnailPath);
             
             // Upload with shared key only
             console.log(`Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
@@ -585,9 +599,9 @@ export class SpartaObjectStorage {
         // Try a fallback approach - copy the original file as the thumbnail
         try {
           console.log(`Attempting to create a fallback thumbnail for ${safeFilename}`);
-          fs.copyFileSync(filePath, thumbnailPath);
+          fs.copyFileSync(filePath, generatedThumbnailPath);
           thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
-          console.log(`Created fallback thumbnail by copying original file to ${thumbnailPath}`);
+          console.log(`Created fallback thumbnail by copying original file to ${generatedThumbnailPath}`);
           logger.info(`Created fallback thumbnail for ${safeFilename} after error`);
         } catch (fallbackError) {
           console.error(`Failed to create fallback thumbnail:`, fallbackError);

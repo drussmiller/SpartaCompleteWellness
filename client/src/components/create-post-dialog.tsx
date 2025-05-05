@@ -181,7 +181,7 @@ export function CreatePostDialog({
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
               
-              // Simply append the file to the formData with the 'image' field name
+              // Append the video file to the formData with the 'image' field name
               // The server will detect the post type based on the data.type field
               formData.append("image", videoFile);
               
@@ -189,11 +189,23 @@ export function CreatePostDialog({
               formData.append("is_video", "true");
               formData.append("selected_media_type", "video");
               
+              // Attach the generated thumbnail if we have one
+              if (videoThumbnail) {
+                console.log("Attaching video thumbnail to the form data");
+                
+                // Convert the data URL to a Blob that we can send to the server
+                const thumbnailBlob = dataURLToBlob(videoThumbnail);
+                formData.append("thumbnail", thumbnailBlob, `${videoFile.name}.poster.jpg`);
+              } else {
+                console.warn("No video thumbnail available when uploading video");
+              }
+              
               console.log(`Uploading ${data.type} video file:`, {
                 fileName: videoFile.name,
                 fileType: videoFile.type, 
                 fileSize: videoFile.size,
                 fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB",
+                hasThumbnail: !!videoThumbnail,
                 postType: data.type
               });
             } 
@@ -814,6 +826,24 @@ export function CreatePostDialog({
 }
 
 // Generate a thumbnail from a video file
+// Convert a data URL to a Blob object
+function dataURLToBlob(dataURL: string): Blob {
+  // Split the data URL to get the content type and base64 data
+  const parts = dataURL.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  
+  // Create an array buffer with the binary data
+  const uInt8Array = new Uint8Array(rawLength);
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+  
+  // Create a Blob from the array buffer
+  return new Blob([uInt8Array], { type: contentType });
+}
+
 async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
   return new Promise((resolve) => {
     try {
