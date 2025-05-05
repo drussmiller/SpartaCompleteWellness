@@ -37,14 +37,14 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
       let filename = fileUrl.split('/').pop();
       if (!filename) return originalUrl;
       
-      // Handle potential thumb- prefix variations
-      if (filename.startsWith('thumb-')) {
-        // Try without the thumb- prefix for better compatibility
-        filename = filename.replace('thumb-', '');
+      // For the new format, try getting just the base filename without extensions
+      let baseFilename = filename;
+      if (filename.includes('.')) {
+        baseFilename = filename.split('.')[0]; // Get just the base part of the filename
       }
       
-      // Create a simpler URL for the thumbnail
-      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${filename}`;
+      // Use the new thumbnail naming format - thumb-{baseFilename}.jpg
+      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
     }
     
     // For other URLs, try to simplify the path if it has poster.jpg
@@ -53,24 +53,23 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
       let filename = parts.pop();
       if (!filename) return originalUrl;
       
-      // Handle potential thumb- prefix variations
-      if (filename.startsWith('thumb-')) {
-        // Try without the thumb- prefix for better compatibility
-        filename = filename.replace('thumb-', '');
-      }
+      // Extract base filename without the .poster.jpg part
+      const baseFilename = filename.replace('.poster.jpg', '');
       
-      // Create a more direct path to the thumbnail
-      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${filename}`;
+      // Use the new thumbnail naming format
+      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
     }
     
-    // If URL contains .mov, try to get a poster image path for it
-    if (originalUrl.toLowerCase().endsWith('.mov')) {
+    // If URL contains .mov or any other video extension, try the new naming pattern
+    if (originalUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
       const parts = originalUrl.split('/');
       const filename = parts.pop();
       if (filename) {
-        // Create a poster path using the recommended naming convention
-        const posterFilename = filename.replace('.mov', '.poster.jpg');
-        return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${posterFilename}`;
+        // Extract base filename without the extension
+        const baseFilename = filename.split('.')[0];
+        
+        // Use the new thumbnail naming format
+        return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
       }
     }
     
