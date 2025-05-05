@@ -235,6 +235,27 @@ export async function createAllMovThumbnailVariants(
               `shared/uploads/${uploadsSharedPosterFilename}`
             );
             
+            // IMPORTANT FIX: Also upload the thumbnail JPG to shared/uploads location with same name as MOV
+            // This ensures thumbnails are accessible when MOV files are accessed from shared/uploads
+            const nonPrefixedJpgFilename = filename.replace(/\.mov$/i, '.jpg');
+            await spartaStorage.storeBuffer(
+              jpgBuffer, 
+              nonPrefixedJpgFilename,
+              'image/jpeg',
+              true, 
+              `shared/uploads/${nonPrefixedJpgFilename}`
+            );
+            
+            // Also upload thumb-prefixed version to shared/uploads for consistency
+            const thumbPrefixedJpgFilename = `thumb-${filename.replace(/\.mov$/i, '.jpg')}`;
+            await spartaStorage.storeBuffer(
+              jpgBuffer, 
+              thumbPrefixedJpgFilename,
+              'image/jpeg',
+              true, 
+              `shared/uploads/${thumbPrefixedJpgFilename}`
+            );
+            
             logger.info(`Successfully uploaded all thumbnail variations to Object Storage for ${filename}`);
           } catch (objStorageError) {
             logger.error(`Failed to upload thumbnails to Object Storage: ${objStorageError}`, { 
@@ -406,6 +427,29 @@ export async function createFallbackSvgThumbnails(targetPaths: {
         'image/svg+xml',
         true,
         getStorageKey(nonPrefixedPath)
+      );
+      
+      // IMPORTANT FIX: Also upload the SVG to shared/uploads directly (non-thumbnails directory)
+      // This ensures SVG fallbacks are accessible when MOV files are accessed from shared/uploads
+      const originalFilename = path.basename(nonPrefixedPath).replace(/\.svg$/, '.mov');
+      const nonPrefixedSvgFilename = originalFilename.replace(/\.mov$/i, '.svg');
+      
+      await spartaStorage.storeBuffer(
+        videoSvg, 
+        nonPrefixedSvgFilename,
+        'image/svg+xml',
+        true, 
+        `shared/uploads/${nonPrefixedSvgFilename}`
+      );
+      
+      // Also upload thumb-prefixed version to shared/uploads for consistency
+      const thumbPrefixedSvgFilename = `thumb-${nonPrefixedSvgFilename}`;
+      await spartaStorage.storeBuffer(
+        videoSvg, 
+        thumbPrefixedSvgFilename,
+        'image/svg+xml',
+        true, 
+        `shared/uploads/${thumbPrefixedSvgFilename}`
       );
       
       if (uploadsMainPosterPath) {
