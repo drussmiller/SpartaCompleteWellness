@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play } from 'lucide-react';
+import { Play, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
+import { apiRequest } from '@/lib/queryClient';
 
 interface VideoPlayerProps {
   src: string;
@@ -265,6 +266,63 @@ export function VideoPlayer({
     };
   }, [src, simplifiedPoster]);
 
+  // Handle regenerate thumbnail
+  const [regenerating, setRegenerating] = useState(false);
+  
+  const handleRegenerateThumbnail = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the click from also triggering the play action
+    
+    if (!src || regenerating) return;
+    
+    try {
+      setRegenerating(true);
+      console.log("Regenerating thumbnail for video:", src);
+      
+      const response = await apiRequest('POST', '/api/generate-thumbnail', {
+        videoUrl: src
+      });
+      
+      if (response.ok) {
+        console.log("Thumbnail regeneration successful");
+        const result = await response.json();
+        
+        // Reset poster error state
+        setPosterError(false);
+        
+        // Use the returned poster URL if available
+        if (result.posterUrl) {
+          console.log("Using regenerated poster URL:", result.posterUrl);
+          const timestamp = Date.now();
+          const newPosterUrl = `${result.posterUrl}?v=${timestamp}`;
+          setSimplifiedPoster(newPosterUrl);
+        } else {
+          // Add cache-busting to force a refresh of the current poster
+          if (simplifiedPoster) {
+            const timestamp = Date.now();
+            const refreshedPoster = simplifiedPoster.includes('?') 
+              ? simplifiedPoster.replace(/(\?|&)v=\d+/, `$1v=${timestamp}`)
+              : `${simplifiedPoster}?v=${timestamp}`;
+              
+            console.log('Using cache-busted poster URL:', refreshedPoster);
+            setSimplifiedPoster(refreshedPoster);
+          }
+        }
+        
+        // Trigger the thumbnail-regenerated event for any other components
+        const event = new CustomEvent('thumbnail-regenerated', {
+          detail: { videoUrl: src }
+        });
+        window.dispatchEvent(event);
+      } else {
+        console.error("Thumbnail regeneration failed:", await response.text());
+      }
+    } catch (error) {
+      console.error("Error regenerating thumbnail:", error);
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -305,6 +363,24 @@ export function VideoPlayer({
             >
               <Play size={40} className="text-white" fill="white" />
             </div>
+          </div>
+          
+          {/* Regenerate thumbnail button */}
+          <div className="absolute top-2 right-2 z-10">
+            <button
+              className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors"
+              onClick={handleRegenerateThumbnail}
+              disabled={regenerating}
+              title="Regenerate thumbnail"
+            >
+              <RefreshCw 
+                size={20} 
+                className={cn(
+                  "text-white",
+                  regenerating && "animate-spin"
+                )} 
+              />
+            </button>
           </div>
         </div>
       )}
