@@ -1762,6 +1762,123 @@ export class SpartaObjectStorage {
         }
       }
       
+      // Delete files from Object Storage
+      if (this.objectStorage) {
+        try {
+          console.log(`Attempting to delete files from Object Storage for: ${fileUrl}`);
+          
+          // Prepare a list of possible Object Storage keys
+          const objStoreKeysToDelete = [];
+          
+          // First, check if this is a direct file URL that can be used as a key
+          const isFullUrl = fileUrl.startsWith('http://') || fileUrl.startsWith('https://');
+          const isRelativePath = fileUrl.startsWith('/');
+          
+          if (!isFullUrl) {
+            // If fileUrl already has 'shared/uploads/' format, use it directly
+            if (fileUrl.includes('shared/uploads/')) {
+              objStoreKeysToDelete.push(fileUrl);
+            } else if (isRelativePath) {
+              // Convert a relative path like /uploads/file.jpg to a proper key
+              const cleanPath = fileUrl.startsWith('/') ? fileUrl.substring(1) : fileUrl;
+              objStoreKeysToDelete.push(`shared/${cleanPath}`);
+            } else {
+              // Standard format: add shared/uploads/ prefix
+              objStoreKeysToDelete.push(`shared/uploads/${filename}`);
+            }
+          } else {
+            // Extract the path from a full URL like https://example.com/uploads/file.jpg
+            const urlObj = new URL(fileUrl);
+            const pathParts = urlObj.pathname.split('/');
+            const filenameFromUrl = pathParts[pathParts.length - 1];
+            objStoreKeysToDelete.push(`shared/uploads/${filenameFromUrl}`);
+          }
+          
+          // Add thumbnail keys for original file
+          objStoreKeysToDelete.push(
+            `shared/uploads/thumbnails/${filename}`,
+            `shared/uploads/thumbnails/thumb-${filename}`
+          );
+          
+          // Handle video files specially
+          if (videoExtensions.includes(fileExt)) {
+            const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
+            
+            // Add keys for video thumbnails (.jpg versions of .mov files, etc)
+            objStoreKeysToDelete.push(
+              `shared/uploads/thumbnails/${baseFilename}.jpg`,
+              `shared/uploads/thumbnails/${baseFilename}.png`,
+              `shared/uploads/thumbnails/thumb-${baseFilename}.jpg`,
+              `shared/uploads/thumbnails/thumb-${baseFilename}.png`,
+              `shared/uploads/${baseFilename}.poster.jpg`
+            );
+            
+            // Add special keys for MOV files
+            if (fileExt === '.mov') {
+              objStoreKeysToDelete.push(
+                `shared/uploads/thumbnails/${filename}.poster.jpg`,
+                `shared/uploads/${filename}.poster.jpg`
+              );
+            }
+          }
+          
+          // Add additional thumbnail keys
+          const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
+          objStoreKeysToDelete.push(
+            `shared/uploads/thumbnails/thumb-${baseFilename}.jpg`,
+            `shared/uploads/thumbnails/${baseFilename}.jpg`
+          );
+          
+          // If this is a memory verse or specific video file, add more specialized keys
+          if (isMemoryVerse) {
+            objStoreKeysToDelete.push(
+              `shared/uploads/memory_verse/${filename}`,
+              `shared/uploads/thumbnails/memory_verse/${filename}`,
+              `shared/uploads/thumbnails/memory_verse/thumb-${filename}`,
+              `shared/uploads/memory_verse/${baseFilename}.jpg`,
+              `shared/uploads/thumbnails/memory_verse/${baseFilename}.jpg`
+            );
+          } else if (isMiscellaneousVideo) {
+            objStoreKeysToDelete.push(
+              `shared/uploads/miscellaneous/${filename}`,
+              `shared/uploads/thumbnails/miscellaneous/${filename}`,
+              `shared/uploads/thumbnails/miscellaneous/thumb-${filename}`,
+              `shared/uploads/miscellaneous/${baseFilename}.jpg`,
+              `shared/uploads/thumbnails/miscellaneous/${baseFilename}.jpg`
+            );
+          }
+          
+          // Log the list of keys we're going to check
+          console.log(`Will attempt to delete these object storage keys:`, objStoreKeysToDelete);
+          
+          // Process each potential key
+          for (const key of objStoreKeysToDelete) {
+            try {
+              // Check if the file exists before trying to delete it
+              const existsResult = await this.objectStorage.exists(key);
+              const fileExists = existsResult && (existsResult === true || 
+                (typeof existsResult === 'object' && 'ok' in existsResult && existsResult.ok && existsResult.value === true));
+              
+              if (fileExists) {
+                console.log(`Found file in Object Storage with key: ${key}, deleting it...`);
+                const deleteResult = await this.objectStorage.delete(key);
+                console.log(`Deleted file from Object Storage with key: ${key}, result:`, deleteResult);
+                logger.info(`Deleted file from Object Storage with key: ${key}`);
+                foundFile = true;
+              } else {
+                console.log(`File not found in Object Storage with key: ${key}`);
+              }
+            } catch (objStoreErr) {
+              console.error(`Error deleting file from Object Storage with key ${key}:`, objStoreErr);
+              logger.error(`Error deleting file from Object Storage with key ${key}:`, objStoreErr);
+            }
+          }
+        } catch (objStoreError) {
+          console.error(`Error deleting files from Object Storage:`, objStoreError);
+          logger.error(`Error deleting files from Object Storage:`, objStoreError);
+        }
+      }
+      
       // Try to delete thumbnails regardless of whether we found the original file
       try {
         // List of thumbnail paths to check
