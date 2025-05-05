@@ -245,21 +245,21 @@ app.use('/api', (req, res, next) => {
       try {
         const filePath = req.path;
         console.log(`Processing shared file request: ${filePath}`);
-        
+
         // Import required modules
         const { Client } = require('@replit/object-storage');
         const fs = require('fs');
-        
+
         // Check if Replit Object Storage is available
         if (!process.env.REPLIT_DB_ID) {
           console.log(`Object Storage not available, redirecting to local path`);
           return res.redirect(`/uploads${filePath}`);
         }
-        
+
         // Initialize Object Storage client
         const objectStorage = new Client();
         console.log(`Object Storage client initialized`);
-        
+
         // Define all possible key formats to try
         const keysToCheck = [
           `shared/uploads${filePath}`,
@@ -267,18 +267,18 @@ app.use('/api', (req, res, next) => {
           `shared${filePath}`,
           filePath.startsWith('/') ? filePath.substring(1) : filePath
         ];
-        
+
         // Try to find the file with any of the keys
         console.log(`Attempting to download file using the following keys: ${JSON.stringify(keysToCheck)}`);
         let fileBuffer = null;
         let usedKey = null;
-        
+
         // Try each key directly with downloadAsBytes without checking existence first
         for (const key of keysToCheck) {
           try {
             console.log(`Trying to download ${key} directly...`);
             const result = await objectStorage.downloadAsBytes(key);
-            
+
             // Parse the result based on its format
             if (Buffer.isBuffer(result)) {
               console.log(`Success! Downloaded ${key} as direct Buffer`);
@@ -300,13 +300,13 @@ app.use('/api', (req, res, next) => {
             // Continue to next key
           }
         }
-        
+
         // If we found and downloaded a file, serve it
         if (fileBuffer && fileBuffer.length > 0) {
           // Determine content type based on file extension
           const fileExtension = path.extname(filePath).toLowerCase();
           let contentType = 'application/octet-stream'; // default
-          
+
           if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
             contentType = 'image/jpeg';
           } else if (fileExtension === '.png') {
@@ -322,15 +322,15 @@ app.use('/api', (req, res, next) => {
           } else if (fileExtension === '.webp') {
             contentType = 'image/webp';
           }
-          
+
           console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
-          
+
           // Set headers and send the file
           res.setHeader('Content-Type', contentType);
           res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
           return res.send(fileBuffer);
         }
-        
+
         // No longer check filesystem as requested - Object Storage only
         // Return a proper 404 response
         console.log(`File ${filePath} not found in Object Storage and no filesystem fallback as configured`);
@@ -339,13 +339,13 @@ app.use('/api', (req, res, next) => {
           message: 'File not found in Object Storage',
           path: filePath
         });
-        
+
       } catch (error) {
         console.error('Error serving shared file:', error);
         next();
       }
     });
-    
+
     // Replace static file serving with an Object Storage middleware
     // This ensures we never serve files from the filesystem directly
     console.log("[Startup] Setting up Object Storage-only uploads handler");
@@ -353,10 +353,10 @@ app.use('/api', (req, res, next) => {
       // Return 404 with JSON response and redirect to Object Storage
       const filePath = req.path;
       console.log(`[Object Storage Only] Redirecting filesystem request to Object Storage: ${filePath}`);
-      
+
       // Create the appropriate Object Storage URL
       const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${filePath}`;
-      
+
       // Send a 302 redirect to the Object Storage endpoint
       return res.redirect(302, objectStorageUrl);
     });
@@ -489,11 +489,8 @@ app.use('/api', (req, res, next) => {
         }
 
         console.log('[Server Startup] Starting new server...');
-        currentServer = server.listen({
-          port,
-          host: "0.0.0.0",
-        }, () => {
-          log(`[Server Startup] Server listening on port ${port}`);
+        currentServer = server.listen(5000, "0.0.0.0", () => {
+          log(`[Server Startup] Server listening on port 5000`);
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
         });
