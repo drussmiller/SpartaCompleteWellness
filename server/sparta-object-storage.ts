@@ -1800,74 +1800,22 @@ export class SpartaObjectStorage {
             mainKey = `shared/uploads/${filename}`;
           }
           
-          // Add the main key directly
+          // SIMPLIFIED KEY STRATEGY - only focus on exactly the paths the user requested
+          // Add the main key directly (always include this)
           objStoreKeysToDelete.push(mainKey);
           
-          // Also try alternative forms in case of inconsistent path formatting
-          if (mainKey.startsWith('shared/')) {
-            // Also try with a leading slash
-            objStoreKeysToDelete.push(`/${mainKey}`);
+          // Only add these specific patterns as explicitly requested by the user
+          // Main file in shared/uploads/
+          if (mainKey.startsWith('shared/uploads/') && !mainKey.includes('/thumbnails/')) {
+            // Original file is in shared/uploads, try to delete its thumb version too
+            const baseFilename = path.basename(mainKey);
+            objStoreKeysToDelete.push(`shared/uploads/thumbnails/thumb-${baseFilename.replace('.mov', '.jpg')}`);
           }
           
-          if (mainKey.includes('/uploads/thumbnails/')) {
-            // If we're deleting a thumbnail directly, also try to delete the original file
-            const thumbsPattern = '/uploads/thumbnails/';
-            const originalKey = mainKey.replace(thumbsPattern, '/uploads/');
-            objStoreKeysToDelete.push(originalKey);
-          }
-          
-          // Add thumbnail keys for original file
-          objStoreKeysToDelete.push(
-            `shared/uploads/thumbnails/${filename}`,
-            `shared/uploads/thumbnails/thumb-${filename}`
-          );
-          
-          // Handle video files specially
-          if (videoExtensions.includes(fileExt)) {
-            const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
-            
-            // Add keys for video thumbnails (.jpg versions of .mov files, etc)
-            objStoreKeysToDelete.push(
-              `shared/uploads/thumbnails/${baseFilename}.jpg`,
-              `shared/uploads/thumbnails/${baseFilename}.png`,
-              `shared/uploads/thumbnails/thumb-${baseFilename}.jpg`,
-              `shared/uploads/thumbnails/thumb-${baseFilename}.png`,
-              `shared/uploads/${baseFilename}.poster.jpg`
-            );
-            
-            // Add special keys for MOV files
-            if (fileExt === '.mov') {
-              objStoreKeysToDelete.push(
-                `shared/uploads/thumbnails/${filename}.poster.jpg`,
-                `shared/uploads/${filename}.poster.jpg`
-              );
-            }
-          }
-          
-          // Add additional thumbnail keys
-          const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
-          objStoreKeysToDelete.push(
-            `shared/uploads/thumbnails/thumb-${baseFilename}.jpg`,
-            `shared/uploads/thumbnails/${baseFilename}.jpg`
-          );
-          
-          // If this is a memory verse or specific video file, add more specialized keys
-          if (isMemoryVerse) {
-            objStoreKeysToDelete.push(
-              `shared/uploads/memory_verse/${filename}`,
-              `shared/uploads/thumbnails/memory_verse/${filename}`,
-              `shared/uploads/thumbnails/memory_verse/thumb-${filename}`,
-              `shared/uploads/memory_verse/${baseFilename}.jpg`,
-              `shared/uploads/thumbnails/memory_verse/${baseFilename}.jpg`
-            );
-          } else if (isMiscellaneousVideo) {
-            objStoreKeysToDelete.push(
-              `shared/uploads/miscellaneous/${filename}`,
-              `shared/uploads/thumbnails/miscellaneous/${filename}`,
-              `shared/uploads/thumbnails/miscellaneous/thumb-${filename}`,
-              `shared/uploads/miscellaneous/${baseFilename}.jpg`,
-              `shared/uploads/thumbnails/miscellaneous/${baseFilename}.jpg`
-            );
+          // Thumbnail pattern as explicitly requested by user
+          if (mainKey.startsWith('shared/uploads/thumbnails/thumb-')) {
+            // This is already the exact pattern the user wants to target
+            // No need to add more variations
           }
           
           // Log the list of keys we're going to check
@@ -1882,9 +1830,27 @@ export class SpartaObjectStorage {
                 // Check if the file exists first
                 let fileExists = false;
                 try {
-                  // This should give us a clear yes/no answer
-                  fileExists = await this.objectStorage.exists(key);
-                  console.log(`Object Storage exists check for ${key} returned: ${fileExists}`);
+                  // Get the result from exists() method
+                  const existsResult = await this.objectStorage.exists(key);
+                  
+                  // IMPORTANT: exists() returns an object with 'ok' and 'value' properties
+                  // 'ok' means the API call succeeded, 'value' indicates if the file actually exists
+                  if (typeof existsResult === 'object' && existsResult !== null) {
+                    // Check if the result has a 'value' property that's true
+                    if ('value' in existsResult) {
+                      fileExists = !!existsResult.value;
+                    } else {
+                      // Fallback for compatibility - if we can't find the value property,
+                      // treat the whole result as the boolean (old behavior)
+                      fileExists = !!existsResult;
+                    }
+                    
+                    console.log(`Object Storage exists check for ${key} returned: ${JSON.stringify(existsResult)}, using fileExists=${fileExists}`);
+                  } else {
+                    // If the result isn't what we expect, log it and assume file exists to be cautious
+                    console.log(`Unexpected exists result type for ${key}:`, existsResult);
+                    fileExists = true;
+                  }
                 } catch (existsError) {
                   // If we get an error during exists check, log it but still try to delete
                   console.log(`Error checking if file exists in Object Storage with key: ${key}`, existsError);

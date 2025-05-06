@@ -1,117 +1,60 @@
+// Test script to verify our specific deletion approach
 import { Client } from '@replit/object-storage';
 
-// Initialize Object Storage
-const objectStorage = new Client();
-
-const testPaths = [
-  'shared/uploads/1746529011506-83d84bc0.mov',
-  'shared/uploads/thumbnails/thumb-1746529011506-83d84bc0.jpg'
-];
-
-// Test other possible variations
-const generateVariations = (basePath) => {
-  const parts = basePath.split('/');
-  const filename = parts[parts.length - 1];
-  const results = [];
-  
-  // Try variations with thumb- prefix
-  if (!filename.startsWith('thumb-') && filename.includes('.')) {
-    const dir = parts.slice(0, -1).join('/');
-    const thumbName = `thumb-${filename}`;
-    results.push(`${dir}/${thumbName}`);
-  }
-  
-  // For MOV files, try jpg variations
-  if (filename.endsWith('.mov')) {
-    const baseNoExt = filename.substring(0, filename.lastIndexOf('.'));
-    const dir = parts.slice(0, -1).join('/');
-    
-    results.push(`${dir}/${baseNoExt}.jpg`);
-    results.push(`${dir}/${baseNoExt}.poster.jpg`);
-    
-    // Try thumbnails directory
-    const thumbDir = parts.slice(0, -2).join('/') + '/thumbnails';
-    results.push(`${thumbDir}/${filename}`);
-    results.push(`${thumbDir}/${baseNoExt}.jpg`);
-    results.push(`${thumbDir}/thumb-${filename}`);
-    results.push(`${thumbDir}/thumb-${baseNoExt}.jpg`);
-  }
-  
-  return results;
-};
-
-// Expand paths with variations
-testPaths.forEach(path => {
-  const variations = generateVariations(path);
-  testPaths.push(...variations);
-});
-
-// Remove duplicates
-const uniquePaths = [...new Set(testPaths)];
-
 async function testDeleteFiles() {
-  console.log('Testing deletion of the following paths:');
-  uniquePaths.forEach(path => console.log(` - ${path}`));
+  console.log('Starting focused file deletion test...');
   
-  for (const path of uniquePaths) {
+  const client = new Client();
+  const specificFiles = [
+    'shared/uploads/1746539378349-55fe520e.mov',
+    'shared/uploads/thumbnails/thumb-1746539378349-55fe520e.jpg'
+  ];
+  
+  console.log('Will only target these files:');
+  console.log(specificFiles);
+  
+  for (const path of specificFiles) {
+    console.log(`\nProcessing: ${path}`);
+    
     try {
-      console.log(`\nAttempting to delete: ${path}`);
+      // First check if exists
+      const exists = await client.exists(path);
+      console.log(`File exists check: ${exists}`);
       
-      // First check if the file exists
+      // Attempt delete anyway (we've seen 404 errors even when exists returns true)
       try {
-        const exists = await objectStorage.exists(path);
-        console.log(`File exists check: ${exists ? 'YES' : 'NO'}`);
-      } catch (existsErr) {
-        console.log(`Error checking existence: ${existsErr}`);
-      }
-      
-      // Attempt direct deletion
-      try {
-        console.log('Attempting direct deletion...');
-        const deleteResult = await objectStorage.delete(path);
-        console.log('Deletion result:', deleteResult);
-        
-        // Check success based on two possible response formats
-        const isSuccess = 
-          (typeof deleteResult === 'object' && 
-           'ok' in deleteResult && 
-           deleteResult.ok === true) || 
-          (typeof deleteResult === 'object' && 
-           'response' in deleteResult && 
-           deleteResult.response && 
-           'status' in deleteResult.response && 
-           deleteResult.response.status === 200);
-        
-        console.log(`Deletion success: ${isSuccess ? 'YES' : 'NO'}`);
-      } catch (deleteErr) {
-        console.log('Deletion error:', deleteErr);
-        
-        // Check if this is a 404 error
-        const is404Error = 
-          (deleteErr && 
-           typeof deleteErr === 'object' && 
-           ('status' in deleteErr && deleteErr.status === 404)) || 
-          (deleteErr && 
-           typeof deleteErr === 'object' && 
-           'error' in deleteErr && 
-           typeof deleteErr.error === 'object' && 
-           deleteErr.error &&
-           'statusCode' in deleteErr.error && 
-           deleteErr.error.statusCode === 404);
-        
-        if (is404Error) {
-          console.log('This was a 404 error (file not found)');
+        console.log('Attempting deletion...');
+        const result = await client.delete(path);
+        console.log(`Deletion result:`, result);
+        console.log('Consider this a success even if we get a 404 result');
+      } catch (err) {
+        // Handle 404 errors as success
+        if (err.error && err.error.statusCode === 404) {
+          console.log('404 Not Found error - file is already gone or never existed');
+        } else {
+          console.error('Error during deletion:', err);
         }
       }
       
+      // Final check
+      try {
+        const finalCheck = await client.exists(path);
+        console.log(`Final exists check: ${finalCheck}`);
+        
+        if (finalCheck) {
+          console.log(`🔴 ATTENTION: File still exists after deletion attempt`);
+        } else {
+          console.log(`🟢 SUCCESS: File is confirmed deleted or never existed`);
+        }
+      } catch (err) {
+        console.error('Error in final existence check:', err);
+      }
     } catch (err) {
-      console.error(`General error for path ${path}:`, err);
+      console.error(`General error processing ${path}:`, err);
     }
   }
 }
 
-// Run the test
-console.log('Starting deletion tests...');
 testDeleteFiles()
-  .then(() => console.log('Tests completed'))
+  .then(() => console.log('Test completed'))
   .catch(err => console.error('Test failed:', err));
