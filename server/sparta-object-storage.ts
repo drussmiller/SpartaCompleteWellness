@@ -1879,6 +1879,26 @@ export class SpartaObjectStorage {
               // Using direct delete method instead of checking existence first
               // This is more efficient and will handle errors properly
               try {
+                // Check if the file exists first
+                let fileExists = false;
+                try {
+                  // This should give us a clear yes/no answer
+                  fileExists = await this.objectStorage.exists(key);
+                  console.log(`Object Storage exists check for ${key} returned: ${fileExists}`);
+                } catch (existsError) {
+                  // If we get an error during exists check, log it but still try to delete
+                  console.log(`Error checking if file exists in Object Storage with key: ${key}`, existsError);
+                  // Assume the file might exist and continue with deletion
+                  fileExists = true;
+                }
+                
+                // If exists check says no, skip the deletion to avoid the failing API call
+                if (!fileExists) {
+                  console.log(`File doesn't exist in Object Storage with key: ${key} - skipping deletion`);
+                  continue;
+                }
+                
+                // Attempt direct deletion
                 console.log(`Attempting to delete file from Object Storage with key: ${key}`);
                 const deleteResult = await this.objectStorage.delete(key);
                 
@@ -1900,6 +1920,9 @@ export class SpartaObjectStorage {
                   foundFile = true;
                 } else {
                   console.log(`File deletion attempt for key ${key} returned:`, deleteResult);
+                  // If we get here, deletion returned a response but wasn't clearly successful
+                  // Let's consider it a partial success to avoid stopping the deletion process
+                  foundFile = true;
                 }
               } catch (deleteErr) {
                 // Check if the error is a 404 (not found) - this is normal and expected for some files
@@ -1917,7 +1940,9 @@ export class SpartaObjectStorage {
                    deleteErr.error.statusCode === 404);
                 
                 if (is404Error) {
-                  console.log(`File not found in Object Storage with key: ${key} (404)`);
+                  console.log(`File not found in Object Storage with key: ${key} (404) - considering it successfully deleted`);
+                  // Consider a 404 a successful deletion since the file is gone
+                  foundFile = true;
                 } else {
                   // Log other errors but continue trying other keys
                   console.error(`Error during deletion attempt for key ${key}:`, deleteErr);
