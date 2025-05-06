@@ -1800,22 +1800,60 @@ export class SpartaObjectStorage {
             mainKey = `shared/uploads/${filename}`;
           }
           
-          // SIMPLIFIED KEY STRATEGY - only focus on exactly the paths the user requested
+          // SIMPLIFIED KEY STRATEGY PLUS MEMORY VERSE SPECIAL HANDLING
           // Add the main key directly (always include this)
           objStoreKeysToDelete.push(mainKey);
           
-          // Only add these specific patterns as explicitly requested by the user
-          // Main file in shared/uploads/
-          if (mainKey.startsWith('shared/uploads/') && !mainKey.includes('/thumbnails/')) {
-            // Original file is in shared/uploads, try to delete its thumb version too
+          // Special handling for memory verse videos
+          if (isMemoryVerse) {
             const baseFilename = path.basename(mainKey);
-            objStoreKeysToDelete.push(`shared/uploads/thumbnails/thumb-${baseFilename.replace('.mov', '.jpg')}`);
-          }
-          
-          // Thumbnail pattern as explicitly requested by user
-          if (mainKey.startsWith('shared/uploads/thumbnails/thumb-')) {
-            // This is already the exact pattern the user wants to target
-            // No need to add more variations
+            const baseWithoutExt = baseFilename.substring(0, baseFilename.lastIndexOf('.')) || baseFilename;
+            
+            // Add memory verse specific paths - both in memory_verse subdirectory and directly in uploads
+            objStoreKeysToDelete.push(
+              // Original video files
+              `shared/uploads/${baseFilename}`,
+              `shared/uploads/memory_verse/${baseFilename}`,
+              
+              // Thumbnail files with thumb- prefix (.jpg for all video formats)
+              `shared/uploads/thumbnails/thumb-${baseWithoutExt}.jpg`,
+              `shared/uploads/thumbnails/memory_verse/thumb-${baseWithoutExt}.jpg`,
+              
+              // Thumbnail files without thumb- prefix
+              `shared/uploads/thumbnails/${baseWithoutExt}.jpg`,
+              `shared/uploads/thumbnails/memory_verse/${baseWithoutExt}.jpg`,
+              
+              // .poster.jpg versions used by video players
+              `shared/uploads/${baseWithoutExt}.poster.jpg`,
+              `shared/uploads/memory_verse/${baseWithoutExt}.poster.jpg`
+            );
+            
+            console.log(`Added memory verse specific paths for deletion: ${baseFilename}`);
+          } else {
+            // Main file in shared/uploads/ (non-memory verse files)
+            if (mainKey.startsWith('shared/uploads/') && !mainKey.includes('/thumbnails/')) {
+              // Original file is in shared/uploads, try to delete its thumb version too
+              const baseFilename = path.basename(mainKey);
+              const baseWithoutExt = baseFilename.substring(0, baseFilename.lastIndexOf('.')) || baseFilename;
+              
+              // For videos (especially .mov files), add common thumbnail patterns
+              if (videoExtensions.includes(fileExt)) {
+                objStoreKeysToDelete.push(
+                  `shared/uploads/thumbnails/thumb-${baseWithoutExt}.jpg`, 
+                  `shared/uploads/thumbnails/${baseWithoutExt}.jpg`,
+                  `shared/uploads/${baseWithoutExt}.poster.jpg`
+                );
+              } else {
+                // For images, just add the standard thumbnail
+                objStoreKeysToDelete.push(`shared/uploads/thumbnails/thumb-${baseFilename}`);
+              }
+            }
+            
+            // Thumbnail pattern as explicitly requested by user
+            if (mainKey.startsWith('shared/uploads/thumbnails/thumb-')) {
+              // This is already the exact pattern the user wants to target
+              // No need to add more variations
+            }
           }
           
           // Log the list of keys we're going to check
