@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
+import './video-player.css'; // Import the custom CSS
 
 interface VideoPlayerProps {
   src: string;
@@ -269,7 +270,8 @@ export function VideoPlayer({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative rounded-md overflow-hidden", className)}
+      className={cn("relative rounded-md overflow-visible", className)}
+      style={{ aspectRatio: "16/9", marginBottom: "40px" }} /* Add aspect ratio and bottom margin */
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
@@ -279,7 +281,7 @@ export function VideoPlayer({
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-full object-contain cursor-pointer"
+              className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
@@ -311,25 +313,28 @@ export function VideoPlayer({
               <Play size={40} className="text-white" fill="white" />
             </div>
           </div>
-          
-
         </div>
       )}
       
       {/* Video player (initially hidden) */}
-      <video
-        ref={videoRef}
-        src={src}
-        preload={preload}
-        playsInline={playsInline}
-        className={cn(
-          "w-full h-full object-contain",
-          showVideo ? "block" : "hidden"
-        )}
-        controls={true}
-        controlsList={controlsList}
-        disablePictureInPicture={disablePictureInPicture}
-      />
+      <div className={cn("w-full h-full video-wrapper", showVideo ? "block" : "hidden")}>
+        <video
+          ref={videoRef}
+          src={src}
+          preload={preload}
+          playsInline={playsInline}
+          className="w-full h-full object-contain" /* Ensure video fills container properly */
+          controls={true}
+          controlsList={controlsList}
+          disablePictureInPicture={disablePictureInPicture}
+          style={{ 
+            maxHeight: "none", 
+            width: "100%",
+            marginBottom: "40px", /* Ensure space for controls */
+            paddingBottom: "36px" /* Extra padding to prevent controls being cut off */
+          }}
+        />
+      </div>
       
       {/* Loading indicator - only shown when video is visible and loading */}
       {showVideo && loading && (

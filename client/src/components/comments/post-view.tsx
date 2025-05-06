@@ -6,6 +6,7 @@ import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { getThumbnailUrl } from "@/lib/image-utils";
+import { VideoPlayer } from "@/components/ui/video-player";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -38,21 +39,21 @@ export function PostView({ post }: PostViewProps) {
             </div>
           )}
           
-          {/* Show video if present */}
+          {/* Show video if present - using improved VideoPlayer component */}
           {post.mediaUrl && post.is_video && (
-            <div className="mt-3 mb-3 flex justify-center">
-              <video
+            <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
+              <VideoPlayer
                 src={post.mediaUrl}
                 poster={getThumbnailUrl(post.mediaUrl, 'medium')}
-                controls
+                className="w-full video-player-container rounded-md"
                 preload="metadata"
-                className="max-w-full h-auto object-contain rounded-md"
                 playsInline
-                onLoadStart={() => {
-                  console.log(`Comment view: Video loading with poster: ${getThumbnailUrl(post.mediaUrl, 'medium')}`);
+                controlsList="nodownload"
+                onLoad={() => {
+                  console.log(`Comment view: Video loaded successfully for post ${post.id}`);
                 }}
-                onError={(e) => {
-                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`);
+                onError={(error) => {
+                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`, error);
                   // Try to trigger poster generation
                   fetch('/api/video/generate-posters', {
                     method: 'POST',

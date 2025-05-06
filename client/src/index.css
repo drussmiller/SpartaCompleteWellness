@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fix for video player controls being cut off */
+.video-container {
+  position: relative;
+  padding-bottom: 45px !important; /* Ensure space for controls */
+  overflow: visible !important;
+}
+
+video {
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  margin-bottom: 36px !important;
+}
+
+/* Ensure custom CSS has higher priority */
+div[data-post-id] .video-container {
+  overflow: visible !important;
+  margin-bottom: 20px !important;
+}
+
 /* Hide scrollbar but maintain scroll functionality */
 * {
   scrollbar-width: none; /* Firefox */

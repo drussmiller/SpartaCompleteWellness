@@ -260,15 +260,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       {post.mediaUrl && (
         <div className="relative mt-2 w-screen -mx-4">
-          <div className="w-full max-h-[500px] flex items-center justify-center bg-gray-50">
+          <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
-              <div className="w-full max-h-[500px] video-container">
+              <div className="w-full video-container" data-post-id={post.id}>
                 {/* Import and use VideoPlayer instead of standard video element */}
                 <VideoPlayer 
                   key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
                   src={getImageUrl(post.mediaUrl)}
                   poster={getVideoPoster(post.mediaUrl)}
-                  className="w-full h-full object-contain max-h-[500px]"
+                  className="w-full video-player-container"
                   preload="metadata"
                   playsInline
                   controlsList="nodownload"

@@ -1,0 +1,82 @@
+/* Custom CSS for video player to prevent cropping */
+
+/* Main video container styles */
+.video-player-container {
+  width: 100%;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  display: block;
+  margin-bottom: 45px; /* Add space for controls */
+}
+
+/* Video styles to ensure controls are visible */
+.video-player-container video {
+  width: 100%;
+  height: auto !important;
+  max-height: none !important;
+  display: block;
+  margin-bottom: 36px; /* Make space for controls */
+}
+
+/* Ensure the container doesn't cut off controls */
+.video-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 45px; /* Make room for video controls */
+  overflow: visible !important; /* Ensure controls aren't hidden */
+}
+
+/* Special styling for the video element itself */
+video {
+  width: 100%;
+  height: auto !important;
+  max-height: none !important;
+  display: block;
+}
+
+/* Make sure controls remain visible */
+video::-webkit-media-controls-panel {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  padding-bottom: 14px !important;
+  position: relative;
+  z-index: 10;
+}
+
+/* Fix for Chrome controls being cut off */
+video::-webkit-media-controls-enclosure {
+  overflow: visible !important;
+}
+
+/* Fix for Safari */
+video::-webkit-media-controls {
+  padding-bottom: 20px;
+  display: flex !important;
+}
+
+/* Fix for Firefox */
+@supports (-moz-appearance:none) {
+  .video-container {
+    margin-bottom: 50px;
+  }
+  
+  video {
+    margin-bottom: 36px;
+  }
+}
+
+/* Fix for mobile devices */
+@media (max-width: 768px) {
+  .video-container {
+    padding-bottom: 60px; /* Extra padding on mobile */
+  }
+  
+  .video-player-container {
+    margin-bottom: 50px;
+  }
+  
+  video::-webkit-media-controls-panel {
+    padding-bottom: 20px !important;
+  }
+}
