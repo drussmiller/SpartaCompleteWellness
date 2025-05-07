@@ -1645,8 +1645,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).send(JSON.stringify({ message: "Invalid post ID" }));
       }
       
+      // Get the post with author info using a db query
+      let post;
       try {
-        // Get the post with author info using a db query
         const result = await db
           .select({
             id: posts.id,
@@ -1675,7 +1676,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           return res.status(404).send(JSON.stringify({ message: "Post not found" }));
         }
         
-        const post = result[0];
+        post = result[0];
         
         // Log the media URL for debugging
         if (post.mediaUrl) {
@@ -1689,8 +1690,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }));
       }
       
-      // Get post from the previous try block
-      const post = result?.[0];
       if (!post) {
         logger.error(`Post not found or undefined for ID: ${postId}`);
         return res.status(404).send(JSON.stringify({ message: "Post not found or data corrupted" }));
