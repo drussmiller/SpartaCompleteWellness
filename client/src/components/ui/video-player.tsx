@@ -270,18 +270,18 @@ export function VideoPlayer({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative rounded-md overflow-visible", className)}
-      style={{ marginBottom: "40px" }} /* Remove fixed aspect ratio to maintain original video proportions */
+      className={cn("relative rounded-md overflow-visible w-full", className)}
+      style={{ marginBottom: "0px" }} /* Remove bottom margin */
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px] bg-gray-800">
+        <div className="relative w-full h-full min-h-[200px] bg-white">
           {/* Only render img if we have a valid poster and no error */}
           {simplifiedPoster && !posterError ? (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-auto max-h-[500px] object-contain cursor-pointer" /* Use object-contain to preserve aspect ratio */
+              className="w-full h-auto max-h-[400px] object-cover cursor-pointer" /* Use object-cover to match UI */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
@@ -317,20 +317,20 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")}>
+      <div className={cn("w-full video-wrapper bg-white", showVideo ? "block" : "hidden")}>
         <video
           ref={videoRef}
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-auto object-contain max-h-[500px]" /* Use object-contain to maintain aspect ratio */
+          className="w-full h-auto object-cover max-h-[400px]" /* Match thumbnail style exactly */
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
             width: "100%",
-            marginBottom: "40px", /* Ensure space for controls */
-            paddingBottom: "36px" /* Extra padding to prevent controls being cut off */
+            marginBottom: "0px", /* Match UI in screenshot */
+            paddingBottom: "36px" /* Keep padding for controls */
           }}
         />
       </div>
