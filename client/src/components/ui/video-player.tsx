@@ -281,7 +281,7 @@ export function VideoPlayer({
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-auto max-h-[400px] object-cover cursor-pointer" /* Use object-cover to match UI */
+              className="w-full h-auto object-cover cursor-pointer" /* Full-width with no height restriction */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />

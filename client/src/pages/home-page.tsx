@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
-import { PostCard } from "@/components/post-card";
+import { PostCard } from "@/components/post-card.fixed";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
