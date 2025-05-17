@@ -270,7 +270,7 @@ export function VideoPlayer({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative rounded-md overflow-visible w-full", className)}
+      className={cn("relative rounded-md overflow-hidden w-full", className)}
       style={{ marginBottom: "0px" }} /* Remove bottom margin */
     >
       {/* Thumbnail image that gets clicked to start the video */}

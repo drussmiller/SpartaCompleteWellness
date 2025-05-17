@@ -259,7 +259,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       )}
 
       {post.mediaUrl && (
-        <div className="relative mt-2 w-screen -mx-4 mb-1">
+        <div className="relative mt-2 mb-3 overflow-hidden">
           <div className="w-full bg-white">
             {shouldShowAsVideo ? (
               <div className="w-full video-container max-h-[300px] overflow-hidden" data-post-id={post.id}>
