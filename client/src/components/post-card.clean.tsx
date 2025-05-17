@@ -262,7 +262,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="relative mt-2 w-screen -mx-4 mb-3 overflow-hidden">
           <div className="w-full bg-white">
             {shouldShowAsVideo ? (
-              <div className="w-full video-container max-h-[300px] overflow-hidden" data-post-id={post.id}>
+              <div className="w-full video-container" data-post-id={post.id}>
                 <VideoPlayer 
                   key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
                   src={getImageUrl(post.mediaUrl)}
@@ -317,7 +317,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-auto max-h-[300px] object-contain cursor-pointer"
+                className="w-full h-auto object-contain cursor-pointer"
                 onError={(e) => {
                   // Simply hide the image container without any retries
                   // This is the most reliable approach with the strict Object Storage requirements

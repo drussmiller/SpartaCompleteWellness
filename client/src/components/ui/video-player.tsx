@@ -323,7 +323,7 @@ export function VideoPlayer({
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-auto object-contain max-h-[300px]" /* Fixed height to match thumbnail exactly */
+          className="w-full h-auto object-contain" /* Allow natural height */
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
