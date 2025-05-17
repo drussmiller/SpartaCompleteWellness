@@ -275,13 +275,13 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px] bg-white">
+        <div className="relative w-full bg-white">
           {/* Only render img if we have a valid poster and no error */}
           {simplifiedPoster && !posterError ? (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-auto object-cover cursor-pointer" /* Full-width with no height restriction */
+              className="w-full h-auto object-contain cursor-pointer" /* Match exactly what's in the image */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
@@ -323,14 +323,14 @@ export function VideoPlayer({
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-auto object-cover max-h-[400px]" /* Match thumbnail style exactly */
+          className="w-full h-auto object-contain" /* Match thumbnail style exactly */
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
             width: "100%",
             marginBottom: "0px", /* Match UI in screenshot */
-            paddingBottom: "36px" /* Keep padding for controls */
+            paddingBottom: "0px" /* Reduce padding to match image height */
           }}
         />
       </div>
