@@ -271,7 +271,7 @@ export function VideoPlayer({
     <div 
       ref={containerRef}
       className={cn("relative rounded-md overflow-visible", className)}
-      style={{ aspectRatio: "16/9", marginBottom: "40px" }} /* Add aspect ratio and bottom margin */
+      style={{ marginBottom: "40px" }} /* Remove fixed aspect ratio to maintain original video proportions */
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
@@ -281,7 +281,7 @@ export function VideoPlayer({
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
+              className="w-full h-auto max-h-[500px] object-contain cursor-pointer" /* Use object-contain to preserve aspect ratio */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
@@ -317,18 +317,17 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div className={cn("w-full h-full video-wrapper", showVideo ? "block" : "hidden")}>
+      <div className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")}>
         <video
           ref={videoRef}
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-full object-contain" /* Ensure video fills container properly */
+          className="w-full h-auto object-contain max-h-[500px]" /* Use object-contain to maintain aspect ratio */
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
-            maxHeight: "none", 
             width: "100%",
             marginBottom: "40px", /* Ensure space for controls */
             paddingBottom: "36px" /* Extra padding to prevent controls being cut off */
