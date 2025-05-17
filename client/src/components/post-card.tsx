@@ -259,10 +259,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       )}
 
       {post.mediaUrl && (
-        <div className="relative mt-2 w-screen -mx-4">
-          <div className="w-full bg-gray-50">
+        <div className="relative mt-2 w-full overflow-hidden">
+          <div className="w-full bg-gray-50 flex justify-center px-2 py-2">
             {shouldShowAsVideo ? (
-              <div className="w-full video-container mx-auto flex justify-center" data-post-id={post.id}>
+              <div className="w-full max-w-full video-container mx-auto flex justify-center" data-post-id={post.id}>
                 {/* Import and use VideoPlayer instead of standard video element */}
                 <VideoPlayer 
                   key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
@@ -313,36 +313,38 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 />
               </div>
             ) : (
-              <img
-                src={getImageUrl(post.mediaUrl)}
-                alt={`${post.type} post content`}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-auto max-h-[500px] object-contain cursor-pointer mx-auto"
-                onError={(e) => {
-                  // Simply hide the image container without any retries
-                  // This is the most reliable approach with the strict Object Storage requirements
-                  const img = e.currentTarget as HTMLImageElement;
-                  
-                  // Hide the parent container if found
-                  const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                  if (mediaContainer) {
-                    mediaContainer.style.display = 'none';
-                  } else {
-                    // If container not found, hide the image itself
-                    img.style.display = 'none';
-                  }
-                  
-                  // Also hide any background container
-                  const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
-                  if (bgContainer) {
-                    bgContainer.style.display = 'none';
-                  }
-                  
-                  // Prevent further error handlers from firing
-                  img.onerror = null;
-                }}
-              />
+              <div className="flex justify-center w-full">
+                <img
+                  src={getImageUrl(post.mediaUrl)}
+                  alt={`${post.type} post content`}
+                  loading="lazy"
+                  decoding="async"
+                  className="max-w-[95%] h-auto max-h-[500px] object-contain cursor-pointer"
+                  onError={(e) => {
+                    // Simply hide the image container without any retries
+                    // This is the most reliable approach with the strict Object Storage requirements
+                    const img = e.currentTarget as HTMLImageElement;
+                    
+                    // Hide the parent container if found
+                    const mediaContainer = img.closest('.relative.mt-2.w-full.overflow-hidden') as HTMLElement;
+                    if (mediaContainer) {
+                      mediaContainer.style.display = 'none';
+                    } else {
+                      // If container not found, hide the image itself
+                      img.style.display = 'none';
+                    }
+                    
+                    // Also hide any background container
+                    const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
+                    if (bgContainer) {
+                      bgContainer.style.display = 'none';
+                    }
+                    
+                    // Prevent further error handlers from firing
+                    img.onerror = null;
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
