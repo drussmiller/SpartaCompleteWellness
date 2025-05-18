@@ -259,90 +259,82 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       )}
 
       {post.mediaUrl && (
-        <div className="relative mt-2 w-screen -mx-4 mb-3 overflow-hidden">
-          <div className="w-full bg-white">
-            {shouldShowAsVideo ? (
-              <div className="w-full video-container" data-post-id={post.id}>
-                <VideoPlayer 
-                  key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
-                  src={getImageUrl(post.mediaUrl)}
-                  poster={getVideoPoster(post.mediaUrl)}
-                  className="w-full h-auto video-player-container"
-                  preload="metadata"
-                  playsInline
-                  controlsList="nodownload"
-                  onLoad={() => {
-                    console.log("Video loaded successfully for post", post.id);
-                  }}
-                  onError={(error: Error) => {
-                    console.error(`Error loading video for post ${post.id}:`, error);
-                    
-                    // Try with different formats as fallback - first try directly with .jpg extension
-                    const mediaUrl = post.mediaUrl || '';
-                    if (mediaUrl.toLowerCase().endsWith('.mov')) {
-                      const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
-                      console.log(`Trying alternative thumbnail for video ${post.id}:`, baseName);
+        <div className="relative mt-2 border-t border-b border-gray-100 py-2">
+          {/* Full-width media container with proper vertical spacing */}
+          <div className="w-screen -mx-4 flex justify-center items-center bg-white">
+            <div className="w-full">
+              {shouldShowAsVideo ? (
+                <div className="video-container" data-post-id={post.id}>
+                  <VideoPlayer 
+                    key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
+                    src={getImageUrl(post.mediaUrl)}
+                    poster={getVideoPoster(post.mediaUrl)}
+                    className="w-full video-player-container"
+                    preload="metadata"
+                    playsInline
+                    controlsList="nodownload"
+                    onLoad={() => {
+                      console.log("Video loaded successfully for post", post.id);
+                    }}
+                    onError={(error: Error) => {
+                      console.error(`Error loading video for post ${post.id}:`, error);
                       
-                      // Try to manually preload the correct thumbnail using image tag approach
-                      const img = new Image();
-                      img.onload = () => {
-                        console.log('Alternative thumbnail loaded successfully');
-                        // Reload the component to use the now-cached image
-                        setTriggerReload(prev => prev + 1);
-                      };
-                      img.onerror = () => {
-                        console.error('Alternative thumbnail failed to load');
-                        // Hide the container on all errors
+                      // Try with different formats as fallback - first try directly with .jpg extension
+                      const mediaUrl = post.mediaUrl || '';
+                      if (mediaUrl.toLowerCase().endsWith('.mov')) {
+                        const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
+                        console.log(`Trying alternative thumbnail for video ${post.id}:`, baseName);
+                        
+                        // Try to manually preload the correct thumbnail using image tag approach
+                        const img = new Image();
+                        img.onload = () => {
+                          console.log('Alternative thumbnail loaded successfully');
+                          // Reload the component to use the now-cached image
+                          setTriggerReload(prev => prev + 1);
+                        };
+                        img.onerror = () => {
+                          console.error('Alternative thumbnail failed to load');
+                          // Hide the container on all errors
+                          const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
+                          if (container) {
+                            container.style.display = 'none';
+                          }
+                        };
+                        
+                        // Try direct formats without using the utility functions
+                        img.src = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseName.split('/').pop()}.poster.jpg`;
+                      } else {
+                        // For non-MOV files or if we can't extract baseName, just hide
                         const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
                         if (container) {
                           container.style.display = 'none';
                         }
-                      };
-                      
-                      // Try direct formats without using the utility functions
-                      img.src = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseName.split('/').pop()}.poster.jpg`;
-                    } else {
-                      // For non-MOV files or if we can't extract baseName, just hide
-                      const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
-                      if (container) {
-                        container.style.display = 'none';
                       }
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <img
-                src={getImageUrl(post.mediaUrl)}
-                alt={`${post.type} post content`}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-auto object-contain cursor-pointer"
-                onError={(e) => {
-                  // Simply hide the image container without any retries
-                  // This is the most reliable approach with the strict Object Storage requirements
-                  const img = e.currentTarget as HTMLImageElement;
-                  
-                  // Hide the parent container if found
-                  const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                  if (mediaContainer) {
-                    mediaContainer.style.display = 'none';
-                  } else {
-                    // If container not found, hide the image itself
-                    img.style.display = 'none';
-                  }
-                  
-                  // Also hide any background container
-                  const bgContainer = img.closest('.bg-white') as HTMLElement;
-                  if (bgContainer) {
-                    bgContainer.style.display = 'none';
-                  }
-                  
-                  // Prevent further error handlers from firing
-                  img.onerror = null;
-                }}
-              />
-            )}
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex justify-center">
+                  <img
+                    src={getImageUrl(post.mediaUrl)}
+                    alt={`${post.type} post content`}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full max-w-full"
+                    onError={(e) => {
+                      // Simply hide the image container without any retries
+                      const img = e.currentTarget as HTMLImageElement;
+                      const mediaContainer = img.closest('.w-screen') as HTMLElement;
+                      if (mediaContainer) {
+                        mediaContainer.style.display = 'none';
+                      } else {
+                        img.style.display = 'none';
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
