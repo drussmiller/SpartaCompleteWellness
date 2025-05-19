@@ -9,6 +9,8 @@
   margin: 0;
   padding: 0;
   line-height: 0;
+  border: 2px solid #666;
+  border-radius: 4px;
 }
 
 /* Video styles to ensure controls are visible */
