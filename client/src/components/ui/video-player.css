@@ -6,10 +6,10 @@
   position: relative;
   display: block;
   min-height: 50px;
-  margin: -15px 0;
+  margin: 0;
   padding: 0;
   line-height: 0;
-  overflow: hidden;
+  display: flex;
 }
 
 /* Video styles to ensure controls are visible */
