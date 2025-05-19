@@ -5,8 +5,8 @@
   width: 100%;
   position: relative;
   display: block;
-  min-height: 200px; /* Minimum height while loading */
-  margin-bottom: -2px; /* Remove gap between video and bottom content */
+  min-height: 50px; /* Reduced minimum height while loading */
+  margin-bottom: 0; /* No extra margin */
   line-height: 0; /* Remove any line-height spacing */
 }
 
@@ -23,8 +23,8 @@
 .video-container {
   position: relative;
   width: 100%;
-  padding-bottom: 0; /* Remove padding */
-  margin-bottom: -6px; /* Remove gap between video and content */
+  padding-bottom: 0; /* No padding */
+  margin-bottom: 0; /* No margin */
   overflow: visible !important; /* Ensure controls aren't hidden */
 }
 
@@ -41,7 +41,7 @@ video::-webkit-media-controls-panel {
   display: flex !important;
   opacity: 1 !important;
   visibility: visible !important;
-  padding-bottom: 14px !important;
+  padding-bottom: 0 !important;
   position: relative;
   z-index: 10;
 }
@@ -53,32 +53,32 @@ video::-webkit-media-controls-enclosure {
 
 /* Fix for Safari */
 video::-webkit-media-controls {
-  padding-bottom: 20px;
+  padding-bottom: 0;
   display: flex !important;
 }
 
 /* Fix for Firefox */
 @supports (-moz-appearance:none) {
   .video-container {
-    margin-bottom: 50px;
+    margin-bottom: 0px;
   }
   
   video {
-    margin-bottom: 36px;
+    margin-bottom: 0px;
   }
 }
 
 /* Fix for mobile devices */
 @media (max-width: 768px) {
   .video-container {
-    padding-bottom: 60px; /* Extra padding on mobile */
+    padding-bottom: 0px; /* Removed extra padding on mobile */
   }
   
   .video-player-container {
-    margin-bottom: 50px;
+    margin-bottom: 0px;
   }
   
   video::-webkit-media-controls-panel {
-    padding-bottom: 20px !important;
+    padding-bottom: 0px !important;
   }
 }
