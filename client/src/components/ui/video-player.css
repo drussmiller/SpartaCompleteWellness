@@ -4,9 +4,9 @@
 .video-player-container {
   width: 100%;
   position: relative;
-  aspect-ratio: 16 / 9;
   display: block;
   margin-bottom: 45px; /* Add space for controls */
+  min-height: 200px; /* Minimum height while loading */
 }
 
 /* Video styles to ensure controls are visible */
@@ -16,6 +16,7 @@
   max-height: none !important;
   display: block;
   margin-bottom: 36px; /* Make space for controls */
+  object-fit: contain; /* Maintain aspect ratio */
 }
 
 /* Ensure the container doesn't cut off controls */
