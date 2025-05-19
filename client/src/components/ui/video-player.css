@@ -6,11 +6,9 @@
   position: relative;
   display: block;
   min-height: 50px;
-  margin: 0;
+  margin: -15px 0;
   padding: 0;
   line-height: 0;
-  border: 2px solid #666;
-  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -27,9 +25,9 @@
 .video-container {
   position: relative;
   width: 100%;
-  padding-bottom: 0; /* No padding */
-  margin-bottom: 0; /* No margin */
-  overflow: visible !important; /* Ensure controls aren't hidden */
+  padding: 0;
+  margin: 0;
+  overflow: visible !important;
 }
 
 /* Special styling for the video element itself */
