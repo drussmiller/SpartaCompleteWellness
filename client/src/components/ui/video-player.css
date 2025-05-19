@@ -6,6 +6,8 @@
   position: relative;
   display: block;
   min-height: 200px; /* Minimum height while loading */
+  margin-bottom: -2px; /* Remove gap between video and bottom content */
+  line-height: 0; /* Remove any line-height spacing */
 }
 
 /* Video styles to ensure controls are visible */
