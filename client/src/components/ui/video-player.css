@@ -23,7 +23,8 @@
 .video-container {
   position: relative;
   width: 100%;
-  padding-bottom: 45px; /* Make room for video controls */
+  padding-bottom: 0; /* Remove padding */
+  margin-bottom: -6px; /* Remove gap between video and content */
   overflow: visible !important; /* Ensure controls aren't hidden */
 }
 
@@ -35,7 +36,7 @@ video {
   display: block;
 }
 
-/* Make sure controls remain visible */
+/* Make sure controls remain visible  */
 video::-webkit-media-controls-panel {
   display: flex !important;
   opacity: 1 !important;
