@@ -329,9 +329,7 @@ export function VideoPlayer({
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
             maxHeight: "none", 
-            width: "100%",
-            marginBottom: "40px", /* Ensure space for controls */
-            paddingBottom: "36px" /* Extra padding to prevent controls being cut off */
+            width: "100%"
           }}
         />
       </div>
