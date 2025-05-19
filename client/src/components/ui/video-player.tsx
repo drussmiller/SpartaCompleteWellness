@@ -271,7 +271,7 @@ export function VideoPlayer({
     <div 
       ref={containerRef}
       className={cn("relative rounded-md overflow-visible", className)}
-      style={{ marginBottom: "40px" }} /* Only add bottom margin */
+      style={{ margin: 0 }}
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
