@@ -5,9 +5,10 @@
   width: 100%;
   position: relative;
   display: block;
-  min-height: 50px; /* Reduced minimum height while loading */
-  margin-bottom: 0; /* No extra margin */
-  line-height: 0; /* Remove any line-height spacing */
+  min-height: 50px;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
 }
 
 /* Video styles to ensure controls are visible */
