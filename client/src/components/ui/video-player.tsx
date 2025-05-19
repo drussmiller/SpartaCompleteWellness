@@ -270,18 +270,18 @@ export function VideoPlayer({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative rounded-md overflow-hidden w-full", className)}
-      style={{ marginBottom: "0px" }} /* Remove bottom margin */
+      className={cn("relative rounded-md overflow-visible", className)}
+      style={{ aspectRatio: "16/9", marginBottom: "40px" }} /* Add aspect ratio and bottom margin */
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full bg-white">
+        <div className="relative w-full h-full min-h-[200px] bg-gray-800">
           {/* Only render img if we have a valid poster and no error */}
           {simplifiedPoster && !posterError ? (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-auto object-contain cursor-pointer" /* Match exactly what's in the image */
+              className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
@@ -317,20 +317,21 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div className={cn("w-full video-wrapper bg-white", showVideo ? "block" : "hidden")}>
+      <div className={cn("w-full h-full video-wrapper", showVideo ? "block" : "hidden")}>
         <video
           ref={videoRef}
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-auto object-contain" /* Allow natural height */
+          className="w-full h-full object-contain" /* Ensure video fills container properly */
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
+            maxHeight: "none", 
             width: "100%",
-            marginBottom: "0px", /* Match UI in screenshot */
-            paddingBottom: "0px" /* Reduce padding to match image height */
+            marginBottom: "40px", /* Ensure space for controls */
+            paddingBottom: "36px" /* Extra padding to prevent controls being cut off */
           }}
         />
       </div>
