@@ -20,7 +20,11 @@ const processMediaUrl = (post: any) => {
           throw new Error(`Failed to fetch post: ${response.status}`);
         }
         const data = await response.json();
-        return processMediaUrl(data);
+        if (data?.mediaUrl) {
+          const { createDirectDownloadUrl } = await import('../../lib/object-storage-utils');
+          data.mediaUrl = createDirectDownloadUrl(data.mediaUrl);
+        }
+        return data;
       } catch (error) {
         console.error("Error fetching post:", error);
         throw error;
