@@ -38,10 +38,10 @@ function isLikelyVideo(url: string, content?: string | null): boolean {
 
   // Normalize content to undefined instead of null
   const normalizedContent = content === null ? undefined : content;
-  
+
   // Check file extension
   const urlLower = url.toLowerCase();
-  
+
   // Common video extensions
   if (urlLower.endsWith('.mp4') || 
       urlLower.endsWith('.mov') || 
@@ -50,12 +50,12 @@ function isLikelyVideo(url: string, content?: string | null): boolean {
       urlLower.endsWith('.mkv')) {
     return true;
   }
-  
+
   // Check for [VIDEO] marker in content
   if (normalizedContent && normalizedContent.includes('[VIDEO]')) {
     return true;
   }
-  
+
   // Check for video paths in URL
   if (urlLower.includes('/videos/') || 
       urlLower.includes('/video/') ||
@@ -76,8 +76,16 @@ function isLikelyVideo(url: string, content?: string | null): boolean {
   ) {
     return true;
   }
-  
+
   return false;
+}
+
+// Utility function to convert URLs to links
+function convertUrlsToLinks(text: string): string {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, (url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
 }
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
@@ -87,31 +95,31 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
-  
+
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
-  
+
   // Check if this post should be displayed as a video
   const shouldShowAsVideo = useMemo(() => {
     if (post.type === 'memory_verse') return true;
-    
+
     // For miscellaneous posts, check more aggressively for video markers
     if (post.type === 'miscellaneous' && post.mediaUrl) {
       // Always check for the is_video flag (set during upload)
       if (post.is_video) {
         return true;
       }
-      
+
       // Fall back to URL pattern detection
       return isLikelyVideo(post.mediaUrl, post.content || undefined);
     }
-    
+
     // For any post with a MOV file, force video display
     if (post.mediaUrl && post.mediaUrl.toLowerCase().endsWith('.mov')) {
       return true;
     }
-    
+
     return false;
   }, [post.type, post.mediaUrl, post.content, post.is_video]);
 
@@ -128,7 +136,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   // Comment count for this post
   const { count: commentCount } = useCommentCount(post.id);
-  
+
   // Delete post mutation
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -137,10 +145,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     onSuccess: () => {
       // Post deletion success - no toast notification as requested
       console.log("Post deleted successfully:", post.id);
-      
+
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      
+
       // If this was a prayer post, also invalidate the prayer requests cache
       if (post.type === "prayer") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
@@ -163,19 +171,19 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         (post.type === 'memory_verse' || 
          (post.type === 'miscellaneous' && post.is_video)) && 
         post.mediaUrl.toLowerCase().endsWith('.mov')) {
-      
+
       console.log(`${post.type} video post detected, generating thumbnails:`, post.id);
-      
+
       // Choose the appropriate API endpoint based on post type
       const endpoint = post.type === 'memory_verse' 
         ? '/api/memory-verse-thumbnails'
         : '/api/object-storage/generate-thumbnail';
-      
+
       // Add the file URL for miscellaneous posts
       const url = post.type === 'memory_verse'
         ? endpoint
         : `${endpoint}?fileUrl=${encodeURIComponent(post.mediaUrl)}`;
-      
+
       // Call the thumbnail generation API
       fetch(url)
         .then(response => response.json())
@@ -189,16 +197,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         });
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
-  
+
   // Use direct download URL for images from Object Storage
   const getImageUrl = (url: string | null): string => {
     if (!url) return '';
-    
+
     // Check if this is an Object Storage URL
     if (url.includes('uploads/') || url.includes('thumbnails/')) {
       return createDirectDownloadUrl(url);
     }
-    
+
     // For external URLs, use as-is
     return url;
   };
@@ -254,7 +262,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       {post.content && (
         <div className="px-4 py-2">
-          <p className="whitespace-pre-wrap break-words text-sm">{post.content}</p>
+          <p 
+            className="whitespace-pre-wrap break-words text-sm"
+            dangerouslySetInnerHTML={{ 
+              __html: convertUrlsToLinks(post.content || '') 
+            }}
+          />
         </div>
       )}
 
@@ -277,13 +290,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   }}
                   onError={(error: Error) => {
                     console.error(`Error loading video for post ${post.id}:`, error);
-                    
+
                     // Try with different formats as fallback - first try directly with .jpg extension
                     const mediaUrl = post.mediaUrl || '';
                     if (mediaUrl.toLowerCase().endsWith('.mov')) {
                       const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
                       console.log(`Trying alternative thumbnail for video ${post.id}:`, baseName);
-                      
+
                       // Try to manually preload the correct thumbnail using image tag approach
                       const img = new Image();
                       img.onload = () => {
@@ -299,7 +312,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                           container.style.display = 'none';
                         }
                       };
-                      
+
                       // Try direct formats without using the utility functions
                       img.src = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseName.split('/').pop()}.poster.jpg`;
                     } else {
@@ -323,7 +336,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   // Simply hide the image container without any retries
                   // This is the most reliable approach with the strict Object Storage requirements
                   const img = e.currentTarget as HTMLImageElement;
-                  
+
                   // Hide the parent container if found
                   const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
                   if (mediaContainer) {
@@ -332,13 +345,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     // If container not found, hide the image itself
                     img.style.display = 'none';
                   }
-                  
+
                   // Also hide any background container
                   const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
                   if (bgContainer) {
                     bgContainer.style.display = 'none';
                   }
-                  
+
                   // Prevent further error handlers from firing
                   img.onerror = null;
                 }}

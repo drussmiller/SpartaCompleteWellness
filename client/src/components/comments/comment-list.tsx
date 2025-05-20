@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageCircle } from "lucide-react";
 import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
@@ -323,7 +324,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
+                <p 
+                  className="mt-1 whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ 
+                    __html: convertUrlsToLinks(comment.content || '') 
+                  }}
+                />
 
                 {/* Display media if present */}
                 {comment.mediaUrl && !comment.is_video && (

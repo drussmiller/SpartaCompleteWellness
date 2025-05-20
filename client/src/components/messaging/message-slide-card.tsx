@@ -9,6 +9,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 
@@ -554,7 +555,12 @@ export function MessageSlideCard() {
                         }`}
                       >
                         {message.content && (
-                          <p className="break-words">{message.content}</p>
+                          <p 
+                            className="break-words"
+                            dangerouslySetInnerHTML={{ 
+                              __html: convertUrlsToLinks(message.content || '') 
+                            }}
+                          />
                         )}
                         {/* Handle both images and videos */}
                         {(message.imageUrl || message.mediaUrl) && (

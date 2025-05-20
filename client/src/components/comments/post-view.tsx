@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageCircle } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
@@ -27,7 +28,12 @@ export function PostView({ post }: PostViewProps) {
             </div>
             <div className="mt-2 border-t border-gray-200"></div>
           </div>
-          <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
+          <p 
+              className="mt-2 whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ 
+                __html: convertUrlsToLinks(post.content || '') 
+              }}
+            />
 
           {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
