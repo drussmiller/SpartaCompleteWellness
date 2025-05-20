@@ -41,7 +41,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     const dateB = new Date(b.createdAt || 0);
     return dateA.getTime() - dateB.getTime();
   });
-  
+
   const [comments, setComments] = useState(sortedInitialComments);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
@@ -311,11 +311,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card
-              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
-              onClick={() => {
-                setSelectedComment(comment.id);
-                setIsActionsOpen(true);
-              }}
+                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                onClick={(e) => {
+                  // Don't show menu if clicking on a link
+                  if (e.target instanceof HTMLElement && (
+                    e.target.tagName === 'A' || 
+                    e.target.closest('a')
+                  )) {
+                    return;
+                  }
+                  setSelectedComment(comment.id);
+                  setIsActionsOpen(true);
+                }}
             >
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
