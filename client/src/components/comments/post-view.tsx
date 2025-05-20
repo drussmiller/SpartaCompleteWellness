@@ -44,7 +44,7 @@ export function PostView({ post }: PostViewProps) {
           {post.mediaUrl && post.is_video && (
             <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
               <VideoPlayer
-                src={post.mediaUrl}
+                src={createDirectDownloadUrl(post.mediaUrl)}
                 poster={getThumbnailUrl(post.mediaUrl, 'medium')}
                 className="w-full video-player-container rounded-md"
                 preload="metadata"
