@@ -7,6 +7,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
+import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -32,7 +33,7 @@ export function PostView({ post }: PostViewProps) {
           {post.mediaUrl && !post.is_video && (
             <div className="mt-3 mb-3 flex justify-center">
               <img
-                src={post.mediaUrl}
+                src={createDirectDownloadUrl(post.mediaUrl)}
                 alt={post.type}
                 className="max-w-full h-auto object-contain rounded-md"
               />
@@ -96,12 +97,4 @@ export function PostView({ post }: PostViewProps) {
       </CardContent>
     </Card>
   );
-}
-
-const getImageUrl = (url: string | null): string => {
-  if (!url) return '';
-
-  // Use object storage utils to create correct URL
-  const { createDirectDownloadUrl } = require('../../lib/object-storage-utils');
-  return createDirectDownloadUrl(url);
 }
