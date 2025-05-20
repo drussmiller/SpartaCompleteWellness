@@ -27,7 +27,7 @@ export function PostView({ post }: PostViewProps) {
             <div className="mt-2 border-t border-gray-200"></div>
           </div>
           <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
-          
+
           {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
             <div className="mt-3 mb-3 flex justify-center">
@@ -38,7 +38,7 @@ export function PostView({ post }: PostViewProps) {
               />
             </div>
           )}
-          
+
           {/* Show video if present - using improved VideoPlayer component */}
           {post.mediaUrl && post.is_video && (
             <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
@@ -70,9 +70,9 @@ export function PostView({ post }: PostViewProps) {
               />
             </div>
           )}
-          
+
           <div className="border-t border-gray-200 mt-2"></div>
-          
+
           <div className="flex items-center gap-2 py-2">
             <ReactionButton postId={post.id} />
             <Button
@@ -96,4 +96,12 @@ export function PostView({ post }: PostViewProps) {
       </CardContent>
     </Card>
   );
+}
+
+const getImageUrl = (url: string | null): string => {
+  if (!url) return '';
+
+  // Use object storage utils to create correct URL
+  const { createDirectDownloadUrl } = require('../../lib/object-storage-utils');
+  return createDirectDownloadUrl(url);
 }
