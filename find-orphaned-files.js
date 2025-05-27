@@ -250,9 +250,13 @@ async function findOrphanedFiles() {
     console.log(`🗑️  ORPHANED FILES (safe to delete):\n`);
     
     let totalSize = 0;
+    let reportContent = `ORPHANED FILES REPORT\n`;
+    reportContent += `Generated: ${new Date().toISOString()}\n`;
+    reportContent += `=================================\n\n`;
     
     orphanedFiles.forEach((file, index) => {
       console.log(`${index + 1}. ${file.filename}`);
+      reportContent += `${index + 1}. ${file.filename}\n`;
       
       file.paths.forEach(filePath => {
         try {
@@ -260,27 +264,46 @@ async function findOrphanedFiles() {
           const sizeKB = (stats.size / 1024).toFixed(2);
           totalSize += stats.size;
           console.log(`   📁 ${filePath} (${sizeKB} KB)`);
+          reportContent += `   📁 ${filePath} (${sizeKB} KB)\n`;
         } catch (error) {
           console.log(`   📁 ${filePath} (size unknown)`);
+          reportContent += `   📁 ${filePath} (size unknown)\n`;
         }
       });
       console.log('');
+      reportContent += '\n';
     });
     
     const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
     console.log(`💾 Total space that can be freed: ${totalSizeMB} MB\n`);
     
-    // Generate deletion script
-    console.log(`💡 To delete these files, you can run:`);
-    console.log(`node delete-orphaned-files.js\n`);
+    reportContent += `\nSUMMARY:\n`;
+    reportContent += `- Total orphaned files: ${orphanedFiles.length}\n`;
+    reportContent += `- Total space that can be freed: ${totalSizeMB} MB\n\n`;
+    reportContent += `To delete these files, run: node delete-orphaned-files.js\n`;
+    
+    // Save detailed report
+    fs.writeFileSync('orphaned-files-report.txt', reportContent);
+    console.log(`📝 Detailed report saved to: orphaned-files-report.txt`);
     
     // Save list for deletion script
     const deletionList = orphanedFiles.flatMap(file => file.paths);
     fs.writeFileSync('orphaned-files-list.json', JSON.stringify(deletionList, null, 2));
     console.log(`📝 Orphaned files list saved to: orphaned-files-list.json`);
     
+    console.log(`\n💡 To delete these files, you can run:`);
+    console.log(`node delete-orphaned-files.js\n`);
+    
   } else {
     console.log(`✅ No orphaned files found! All files are properly referenced.`);
+    
+    const reportContent = `ORPHANED FILES REPORT\n`;
+    reportContent += `Generated: ${new Date().toISOString()}\n`;
+    reportContent += `=================================\n\n`;
+    reportContent += `✅ No orphaned files found! All files are properly referenced.\n`;
+    
+    fs.writeFileSync('orphaned-files-report.txt', reportContent);
+    console.log(`📝 Report saved to: orphaned-files-report.txt`);
   }
   
   return orphanedFiles;
