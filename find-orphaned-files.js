@@ -1,7 +1,9 @@
 
-const fs = require('fs');
-const path = require('path');
-const { Client } = require('pg');
+import fs from 'fs';
+import path from 'path';
+import pg from 'pg';
+
+const { Client } = pg;
 
 // Database connection
 const pool = new Client({
@@ -297,10 +299,10 @@ async function findOrphanedFiles() {
   } else {
     console.log(`✅ No orphaned files found! All files are properly referenced.`);
     
-    const reportContent = `ORPHANED FILES REPORT\n`;
-    reportContent += `Generated: ${new Date().toISOString()}\n`;
-    reportContent += `=================================\n\n`;
-    reportContent += `✅ No orphaned files found! All files are properly referenced.\n`;
+    const reportContent = `ORPHANED FILES REPORT\n` +
+      `Generated: ${new Date().toISOString()}\n` +
+      `=================================\n\n` +
+      `✅ No orphaned files found! All files are properly referenced.\n`;
     
     fs.writeFileSync('orphaned-files-report.txt', reportContent);
     console.log(`📝 Report saved to: orphaned-files-report.txt`);
