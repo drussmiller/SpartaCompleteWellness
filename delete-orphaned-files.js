@@ -1,6 +1,6 @@
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 function deleteOrphanedFiles() {
   console.log('🗑️  Starting deletion of orphaned files...\n');
