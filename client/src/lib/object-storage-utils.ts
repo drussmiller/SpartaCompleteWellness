@@ -82,7 +82,7 @@ export async function listFiles(prefix: string): Promise<string[]> {
   try {
     // Clean prefix
     const cleanPrefix = prefix.startsWith('/') ? prefix.substring(1) : prefix;
-    const sharedPrefix = cleanPrefix.startsWith('shared/') ? cleanPrefix : `shared/${cleanPrefix}`;
+    const sharedPrefix = cleanPrefix.startsWith('shared/') ? cleanPrefix : `shared/${cleanPrefix}`;${cleanPrefix}`;
 
     const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(sharedPrefix)}`);
     if (response.ok) {
