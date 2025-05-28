@@ -198,26 +198,65 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Handle video thumbnails - simplified to prevent nesting
+  // Handle video thumbnails
   const getThumbnailUrl = (imageUrl: string) => {
     if (!imageUrl) return '';
 
-    console.log('PostCard getThumbnailUrl called with:', imageUrl);
+    console.log('getThumbnailUrl called with:', imageUrl);
+
+    // CRITICAL: Prevent ANY nested URL creation
+    if (imageUrl.includes('direct-download') || imageUrl.includes('fileUrl=')) {
+      console.error('BLOCKED: getThumbnailUrl received nested URL:', imageUrl);
+
+      // Try to extract the clean file path
+      let cleanPath = imageUrl;
+      let maxAttempts = 5;
+
+      while ((cleanPath.includes('fileUrl=') || cleanPath.includes('direct-download')) && maxAttempts > 0) {
+        maxAttempts--;
+        const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
+        if (fileUrlMatch) {
+          const extractedPath = decodeURIComponent(fileUrlMatch[1]);
+          console.log(`Extracting from nested URL: ${cleanPath} -> ${extractedPath}`);
+
+          if (extractedPath !== cleanPath && !extractedPath.includes('direct-download')) {
+            cleanPath = extractedPath;
+            console.log('Successfully extracted clean path:', cleanPath);
+            break;
+          } else if (extractedPath !== cleanPath) {
+            cleanPath = extractedPath;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+
+      // If we still have nesting after extraction, abort
+      if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
+        console.error('BLOCKED: Could not extract clean path, aborting thumbnail creation');
+        return '';
+      }
+
+      console.log('Using extracted clean path for thumbnail:', cleanPath);
+      imageUrl = cleanPath;
+    }
 
     // For videos, get the thumbnail instead of the video file
     if (imageUrl.toLowerCase().endsWith('.mov')) {
-      // Extract just the filename without path
-      const filename = imageUrl.split('/').pop() || imageUrl;
-      const baseName = filename.substring(0, filename.lastIndexOf('.'));
-      const thumbnailUrl = createDirectDownloadUrl(`shared/uploads/thumbnails/${baseName}.poster.jpg`);
-      console.log('PostCard created MOV thumbnail URL:', thumbnailUrl);
-      return thumbnailUrl;
+      const baseName = imageUrl.substring(0, imageUrl.lastIndexOf('.'));
+      const thumbnailPath = `thumbnails/${baseName}.poster.jpg`;
+      console.log('Creating video thumbnail URL:', thumbnailPath);
+      const result = createDirectDownloadUrl(thumbnailPath);
+      console.log('Video thumbnail URL result:', result);
+      return result;
     }
 
-    // For all other images, use the createDirectDownloadUrl function which now has strong nesting prevention
-    const finalUrl = createDirectDownloadUrl(imageUrl);
-    console.log('PostCard created final URL:', finalUrl);
-    return finalUrl;
+    console.log('Creating standard thumbnail URL for:', imageUrl);
+    const result = createDirectDownloadUrl(imageUrl);
+    console.log('Standard thumbnail URL result:', result);
+    return result;
   };
 
   // Helper function to get proper image URL

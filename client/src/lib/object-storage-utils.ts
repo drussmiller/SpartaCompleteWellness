@@ -1,4 +1,3 @@
-
 /**
  * Object Storage Utils
  * This file provides utility functions for working with Object Storage
@@ -22,86 +21,50 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // CRITICAL: Completely prevent any nested URL creation
+  // CRITICAL: Prevent ANY nested URL creation by detecting direct-download patterns
   if (key.includes('direct-download')) {
     console.error('BLOCKED: Attempted to create nested URL with:', key);
-    
+
     // Extract only the innermost file path by repeatedly extracting fileUrl parameters
     let cleanPath = key;
     let maxAttempts = 10; // Prevent infinite loops
-    
+
     while (cleanPath.includes('fileUrl=') && maxAttempts > 0) {
       maxAttempts--;
       const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
       if (fileUrlMatch) {
         const extractedPath = decodeURIComponent(fileUrlMatch[1]);
+        console.log(`Extracting nested path: ${cleanPath} -> ${extractedPath}`);
+
+        // If we successfully extracted a clean path without nesting, use it
         if (extractedPath !== cleanPath && !extractedPath.includes('direct-download')) {
           cleanPath = extractedPath;
+          console.log(`Successfully extracted clean path: ${cleanPath}`);
           break;
         } else if (extractedPath !== cleanPath) {
+          // Continue extracting if there's still nesting
           cleanPath = extractedPath;
         } else {
+          // No more extraction possible
           break;
         }
       } else {
         break;
       }
     }
-    
+
     // If we still have nested patterns after extraction, abort
     if (cleanPath.includes('direct-download')) {
       console.error('BLOCKED: Could not extract clean path from nested URL:', key);
       return '';
     }
-    
-    console.log('Extracted clean path from nested URL:', cleanPath);
-    
-    // Now process the clean path normally (fall through to rest of function)
+
+    console.log('Using extracted clean path:', cleanPath);
     key = cleanPath;
   }
 
-  // Extract the actual file path from any existing nested URLs
+  // Clean the key
   let cleanKey = key;
-
-  // Handle nested direct-download URLs - keep extracting until we get the actual path
-  let maxAttempts = 5; // Prevent infinite loops
-  while (cleanKey.includes('direct-download') && maxAttempts > 0) {
-    maxAttempts--;
-    
-    // Extract fileUrl parameter value
-    const fileUrlMatch = cleanKey.match(/fileUrl=([^&]+)/);
-    if (fileUrlMatch) {
-      const decodedUrl = decodeURIComponent(fileUrlMatch[1]);
-      // If the decoded URL is different from current, use it
-      if (decodedUrl !== cleanKey && !decodedUrl.includes('direct-download')) {
-        cleanKey = decodedUrl;
-        break;
-      } else if (decodedUrl !== cleanKey) {
-        cleanKey = decodedUrl;
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
-
-  // Handle other nested patterns
-  maxAttempts = 3;
-  while (cleanKey.includes('?fileUrl=') && maxAttempts > 0) {
-    maxAttempts--;
-    const match = cleanKey.match(/fileUrl=([^&]+)/);
-    if (match) {
-      const decodedUrl = decodeURIComponent(match[1]);
-      if (decodedUrl !== cleanKey) {
-        cleanKey = decodedUrl;
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
 
   // Remove any leading slash
   cleanKey = cleanKey.startsWith('/') ? cleanKey.substring(1) : cleanKey;
@@ -122,6 +85,14 @@ export function createDirectDownloadUrl(key: string | null): string {
     }
   }
 
+  // Final validation - make sure we don't have any nested patterns
+  if (cleanKey.includes('direct-download') || cleanKey.includes('fileUrl=')) {
+    console.error('FINAL VALIDATION FAILED: Clean key still contains nested patterns:', cleanKey);
+    return '';
+  }
+
+  console.log(`Creating clean URL: ${key} -> /api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`);
+
   // Return the clean URL
   return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`;
 }
@@ -138,6 +109,10 @@ export const createCleanFileUrl = createDirectDownloadUrl;
 export async function checkFileExists(key: string): Promise<boolean> {
   try {
     const url = createDirectDownloadUrl(key);
+    if (!url) {
+      console.error('checkFileExists: Could not create valid URL for key:', key);
+      return false;
+    }
     const response = await fetch(url, { method: 'HEAD' });
     return response.ok;
   } catch (error) {
