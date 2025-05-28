@@ -137,7 +137,30 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     }
     
     // If we reach here, we couldn't find the file in Object Storage
-    // No longer check filesystem as requested by user
+    // Fall back to checking local filesystem as a temporary solution
+    try {
+      const filename = cleanKey.split('/').pop() || cleanKey;
+      const localPath = path.join(process.cwd(), 'uploads', filename);
+      
+      console.log(`Found file at path: ${localPath}`);
+      
+      if (fs.existsSync(localPath)) {
+        const stats = fs.statSync(localPath);
+        console.log(`Got stats for file at ${localPath}: size = ${stats.size} bytes`);
+        
+        const contentType = getContentType(filename);
+        const fileBuffer = fs.readFileSync(localPath);
+        
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', stats.size.toString());
+        
+        console.log(`Successfully serving file from local filesystem: ${localPath}`);
+        return res.send(fileBuffer);
+      }
+    } catch (fsError) {
+      console.log(`Local filesystem error: ${fsError}`);
+    }
+    
     // Silent 404 response - don't log to reduce noise for expected 404s
     return res.status(404).json({
       success: false,
