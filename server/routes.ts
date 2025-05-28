@@ -1328,47 +1328,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         mediaUrl = null;
       } else if (req.file) {
         try {
-          // Use SpartaObjectStorage for file handling
+          // Use SpartaObjectStorage for direct buffer upload (no local files)
           const { spartaStorage } = await import('./sparta-object-storage');
           
-          // Verify the file exists before proceeding
-          const filePath = req.file.path;
-          if (fs.existsSync(filePath)) {
-            // Handle video files differently
-            const isVideo = req.file.mimetype.startsWith('video/');
-            
-            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
-            
-            // Store the file using SpartaObjectStorage (used for both images and videos)
-            const fileInfo = await spartaStorage.storeFile(
-              filePath,
-              req.file.originalname,
-              req.file.mimetype,
-              isVideo // Pass flag for video handling
-            );
-            
-            mediaUrl = fileInfo.url;
-            mediaProcessed = true;
-            
-            if (isVideo) {
-              logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
-            } else {
-              logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+          // Handle video files differently
+          const isVideo = req.file.mimetype.startsWith('video/');
+          
+          logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
+          
+          // Store the file directly from memory buffer to Object Storage
+          const fileInfo = await spartaStorage.storeFileFromBuffer(
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype,
+            isVideo
+          );
+          
+          mediaUrl = fileInfo.objectStorageUrl;
+          mediaProcessed = true;
+          
+          if (isVideo) {
+            logger.info(`Video file stored successfully in Object Storage: ${fileInfo.objectStorageUrl}`);
+          } else {
+            logger.info(`Image file stored successfully in Object Storage: ${fileInfo.objectStorageUrl}`);
+            if (fileInfo.thumbnailUrl) {
               logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
             }
-            
-            // We can remove the original uploaded file as SpartaObjectStorage has copied it
-            try {
-              fs.unlinkSync(filePath);
-              logger.info(`Removed original temporary file at ${filePath}`);
-            } catch (unlinkErr) {
-              logger.warn(`Could not remove temporary file: ${unlinkErr instanceof Error ? unlinkErr.message : 'Unknown error'}`);
-            }
-          } else {
-            logger.error(`Media file not found at expected path: ${filePath}`);
-            // Don't use any fallback image
-            mediaUrl = null;
-            logger.info(`No media found for post type: ${postData.type}`);
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
@@ -1390,7 +1375,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           userId: req.user.id,
           type: postData.type,
           content: postData.content?.trim() || '',
-          mediaUrl: mediaUrl,
+          image_url: mediaUrl,
           points: points,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
