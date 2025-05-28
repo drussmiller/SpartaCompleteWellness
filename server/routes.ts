@@ -38,27 +38,9 @@ import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 
-// Configure multer for file uploads
-const multerStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, './uploads/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
-
-// Make sure upload directory exists
-import fs from 'fs';
-import path from 'path';
-const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
+// Configure multer for memory storage (no local files)
 const upload = multer({
-  storage: multerStorage,
+  storage: multer.memoryStorage(),
   limits: { 
     fileSize: 100 * 1024 * 1024, // 100MB limit for video uploads
     fieldSize: 25 * 1024 * 1024 // 25MB per field
