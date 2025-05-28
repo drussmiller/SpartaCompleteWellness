@@ -25,34 +25,49 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Extract the actual file path from any existing nested URLs
   let cleanKey = key;
 
-  // Handle nested direct-download URLs
-  if (cleanKey.includes('direct-download?fileUrl=')) {
+  // Handle nested direct-download URLs - keep extracting until we get the actual path
+  while (cleanKey.includes('direct-download?fileUrl=')) {
     const match = cleanKey.match(/fileUrl=([^&]+)/);
     if (match) {
       cleanKey = decodeURIComponent(match[1]);
+    } else {
+      break;
     }
   }
 
   // Handle other nested patterns
-  if (cleanKey.includes('?fileUrl=')) {
+  while (cleanKey.includes('?fileUrl=')) {
     const match = cleanKey.match(/fileUrl=([^&]+)/);
     if (match) {
       cleanKey = decodeURIComponent(match[1]);
+    } else {
+      break;
     }
   }
 
   // Remove any leading slash
   cleanKey = cleanKey.startsWith('/') ? cleanKey.substring(1) : cleanKey;
 
-  // Remove any path prefixes that might have gotten duplicated
-  cleanKey = cleanKey.replace(/^(shared\/)?uploads\//, '');
-  cleanKey = cleanKey.replace(/^(shared\/)?thumbnails\//, '');
+  // Clean up duplicate path segments
+  cleanKey = cleanKey.replace(/^(shared\/)+/, 'shared/');
+  cleanKey = cleanKey.replace(/^(uploads\/)+/, 'uploads/');
+  cleanKey = cleanKey.replace(/^(thumbnails\/)+/, 'thumbnails/');
 
-  // Always use the shared path for consistency
-  const finalKey = `shared/uploads/${cleanKey}`;
+  // Ensure we have just the filename if there are nested paths
+  if (cleanKey.includes('/') && !cleanKey.startsWith('shared/')) {
+    // Extract just the filename from paths like "uploads/filename" or "thumbnails/filename"
+    const pathParts = cleanKey.split('/');
+    const filename = pathParts[pathParts.length - 1];
+    cleanKey = filename;
+  }
+
+  // Ensure proper shared path structure
+  if (!cleanKey.startsWith('shared/')) {
+    cleanKey = `shared/uploads/${cleanKey}`;
+  }
 
   // Return the clean URL
-  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalKey)}`;
+  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`;
 }
 
 /**

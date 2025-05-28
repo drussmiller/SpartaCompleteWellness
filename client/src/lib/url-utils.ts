@@ -19,7 +19,7 @@ function getFilenameFromUrl(url: string): string {
       return decodedUrl.split('/').pop() || '';
     }
   }
-  
+
   // Handle regular paths
   return url.split('/').pop() || '';
 }
@@ -46,7 +46,7 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
   }
 
   // Import the createDirectDownloadUrl function
-  const { createDirectDownloadUrl } = require('./object-storage-utils');
+  const { createCleanFileUrl } = require('./object-storage-utils');
 
   // For videos, we want to get the thumbnail, not the video itself
   if (isVideoFile(mediaUrl)) {
@@ -56,14 +56,77 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
 
     // For MOV files, prioritize .poster.jpg thumbnails
     if (filename.toLowerCase().endsWith('.mov')) {
-      return createDirectDownloadUrl(`thumbnails/${baseFilename}.poster.jpg`);
+      return createCleanFileUrl(`thumbnails/${baseFilename}.poster.jpg`);
     }
 
     // For other videos, use standard thumbnail naming
-    return createDirectDownloadUrl(`thumbnails/thumb-${filename}.jpg`);
+    return createCleanFileUrl(`thumbnails/thumb-${filename}.jpg`);
   }
 
   // For images, create a thumbnail version
   const filename = getFilenameFromUrl(mediaUrl);
-  return createDirectDownloadUrl(`thumbnails/thumb-${filename}`);
+  return createCleanFileUrl(`thumbnails/thumb-${filename}`);
+}
+
+/**
+ * Creates a clean URL for accessing files from Object Storage
+ * This function handles various URL formats and ensures proper routing
+ */
+export function createCleanFileUrl(url: string | null): string {
+  if (!url) return '';
+
+  // If this is already a complete direct download URL, return as-is
+  if (url.startsWith('/api/object-storage/direct-download')) {
+    return url;
+  }
+
+  // If this is a full URL (starts with http), return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  // Extract the actual file path from any existing nested URLs
+  let cleanPath = url;
+
+  // Handle nested direct-download URLs - extract the innermost fileUrl
+  while (cleanPath.includes('direct-download?fileUrl=')) {
+    const match = cleanPath.match(/fileUrl=([^&]+)/);
+    if (match) {
+      cleanPath = decodeURIComponent(match[1]);
+    } else {
+      break;
+    }
+  }
+
+  // Handle other nested patterns
+  while (cleanPath.includes('?fileUrl=')) {
+    const match = cleanPath.match(/fileUrl=([^&]+)/);
+    if (match) {
+      cleanPath = decodeURIComponent(match[1]);
+    } else {
+      break;
+    }
+  }
+
+  // Remove any leading slash
+  cleanPath = cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath;
+
+  // Clean up any duplicate path segments
+  cleanPath = cleanPath.replace(/^(shared\/)+/, 'shared/');
+  cleanPath = cleanPath.replace(/^(uploads\/)+/, 'uploads/');
+  cleanPath = cleanPath.replace(/^(thumbnails\/)+/, 'thumbnails/');
+
+  // Ensure proper shared path structure
+  if (!cleanPath.startsWith('shared/')) {
+    if (cleanPath.startsWith('uploads/')) {
+      cleanPath = `shared/${cleanPath}`;
+    } else if (cleanPath.startsWith('thumbnails/')) {
+      cleanPath = `shared/uploads/${cleanPath}`;
+    } else {
+      cleanPath = `shared/uploads/${cleanPath}`;
+    }
+  }
+
+  // Return the clean URL
+  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
 }
