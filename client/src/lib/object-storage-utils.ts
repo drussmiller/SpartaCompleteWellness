@@ -16,6 +16,22 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
   
+  // If the key contains query parameters from a nested URL, extract the actual file path
+  if (key.includes('fileUrl=')) {
+    const match = key.match(/fileUrl=([^&]+)/);
+    if (match) {
+      key = decodeURIComponent(match[1]);
+    }
+  }
+  
+  // Remove any directory traversal or nested path issues
+  if (key.includes('direct-download?fileUrl=')) {
+    const parts = key.split('direct-download?fileUrl=');
+    if (parts.length > 1) {
+      key = decodeURIComponent(parts[1]);
+    }
+  }
+  
   // Remove leading slash if present (keys in Object Storage don't start with /)
   const cleanKey = key.startsWith('/') ? key.substring(1) : key;
   

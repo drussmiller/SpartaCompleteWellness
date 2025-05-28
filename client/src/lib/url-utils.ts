@@ -8,6 +8,32 @@ export function convertUrlsToLinks(text: string): string {
 }
 
 /**
+ * Helper function to extract filename from URL or path
+ */
+function getFilenameFromUrl(url: string): string {
+  // Handle direct download URLs
+  if (url.includes('/api/object-storage/direct-download')) {
+    const match = url.match(/fileUrl=([^&]+)/);
+    if (match) {
+      const decodedUrl = decodeURIComponent(match[1]);
+      return decodedUrl.split('/').pop() || '';
+    }
+  }
+  
+  // Handle regular paths
+  return url.split('/').pop() || '';
+}
+
+/**
+ * Helper function to check if a file is a video
+ */
+function isVideoFile(url: string): boolean {
+  const filename = getFilenameFromUrl(url);
+  const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+  return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+}
+
+/**
  * Get the thumbnail URL for a given media URL
  * This function handles different file types and generates appropriate thumbnail URLs
  */
@@ -23,6 +49,9 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
   if (mediaUrl.includes('/api/object-storage/direct-download')) {
     return mediaUrl;
   }
+
+  // Import the createDirectDownloadUrl function
+  const { createDirectDownloadUrl } = require('./object-storage-utils');
 
   // For videos, we want to get the thumbnail, not the video itself
   if (isVideoFile(mediaUrl)) {
