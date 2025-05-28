@@ -1372,10 +1372,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const post = await db
         .insert(posts)
         .values({
-          userId: req.user.id,
+          userId: req.user!.id,
           type: postData.type,
           content: postData.content?.trim() || '',
-          image_url: mediaUrl,
+          mediaUrl: mediaUrl,
           points: points,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
