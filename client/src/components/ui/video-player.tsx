@@ -186,8 +186,8 @@ export function VideoPlayer({
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px] bg-gray-800">
-          {/* Only render img if we have a valid poster and no error */}
-          {simplifiedPoster && !posterError ? (
+          {/* Always render img if we have a poster - no longer hiding on errors */}
+          {simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
@@ -195,7 +195,9 @@ export function VideoPlayer({
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
-          ) : (
+          )}
+          {/* Show fallback only if no poster URL at all */}
+          {!simplifiedPoster && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
               className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
