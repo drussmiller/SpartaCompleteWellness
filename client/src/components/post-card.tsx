@@ -207,24 +207,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return mediaUrl;
     }
 
-    // If it's already a direct download URL, return as-is to prevent nesting
-    if (mediaUrl.includes('/api/object-storage/direct-download')) {
-      return mediaUrl;
-    }
-
-    // Clean the URL to ensure it doesn't have nested paths
-    let cleanUrl = mediaUrl;
-    
-    // Remove any duplicate path segments that might cause issues
-    if (cleanUrl.includes('direct-download?fileUrl=')) {
-      const match = cleanUrl.match(/fileUrl=([^&]+)/);
-      if (match) {
-        cleanUrl = decodeURIComponent(match[1]);
-      }
-    }
-
-    // Use the object storage utility for all files
-    return createDirectDownloadUrl(cleanUrl);
+    // Use the object storage utility which handles all the cleaning
+    return createDirectDownloadUrl(mediaUrl);
   };
 
   return (
