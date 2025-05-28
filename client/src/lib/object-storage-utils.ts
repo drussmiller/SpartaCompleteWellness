@@ -22,24 +22,57 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
+  // Additional validation to catch malformed URLs early
+  if (key.includes('direct-download') && !key.startsWith('/api/object-storage/')) {
+    console.warn('Malformed URL detected, extracting clean path:', key);
+    // Extract just the actual file path
+    const fileUrlMatch = key.match(/fileUrl=([^&]+)/);
+    if (fileUrlMatch) {
+      const cleanPath = decodeURIComponent(fileUrlMatch[1]);
+      if (!cleanPath.includes('direct-download')) {
+        return createDirectDownloadUrl(cleanPath);
+      }
+    }
+  }
+
   // Extract the actual file path from any existing nested URLs
   let cleanKey = key;
 
   // Handle nested direct-download URLs - keep extracting until we get the actual path
-  while (cleanKey.includes('direct-download?fileUrl=')) {
-    const match = cleanKey.match(/fileUrl=([^&]+)/);
-    if (match) {
-      cleanKey = decodeURIComponent(match[1]);
+  let maxAttempts = 5; // Prevent infinite loops
+  while (cleanKey.includes('direct-download') && maxAttempts > 0) {
+    maxAttempts--;
+    
+    // Extract fileUrl parameter value
+    const fileUrlMatch = cleanKey.match(/fileUrl=([^&]+)/);
+    if (fileUrlMatch) {
+      const decodedUrl = decodeURIComponent(fileUrlMatch[1]);
+      // If the decoded URL is different from current, use it
+      if (decodedUrl !== cleanKey && !decodedUrl.includes('direct-download')) {
+        cleanKey = decodedUrl;
+        break;
+      } else if (decodedUrl !== cleanKey) {
+        cleanKey = decodedUrl;
+      } else {
+        break;
+      }
     } else {
       break;
     }
   }
 
   // Handle other nested patterns
-  while (cleanKey.includes('?fileUrl=')) {
+  maxAttempts = 3;
+  while (cleanKey.includes('?fileUrl=') && maxAttempts > 0) {
+    maxAttempts--;
     const match = cleanKey.match(/fileUrl=([^&]+)/);
     if (match) {
-      cleanKey = decodeURIComponent(match[1]);
+      const decodedUrl = decodeURIComponent(match[1]);
+      if (decodedUrl !== cleanKey) {
+        cleanKey = decodedUrl;
+      } else {
+        break;
+      }
     } else {
       break;
     }

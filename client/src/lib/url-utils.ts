@@ -89,20 +89,37 @@ export function createCleanFileUrl(url: string | null): string {
   let cleanPath = url;
 
   // Handle nested direct-download URLs - extract the innermost fileUrl
-  while (cleanPath.includes('direct-download?fileUrl=')) {
-    const match = cleanPath.match(/fileUrl=([^&]+)/);
-    if (match) {
-      cleanPath = decodeURIComponent(match[1]);
+  let maxAttempts = 5;
+  while (cleanPath.includes('direct-download') && maxAttempts > 0) {
+    maxAttempts--;
+    const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
+    if (fileUrlMatch) {
+      const decodedUrl = decodeURIComponent(fileUrlMatch[1]);
+      if (decodedUrl !== cleanPath && !decodedUrl.includes('direct-download')) {
+        cleanPath = decodedUrl;
+        break;
+      } else if (decodedUrl !== cleanPath) {
+        cleanPath = decodedUrl;
+      } else {
+        break;
+      }
     } else {
       break;
     }
   }
 
   // Handle other nested patterns
-  while (cleanPath.includes('?fileUrl=')) {
+  maxAttempts = 3;
+  while (cleanPath.includes('?fileUrl=') && maxAttempts > 0) {
+    maxAttempts--;
     const match = cleanPath.match(/fileUrl=([^&]+)/);
     if (match) {
-      cleanPath = decodeURIComponent(match[1]);
+      const decodedUrl = decodeURIComponent(match[1]);
+      if (decodedUrl !== cleanPath) {
+        cleanPath = decodedUrl;
+      } else {
+        break;
+      }
     } else {
       break;
     }
