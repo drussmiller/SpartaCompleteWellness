@@ -204,27 +204,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
     console.log('getThumbnailUrl called with:', imageUrl);
 
-    // If it's already a direct-download URL, return as-is to prevent nesting
-    if (imageUrl.includes('/api/object-storage/direct-download')) {
-      console.log('Thumbnail URL is already a direct-download URL, returning as-is');
-      return imageUrl;
-    }
-
-    // Clean the path to get just the filename
-    let cleanPath = imageUrl;
-    
-    // Remove any leading slash and path prefixes to get just the filename
-    cleanPath = cleanPath.replace(/^\/+/, ''); // Remove leading slashes
-    cleanPath = cleanPath.replace(/^shared\/uploads\//, ''); // Remove shared/uploads prefix
-    cleanPath = cleanPath.replace(/^uploads\//, ''); // Remove uploads prefix
-    cleanPath = cleanPath.replace(/^thumbnails\//, ''); // Remove thumbnails prefix
-    cleanPath = cleanPath.replace(/^thumb-/, ''); // Remove thumb- prefix
-
-    console.log('Clean file path extracted:', cleanPath);
+    // Extract just the filename from any path format
+    const filename = imageUrl.split('/').pop() || imageUrl;
+    console.log('Extracted filename:', filename);
 
     // For videos, create poster thumbnail path
-    if (cleanPath.toLowerCase().endsWith('.mov')) {
-      const baseName = cleanPath.substring(0, cleanPath.lastIndexOf('.'));
+    if (filename.toLowerCase().endsWith('.mov')) {
+      const baseName = filename.substring(0, filename.lastIndexOf('.'));
       const thumbnailKey = `shared/uploads/thumbnails/${baseName}.poster.jpg`;
       console.log('Creating video thumbnail with key:', thumbnailKey);
       const result = createDirectDownloadUrl(thumbnailKey);
@@ -233,7 +219,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
 
     // For regular images, create thumbnail path
-    const thumbnailKey = `shared/uploads/thumbnails/thumb-${cleanPath}`;
+    const thumbnailKey = `shared/uploads/thumbnails/thumb-${filename}`;
     console.log('Creating image thumbnail with key:', thumbnailKey);
     const result = createDirectDownloadUrl(thumbnailKey);
     console.log('Image thumbnail URL result:', result);
@@ -251,14 +237,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return mediaUrl;
     }
 
-    // If it's already a direct-download URL, return as-is to prevent nesting
-    if (mediaUrl.includes('/api/object-storage/direct-download')) {
-      console.log('PostCard: URL is already a direct-download URL, returning as-is');
-      return mediaUrl;
-    }
+    // Extract just the filename to avoid any path issues
+    const filename = mediaUrl.split('/').pop() || mediaUrl;
+    console.log('PostCard: Extracted filename:', filename);
 
-    // Clean the path and create the URL using the utility function
-    const result = createDirectDownloadUrl(mediaUrl);
+    // Create clean path for the file
+    const cleanPath = `shared/uploads/${filename}`;
+    const result = createDirectDownloadUrl(cleanPath);
     console.log('PostCard getImageUrl result:', result);
     return result;
   };
