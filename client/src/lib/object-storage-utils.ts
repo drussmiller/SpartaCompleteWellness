@@ -1,8 +1,4 @@
-/**
- * Object Storage Utils
- * This file provides utility functions for working with Object Storage
- */
-```typescript
+
 /**
  * Object Storage Utils
  * This file provides utility functions for working with Object Storage
