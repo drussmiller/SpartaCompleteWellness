@@ -171,61 +171,19 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
 export function getAlternativePosterUrls(mediaUrl: string | null): string[] {
   if (!mediaUrl) return [];
   
+  // Since we've confirmed the .poster.jpg format works, only return that format
   const alternatives: string[] = [];
   const timestamp = Date.now();
   
   try {
-    // Extract the filename from the media URL
     const urlParts = mediaUrl.split('/');
     const filename = urlParts[urlParts.length - 1];
     const fileBase = filename.split('.')[0];
-    const fileExt = filename.split('.').pop()?.toLowerCase();
     
-    // Try different paths and patterns in priority order
-    
-    // 1. First try the new format: thumb-[filename].jpg
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${fileBase}.jpg&v=${timestamp}`);
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/thumbnails/thumb-${fileBase}.jpg&v=${timestamp}`);
-    
-    // 2. Try with no prefix, just direct .jpg
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.jpg&v=${timestamp}`);
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/thumbnails/${fileBase}.jpg&v=${timestamp}`);
-    
-    // For backwards compatibility, also try the old formats:
-    if (fileExt === 'mov') {
-      // For MOV files, try the specific formats our thumbnail generator previously used
-      alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.mov.poster.jpg&v=${timestamp}`);
-      alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/${fileBase}.mov.poster.jpg&v=${timestamp}`);
-      alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.mov.poster.jpg&v=${timestamp}`);
-      alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/thumbnails/${fileBase}.mov.poster.jpg&v=${timestamp}`);
-    }
-    
-    // Now try the legacy formats for all video types
-    
-    // Try standard poster with .poster.jpg in various directories
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.poster.jpg&v=${timestamp}`);
+    // Only use the confirmed working format
     alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.poster.jpg&v=${timestamp}`);
     
-    // Try with thumb- prefix but legacy naming (.poster.jpg extension)
-    const thumbPosterFilename = `thumb-${fileBase}.poster.jpg`;
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbPosterFilename}&v=${timestamp}`);
-    
-    // Try with original file in root directories
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${fileBase}.jpg&v=${timestamp}`);
-    
-    // Try with video-specific naming pattern for any extension
-    if (fileExt) {
-      const videoSpecificFilename = `${fileBase}.${fileExt}.poster.jpg`;
-      alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/${videoSpecificFilename}&v=${timestamp}`);
-    }
-    
-    // 9. For maximum compatibility, also try with regular uploads directory (without shared)
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/${fileBase}.poster.jpg&v=${timestamp}`);
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=uploads/thumbnails/${fileBase}.poster.jpg&v=${timestamp}`);
-    
-    // Log all the alternatives we're going to try
-    console.log(`Generated ${alternatives.length} alternative poster URLs to try:`, 
-      alternatives.map(url => url.split('&v=')[0]).join('\n'));
+    console.log(`Generated ${alternatives.length} alternative poster URLs using confirmed working format`);
     
   } catch (error) {
     console.error('Error generating alternative poster URLs:', error);

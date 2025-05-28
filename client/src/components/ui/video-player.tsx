@@ -32,36 +32,16 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
   try {
     // Now handle clean URLs without nesting
     
-    // For poster.jpg files, extract base filename
+    // For poster.jpg files, the URL is already correct
     if (originalUrl.includes('.poster.jpg')) {
-      const parts = originalUrl.split('/');
-      let filename = parts.pop();
-      if (!filename) return originalUrl;
-      
-      // Extract base filename without the .poster.jpg part
-      const baseFilename = filename.replace('.poster.jpg', '');
-      console.log('Video player creating poster URL for baseFilename:', baseFilename);
-      
-      // Use the new thumbnail naming format
-      const posterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
-      console.log('Video player created poster URL:', posterUrl);
-      return posterUrl;
+      console.log('Video player: URL already has correct .poster.jpg format:', originalUrl);
+      return originalUrl;
     }
     
-    // If URL contains .mov or any other video extension, try the new naming pattern
+    // If URL contains .mov or any other video extension, it should already be handled by getVideoPoster
     if (originalUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
-      const parts = originalUrl.split('/');
-      const filename = parts.pop();
-      if (filename) {
-        // Extract base filename without the extension
-        const baseFilename = filename.split('.')[0];
-        console.log('Video player creating thumbnail for video baseFilename:', baseFilename);
-        
-        // Use the new thumbnail naming format
-        const posterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
-        console.log('Video player created video poster URL:', posterUrl);
-        return posterUrl;
-      }
+      console.log('Video player: Video URL detected, returning as-is:', originalUrl);
+      return originalUrl;
     }
     
     console.log('Video player returning original URL unchanged:', originalUrl);
