@@ -54,58 +54,52 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
     logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
     
-    // Create array of possible keys to try
+    // Create array of possible keys to try - comprehensive approach
     const keysToTry = [];
     
-    // Special handling for MOV files - check multiple formats
-    if (cleanKey.toLowerCase().endsWith('.mov')) {
-      // Try different extensions in preferred order
-      const svgKey = cleanKey.replace(/\.mov$/i, '.svg');
-      const jpgKey = cleanKey.replace(/\.mov$/i, '.jpg');
-      const pngKey = cleanKey.replace(/\.mov$/i, '.png');
-      
-      // If we're accessing a thumbnail, prioritize images over video
-      if (cleanKey.includes('/thumbnails/')) {
-        // Always check shared path first - SVG highest priority as it's our fallback format
-        if (!svgKey.startsWith('shared/')) {
-          keysToTry.push(`shared/${svgKey}`);
-        }
-        keysToTry.push(svgKey);
-        
-        // Then try JPG
-        if (!jpgKey.startsWith('shared/')) {
-          keysToTry.push(`shared/${jpgKey}`);
-        }
-        keysToTry.push(jpgKey);
-        
-        // Then PNG
-        if (!pngKey.startsWith('shared/')) {
-          keysToTry.push(`shared/${pngKey}`);
-        }
-        keysToTry.push(pngKey);
-      }
-    }
+    // Extract filename without path
+    const filename = cleanKey.split('/').pop() || cleanKey;
     
-    // Always check shared path first as that's our primary storage location
+    // Try the exact key as provided first
+    keysToTry.push(cleanKey);
+    
+    // Try with shared prefix if not already present
     if (!cleanKey.startsWith('shared/')) {
       keysToTry.push(`shared/${cleanKey}`);
     }
     
-    // Then try the original key
-    keysToTry.push(cleanKey);
+    // Try simple uploads path variations
+    keysToTry.push(`uploads/${filename}`);
+    keysToTry.push(`shared/uploads/${filename}`);
     
-    // For thumbnails, we may have keys with or without 'thumb-' prefix, so check both
-    if (cleanKey.includes('/thumbnails/') && !cleanKey.includes('/thumbnails/thumb-')) {
-      const pathParts = cleanKey.split('/thumbnails/');
-      if (pathParts.length === 2) {
-        const thumbKey = `${pathParts[0]}/thumbnails/thumb-${pathParts[1]}`;
-        keysToTry.push(thumbKey);
-        
-        // Also try with shared prefix if needed
-        if (!thumbKey.startsWith('shared/')) {
-          keysToTry.push(`shared/${thumbKey}`);
-        }
+    // Try environment-specific uploads (without shared prefix)
+    keysToTry.push(`uploads/${filename}`);
+    
+    // For thumbnails or poster files
+    if (filename.includes('thumb-') || filename.includes('poster') || cleanKey.includes('thumbnails')) {
+      keysToTry.push(`thumbnails/${filename}`);
+      keysToTry.push(`uploads/thumbnails/${filename}`);
+      keysToTry.push(`shared/uploads/thumbnails/${filename}`);
+      
+      // Also try without thumb- prefix if present
+      if (filename.startsWith('thumb-')) {
+        const baseFilename = filename.replace('thumb-', '');
+        keysToTry.push(`uploads/${baseFilename}`);
+        keysToTry.push(`shared/uploads/${baseFilename}`);
       }
+    }
+    
+    // For video files, try poster variations
+    if (filename.toLowerCase().endsWith('.mov')) {
+      const baseName = filename.substring(0, filename.lastIndexOf('.'));
+      ['jpg', 'png', 'svg'].forEach(ext => {
+        const posterName = `${baseName}.poster.${ext}`;
+        keysToTry.push(`uploads/${posterName}`);
+        keysToTry.push(`shared/uploads/${posterName}`);
+        keysToTry.push(`thumbnails/${posterName}`);
+        keysToTry.push(`uploads/thumbnails/${posterName}`);
+        keysToTry.push(`shared/uploads/thumbnails/${posterName}`);
+      });
     }
     
     // Log keys we're going to try
