@@ -309,11 +309,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       };
                       img.onerror = () => {
                         console.error('Alternative thumbnail failed to load');
-                        // Hide the container on all errors
-                        const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
-                        if (container) {
-                          container.style.display = 'none';
-                        }
+                        // No longer hiding containers - let images display even if some fail
                       };
 
                       // Try direct formats without using the utility functions
@@ -336,27 +332,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
                 onError={(e) => {
-                  // Simply hide the image container without any retries
-                  // This is the most reliable approach with the strict Object Storage requirements
-                  const img = e.currentTarget as HTMLImageElement;
-
-                  // Hide the parent container if found
-                  const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
-                  if (mediaContainer) {
-                    mediaContainer.style.display = 'none';
-                  } else {
-                    // If container not found, hide the image itself
-                    img.style.display = 'none';
-                  }
-
-                  // Also hide any background container
-                  const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
-                  if (bgContainer) {
-                    bgContainer.style.display = 'none';
-                  }
-
-                  // Prevent further error handlers from firing
-                  img.onerror = null;
+                  // No longer hiding images - let them display even if some fail to load
+                  console.log('Image load error, but not hiding container');
                 }}
               />
             )}
