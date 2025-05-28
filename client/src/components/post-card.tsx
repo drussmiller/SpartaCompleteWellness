@@ -204,40 +204,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
     console.log('getThumbnailUrl called with:', imageUrl);
 
-    // CRITICAL: Extract only the actual file path, no URLs
-    let cleanPath = imageUrl;
-
-    // If this contains any URL patterns, extract just the file path
-    if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
-      console.log('Extracting file path from URL:', cleanPath);
-      
-      // Extract the innermost fileUrl parameter
-      let maxAttempts = 5;
-      while (cleanPath.includes('fileUrl=') && maxAttempts > 0) {
-        maxAttempts--;
-        const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
-        if (fileUrlMatch) {
-          const extractedPath = decodeURIComponent(fileUrlMatch[1]);
-          if (extractedPath !== cleanPath && !extractedPath.includes('fileUrl=')) {
-            cleanPath = extractedPath;
-            break;
-          } else if (extractedPath !== cleanPath) {
-            cleanPath = extractedPath;
-          } else {
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-      
-      // If still contains URL patterns, abort
-      if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
-        console.error('Could not extract clean file path from:', imageUrl);
-        return '';
-      }
+    // If it's already a direct-download URL, return as-is to prevent nesting
+    if (imageUrl.includes('/api/object-storage/direct-download')) {
+      console.log('Thumbnail URL is already a direct-download URL, returning as-is');
+      return imageUrl;
     }
 
+    // Clean the path to get just the filename
+    let cleanPath = imageUrl;
+    
     // Remove any leading slash and path prefixes to get just the filename
     cleanPath = cleanPath.replace(/^\/+/, ''); // Remove leading slashes
     cleanPath = cleanPath.replace(/^shared\/uploads\//, ''); // Remove shared/uploads prefix
@@ -276,44 +251,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return mediaUrl;
     }
 
-    // CRITICAL: Extract only the actual file path, no URLs
-    let cleanPath = mediaUrl;
-
-    // If this contains any URL patterns, extract just the file path
-    if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
-      console.log('PostCard: Extracting file path from URL:', cleanPath);
-      
-      // Extract the innermost fileUrl parameter
-      let maxAttempts = 5;
-      while (cleanPath.includes('fileUrl=') && maxAttempts > 0) {
-        maxAttempts--;
-        const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
-        if (fileUrlMatch) {
-          const extractedPath = decodeURIComponent(fileUrlMatch[1]);
-          if (extractedPath !== cleanPath && !extractedPath.includes('fileUrl=')) {
-            cleanPath = extractedPath;
-            break;
-          } else if (extractedPath !== cleanPath) {
-            cleanPath = extractedPath;
-          } else {
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-      
-      // If still contains URL patterns, abort
-      if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
-        console.error('PostCard: Could not extract clean file path from:', mediaUrl);
-        return '';
-      }
+    // If it's already a direct-download URL, return as-is to prevent nesting
+    if (mediaUrl.includes('/api/object-storage/direct-download')) {
+      console.log('PostCard: URL is already a direct-download URL, returning as-is');
+      return mediaUrl;
     }
 
-    console.log('PostCard: Using clean path:', cleanPath);
-
-    // Use the cleaned path with object storage utility
-    const result = createDirectDownloadUrl(cleanPath);
+    // Clean the path and create the URL using the utility function
+    const result = createDirectDownloadUrl(mediaUrl);
     console.log('PostCard getImageUrl result:', result);
     return result;
   };

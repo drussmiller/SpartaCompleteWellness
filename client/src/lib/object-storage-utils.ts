@@ -85,6 +85,9 @@ export function createDirectDownloadUrl(key: string | null): string {
     }
   }
 
+  // Remove any double slashes that might have been created
+  cleanKey = cleanKey.replace(/\/+/g, '/');
+
   // Final validation - make sure we don't have any nested patterns
   if (cleanKey.includes('direct-download') || cleanKey.includes('fileUrl=')) {
     console.error('FINAL VALIDATION FAILED: Clean key still contains nested patterns:', cleanKey);
