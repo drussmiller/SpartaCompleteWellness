@@ -816,6 +816,75 @@ export class SpartaObjectStorage {
   }
 
   /**
+   * Store a file directly from memory buffer to Object Storage
+   * This bypasses local file creation entirely
+   * @param buffer File buffer
+   * @param filename Original filename
+   * @param mimeType File MIME type
+   * @param isVideo Whether this is a video file
+   * @returns Promise with file info and URLs
+   */
+  async storeFileFromBuffer(
+    buffer: Buffer,
+    filename: string,
+    mimeType: string,
+    isVideo: boolean = false
+  ): Promise<{
+    filename: string;
+    objectStorageUrl: string;
+    thumbnailUrl?: string;
+  }> {
+    if (!this.objectStorage) {
+      throw new Error('Object Storage not available');
+    }
+
+    // Generate unique filename to avoid conflicts
+    const uniqueFilename = `${Date.now()}-${uuidv4()}-${filename}`;
+    const sharedKey = `shared/uploads/${uniqueFilename}`;
+
+    try {
+      console.log(`Storing file directly to Object Storage: ${sharedKey}`);
+      
+      // Upload file buffer directly to Object Storage
+      await this.objectStorage.uploadFromBytes(sharedKey, buffer);
+      
+      const objectStorageUrl = `/api/serve-file?filename=${encodeURIComponent(uniqueFilename)}`;
+      
+      // Generate thumbnail if it's a video
+      let thumbnailUrl: string | undefined;
+      if (isVideo) {
+        try {
+          // For videos, we'll create a fallback SVG thumbnail immediately
+          // since we can't extract frames from a buffer directly
+          const svgThumbnail = this.createSvgPlaceholder(uniqueFilename, 'video');
+          const thumbnailFilename = `thumb-${uniqueFilename}.jpg`;
+          const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
+          
+          await this.objectStorage.uploadFromBytes(thumbnailKey, Buffer.from(svgThumbnail));
+          thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}&thumbnail=true`;
+          
+          console.log(`Created fallback thumbnail for video: ${thumbnailKey}`);
+        } catch (thumbError) {
+          console.error('Failed to create video thumbnail:', thumbError);
+          // Continue without thumbnail
+        }
+      }
+
+      console.log(`Successfully stored file in Object Storage: ${sharedKey}`);
+      
+      return {
+        filename: uniqueFilename,
+        objectStorageUrl,
+        thumbnailUrl
+      };
+      
+    } catch (error) {
+      console.error(`Failed to store file in Object Storage:`, error);
+      throw new Error(`Failed to upload file: ${error.message}`);
+    }
+  }
+
+  /**
    * Creates a thumbnail from a video file
    * @param videoPath Path to source video
    * @param targetPath Path to save thumbnail
