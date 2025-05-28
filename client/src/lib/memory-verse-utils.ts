@@ -113,33 +113,51 @@ export function getMemoryVersePoster(mediaUrl: string | null): string | undefine
 export function getVideoPoster(mediaUrl: string | null): string | undefined {
   if (!mediaUrl) return undefined;
   
+  console.log('getVideoPoster called with:', mediaUrl);
+  
+  // CRITICAL: Check for nested URLs first
+  if (mediaUrl.includes('direct-download')) {
+    console.warn('getVideoPoster received nested URL, extracting clean path:', mediaUrl);
+    const fileUrlMatch = mediaUrl.match(/fileUrl=([^&]+)/);
+    if (fileUrlMatch) {
+      const cleanPath = decodeURIComponent(fileUrlMatch[1]);
+      console.log('getVideoPoster extracted clean path:', cleanPath);
+      
+      if (!cleanPath.includes('direct-download')) {
+        return getVideoPoster(cleanPath); // Recursive call with clean path
+      } else {
+        console.error('getVideoPoster detected multiple levels of nesting, aborting:', cleanPath);
+        return undefined;
+      }
+    }
+    console.error('getVideoPoster could not extract clean path from:', mediaUrl);
+    return undefined;
+  }
+  
   // Extract the filename from the media URL
   const urlParts = mediaUrl.split('/');
   const filename = urlParts[urlParts.length - 1];
   const fileBase = filename.split('.')[0];
   const fileExt = filename.split('.').pop()?.toLowerCase() || '';
   
+  console.log('getVideoPoster processing filename:', filename, 'fileBase:', fileBase);
+  
   // Check if it's a video file (support more formats than just .mov)
   const isVideoFile = mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i);
-  if (!isVideoFile) return undefined;
+  if (!isVideoFile) {
+    console.log('getVideoPoster: Not a video file, returning undefined');
+    return undefined;
+  }
   
   // Add a random query parameter to bypass caching
   const timestamp = Date.now();
-  
-  // Determine the base directory part of the URL
-  let baseDir = '';
-  if (mediaUrl.includes('/shared/uploads/')) {
-    baseDir = 'shared/uploads/';
-  } else if (mediaUrl.includes('/uploads/')) {
-    baseDir = 'uploads/';
-  }
   
   // FIRST TRY - Original filename with proper path structure
   // Try with the new thumb-{filename}.jpg format first, which matches our updated thumbnail format
   const thumbFilename = `thumb-${fileBase}.jpg`;
   const directThumbUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbFilename}&v=${timestamp}`;
   
-  console.log(`First attempting direct thumbnail URL: ${directThumbUrl}`);
+  console.log('getVideoPoster created thumbnail URL:', directThumbUrl);
   return directThumbUrl;
 }
 

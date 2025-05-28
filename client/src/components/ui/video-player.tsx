@@ -24,31 +24,39 @@ interface VideoPlayerProps {
 function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
   if (!originalUrl) return undefined;
   
+  console.log('createSimplifiedPosterUrl called with:', originalUrl);
+  
   // Don't process if it's already a data URL
   if (originalUrl.startsWith('data:')) return originalUrl;
   
-  try {
-    // If it's a direct-download URL, extract the fileUrl parameter
-    if (originalUrl.includes('/api/object-storage/direct-download')) {
-      const url = new URL(originalUrl, window.location.origin);
-      const fileUrl = url.searchParams.get('fileUrl');
-      if (!fileUrl) return originalUrl;
-      
-      // Extract just the filename without the path
-      let filename = fileUrl.split('/').pop();
-      if (!filename) return originalUrl;
-      
-      // For the new format, try getting just the base filename without extensions
-      let baseFilename = filename;
-      if (filename.includes('.')) {
-        baseFilename = filename.split('.')[0]; // Get just the base part of the filename
-      }
-      
-      // Use the new thumbnail naming format - thumb-{baseFilename}.jpg
-      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
-    }
+  // CRITICAL: Prevent nested URL creation - if it already contains direct-download, extract clean path
+  if (originalUrl.includes('direct-download')) {
+    console.warn('Video player detected nested URL, extracting clean path from:', originalUrl);
     
-    // For other URLs, try to simplify the path if it has poster.jpg
+    // Extract the fileUrl parameter from the nested URL
+    const fileUrlMatch = originalUrl.match(/fileUrl=([^&]+)/);
+    if (fileUrlMatch) {
+      const cleanPath = decodeURIComponent(fileUrlMatch[1]);
+      console.log('Extracted clean path for video player:', cleanPath);
+      
+      // If the clean path doesn't contain more nesting, proceed
+      if (!cleanPath.includes('direct-download')) {
+        // Recursively call with clean path
+        return createSimplifiedPosterUrl(cleanPath);
+      } else {
+        console.error('Multiple levels of nesting detected in video player, aborting:', cleanPath);
+        return undefined;
+      }
+    } else {
+      console.error('Could not extract fileUrl from nested pattern in video player:', originalUrl);
+      return undefined;
+    }
+  }
+  
+  try {
+    // Now handle clean URLs without nesting
+    
+    // For poster.jpg files, extract base filename
     if (originalUrl.includes('.poster.jpg')) {
       const parts = originalUrl.split('/');
       let filename = parts.pop();
@@ -56,9 +64,12 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
       
       // Extract base filename without the .poster.jpg part
       const baseFilename = filename.replace('.poster.jpg', '');
+      console.log('Video player creating poster URL for baseFilename:', baseFilename);
       
       // Use the new thumbnail naming format
-      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
+      const posterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
+      console.log('Video player created poster URL:', posterUrl);
+      return posterUrl;
     }
     
     // If URL contains .mov or any other video extension, try the new naming pattern
@@ -68,12 +79,16 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
       if (filename) {
         // Extract base filename without the extension
         const baseFilename = filename.split('.')[0];
+        console.log('Video player creating thumbnail for video baseFilename:', baseFilename);
         
         // Use the new thumbnail naming format
-        return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
+        const posterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
+        console.log('Video player created video poster URL:', posterUrl);
+        return posterUrl;
       }
     }
     
+    console.log('Video player returning original URL unchanged:', originalUrl);
     return originalUrl;
   } catch (error) {
     console.error("Error simplifying poster URL:", error);

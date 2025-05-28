@@ -202,25 +202,41 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const getThumbnailUrl = (imageUrl: string) => {
     if (!imageUrl) return '';
 
-    // Validate input - if it already contains direct-download, log and extract clean path
+    console.log('PostCard getThumbnailUrl called with:', imageUrl);
+
+    // CRITICAL: Validate input - if it already contains direct-download, extract clean path
     if (imageUrl.includes('direct-download')) {
-      console.warn('getThumbnailUrl received nested URL:', imageUrl);
+      console.warn('PostCard getThumbnailUrl received nested URL:', imageUrl);
       const fileUrlMatch = imageUrl.match(/fileUrl=([^&]+)/);
       if (fileUrlMatch) {
         const cleanPath = decodeURIComponent(fileUrlMatch[1]);
-        console.log('Using clean path instead:', cleanPath);
-        return getThumbnailUrl(cleanPath); // Recursive call with clean path
+        console.log('PostCard extracted clean path:', cleanPath);
+        
+        // Check for multiple levels of nesting
+        if (!cleanPath.includes('direct-download')) {
+          return getThumbnailUrl(cleanPath); // Recursive call with clean path
+        } else {
+          console.error('PostCard detected multiple levels of nesting, aborting:', cleanPath);
+          return ''; // Abort if multiple levels of nesting
+        }
       }
+      console.error('PostCard could not extract clean path from:', imageUrl);
       return ''; // Abort if we can't extract clean path
     }
 
     // For videos, get the thumbnail instead of the video file
     if (imageUrl.toLowerCase().endsWith('.mov')) {
-      const baseName = imageUrl.substring(0, imageUrl.lastIndexOf('.'));
-      return createDirectDownloadUrl(`thumbnails/${baseName}.poster.jpg`);
+      // Extract just the filename without path
+      const filename = imageUrl.split('/').pop() || imageUrl;
+      const baseName = filename.substring(0, filename.lastIndexOf('.'));
+      const thumbnailUrl = createDirectDownloadUrl(`shared/uploads/thumbnails/${baseName}.poster.jpg`);
+      console.log('PostCard created MOV thumbnail URL:', thumbnailUrl);
+      return thumbnailUrl;
     }
 
-    return createDirectDownloadUrl(imageUrl);
+    const finalUrl = createDirectDownloadUrl(imageUrl);
+    console.log('PostCard created final URL:', finalUrl);
+    return finalUrl;
   };
 
   // Helper function to get proper image URL
