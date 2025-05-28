@@ -57,20 +57,8 @@ if (!fs.existsSync(uploadDir)) {
   console.log(`Created upload directory: ${uploadDir}`);
 }
 
-const multerStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // Use the same absolute path as SpartaObjectStorage
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-      console.log(`Created upload directory: ${uploadDir}`);
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
+// Use memory storage to avoid local file creation - files go directly to Object Storage
+const multerStorage = multer.memoryStorage();
 
 const upload = multer({
   storage: multerStorage,
@@ -159,12 +147,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         isVideo
       });
       
-      // Pass the buffer to storeFile - this will store in both local filesystem and Object Storage
-      const fileInfo = await spartaStorage.storeFile(
+      // Store buffer directly in Object Storage only - skip local storage
+      const fileInfo = await spartaStorage.storeBuffer(
         file.buffer,
         file.originalname,
         file.mimetype,
-        isVideo
+        true, // skipLocalStorage = true
+        undefined // customKey
       );
 
       console.log('File stored successfully:', fileInfo);
@@ -2836,8 +2825,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         fieldname: imageFile.fieldname,
         originalname: imageFile.originalname,
         mimetype: imageFile.mimetype,
-        path: imageFile.path,
-        destination: imageFile.destination,
+        buffer: imageFile.buffer ? 'Buffer available' : 'No buffer',
         size: imageFile.size
       } : 'No image file uploaded',
       thumbnailFileDetails: thumbnailFile ? {
@@ -2977,43 +2965,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         let commentMediaUrl = null;
         
         // Check if we have a file upload with the comment
-        if (req.file) {
+        if (imageFile) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
             
-            // Verify the file exists before proceeding
-            let filePath = req.file.path;
+            // Use buffer directly from memory storage - no local file system
+            const isVideo = imageFile.mimetype.startsWith('video/');
             
-            // Verify the file exists at the path reported by multer
-            if (!fs.existsSync(filePath)) {
-              logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
-              
-              // Try to locate the file using alternative paths
-              const fileName = path.basename(filePath);
-              const possiblePaths = [
-                filePath,
-                path.join(process.cwd(), 'uploads', fileName),
-                path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
-                path.join(path.dirname(filePath), path.basename(req.file.originalname)),
-                path.join('/tmp', fileName)
-              ];
-              
-              let foundPath = null;
-              for (const altPath of possiblePaths) {
-                logger.info(`Checking alternative path: ${altPath}`);
-                if (fs.existsSync(altPath)) {
-                  logger.info(`Found file at alternative path: ${altPath}`);
-                  foundPath = altPath;
-                  break;
-                }
+            console.log('Comment file upload details:', {
+              originalname: imageFile.originalname,
+              mimetype: imageFile.mimetype,
+              size: imageFile.size,
+              isVideo,
+              hasBuffer: !!imageFile.buffer
+            });
+            
+            // Store buffer directly in Object Storage only
+            const fileInfo = await spartaStorage.storeBuffer(
+              imageFile.buffer,
+              imageFile.originalname,
+              imageFile.mimetype,
+              true, // skipLocalStorage = true
+              undefined // customKey
+            );
+            
+            commentMediaUrl = fileInfo.url;
+            console.log('Comment file stored successfully in Object Storage:', fileInfo);
+            
+              // For video files, create thumbnails in Object Storage
+              try {
+                logger.info('Creating thumbnails for comment video in Object Storage', {
+                  originalname: imageFile.originalname,
+                  fileUrl: fileInfo.url
+                });
+                // Thumbnails will be created automatically by the storage system
+              } catch (thumbError) {
+                logger.warn('Failed to create thumbnails for comment video:', thumbError);
               }
-              
-              if (foundPath) {
-                filePath = foundPath;
-                logger.info(`Using alternative file path: ${filePath}`);
-              } else {
-                logger.error(`Could not find file at any alternative path for: ${filePath}`);
+            }
               }
             }
             
@@ -3114,43 +3104,45 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Use SpartaObjectStorage for file handling
           const { spartaStorage } = await import('./sparta-object-storage');
           
-          // Verify the image file exists before proceeding
-          let filePath = imageFile.path;
+          // Use buffer directly from memory storage - no local file system
+          const isVideo = imageFile.mimetype.startsWith('video/');
           
-          // Keep track of thumbnail path if provided
-          let thumbnailPath = thumbnailFile?.path;
+          console.log('Main post file upload details:', {
+            originalname: imageFile.originalname,
+            mimetype: imageFile.mimetype,
+            size: imageFile.size,
+            isVideo,
+            hasBuffer: !!imageFile.buffer
+          });
           
-          // Verify the file exists at the path reported by multer
-          if (!fs.existsSync(filePath)) {
-            logger.warn(`Image file not found at the reported path: ${filePath}, will search for it`);
-            
-            // Try to locate the file using alternative paths
-            const fileName = path.basename(filePath);
-            const possiblePaths = [
-              filePath,
-              path.join(process.cwd(), 'uploads', fileName),
-              path.join(process.cwd(), 'uploads', path.basename(imageFile.originalname)),
-              path.join(path.dirname(filePath), path.basename(imageFile.originalname)),
-              path.join('/tmp', fileName)
-            ];
-            
-            let foundPath = null;
-            for (const altPath of possiblePaths) {
-              logger.info(`Checking alternative path: ${altPath}`);
-              if (fs.existsSync(altPath)) {
-                logger.info(`Found file at alternative path: ${altPath}`);
-                foundPath = altPath;
-                break;
-              }
-            }
-            
-            if (foundPath) {
-              filePath = foundPath;
-              logger.info(`Using alternative file path: ${filePath}`);
-            } else {
-              logger.error(`Could not find file at any alternative path for: ${filePath}`);
-            }
+          // Store buffer directly in Object Storage only
+          const fileInfo = await spartaStorage.storeBuffer(
+            imageFile.buffer,
+            imageFile.originalname,
+            imageFile.mimetype,
+            true, // skipLocalStorage = true
+            undefined // customKey
+          );
+          
+          mediaUrl = fileInfo.url;
+          mediaProcessed = true;
+          console.log('Main post file stored successfully in Object Storage:', fileInfo);
+          
+          // For video files, create thumbnails in Object Storage
+          if (isVideo) {
+            try {
+              logger.info('Creating thumbnails for main post video in Object Storage', {
+                originalname: imageFile.originalname,
+                fileUrl: fileInfo.url
+              });
+              // Thumbnails will be created automatically by the storage system
+            } catch (thumbError) {
+              logger.warn('Failed to create thumbnails for main post video:', thumbError);
+          } catch (error) {
+            logger.error('Error storing main post file in Object Storage:', error);
+            return res.status(500).json({ message: "Failed to store post file" });
           }
+        }
           
           // Proceed if the file exists (either at original or alternative path)
           if (fs.existsSync(filePath)) {
