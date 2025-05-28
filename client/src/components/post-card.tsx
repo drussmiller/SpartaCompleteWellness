@@ -198,6 +198,31 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
+  // Handle video thumbnails
+  const getThumbnailUrl = (imageUrl: string) => {
+    if (!imageUrl) return '';
+
+    // Validate input - if it already contains direct-download, log and extract clean path
+    if (imageUrl.includes('direct-download')) {
+      console.warn('getThumbnailUrl received nested URL:', imageUrl);
+      const fileUrlMatch = imageUrl.match(/fileUrl=([^&]+)/);
+      if (fileUrlMatch) {
+        const cleanPath = decodeURIComponent(fileUrlMatch[1]);
+        console.log('Using clean path instead:', cleanPath);
+        return getThumbnailUrl(cleanPath); // Recursive call with clean path
+      }
+      return ''; // Abort if we can't extract clean path
+    }
+
+    // For videos, get the thumbnail instead of the video file
+    if (imageUrl.toLowerCase().endsWith('.mov')) {
+      const baseName = imageUrl.substring(0, imageUrl.lastIndexOf('.'));
+      return createDirectDownloadUrl(`thumbnails/${baseName}.poster.jpg`);
+    }
+
+    return createDirectDownloadUrl(imageUrl);
+  };
+
   // Helper function to get proper image URL
   const getImageUrl = (mediaUrl: string | null) => {
     if (!mediaUrl) return '';

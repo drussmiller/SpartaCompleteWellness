@@ -22,16 +22,27 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // Additional validation to catch malformed URLs early
-  if (key.includes('direct-download') && !key.startsWith('/api/object-storage/')) {
-    console.warn('Malformed URL detected, extracting clean path:', key);
-    // Extract just the actual file path
+  // CRITICAL: Prevent nested URL creation by detecting any direct-download patterns
+  if (key.includes('direct-download')) {
+    console.warn('Preventing nested URL creation for:', key);
+    
+    // Extract the actual file path from the nested URL
     const fileUrlMatch = key.match(/fileUrl=([^&]+)/);
     if (fileUrlMatch) {
       const cleanPath = decodeURIComponent(fileUrlMatch[1]);
+      console.log('Extracted clean path:', cleanPath);
+      
+      // Only proceed if the clean path doesn't contain more nesting
       if (!cleanPath.includes('direct-download')) {
+        // Recursively process the clean path to ensure proper formatting
         return createDirectDownloadUrl(cleanPath);
+      } else {
+        console.error('Multiple levels of nesting detected, aborting:', cleanPath);
+        return '';
       }
+    } else {
+      console.error('Could not extract fileUrl from nested pattern:', key);
+      return '';
     }
   }
 
