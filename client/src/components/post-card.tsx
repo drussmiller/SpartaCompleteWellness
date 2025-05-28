@@ -198,30 +198,28 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Handle video thumbnails
+  // Handle video thumbnails with proper path extraction
   const getThumbnailUrl = (imageUrl: string) => {
     if (!imageUrl) return '';
 
     console.log('getThumbnailUrl called with:', imageUrl);
 
-    // CRITICAL: Prevent ANY nested URL creation
-    if (imageUrl.includes('direct-download') || imageUrl.includes('fileUrl=')) {
-      console.error('BLOCKED: getThumbnailUrl received nested URL:', imageUrl);
+    // CRITICAL: Extract only the actual file path, no URLs
+    let cleanPath = imageUrl;
 
-      // Try to extract the clean file path
-      let cleanPath = imageUrl;
+    // If this contains any URL patterns, extract just the file path
+    if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
+      console.log('Extracting file path from URL:', cleanPath);
+      
+      // Extract the innermost fileUrl parameter
       let maxAttempts = 5;
-
-      while ((cleanPath.includes('fileUrl=') || cleanPath.includes('direct-download')) && maxAttempts > 0) {
+      while (cleanPath.includes('fileUrl=') && maxAttempts > 0) {
         maxAttempts--;
         const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
         if (fileUrlMatch) {
           const extractedPath = decodeURIComponent(fileUrlMatch[1]);
-          console.log(`Extracting from nested URL: ${cleanPath} -> ${extractedPath}`);
-
-          if (extractedPath !== cleanPath && !extractedPath.includes('direct-download')) {
+          if (extractedPath !== cleanPath && !extractedPath.includes('fileUrl=')) {
             cleanPath = extractedPath;
-            console.log('Successfully extracted clean path:', cleanPath);
             break;
           } else if (extractedPath !== cleanPath) {
             cleanPath = extractedPath;
@@ -232,30 +230,38 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           break;
         }
       }
-
-      // If we still have nesting after extraction, abort
+      
+      // If still contains URL patterns, abort
       if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
-        console.error('BLOCKED: Could not extract clean path, aborting thumbnail creation');
+        console.error('Could not extract clean file path from:', imageUrl);
         return '';
       }
-
-      console.log('Using extracted clean path for thumbnail:', cleanPath);
-      imageUrl = cleanPath;
     }
 
-    // For videos, get the thumbnail instead of the video file
-    if (imageUrl.toLowerCase().endsWith('.mov')) {
-      const baseName = imageUrl.substring(0, imageUrl.lastIndexOf('.'));
-      const thumbnailPath = `thumbnails/${baseName}.poster.jpg`;
-      console.log('Creating video thumbnail URL:', thumbnailPath);
-      const result = createDirectDownloadUrl(thumbnailPath);
+    // Remove any leading slash and path prefixes to get just the filename
+    cleanPath = cleanPath.replace(/^\/+/, ''); // Remove leading slashes
+    cleanPath = cleanPath.replace(/^shared\/uploads\//, ''); // Remove shared/uploads prefix
+    cleanPath = cleanPath.replace(/^uploads\//, ''); // Remove uploads prefix
+    cleanPath = cleanPath.replace(/^thumbnails\//, ''); // Remove thumbnails prefix
+    cleanPath = cleanPath.replace(/^thumb-/, ''); // Remove thumb- prefix
+
+    console.log('Clean file path extracted:', cleanPath);
+
+    // For videos, create poster thumbnail path
+    if (cleanPath.toLowerCase().endsWith('.mov')) {
+      const baseName = cleanPath.substring(0, cleanPath.lastIndexOf('.'));
+      const thumbnailKey = `shared/uploads/thumbnails/${baseName}.poster.jpg`;
+      console.log('Creating video thumbnail with key:', thumbnailKey);
+      const result = createDirectDownloadUrl(thumbnailKey);
       console.log('Video thumbnail URL result:', result);
       return result;
     }
 
-    console.log('Creating standard thumbnail URL for:', imageUrl);
-    const result = createDirectDownloadUrl(imageUrl);
-    console.log('Standard thumbnail URL result:', result);
+    // For regular images, create thumbnail path
+    const thumbnailKey = `shared/uploads/thumbnails/thumb-${cleanPath}`;
+    console.log('Creating image thumbnail with key:', thumbnailKey);
+    const result = createDirectDownloadUrl(thumbnailKey);
+    console.log('Image thumbnail URL result:', result);
     return result;
   };
 
@@ -270,8 +276,44 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return mediaUrl;
     }
 
-    // Use the improved object storage utility which now prevents nesting
-    const result = createDirectDownloadUrl(mediaUrl);
+    // CRITICAL: Extract only the actual file path, no URLs
+    let cleanPath = mediaUrl;
+
+    // If this contains any URL patterns, extract just the file path
+    if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
+      console.log('PostCard: Extracting file path from URL:', cleanPath);
+      
+      // Extract the innermost fileUrl parameter
+      let maxAttempts = 5;
+      while (cleanPath.includes('fileUrl=') && maxAttempts > 0) {
+        maxAttempts--;
+        const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
+        if (fileUrlMatch) {
+          const extractedPath = decodeURIComponent(fileUrlMatch[1]);
+          if (extractedPath !== cleanPath && !extractedPath.includes('fileUrl=')) {
+            cleanPath = extractedPath;
+            break;
+          } else if (extractedPath !== cleanPath) {
+            cleanPath = extractedPath;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      
+      // If still contains URL patterns, abort
+      if (cleanPath.includes('direct-download') || cleanPath.includes('fileUrl=')) {
+        console.error('PostCard: Could not extract clean file path from:', mediaUrl);
+        return '';
+      }
+    }
+
+    console.log('PostCard: Using clean path:', cleanPath);
+
+    // Use the cleaned path with object storage utility
+    const result = createDirectDownloadUrl(cleanPath);
     console.log('PostCard getImageUrl result:', result);
     return result;
   };
