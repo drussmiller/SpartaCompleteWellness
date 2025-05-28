@@ -78,8 +78,8 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     // For thumbnails or poster files
     if (baseFilename.includes('thumb-') || baseFilename.includes('poster') || cleanKey.includes('thumbnails')) {
       keysToTry.push(`thumbnails/${baseFilename}`);
-      keysToTry.push(`uploads/thumbnails/${baseFilename}`);
       keysToTry.push(`shared/uploads/thumbnails/${baseFilename}`);
+      keysToTry.push(`uploads/thumbnails/${baseFilename}`);
       
       // Also try without thumb- prefix if present
       if (baseFilename.startsWith('thumb-')) {

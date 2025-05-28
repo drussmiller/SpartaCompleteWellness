@@ -107,9 +107,10 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
     return result;
   }
 
-  // For images, try thumb- prefix
-  const thumbPath = `shared/uploads/thumbnails/thumb-${filename}`;
-  const result = `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(thumbPath)}`;
+  // For images, try the actual poster format that exists
+  const fileBase = filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
+  const posterPath = `shared/uploads/thumbnails/${fileBase}.poster.jpg`;
+  const result = `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(posterPath)}`;
   console.log('Created image thumbnail URL:', result);
   return result;
 }
