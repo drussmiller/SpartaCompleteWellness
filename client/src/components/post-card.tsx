@@ -232,18 +232,19 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
     console.log('PostCard getImageUrl called with:', mediaUrl);
 
+    // If it's a base64 data URL, return as-is
+    if (mediaUrl.startsWith('data:')) {
+      console.log('PostCard: Base64 data URL, returning as-is');
+      return mediaUrl;
+    }
+
     // If it's already a full URL (starts with http), return as-is
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
       return mediaUrl;
     }
 
-    // Extract just the filename to avoid any path issues
-    const filename = mediaUrl.split('/').pop() || mediaUrl;
-    console.log('PostCard: Extracted filename:', filename);
-
-    // Create clean path for the file
-    const cleanPath = `shared/uploads/${filename}`;
-    const result = createDirectDownloadUrl(cleanPath);
+    // Use the object storage utility to create the proper URL
+    const result = createDirectDownloadUrl(mediaUrl);
     console.log('PostCard getImageUrl result:', result);
     return result;
   };
