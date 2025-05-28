@@ -198,17 +198,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Use direct download URL for images from Object Storage
-  const getImageUrl = (url: string | null): string => {
-    if (!url) return '';
+  // Helper function to get proper image URL
+  const getImageUrl = (mediaUrl: string | null) => {
+    if (!mediaUrl) return '';
 
-    // Check if this is an Object Storage URL
-    if (url.includes('uploads/') || url.includes('thumbnails/')) {
-      return createDirectDownloadUrl(url);
+    // If it's already a full URL (starts with http), return as-is
+    if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+      return mediaUrl;
     }
 
-    // For external URLs, use as-is
-    return url;
+    // If it's already a direct download URL, return as-is to prevent nesting
+    if (mediaUrl.includes('/api/object-storage/direct-download')) {
+      return mediaUrl;
+    }
+
+    // Use the object storage utility for all files
+    return createDirectDownloadUrl(mediaUrl);
   };
 
   return (

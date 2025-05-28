@@ -11,6 +11,11 @@
 export function createDirectDownloadUrl(key: string | null): string {
   if (!key) return '';
   
+  // Check if this is already a direct download URL to prevent nesting
+  if (key.includes('/api/object-storage/direct-download')) {
+    return key;
+  }
+  
   // Remove leading slash if present (keys in Object Storage don't start with /)
   const cleanKey = key.startsWith('/') ? key.substring(1) : key;
   
