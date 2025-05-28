@@ -128,45 +128,8 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
         }
       }
       
-      // If direct access failed, try using spartaStorage as fallback
-      const { spartaStorage } = await import('./sparta-object-storage');
-      
-      // Try to get file with spartaStorage
-      for (const tryKey of keysToTry) {
-        try {
-          const fileInfo = await spartaStorage.getFileInfo(`/${tryKey}`);
-          
-          if (fileInfo) {
-            logger.info(`Found file with spartaStorage at key: ${tryKey}`, { route: '/api/object-storage/direct-download' });
-            
-            // Try to serve from filesystem cache if available
-            if (fs.existsSync(fileInfo.path)) {
-              const contentType = getContentType(tryKey);
-              res.setHeader('Content-Type', contentType);
-              logger.info(`Serving file from filesystem cache: ${fileInfo.path}`, { route: '/api/object-storage/direct-download' });
-              return res.sendFile(fileInfo.path);
-            } else {
-              // Try one more direct access attempt with the key we know worked in spartaStorage
-              try {
-                const directKey = tryKey.startsWith('shared/') ? tryKey : `shared/${tryKey}`;
-                logger.info(`Last attempt to fetch directly from Object Storage with key: ${directKey}`, { route: '/api/object-storage/direct-download' });
-                const data = await objectStorage.downloadAsBytes(directKey);
-                
-                if (data && Buffer.isBuffer(data)) {
-                  const contentType = getContentType(tryKey);
-                  res.setHeader('Content-Type', contentType);
-                  logger.info(`Last-chance success serving directly from Object Storage: ${directKey}`, { route: '/api/object-storage/direct-download' });
-                  return res.send(data);
-                }
-              } catch (lastError) {
-                logger.error(`Final direct access attempt failed: ${lastError}`, { route: '/api/object-storage/direct-download' });
-              }
-            }
-          }
-        } catch (objError) {
-          logger.info(`Failed to get file info for key ${tryKey}: ${objError}`, { route: '/api/object-storage/direct-download' });
-        }
-      }
+      // No fallback to local filesystem - Object Storage only
+      logger.info(`File not found in Object Storage with any of the attempted keys`, { route: '/api/object-storage/direct-download' });
     } catch (objError) {
       logger.error(`Object Storage error: ${objError}`, { route: '/api/object-storage/direct-download' });
     }
