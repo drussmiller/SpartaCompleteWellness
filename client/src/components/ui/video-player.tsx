@@ -29,30 +29,6 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
   // Don't process if it's already a data URL
   if (originalUrl.startsWith('data:')) return originalUrl;
   
-  // CRITICAL: Prevent nested URL creation - if it already contains direct-download, extract clean path
-  if (originalUrl.includes('direct-download')) {
-    console.warn('Video player detected nested URL, extracting clean path from:', originalUrl);
-    
-    // Extract the fileUrl parameter from the nested URL
-    const fileUrlMatch = originalUrl.match(/fileUrl=([^&]+)/);
-    if (fileUrlMatch) {
-      const cleanPath = decodeURIComponent(fileUrlMatch[1]);
-      console.log('Extracted clean path for video player:', cleanPath);
-      
-      // If the clean path doesn't contain more nesting, proceed
-      if (!cleanPath.includes('direct-download')) {
-        // Recursively call with clean path
-        return createSimplifiedPosterUrl(cleanPath);
-      } else {
-        console.error('Multiple levels of nesting detected in video player, aborting:', cleanPath);
-        return undefined;
-      }
-    } else {
-      console.error('Could not extract fileUrl from nested pattern in video player:', originalUrl);
-      return undefined;
-    }
-  }
-  
   try {
     // Now handle clean URLs without nesting
     

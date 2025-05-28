@@ -22,28 +22,42 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // CRITICAL: Prevent nested URL creation by detecting any direct-download patterns
+  // CRITICAL: Completely prevent any nested URL creation
   if (key.includes('direct-download')) {
-    console.warn('Preventing nested URL creation for:', key);
+    console.error('BLOCKED: Attempted to create nested URL with:', key);
     
-    // Extract the actual file path from the nested URL
-    const fileUrlMatch = key.match(/fileUrl=([^&]+)/);
-    if (fileUrlMatch) {
-      const cleanPath = decodeURIComponent(fileUrlMatch[1]);
-      console.log('Extracted clean path:', cleanPath);
-      
-      // Only proceed if the clean path doesn't contain more nesting
-      if (!cleanPath.includes('direct-download')) {
-        // Recursively process the clean path to ensure proper formatting
-        return createDirectDownloadUrl(cleanPath);
+    // Extract only the innermost file path by repeatedly extracting fileUrl parameters
+    let cleanPath = key;
+    let maxAttempts = 10; // Prevent infinite loops
+    
+    while (cleanPath.includes('fileUrl=') && maxAttempts > 0) {
+      maxAttempts--;
+      const fileUrlMatch = cleanPath.match(/fileUrl=([^&]+)/);
+      if (fileUrlMatch) {
+        const extractedPath = decodeURIComponent(fileUrlMatch[1]);
+        if (extractedPath !== cleanPath && !extractedPath.includes('direct-download')) {
+          cleanPath = extractedPath;
+          break;
+        } else if (extractedPath !== cleanPath) {
+          cleanPath = extractedPath;
+        } else {
+          break;
+        }
       } else {
-        console.error('Multiple levels of nesting detected, aborting:', cleanPath);
-        return '';
+        break;
       }
-    } else {
-      console.error('Could not extract fileUrl from nested pattern:', key);
+    }
+    
+    // If we still have nested patterns after extraction, abort
+    if (cleanPath.includes('direct-download')) {
+      console.error('BLOCKED: Could not extract clean path from nested URL:', key);
       return '';
     }
+    
+    console.log('Extracted clean path from nested URL:', cleanPath);
+    
+    // Now process the clean path normally (fall through to rest of function)
+    key = cleanPath;
   }
 
   // Extract the actual file path from any existing nested URLs

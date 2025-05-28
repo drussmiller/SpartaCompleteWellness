@@ -198,31 +198,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Handle video thumbnails
+  // Handle video thumbnails - simplified to prevent nesting
   const getThumbnailUrl = (imageUrl: string) => {
     if (!imageUrl) return '';
 
     console.log('PostCard getThumbnailUrl called with:', imageUrl);
-
-    // CRITICAL: Validate input - if it already contains direct-download, extract clean path
-    if (imageUrl.includes('direct-download')) {
-      console.warn('PostCard getThumbnailUrl received nested URL:', imageUrl);
-      const fileUrlMatch = imageUrl.match(/fileUrl=([^&]+)/);
-      if (fileUrlMatch) {
-        const cleanPath = decodeURIComponent(fileUrlMatch[1]);
-        console.log('PostCard extracted clean path:', cleanPath);
-        
-        // Check for multiple levels of nesting
-        if (!cleanPath.includes('direct-download')) {
-          return getThumbnailUrl(cleanPath); // Recursive call with clean path
-        } else {
-          console.error('PostCard detected multiple levels of nesting, aborting:', cleanPath);
-          return ''; // Abort if multiple levels of nesting
-        }
-      }
-      console.error('PostCard could not extract clean path from:', imageUrl);
-      return ''; // Abort if we can't extract clean path
-    }
 
     // For videos, get the thumbnail instead of the video file
     if (imageUrl.toLowerCase().endsWith('.mov')) {
@@ -234,6 +214,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return thumbnailUrl;
     }
 
+    // For all other images, use the createDirectDownloadUrl function which now has strong nesting prevention
     const finalUrl = createDirectDownloadUrl(imageUrl);
     console.log('PostCard created final URL:', finalUrl);
     return finalUrl;
@@ -243,13 +224,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const getImageUrl = (mediaUrl: string | null) => {
     if (!mediaUrl) return '';
 
+    console.log('PostCard getImageUrl called with:', mediaUrl);
+
     // If it's already a full URL (starts with http), return as-is
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
       return mediaUrl;
     }
 
-    // Use the object storage utility which handles all the cleaning
-    return createDirectDownloadUrl(mediaUrl);
+    // Use the improved object storage utility which now prevents nesting
+    const result = createDirectDownloadUrl(mediaUrl);
+    console.log('PostCard getImageUrl result:', result);
+    return result;
   };
 
   return (
