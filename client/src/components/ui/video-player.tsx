@@ -99,71 +99,10 @@ export function VideoPlayer({
     }, 50);
   };
   
-  // Handle poster image load error using all available alternative poster URLs
+  // Handle poster image load error - no fallbacks as requested by user
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
-    
-    // Use imported getAlternativePosterUrls (no require)
-    // If we have an original src, use it to generate all possible alternative URLs
-    if (src) {
-      // Use the imported getAlternativePosterUrls function
-      const alternatives = getAlternativePosterUrls(src);
-      
-      if (alternatives.length > 0) {
-        console.log(`Found ${alternatives.length} alternative poster URLs to try`);
-        
-        // Try to preload each alternative poster to find one that works
-        const tryNextAlternative = (index = 0) => {
-          if (index >= alternatives.length) {
-            // If we've tried all alternatives and none worked, show the fallback
-            console.warn("All alternative poster URLs failed to load");
-            setPosterError(true);
-            return;
-          }
-          
-          const altPoster = alternatives[index];
-          console.log(`Trying alternative poster URL #${index + 1}:`, altPoster);
-          
-          // Create a new image element to test if the alternative URL works
-          const img = new Image();
-          img.onload = () => {
-            console.log(`Alternative poster URL #${index + 1} loaded successfully`);
-            setSimplifiedPoster(altPoster);
-            setPosterError(false); // Reset error state since we found a working URL
-          };
-          img.onerror = () => {
-            console.warn(`Alternative poster URL #${index + 1} failed to load`);
-            // Try the next alternative
-            tryNextAlternative(index + 1);
-          };
-          img.src = altPoster;
-        };
-        
-        // Start trying alternatives
-        tryNextAlternative();
-      } else {
-        // No alternatives found, show fallback
-        setPosterError(true);
-      }
-      
-      return;
-    }
-    
-    // Fallback to basic replacement logic if the advanced alternatives fail
-    if (simplifiedPoster && simplifiedPoster.includes('thumb-')) {
-      // Try alternate naming format without the 'thumb-' prefix
-      const altPoster = simplifiedPoster.replace('thumb-', '');
-      console.log("Trying basic alternate poster URL:", altPoster);
-      setSimplifiedPoster(altPoster);
-    } else if (simplifiedPoster && simplifiedPoster.includes('.poster.jpg')) {
-      // Try using the base filename without .poster.jpg
-      const basePoster = simplifiedPoster.replace('.poster.jpg', '.jpg');
-      console.log("Trying basic alternate poster URL:", basePoster);
-      setSimplifiedPoster(basePoster);
-    } else {
-      // If we've exhausted all options, show the fallback
-      setPosterError(true);
-    }
+    // As requested by user, no fallback images or alternatives - just fail silently
   };
   
   // Set up video loaded event
