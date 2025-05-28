@@ -805,8 +805,7 @@ export class SpartaObjectStorage {
           } catch (objStoreError) {
             console.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
             logger.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
-            ```typescript
-// Continue with local thumbnail only
+            // Continue with local thumbnail only
           }
         }
       } catch (fallbackError) {
@@ -1547,8 +1546,7 @@ export class SpartaObjectStorage {
               reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
             }
           })
-          .on('end',```typescript
- () => {
+          .on('end', () => {
             console.log(`Successfully created video thumbnail at ${targetPath}`);
             logger.info(`Created video thumbnail at ${targetPath}`);
 
