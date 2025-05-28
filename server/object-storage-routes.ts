@@ -69,29 +69,29 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     }
     
     // Try simple uploads path variations
-    keysToTry.push(`uploads/${filename}`);
-    keysToTry.push(`shared/uploads/${filename}`);
+    keysToTry.push(`uploads/${baseFilename}`);
+    keysToTry.push(`shared/uploads/${baseFilename}`);
     
     // Try environment-specific uploads (without shared prefix)
-    keysToTry.push(`uploads/${filename}`);
+    keysToTry.push(`uploads/${baseFilename}`);
     
     // For thumbnails or poster files
-    if (filename.includes('thumb-') || filename.includes('poster') || cleanKey.includes('thumbnails')) {
-      keysToTry.push(`thumbnails/${filename}`);
-      keysToTry.push(`uploads/thumbnails/${filename}`);
-      keysToTry.push(`shared/uploads/thumbnails/${filename}`);
+    if (baseFilename.includes('thumb-') || baseFilename.includes('poster') || cleanKey.includes('thumbnails')) {
+      keysToTry.push(`thumbnails/${baseFilename}`);
+      keysToTry.push(`uploads/thumbnails/${baseFilename}`);
+      keysToTry.push(`shared/uploads/thumbnails/${baseFilename}`);
       
       // Also try without thumb- prefix if present
-      if (filename.startsWith('thumb-')) {
-        const baseFilename = filename.replace('thumb-', '');
-        keysToTry.push(`uploads/${baseFilename}`);
-        keysToTry.push(`shared/uploads/${baseFilename}`);
+      if (baseFilename.startsWith('thumb-')) {
+        const withoutThumbPrefix = baseFilename.replace('thumb-', '');
+        keysToTry.push(`uploads/${withoutThumbPrefix}`);
+        keysToTry.push(`shared/uploads/${withoutThumbPrefix}`);
       }
     }
     
     // For video files, try poster variations
-    if (filename.toLowerCase().endsWith('.mov')) {
-      const baseName = filename.substring(0, filename.lastIndexOf('.'));
+    if (baseFilename.toLowerCase().endsWith('.mov')) {
+      const baseName = baseFilename.substring(0, baseFilename.lastIndexOf('.'));
       ['jpg', 'png', 'svg'].forEach(ext => {
         const posterName = `${baseName}.poster.${ext}`;
         keysToTry.push(`uploads/${posterName}`);
