@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
-import { createDirectDownloadUrl } from "../lib/object-storage-utils";
+import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
 
@@ -198,53 +198,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Handle video thumbnails with proper path extraction
+  // Handle video thumbnails with clean media utilities
   const getThumbnailUrl = (imageUrl: string) => {
-    if (!imageUrl) return '';
-
     console.log('getThumbnailUrl called with:', imageUrl);
-
-    // Extract just the filename from any path format
-    const filename = imageUrl.split('/').pop() || imageUrl;
-    console.log('Extracted filename:', filename);
-
-    // For videos, create poster thumbnail path
-    if (filename.toLowerCase().endsWith('.mov')) {
-      const baseName = filename.substring(0, filename.lastIndexOf('.'));
-      const thumbnailKey = `shared/uploads/thumbnails/${baseName}.poster.jpg`;
-      console.log('Creating video thumbnail with key:', thumbnailKey);
-      const result = createDirectDownloadUrl(thumbnailKey);
-      console.log('Video thumbnail URL result:', result);
-      return result;
-    }
-
-    // For regular images, create thumbnail path
-    const thumbnailKey = `shared/uploads/thumbnails/thumb-${filename}`;
-    console.log('Creating image thumbnail with key:', thumbnailKey);
-    const result = createDirectDownloadUrl(thumbnailKey);
-    console.log('Image thumbnail URL result:', result);
+    const result = createThumbnailUrl(imageUrl);
+    console.log('Thumbnail URL result:', result);
     return result;
   };
 
-  // Helper function to get proper image URL
+  // Helper function to get proper image URL with clean media utilities
   const getImageUrl = (mediaUrl: string | null) => {
-    if (!mediaUrl) return '';
-
     console.log('PostCard getImageUrl called with:', mediaUrl);
-
-    // If it's a base64 data URL, return as-is
-    if (mediaUrl.startsWith('data:')) {
-      console.log('PostCard: Base64 data URL, returning as-is');
-      return mediaUrl;
-    }
-
-    // If it's already a full URL (starts with http), return as-is
-    if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
-      return mediaUrl;
-    }
-
-    // Use the object storage utility to create the proper URL
-    const result = createDirectDownloadUrl(mediaUrl);
+    const result = createMediaUrl(mediaUrl);
     console.log('PostCard getImageUrl result:', result);
     return result;
   };
