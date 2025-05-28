@@ -34,7 +34,7 @@ export function createDirectDownloadUrl(key: string | null): string {
   // CRITICAL: If the key contains any problematic patterns, extract the filename only
   if (key.includes('direct-download') || key.includes('fileUrl=')) {
     console.error('BLOCKED: Key contains nested URL patterns, extracting filename only:', key);
-    
+
     // Try to extract just the filename from the nested URL
     const fileUrlMatch = key.match(/fileUrl=([^&]+)/);
     if (fileUrlMatch) {
@@ -46,7 +46,7 @@ export function createDirectDownloadUrl(key: string | null): string {
         return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
       }
     }
-    
+
     // Fallback: extract any filename at the end
     const filename = key.split('/').pop()?.split('?')[0];
     if (filename && filename !== key) {
@@ -54,7 +54,7 @@ export function createDirectDownloadUrl(key: string | null): string {
       const cleanPath = `shared/uploads/${filename}`;
       return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
     }
-    
+
     console.error('Could not extract filename from nested URL, returning empty');
     return '';
   }
@@ -146,4 +146,21 @@ export async function testObjectStorage(): Promise<any> {
     console.error('Error testing Object Storage API:', error);
     throw error;
   }
+}
+
+export function getObjectStorageUrl(path: string): string {
+  if (!path) return '';
+
+  // Check if this is already an Object Storage URL to prevent nesting
+  if (path.includes('direct-download?fileUrl=')) {
+    return path;
+  }
+
+  // Remove leading slash if present
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+  // Add timestamp to prevent caching issues
+  const timestamp = Date.now();
+
+  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}&v=${timestamp}`;
 }
