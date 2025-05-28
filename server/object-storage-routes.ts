@@ -37,7 +37,9 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     key: req.query.key,
     fileUrl: req.query.fileUrl,
     path: req.query.path,
-    file: req.query.file
+    file: req.query.file,
+    url: req.url,
+    originalUrl: req.originalUrl
   });
   
   if (!storageKey || typeof storageKey !== 'string') {

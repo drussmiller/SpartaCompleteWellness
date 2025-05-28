@@ -53,22 +53,25 @@ export function createDirectDownloadUrl(key: string | null): string {
   cleanKey = cleanKey.replace(/^(uploads\/)+/, 'uploads/');
   cleanKey = cleanKey.replace(/^(thumbnails\/)+/, 'thumbnails/');
 
-  // Ensure we have just the filename if there are nested paths
-  if (cleanKey.includes('/') && !cleanKey.startsWith('shared/')) {
-    // Extract just the filename from paths like "uploads/filename" or "thumbnails/filename"
-    const pathParts = cleanKey.split('/');
-    const filename = pathParts[pathParts.length - 1];
-    cleanKey = filename;
-  }
-
   // Ensure proper shared path structure
   if (!cleanKey.startsWith('shared/')) {
-    cleanKey = `shared/uploads/${cleanKey}`;
+    // If it starts with uploads/ or thumbnails/, prepend shared/
+    if (cleanKey.startsWith('uploads/') || cleanKey.startsWith('thumbnails/')) {
+      cleanKey = `shared/${cleanKey}`;
+    } else {
+      // Otherwise, assume it's a filename that goes in uploads
+      cleanKey = `shared/uploads/${cleanKey}`;
+    }
   }
 
   // Return the clean URL
   return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`;
 }
+
+/**
+ * Alias for createDirectDownloadUrl to maintain compatibility
+ */
+export const createCleanFileUrl = createDirectDownloadUrl;
 
 /**
  * Checks if a key exists in Object Storage

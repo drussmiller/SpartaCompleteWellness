@@ -46,7 +46,7 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
   }
 
   // Import the createDirectDownloadUrl function
-  const { createCleanFileUrl } = require('./object-storage-utils');
+  const { createDirectDownloadUrl } = require('./object-storage-utils');
 
   // For videos, we want to get the thumbnail, not the video itself
   if (isVideoFile(mediaUrl)) {
@@ -56,16 +56,16 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
 
     // For MOV files, prioritize .poster.jpg thumbnails
     if (filename.toLowerCase().endsWith('.mov')) {
-      return createCleanFileUrl(`thumbnails/${baseFilename}.poster.jpg`);
+      return createDirectDownloadUrl(`thumbnails/${baseFilename}.poster.jpg`);
     }
 
     // For other videos, use standard thumbnail naming
-    return createCleanFileUrl(`thumbnails/thumb-${filename}.jpg`);
+    return createDirectDownloadUrl(`thumbnails/thumb-${filename}.jpg`);
   }
 
   // For images, create a thumbnail version
   const filename = getFilenameFromUrl(mediaUrl);
-  return createCleanFileUrl(`thumbnails/thumb-${filename}`);
+  return createDirectDownloadUrl(`thumbnails/thumb-${filename}`);
 }
 
 /**
