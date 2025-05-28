@@ -1,3 +1,5 @@
+import { createThumbnailUrl, createMediaUrl } from './media-utils';
+
 // Regular expression for detecting URLs
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
@@ -56,16 +58,15 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
 
     // For MOV files, prioritize .poster.jpg thumbnails
     if (filename.toLowerCase().endsWith('.mov')) {
-      return createDirectDownloadUrl(`thumbnails/${baseFilename}.poster.jpg`);
+      return createThumbnailUrl(mediaUrl);
     }
 
     // For other videos, use standard thumbnail naming
-    return createDirectDownloadUrl(`thumbnails/thumb-${filename}.jpg`);
+    return createThumbnailUrl(mediaUrl);
   }
 
-  // For images, create a thumbnail version
-  const filename = getFilenameFromUrl(mediaUrl);
-  return createDirectDownloadUrl(`thumbnails/thumb-${filename}`);
+  // For images, create a thumbnail version using clean media utilities
+  return createThumbnailUrl(mediaUrl);
 }
 
 /**
