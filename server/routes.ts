@@ -3167,8 +3167,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             mediaUrl = null;
             logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
           }
-        } catch (fileErr) {
-          logger.error('Error processing uploaded file:', fileErr);
+        }
           
           // Detailed error handling based on post type
           if (postData.type === 'memory_verse') {
