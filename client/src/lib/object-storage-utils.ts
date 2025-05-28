@@ -25,6 +25,12 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
+  // If this is a base64 data URL, return as-is
+  if (key.startsWith('data:')) {
+    console.log('Base64 data URL, returning as-is');
+    return key;
+  }
+
   // CRITICAL: If the key contains any problematic patterns, extract the filename only
   if (key.includes('direct-download') || key.includes('fileUrl=')) {
     console.error('BLOCKED: Key contains nested URL patterns, extracting filename only:', key);
@@ -56,10 +62,21 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Clean the key - remove leading slash and normalize path
   let cleanKey = key.replace(/^\/+/, '');
 
-  // Extract just the filename to avoid any path issues
+  // If it already starts with 'shared/', use it as-is
+  if (cleanKey.startsWith('shared/')) {
+    console.log(`Using path as-is: ${cleanKey}`);
+    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`;
+  }
+
+  // If it starts with 'uploads/', prepend 'shared/'
+  if (cleanKey.startsWith('uploads/')) {
+    const finalPath = `shared/${cleanKey}`;
+    console.log(`Converted uploads path: ${key} -> ${finalPath}`);
+    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`;
+  }
+
+  // Extract just the filename and use default path
   const filename = cleanKey.split('/').pop() || cleanKey;
-  
-  // Create simple, direct path
   const finalPath = `shared/uploads/${filename}`;
 
   console.log(`Creating clean URL: ${key} -> /api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`);
