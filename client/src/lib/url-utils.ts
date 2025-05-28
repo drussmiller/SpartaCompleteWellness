@@ -47,8 +47,7 @@ export function getThumbnailUrl(mediaUrl: string | null): string {
     return mediaUrl; // Return the original URL for external images
   }
 
-  // Import the createDirectDownloadUrl function
-  const { createDirectDownloadUrl } = require('./object-storage-utils');
+  // Use the clean media utilities instead
 
   // For videos, we want to get the thumbnail, not the video itself
   if (isVideoFile(mediaUrl)) {
