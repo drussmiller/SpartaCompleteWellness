@@ -58,7 +58,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     const keysToTry = [];
     
     // Extract filename without path
-    const filename = cleanKey.split('/').pop() || cleanKey;
+    const baseFilename = cleanKey.split('/').pop() || cleanKey;
     
     // Try the exact key as provided first
     keysToTry.push(cleanKey);
@@ -131,10 +131,9 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     }
     
     // Generate a placeholder for missing images to prevent broken UI
-    const filename = cleanKey.split('/').pop() || cleanKey;
-    const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
+    const imageExtension = cleanKey.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
     
-    if (isImage) {
+    if (imageExtension) {
       // Create a simple 1x1 transparent PNG for missing images
       const transparentPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAHiNbMJcgAAAABJRU5ErkJggg==', 'base64');
       res.setHeader('Content-Type', 'image/png');

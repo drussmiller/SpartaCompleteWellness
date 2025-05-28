@@ -37,6 +37,7 @@ import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
+import { objectStorageRouter } from './object-storage-routes';
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
@@ -4294,6 +4295,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error(`Error awarding achievement ${achievementType} to user ${userId}:`, error);
     }
   };
+
+  // Register Object Storage routes
+  app.use('/api/object-storage', objectStorageRouter);
 
   return httpServer;
 };
