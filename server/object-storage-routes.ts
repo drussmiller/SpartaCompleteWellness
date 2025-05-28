@@ -130,32 +130,19 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       logger.error(`Object Storage error: ${objError}`, { route: '/api/object-storage/direct-download' });
     }
     
-    // If we reach here, we couldn't find the file in Object Storage
-    // Fall back to checking local filesystem as a temporary solution
-    try {
-      const filename = cleanKey.split('/').pop() || cleanKey;
-      const localPath = path.join(process.cwd(), 'uploads', filename);
-      
-      console.log(`Found file at path: ${localPath}`);
-      
-      if (fs.existsSync(localPath)) {
-        const stats = fs.statSync(localPath);
-        console.log(`Got stats for file at ${localPath}: size = ${stats.size} bytes`);
-        
-        const contentType = getContentType(filename);
-        const fileBuffer = fs.readFileSync(localPath);
-        
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Length', stats.size.toString());
-        
-        console.log(`Successfully serving file from local filesystem: ${localPath}`);
-        return res.send(fileBuffer);
-      }
-    } catch (fsError) {
-      console.log(`Local filesystem error: ${fsError}`);
+    // Generate a placeholder for missing images to prevent broken UI
+    const filename = cleanKey.split('/').pop() || cleanKey;
+    const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
+    
+    if (isImage) {
+      // Create a simple 1x1 transparent PNG for missing images
+      const transparentPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAHiNbMJcgAAAABJRU5ErkJggg==', 'base64');
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Length', transparentPng.length.toString());
+      return res.send(transparentPng);
     }
     
-    // Silent 404 response - don't log to reduce noise for expected 404s
+    // For non-images, return 404
     return res.status(404).json({
       success: false,
       message: 'File not found',
