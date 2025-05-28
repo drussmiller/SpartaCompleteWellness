@@ -1,3 +1,4 @@
+typescript
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
@@ -362,9 +363,6 @@ export class SpartaObjectStorage {
       }
 
       // Write the file
-      try {
-        console.log(`Attempting to write file, buffer size: ${fileBuffer.length}`);
-
         // Store in Object Storage only - no local duplication
         if (this.objectStorage) {
           try {
@@ -385,8 +383,6 @@ export class SpartaObjectStorage {
             console.log(`Storing file in Replit Object Storage with shared key: ${sharedKey}`);
             await this.objectStorage.uploadFromBytes(sharedKey, fileBuffer);
 
-            // Use the shared key for URLs
-            objectStorageKey = sharedKey;
             console.log(`File stored successfully in Replit Object Storage - no local copy needed`);
             logger.info(`File stored successfully with shared key only`, {
               sharedKey,
@@ -400,11 +396,6 @@ export class SpartaObjectStorage {
         } else {
           throw new Error('Object Storage is not available and local storage is disabled to reduce costs');
         }
-      } catch (writeError) {
-        console.error(`Error writing file to ${filePath}:`, writeError);
-        logger.error(`Error writing file to ${filePath}:`, writeError);
-        throw writeError;
-      }
 
       // Get file size or use buffer size if the file doesn't exist on disk
       let fileSize = 0;
@@ -807,16 +798,15 @@ export class SpartaObjectStorage {
             const thumbnailBuffer = fs.readFileSync(targetPath);
 
             // Upload with shared key only
-            console.logA modification to storeFile to skip local storage and exclusively utilize Object Storage.
-```typescript
-(`Uploading fallback thumbnail to Object Storage with shared key: ${sharedKey}`);
+            console.log(`Uploading fallback thumbnail to Object Storage with shared key: ${sharedKey}`);
             await this.objectStorage.uploadFromBytes(sharedKey, thumbnailBuffer);
 
             console.log(`Successfully uploaded fallback thumbnail to Object Storage`);
           } catch (objStoreError) {
             console.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
             logger.error(`Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
-            // Continue with local thumbnail only
+            ```typescript
+// Continue with local thumbnail only
           }
         }
       } catch (fallbackError) {
@@ -1545,8 +1535,7 @@ export class SpartaObjectStorage {
               try {
                 const thumbnailsDir = path.dirname(targetPath);
                 fs.chmodSync(thumbnailsDir, 0o755);
-                fs.chmodSync(```typescript
-targetPath, 0o644);
+                fs.chmodSync(targetPath, 0o644);
                 console.log(`Set proper permissions on thumbnail file and directory`);
               } catch (permissionError) {
                 console.error(`Error setting permissions:`, permissionError);
@@ -1558,7 +1547,8 @@ targetPath, 0o644);
               reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
             }
           })
-          .on('end', () => {
+          .on('end',```typescript
+ () => {
             console.log(`Successfully created video thumbnail at ${targetPath}`);
             logger.info(`Created video thumbnail at ${targetPath}`);
 
