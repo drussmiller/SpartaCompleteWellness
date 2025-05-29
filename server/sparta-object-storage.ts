@@ -1128,25 +1128,16 @@ export class SpartaObjectStorage {
                       fs.mkdirSync(thumbDir, { recursive: true });
                     }
 
-                    // Create all emergency fallback versions
+                    // Create only the simplified JPG thumbnail
                     const jpgThumbPath = targetPath.replace('.mov', '.jpg');
-                    const posterFilename = filename.replace('.mov', '.poster.jpg');
-                    const posterPath = path.join(path.dirname(videoPath), posterFilename);
-                    const nonPrefixedThumbPath = targetPath.replace('thumb-', '');
 
                     fs.writeFileSync(jpgThumbPath, videoSvg);
-                    fs.writeFileSync(targetPath, videoSvg);
-                    fs.writeFileSync(posterPath, videoSvg);
-                    fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
 
-                    console.log(`Created emergency fallback thumbnails after all other methods failed`);
+                    console.log(`Created emergency fallback thumbnail after all other methods failed`);
 
-                    // Upload fallbacks to Object Storage
+                    // Upload fallback to Object Storage
                     if (this.objectStorage) {
-                      const thumbnailBasename = path.basename(targetPath);
                       const jpgThumbBasename = path.basename(jpgThumbPath);
-                      const posterBasename = path.basename(posterPath);
-                      const nonPrefixedBasename = path.basename(nonPrefixedThumbPath);
 
                       const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
                       const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
