@@ -1,12 +1,13 @@
 /**
- * MOV Frame Extractor
+ * MOV Frame Extractor - Clean Implementation
  * 
- * This module provides specialized functions for extracting frames from MOV files,
- * which have proven to be challenging to handle properly in the application.
+ * This module provides a single function to extract one frame from MOV files
+ * and create one JPG thumbnail with simplified naming.
  */
+
+import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import path from 'path';
-import ffmpeg from 'fluent-ffmpeg';
 import { logger } from './logger';
 
 /**
@@ -22,9 +23,8 @@ export async function extractMovFrame(
   outputPath: string,
   seekPosition: number = 1.0
 ): Promise<void> {
-  // Generate a random process ID for logging
   const processId = Math.random().toString(36).substring(2, 8);
-  logger.info(`Starting MOV frame extraction for ${path.basename(sourcePath)} at position ${seekPosition}s`, { processId });
+  logger.info(`Starting MOV frame extraction for ${path.basename(sourcePath)} at position ${seekPosition}s`);
   
   return new Promise<void>((resolve, reject) => {
     // Make sure the output directory exists
@@ -35,39 +35,38 @@ export async function extractMovFrame(
     
     // Configure ffmpeg with improved settings for better thumbnail quality
     const command = ffmpeg(sourcePath)
-      .seekInput(seekPosition)  // Seek to a position past the initial black frame
-      .inputOption('-ss 0.5')   // Additional seek to ensure we get a good frame
+      .inputOption(`-ss ${seekPosition}`)   // Seek to specified position
       .outputOptions([
         '-frames:v 1',     // Extract exactly one frame
-        '-q:v 1',          // Highest quality (1-31, where 1 is best)
+        '-q:v 2',          // High quality (1-31, where 1 is best)
         '-vf scale=640:-1', // Scale to 640px width while maintaining aspect ratio
         '-f image2'        // Force image output format
       ])
       .on('start', (commandLine: string) => {
-        logger.info(`FFmpeg MOV extraction command: ${commandLine}`, { processId });
+        logger.info(`FFmpeg MOV extraction command: ${commandLine}`);
       })
       .on('end', () => {
-        logger.info(`Successfully extracted frame from MOV file to ${outputPath}`, { processId });
+        logger.info(`Successfully extracted frame from MOV file to ${outputPath}`);
         
         // Verify the output file exists and has content
         try {
           const stats = fs.statSync(outputPath);
           
           if (stats.size > 0) {
-            logger.info(`MOV frame extraction successful, size: ${stats.size} bytes`, { processId });
+            logger.info(`MOV frame extraction successful, size: ${stats.size} bytes`);
             resolve();
           } else {
             const error = new Error('Extracted frame file is empty');
-            logger.error(`MOV frame extraction failed: empty output file`, { processId }, error);
+            logger.error(`MOV frame extraction failed: empty output file`);
             reject(error);
           }
         } catch (err) {
-          logger.error(`Error verifying MOV frame output file: ${err}`, { processId });
+          logger.error(`Error verifying MOV frame output file: ${err}`);
           reject(err);
         }
       })
-      .on('error', (err: Error, stdout: string, stderr: string) => {
-        logger.error(`Error extracting MOV frame: ${err.message}`, { processId, stderr });
+      .on('error', (err: Error) => {
+        logger.error(`Error extracting MOV frame: ${err.message}`);
         reject(err);
       });
     
@@ -77,41 +76,36 @@ export async function extractMovFrame(
 }
 
 /**
- * Create all required thumbnail variants for a MOV file
+ * Create a single JPG thumbnail for a MOV file
+ * This is the main function that should be used for MOV thumbnail generation
  * 
  * @param sourceMovPath Path to the source MOV file
- * @param targetThumbPath Path where the main thumbnail should be saved
- * @returns Promise with paths to all generated thumbnails or error
+ * @param targetThumbPath Path where the thumbnail should be saved
+ * @returns Promise with the path to the generated thumbnail
  */
 export async function createAllMovThumbnailVariants(
   sourceMovPath: string,
   targetThumbPath: string
 ): Promise<{ jpgThumbPath: string }> {
-  // Only create one JPG thumbnail with simplified naming
-  const jpgThumbPath = targetThumbPath.replace('.mov', '.jpg');
+  // Create simple JPG thumbnail with same name as video but .jpg extension
+  const jpgThumbPath = targetThumbPath.replace(/\.mov$/i, '.jpg');
   
   try {
     // Check if source file exists and is readable
     if (!fs.existsSync(sourceMovPath)) {
-      logger.error(`Source MOV file does not exist: ${sourceMovPath}`);
-      await createFallbackSvgThumbnails(pathsResult);
-      return pathsResult;
+      throw new Error(`Source MOV file does not exist: ${sourceMovPath}`);
     }
     
     const sourceStats = fs.statSync(sourceMovPath);
     if (sourceStats.size === 0) {
-      logger.error(`Source MOV file is empty: ${sourceMovPath}`);
-      await createFallbackSvgThumbnails(pathsResult);
-      return pathsResult;
+      throw new Error(`Source MOV file is empty: ${sourceMovPath}`);
     }
     
-    // Define a series of frame positions to try (in seconds)
-    // This gives us multiple chances to get a good non-black frame
+    // Try multiple frame positions to get a good non-black frame
     const framePositions = [1.0, 2.0, 0.5, 3.0, 0.1];
     let success = false;
     let lastError: any = null;
     
-    // Try each position until we get a good frame
     for (const position of framePositions) {
       try {
         const tempJpgPath = `${jpgThumbPath}.temp`;
@@ -124,259 +118,54 @@ export async function createAllMovThumbnailVariants(
         
         // Only consider it valid if the size is reasonable (> 1KB)
         if (stats.size > 1024) {
-          // Read the valid JPG data
-          const jpgBuffer = fs.readFileSync(tempJpgPath);
-          fs.writeFileSync(jpgThumbPath, jpgBuffer);
+          // Move the valid frame to the final location
+          fs.renameSync(tempJpgPath, jpgThumbPath);
           
-          // Upload only the single JPG thumbnail to Object Storage 
-          // Use the same name as the video but with .jpg extension
-          try {
-            const { spartaStorage } = await import('./sparta-object-storage');
-            const videoFilename = path.basename(sourceMovPath);
-            const thumbnailFilename = videoFilename.replace(/\.mov$/i, '.jpg');
-            
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              thumbnailFilename,
-              'image/jpeg',
-              true,
-              `shared/uploads/${thumbnailFilename}`
-            );
-            
-
-            
-            logger.info(`Successfully uploaded thumbnail to Object Storage: ${thumbnailFilename}`);
-          } catch (objStorageError) {
-            logger.error(`Failed to upload thumbnails to Object Storage: ${objStorageError}`, { 
-              sourceFile: filename,
-              error: objStorageError
-            });
-            // Continue with local files even if object storage upload fails
-          }
-          
-          logger.info(`Created additional poster files at:
-            - ${uploadsMainPosterPath}
-            - ${uploadsSharedPosterPath}`);
-          
-          // Clean up temp file
-          try { fs.unlinkSync(tempJpgPath); } catch(e) { /* ignore cleanup errors */ }
-          
-          logger.info(`Successfully created thumbnails from frame at position ${position}s for ${filename}`);
+          logger.info(`Successfully created MOV thumbnail at position ${position}s: ${jpgThumbPath}`);
           success = true;
           break;
         } else {
-          logger.warn(`Extracted frame at ${position}s is too small (${stats.size} bytes), likely a black frame. Trying another position.`);
+          logger.warn(`Extracted frame at ${position}s is too small (${stats.size} bytes), trying another position`);
           try { fs.unlinkSync(tempJpgPath); } catch(e) { /* ignore cleanup errors */ }
         }
       } catch (error) {
         lastError = error;
-        logger.warn(`Failed to extract frame at position ${position}s, trying next position: ${error}`);
+        logger.warn(`Failed to extract frame at position ${position}s: ${error}`);
         continue;
       }
     }
     
-    if (success) {
-      logger.info(`Created all MOV thumbnail variants for ${filename}`);
-      return pathsResult;
-    } else {
-      logger.error(`Failed to extract usable frame after trying multiple positions: ${lastError}`, { sourceFile: filename });
-      // If all frame extraction attempts fail, create SVG fallbacks
-      await createFallbackSvgThumbnails(pathsResult);
-      return pathsResult;
+    if (!success) {
+      throw new Error(`Failed to extract usable frame after trying multiple positions: ${lastError}`);
     }
+    
+    return { jpgThumbPath };
   } catch (error) {
-    logger.error(`Failed to create MOV thumbnail variants: ${error}`, { sourceFile: filename });
-    // In case of any other error, create SVG fallbacks as a last resort
-    try {
-      await createFallbackSvgThumbnails(pathsResult);
-    } catch (svgError) {
-      logger.error(`Even fallback SVG creation failed: ${svgError}`, { sourceFile: filename });
-    }
-    return pathsResult;
+    logger.error(`Failed to create MOV thumbnail: ${error}`);
+    throw error;
   }
 }
 
 /**
  * Create a fallback SVG thumbnail when frame extraction fails
- * 
- * @param targetPaths Object containing paths where SVG thumbnails should be saved
- * @returns Promise that resolves when all SVGs are created
+ * This is only used as a last resort when FFmpeg fails
  */
 export async function createFallbackSvgThumbnails(targetPaths: {
-  jpgThumbPath: string,
-  movThumbPath: string,
-  posterPath: string,
-  nonPrefixedThumbPath: string,
-  uploadsMainPosterPath?: string,
-  uploadsSharedPosterPath?: string
+  jpgThumbPath: string;
 }): Promise<void> {
-  // Create a simpler video play icon SVG - removed text for cleaner look
-  const videoSvg = Buffer.from(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">' +
-    '<rect width="600" height="400" fill="#3A57E8"/>' +
-    '<circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/>' +
-    '<circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>' +
-    '<polygon points="290,180 290,220 320,200" fill="#fff"/></svg>'
-  );
+  const svgContent = `<svg width="640" height="360" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100%" height="100%" fill="#1a1a1a"/>
+    <text x="50%" y="50%" text-anchor="middle" fill="white" font-size="20" font-family="Arial">
+      Video Thumbnail
+    </text>
+  </svg>`;
   
   try {
-    // Make sure the directories exist
-    Object.values(targetPaths).forEach(p => {
-      const dir = path.dirname(p);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    });
-    
-    // Fix paths to always use svg extension for proper content-type handling
-    const fixPathExtension = (originalPath: string): string => {
-      // Replace problematic extensions with svg
-      const fixedPath = originalPath
-        .replace(/\.mov$/i, '.svg') // Replace .mov with .svg
-        .replace(/\.mp4$/i, '.svg') // Replace .mp4 with .svg
-        .replace(/\.webm$/i, '.svg'); // Replace .webm with .svg
-      
-      return fixedPath;
-    };
-    
-    // Ensure all paths have svg extension and create them
-    const jpgPath = fixPathExtension(targetPaths.jpgThumbPath);
-    const movPath = fixPathExtension(targetPaths.movThumbPath);
-    const posterPath = fixPathExtension(targetPaths.posterPath);
-    const nonPrefixedPath = fixPathExtension(targetPaths.nonPrefixedThumbPath);
-    
-    // Optional paths for the uploads directory
-    const uploadsMainPosterPath = targetPaths.uploadsMainPosterPath ? 
-      fixPathExtension(targetPaths.uploadsMainPosterPath) : null;
-    const uploadsSharedPosterPath = targetPaths.uploadsSharedPosterPath ? 
-      fixPathExtension(targetPaths.uploadsSharedPosterPath) : null;
-    
-    // Write SVG to all fixed paths locally
-    fs.writeFileSync(jpgPath, videoSvg);
-    fs.writeFileSync(movPath, videoSvg);
-    fs.writeFileSync(posterPath, videoSvg);
-    fs.writeFileSync(nonPrefixedPath, videoSvg);
-    
-    // Write to additional paths if provided
-    if (uploadsMainPosterPath) {
-      fs.writeFileSync(uploadsMainPosterPath, videoSvg);
-      logger.info(`Created fallback SVG at ${uploadsMainPosterPath}`);
-    }
-    
-    if (uploadsSharedPosterPath) {
-      fs.writeFileSync(uploadsSharedPosterPath, videoSvg);
-      logger.info(`Created fallback SVG at ${uploadsSharedPosterPath}`);
-    }
-    
-    // IMPORTANT: Also upload SVGs to Object Storage
-    try {
-      // Import spartaStorage to avoid circular dependencies
-      const { spartaStorage } = await import('./sparta-object-storage');
-      
-      // Upload all SVG files to Object Storage
-      logger.info(`Uploading fallback SVG files to Object Storage`);
-      
-      // Function to extract the relative path for Object Storage
-      const getStorageKey = (fullPath: string): string => {
-        const parts = fullPath.split('uploads');
-        if (parts.length > 1) {
-          return `shared/uploads${parts[1]}`;
-        }
-        return `shared/uploads/${path.basename(fullPath)}`;
-      };
-      
-      // Upload all variations
-      await spartaStorage.storeBuffer(
-        videoSvg, 
-        path.basename(jpgPath),
-        'image/svg+xml',
-        true, // skipLocalStorage = true (only store in object storage)
-        getStorageKey(jpgPath)
-      );
-      
-      await spartaStorage.storeBuffer(
-        videoSvg, 
-        path.basename(movPath),
-        'image/svg+xml',
-        true,
-        getStorageKey(movPath)
-      );
-      
-      await spartaStorage.storeBuffer(
-        videoSvg, 
-        path.basename(posterPath),
-        'image/svg+xml',
-        true,
-        getStorageKey(posterPath)
-      );
-      
-      await spartaStorage.storeBuffer(
-        videoSvg, 
-        path.basename(nonPrefixedPath),
-        'image/svg+xml',
-        true,
-        getStorageKey(nonPrefixedPath)
-      );
-      
-      // IMPORTANT FIX: Also upload the SVG to shared/uploads directly (non-thumbnails directory)
-      // This ensures SVG fallbacks are accessible when MOV files are accessed from shared/uploads
-      const originalFilename = path.basename(nonPrefixedPath).replace(/\.svg$/, '.mov');
-      const nonPrefixedSvgFilename = originalFilename.replace(/\.mov$/i, '.svg');
-      
-      await spartaStorage.storeBuffer(
-        videoSvg, 
-        nonPrefixedSvgFilename,
-        'image/svg+xml',
-        true, 
-        `shared/uploads/${nonPrefixedSvgFilename}`
-      );
-      
-      // Also upload thumb-prefixed version to shared/uploads for consistency
-      const thumbPrefixedSvgFilename = `thumb-${nonPrefixedSvgFilename}`;
-      await spartaStorage.storeBuffer(
-        videoSvg, 
-        thumbPrefixedSvgFilename,
-        'image/svg+xml',
-        true, 
-        `shared/uploads/${thumbPrefixedSvgFilename}`
-      );
-      
-      if (uploadsMainPosterPath) {
-        await spartaStorage.storeBuffer(
-          videoSvg, 
-          path.basename(uploadsMainPosterPath),
-          'image/svg+xml',
-          true,
-          getStorageKey(uploadsMainPosterPath)
-        );
-      }
-      
-      if (uploadsSharedPosterPath) {
-        await spartaStorage.storeBuffer(
-          videoSvg, 
-          path.basename(uploadsSharedPosterPath),
-          'image/svg+xml',
-          true,
-          getStorageKey(uploadsSharedPosterPath)
-        );
-      }
-      
-      logger.info(`Successfully uploaded all SVG fallbacks to Object Storage`);
-    } catch (objStorageError) {
-      logger.error(`Failed to upload SVG fallbacks to Object Storage: ${objStorageError}`);
-      // Continue with local files even if object storage upload fails
-    }
-    
-    logger.info('Created fallback SVG thumbnails for video', { 
-      paths: {
-        jpgPath,
-        movPath,
-        posterPath,
-        nonPrefixedPath
-      }
-    });
+    // Write SVG with .jpg extension as fallback
+    fs.writeFileSync(targetPaths.jpgThumbPath, svgContent);
+    logger.info(`Created fallback SVG thumbnail: ${targetPaths.jpgThumbPath}`);
   } catch (error) {
-    logger.error(`Failed to create fallback SVG thumbnails: ${error}`);
+    logger.error(`Failed to create fallback SVG thumbnail: ${error}`);
     throw error;
   }
 }

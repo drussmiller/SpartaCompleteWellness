@@ -1107,24 +1107,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       logger.info(`Video poster generation requested for ${mediaUrl || 'all videos'} by user ${req.user.id}`, { postId });
       
-      // Import the poster generation module
-      const { processPosterBatch } = await import('./poster-generator');
-      
-      // Run the poster generation asynchronously
+      // Thumbnail generation is now handled during upload in sparta-object-storage.ts
+      // No need for separate poster batch processing
       res.json({
-        message: "Video poster generation started",
-        status: "processing",
+        message: "Post created successfully",
+        status: "complete",
         postId: postId || null
       });
-      
-      // Process after sending the response
-      processPosterBatch(20, 60000)
-        .then((result) => {
-          logger.info(`Video poster generation completed for user ${req.user.id}`, { ...result });
-        })
-        .catch(error => {
-          logger.error(`Video poster generation failed for user ${req.user.id}:`, error);
-        });
         
     } catch (error) {
       logger.error('Error starting video poster generation:', error);
