@@ -53,7 +53,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
     
     // Create array of possible keys to try
-    const keysToTry = [];
+    const keysToTry: string[] = [];
     
     // Special handling for MOV files - check multiple formats
     if (cleanKey.toLowerCase().endsWith('.mov')) {
@@ -139,28 +139,21 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
           if (fileInfo) {
             logger.info(`Found file with spartaStorage at key: ${tryKey}`, { route: '/api/object-storage/direct-download' });
             
-            // Try to serve from filesystem cache if available
-            if (fs.existsSync(fileInfo.path)) {
-              const contentType = getContentType(tryKey);
-              res.setHeader('Content-Type', contentType);
-              logger.info(`Serving file from filesystem cache: ${fileInfo.path}`, { route: '/api/object-storage/direct-download' });
-              return res.sendFile(fileInfo.path);
-            } else {
-              // Try one more direct access attempt with the key we know worked in spartaStorage
-              try {
-                const directKey = tryKey.startsWith('shared/') ? tryKey : `shared/${tryKey}`;
-                logger.info(`Last attempt to fetch directly from Object Storage with key: ${directKey}`, { route: '/api/object-storage/direct-download' });
-                const data = await objectStorage.downloadAsBytes(directKey);
-                
-                if (data && Buffer.isBuffer(data)) {
-                  const contentType = getContentType(tryKey);
-                  res.setHeader('Content-Type', contentType);
-                  logger.info(`Last-chance success serving directly from Object Storage: ${directKey}`, { route: '/api/object-storage/direct-download' });
-                  return res.send(data);
-                }
-              } catch (lastError) {
-                logger.error(`Final direct access attempt failed: ${lastError}`, { route: '/api/object-storage/direct-download' });
+            // Skip filesystem cache - serve directly from Object Storage
+            // Try to download directly from Object Storage using the verified key
+            try {
+              const directKey = tryKey.startsWith('shared/') ? tryKey : `shared/${tryKey}`;
+              logger.info(`Last attempt to fetch directly from Object Storage with key: ${directKey}`, { route: '/api/object-storage/direct-download' });
+              const data = await objectStorage.downloadAsBytes(directKey);
+              
+              if (data && Buffer.isBuffer(data)) {
+                const contentType = getContentType(tryKey);
+                res.setHeader('Content-Type', contentType);
+                logger.info(`Last-chance success serving directly from Object Storage: ${directKey}`, { route: '/api/object-storage/direct-download' });
+                return res.send(data);
               }
+            } catch (lastError) {
+              logger.error(`Final direct access attempt failed: ${lastError}`, { route: '/api/object-storage/direct-download' });
             }
           }
         } catch (objError) {

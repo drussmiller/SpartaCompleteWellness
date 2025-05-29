@@ -936,15 +936,8 @@ export class SpartaObjectStorage {
               }
               
               if (fileBuffer) {
-                // Ensure source directory exists
-                const sourceDir = path.dirname(videoPath);
-                if (!fs.existsSync(sourceDir)) {
-                  fs.mkdirSync(sourceDir, { recursive: true });
-                }
-                
-                // Write the file locally
-                fs.writeFileSync(videoPath, fileBuffer);
-                console.log(`Successfully downloaded and cached video from Object Storage to ${videoPath}`);
+                // Skip local caching - file exists in Object Storage and can be served directly
+                console.log(`Video found in Object Storage with key: ${foundKey}, skipping local cache to prevent duplication`);
                 return true;
               }
               
@@ -2235,28 +2228,10 @@ export class SpartaObjectStorage {
             }
             
             if (buffer) {
-              // Ensure directory exists
-              const dir = path.dirname(actualFilePath);
-              if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-              }
-              
-              if (buffer.length === 0) {
-                console.error(`Downloaded empty buffer from object storage for key: ${foundKey}`);
-              }
-              
-              // Cache the file locally
-              fs.writeFileSync(actualFilePath, buffer);
-              console.log(`Cached file from object storage to local path: ${actualFilePath}`);
-              
-              // Now we can get the stats locally
-              if (fs.existsSync(actualFilePath)) {
-                const stats = fs.statSync(actualFilePath);
-                fileSize = stats.size;
-                console.log(`File size after caching: ${fileSize} bytes`);
-              } else {
-                console.error(`Failed to cache file from object storage to ${actualFilePath}`);
-              }
+              // Skip local caching to prevent file duplication
+              // Set file size from buffer size instead of caching the file
+              fileSize = buffer.length;
+              console.log(`File found in Object Storage with key: ${foundKey}, size: ${fileSize} bytes - skipping local cache to prevent duplication`);
             }
           } catch (downloadError) {
             console.error(`Failed to download file from object storage: ${foundKey}`, downloadError);
