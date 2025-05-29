@@ -15,8 +15,8 @@ import { extractMovFrame } from './mov-frame-extractor';
 
 export const objectStorageRouter = express.Router();
 
-// Initialize Object Storage Client - use same method as sparta-object-storage.ts
-const objectStorage = new ObjectStorage.Client();
+// Import the same Object Storage client used throughout the app
+import { spartaStorage } from './sparta-object-storage';
 
 /**
  * Direct route to serve files exclusively from Object Storage
@@ -122,7 +122,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       for (const tryKey of keysToTry) {
         try {
           console.log(`[Object Storage] Attempting direct access for: ${tryKey}`);
-          const data = await objectStorage.downloadAsBytes(tryKey);
+          const data = await spartaStorage.downloadAsBytes(tryKey);
           
           if (data && Buffer.isBuffer(data)) {
             const contentType = getContentType(tryKey);

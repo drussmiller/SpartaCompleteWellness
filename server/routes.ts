@@ -4303,71 +4303,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   app.get('/api/serve-file', async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
-      const isThumbnail = req.query.thumbnail === 'true';
       
       if (!filename) {
         return res.status(400).json({ error: 'Filename parameter is required' });
       }
 
-      logger.info(`Serving file: ${filename}, thumbnail: ${isThumbnail}`, { route: '/api/serve-file' });
+      logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
       // Import Object Storage client
-      const { objectStorage } = await import('./sparta-object-storage');
+      const spartaObjectStorage = await import('./sparta-object-storage');
+      const objectStorage = spartaObjectStorage.spartaStorage;
       
-      // Determine the correct path based on whether it's a thumbnail
-      let storageKey: string | undefined;
-      
-      if (isThumbnail) {
-        // For thumbnails, try multiple possible paths
-        const possibleKeys = [
-          `shared/uploads/thumbnails/${filename}`,
-          `uploads/thumbnails/${filename}`,
-          `shared/uploads/${filename}`,
-          `uploads/${filename}`
-        ];
-        
-        // Try each possible key until we find one that exists
-        for (const key of possibleKeys) {
-          try {
-            const exists = await objectStorage.exists(key);
-            if (exists) {
-              storageKey = key;
-              break;
-            }
-          } catch (err) {
-            // Continue to next key
-            continue;
-          }
-        }
-        
-        if (!storageKey) {
-          logger.info(`Thumbnail not found for any of the attempted keys: ${possibleKeys.join(', ')}`);
-          return res.status(404).json({ error: 'Thumbnail not found' });
-        }
-      } else {
-        // For regular files, try both shared and regular uploads
-        const possibleKeys = [
-          `shared/uploads/${filename}`,
-          `uploads/${filename}`
-        ];
-        
-        for (const key of possibleKeys) {
-          try {
-            const exists = await objectStorage.exists(key);
-            if (exists) {
-              storageKey = key;
-              break;
-            }
-          } catch (err) {
-            continue;
-          }
-        }
-        
-        if (!storageKey) {
-          logger.info(`File not found for any of the attempted keys: ${possibleKeys.join(', ')}`);
-          return res.status(404).json({ error: 'File not found' });
-        }
-      }
+      // Use the exact filename as stored in database - no path manipulation
+      const storageKey = filename;
 
       // Download the file from Object Storage
       const fileData = await objectStorage.downloadAsBytes(storageKey);
