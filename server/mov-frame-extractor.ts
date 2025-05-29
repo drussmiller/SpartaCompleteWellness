@@ -86,46 +86,9 @@ export async function extractMovFrame(
 export async function createAllMovThumbnailVariants(
   sourceMovPath: string,
   targetThumbPath: string
-): Promise<{ 
-  jpgThumbPath: string,
-  movThumbPath: string,
-  posterPath: string,
-  nonPrefixedThumbPath: string 
-}> {
-  const filename = path.basename(sourceMovPath);
-  const dirname = path.dirname(targetThumbPath);
-  
-  // Define paths for all variants
+): Promise<{ jpgThumbPath: string }> {
+  // Only create one JPG thumbnail with simplified naming
   const jpgThumbPath = targetThumbPath.replace('.mov', '.jpg');
-  const movThumbPath = targetThumbPath;
-  
-  // For poster path, ensure we use the .poster.jpg extension
-  // This is critical for proper thumbnails display in the UI
-  const fileBase = path.basename(filename, '.mov');
-  const posterFilename = `${fileBase}.poster.jpg`;
-  
-  // Store the poster in the thumbnails directory  
-  const posterPath = path.join(dirname, posterFilename);
-  
-  // Also create a poster in the uploads directory (non-thumbnails)
-  // This is needed for the frontend to find the poster when using the original video path
-  const uploadsDir = path.resolve(dirname, '..');  // Go up one directory from the thumbnails dir
-  const uploadsSharedDir = path.join(dirname, '..', '..', 'shared', 'uploads');  // Path to shared/uploads 
-  const uploadsMainPosterPath = path.join(uploadsDir, posterFilename);
-  const uploadsSharedPosterPath = path.join(uploadsSharedDir, posterFilename);
-  
-  // For non-prefixed path (regular thumbnail)
-  const nonPrefixedThumbPath = targetThumbPath.replace('thumb-', '');
-  
-  // Create result object for easier access
-  const pathsResult = {
-    jpgThumbPath,
-    movThumbPath,
-    posterPath,
-    nonPrefixedThumbPath,
-    uploadsMainPosterPath,   // Add new fields to the result object
-    uploadsSharedPosterPath
-  };
   
   try {
     // Check if source file exists and is readable
@@ -163,76 +126,19 @@ export async function createAllMovThumbnailVariants(
         if (stats.size > 1024) {
           // Read the valid JPG data
           const jpgBuffer = fs.readFileSync(tempJpgPath);
-          
-          // Copy to all required local paths
           fs.writeFileSync(jpgThumbPath, jpgBuffer);
-          fs.writeFileSync(movThumbPath, jpgBuffer);
-          fs.writeFileSync(posterPath, jpgBuffer);
-          fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
           
-          // Ensure the parent directories exist for the additional poster files
-          const uploadsDir = path.dirname(uploadsMainPosterPath);
-          const sharedDir = path.dirname(uploadsSharedPosterPath);
-          
-          if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-          }
-          
-          if (!fs.existsSync(sharedDir)) {
-            fs.mkdirSync(sharedDir, { recursive: true });
-          }
-          
-          // Write to the additional poster files locally
-          fs.writeFileSync(uploadsMainPosterPath, jpgBuffer);
-          fs.writeFileSync(uploadsSharedPosterPath, jpgBuffer);
-          
-          // IMPORTANT: Also upload thumbnails to Object Storage
+          // Upload only the single JPG thumbnail to Object Storage
           try {
-            // Import spartaStorage to avoid circular dependencies
             const { spartaStorage } = await import('./sparta-object-storage');
-            
-            // Prepare thumbnail paths for object storage, following the same pattern the user expects
             const jpgThumbFilename = path.basename(jpgThumbPath);
-            const movThumbFilename = path.basename(movThumbPath);
-            const posterFilename = path.basename(posterPath);
-            const nonPrefixedThumbFilename = path.basename(nonPrefixedThumbPath);
-            const uploadsMainPosterFilename = path.basename(uploadsMainPosterPath);
-            const uploadsSharedPosterFilename = path.basename(uploadsSharedPosterPath);
             
-            // Store in object storage - these calls will create the appropriate shared URLs
-            logger.info(`Uploading thumbnail images to Object Storage for ${filename}`);
-            
-            // Upload all variations for maximum compatibility
             await spartaStorage.storeBuffer(
               jpgBuffer, 
               jpgThumbFilename,
               'image/jpeg',
-              true, // skipLocalStorage = true (only store in Object Storage)
-              `shared/uploads/thumbnails/${jpgThumbFilename}`
-            );
-            
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              posterFilename,
-              'image/jpeg',
-              true, 
-              `shared/uploads/thumbnails/${posterFilename}`
-            );
-            
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              uploadsMainPosterFilename,
-              'image/jpeg',
-              true, 
-              `shared/uploads/${uploadsMainPosterFilename}`
-            );
-            
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              uploadsSharedPosterFilename,
-              'image/jpeg',
-              true, 
-              `shared/uploads/${uploadsSharedPosterFilename}`
+              true,
+              `shared/uploads/${jpgThumbFilename}`
             );
             
             // IMPORTANT FIX: Also upload the thumbnail JPG to shared/uploads location with same name as MOV

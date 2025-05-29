@@ -1139,21 +1139,9 @@ export class SpartaObjectStorage {
                     if (this.objectStorage) {
                       const jpgThumbBasename = path.basename(jpgThumbPath);
 
-                      const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
-                      const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
-                      const sharedPosterKey = `shared/uploads/thumbnails/${posterBasename}`;
-                      const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
-
-                      this.objectStorage.uploadFromBytes(sharedThumbKey, videoSvg)
-                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
+                      const sharedJpgThumbKey = `shared/uploads/${jpgThumbBasename}`;
 
                       this.objectStorage.uploadFromBytes(sharedJpgThumbKey, videoSvg)
-                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
-
-                      this.objectStorage.uploadFromBytes(sharedPosterKey, videoSvg)
-                        .catch(e => console.error(`Failed to upload emergency fallback:`, e));
-
-                      this.objectStorage.uploadFromBytes(sharedNonPrefixedKey, videoSvg)
                         .catch(e => console.error(`Failed to upload emergency fallback:`, e));
                     }
 
