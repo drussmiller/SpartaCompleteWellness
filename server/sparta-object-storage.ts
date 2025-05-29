@@ -966,7 +966,7 @@ export class SpartaObjectStorage {
             });
 
             // This function handles the actual thumbnail generation once we have the source file
-            const continueWithThumbnailGeneration = () => {
+            const continueWithThumbnailGeneration = async () => {
               // Log file details
               try {
                 const stats = fs.statSync(videoPath);
