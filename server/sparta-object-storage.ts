@@ -506,8 +506,8 @@ export class SpartaObjectStorage {
           try {
             const thumbnailBasename = path.basename(generatedThumbnailPath);
 
-            // Store only in the shared path to save space
-            const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+            // Store in the same directory as the video file for consistent access
+            const sharedKey = `shared/uploads/${thumbnailBasename}`;
 
             const thumbnailBuffer = fs.readFileSync(generatedThumbnailPath);
 

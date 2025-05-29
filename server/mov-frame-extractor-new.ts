@@ -34,7 +34,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
         // Use FFmpeg to extract a frame at the specified position
         await new Promise<void>((resolve, reject) => {
           ffmpeg(sourceMovPath)
-            .seekTo(position)
+            .seek(position)
             .frames(1)
             .output(tempJpgPath)
             .outputOptions([
