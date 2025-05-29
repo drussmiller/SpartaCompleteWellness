@@ -2078,8 +2078,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               
               logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
               
-              const fileInfo = await spartaStorage.storeFile(
-                filePath,
+              const fileInfo = await spartaStorage.storeFileFromBuffer(
+                req.file.buffer,
                 req.file.originalname,
                 req.file.mimetype,
                 isVideo
@@ -2279,8 +2279,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               formDataKeys: Object.keys(req.body || {})
             });
               
-            const fileInfo = await spartaStorage.storeFile(
-              filePath,
+            const fileInfo = await spartaStorage.storeFileFromBuffer(
+              req.file.buffer,
               req.file.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
               isVideo // Pass flag for video handling
