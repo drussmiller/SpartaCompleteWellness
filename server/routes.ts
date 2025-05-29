@@ -1254,7 +1254,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Update the post creation endpoint to ensure correct point assignment
   router.post("/api/posts", authenticate, upload.fields([
     { name: 'image', maxCount: 1 },
-    { name: 'thumbnail', maxCount: 1 }
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'thumbnail_alt', maxCount: 1 },
+    { name: 'thumbnail_jpg', maxCount: 1 }
   ]), async (req, res) => {
     // Set content type early to prevent browser confusion
     res.set({
