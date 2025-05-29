@@ -320,14 +320,21 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       
                       console.log('Extracted filename for thumbnail search:', actualFileName);
                       
-                      // Try multiple thumbnail patterns that were uploaded
+                      // Extract the base video name (e.g., "IMG_7923.MOV" from "1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV")
+                      const baseVideoName = actualFileName.split('-').slice(2).join('-'); // Gets "IMG_7923.MOV"
+                      
+                      console.log('Base video name for matching:', baseVideoName);
+                      
+                      // Try multiple thumbnail patterns that were uploaded with different timestamp prefixes
+                      // For the current video: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV
+                      // Try the actual thumbnail files that exist in Object Storage
                       const thumbnailPatterns = [
+                        `/api/serve-file?filename=1748529997124-43ad0541-8902-4ab6-a24a-27dd42cdb918-IMG-7923.MOV.poster.jpg`,
+                        `/api/serve-file?filename=1748529997484-408ee8f6-edb6-45f0-9150-8b31423599c7-thumb-IMG-7923.MOV`,
+                        `/api/serve-file?filename=1748529997847-d77d98d7-6baa-4ad5-b11c-d4e13335eea5-IMG-7923.jpg`,
                         `/api/serve-file?filename=${actualFileName}.poster.jpg`,
                         `/api/serve-file?filename=thumb-${actualFileName}`,
-                        `/api/serve-file?filename=${actualFileName.replace(/\.mov$/i, '.jpg')}`,
-                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${actualFileName}.poster.jpg`,
-                        `/api/object-storage/direct-download?fileUrl=shared/uploads/thumb-${actualFileName}`,
-                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${actualFileName.replace(/\.mov$/i, '.jpg')}`
+                        `/api/serve-file?filename=${actualFileName.replace(/\.mov$/i, '.jpg')}`
                       ];
                       
                       // Try each pattern until one works
