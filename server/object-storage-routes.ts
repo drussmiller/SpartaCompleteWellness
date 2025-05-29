@@ -15,10 +15,8 @@ import { extractMovFrame } from './mov-frame-extractor';
 
 export const objectStorageRouter = express.Router();
 
-// Initialize Object Storage Client
-const objectStorage = new ObjectStorage.Client({
-  bucketId: process.env.REPLIT_OBJECT_STORAGE_BUCKET || "default-bucket"
-});
+// Initialize Object Storage Client - use same method as sparta-object-storage.ts
+const objectStorage = new ObjectStorage.Client();
 
 /**
  * Direct route to serve files exclusively from Object Storage
