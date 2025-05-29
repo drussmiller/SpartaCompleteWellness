@@ -860,16 +860,34 @@ export class SpartaObjectStorage {
           const thumbnailFilename = `${baseFilename}.jpg`;
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
           
-          // Create a simple SVG placeholder for now
-          // Later, the system can replace this with an actual frame extraction
-          const svgThumbnail = `<svg width="320" height="240" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="#f0f0f0"/>
-            <rect x="130" y="95" width="60" height="50" fill="#333" rx="5"/>
-            <polygon points="155,110 175,120 155,130" fill="#fff"/>
-            <text x="160" y="155" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">Video</text>
-          </svg>`;
+          // Create a simple placeholder JPG image using Sharp
+          const sharp = await import('sharp');
           
-          await this.objectStorage.uploadFromBytes(thumbnailKey, Buffer.from(svgThumbnail));
+          // Create a 320x240 JPG placeholder with a play button
+          const thumbnailBuffer = await sharp.default({
+            create: {
+              width: 320,
+              height: 240,
+              channels: 3,
+              background: { r: 240, g: 240, b: 240 }
+            }
+          })
+          .composite([
+            {
+              input: Buffer.from(`
+                <svg width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="30" cy="30" r="25" fill="rgba(0,0,0,0.7)"/>
+                  <polygon points="20,18 20,42 42,30" fill="white"/>
+                </svg>
+              `),
+              top: 90,
+              left: 130
+            }
+          ])
+          .jpeg({ quality: 80 })
+          .toBuffer();
+          
+          await this.objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
           thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
           
           console.log(`Created simplified single thumbnail for video: ${thumbnailKey}`);
