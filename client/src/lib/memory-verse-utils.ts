@@ -152,10 +152,9 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
   // Add a random query parameter to bypass caching
   const timestamp = Date.now();
   
-  // FIRST TRY - Use the actual poster format that exists in Object Storage
-  // Your thumbnails are stored as .poster.jpg format, not thumb- prefix
-  const posterFilename = `${fileBase}.poster.jpg`;
-  const directPosterUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${posterFilename}&v=${timestamp}`;
+  // Use simplified naming: same filename as video but with .jpg extension
+  const thumbnailFilename = `${fileBase}.jpg`;
+  const directPosterUrl = `/api/serve-file?filename=${thumbnailFilename}&v=${timestamp}`;
   
   console.log('getVideoPoster created thumbnail URL:', directPosterUrl);
   return directPosterUrl;
@@ -180,8 +179,8 @@ export function getAlternativePosterUrls(mediaUrl: string | null): string[] {
     const filename = urlParts[urlParts.length - 1];
     const fileBase = filename.split('.')[0];
     
-    // Only use the confirmed working format
-    alternatives.push(`/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${fileBase}.poster.jpg&v=${timestamp}`);
+    // Use simplified naming: same filename as video but with .jpg extension
+    alternatives.push(`/api/serve-file?filename=${fileBase}.jpg&v=${timestamp}`);
     
     console.log(`Generated ${alternatives.length} alternative poster URLs using confirmed working format`);
     

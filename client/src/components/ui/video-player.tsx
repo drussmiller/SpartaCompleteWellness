@@ -32,9 +32,9 @@ function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
   try {
     // Now handle clean URLs without nesting
     
-    // For poster.jpg files, the URL is already correct
-    if (originalUrl.includes('.poster.jpg')) {
-      console.log('Video player: URL already has correct .poster.jpg format:', originalUrl);
+    // For JPG files, the URL is already correct
+    if (originalUrl.includes('.jpg')) {
+      console.log('Video player: URL already has correct JPG format:', originalUrl);
       return originalUrl;
     }
     

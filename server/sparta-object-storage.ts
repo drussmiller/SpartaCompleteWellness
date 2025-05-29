@@ -850,7 +850,7 @@ export class SpartaObjectStorage {
       
       const objectStorageUrl = `/api/serve-file?filename=${encodeURIComponent(uniqueFilename)}`;
       
-      // Generate thumbnail if it's a video
+      // Generate thumbnail if it's a video (simplified system)
       let thumbnailUrl: string | undefined;
       if (isVideo) {
         try {
@@ -860,14 +860,19 @@ export class SpartaObjectStorage {
           const thumbnailFilename = `${baseFilename}.jpg`;
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
           
-          // For videos, we'll create a fallback SVG thumbnail immediately
-          // since we can't extract frames from a buffer directly
-          const svgThumbnail = this.createSvgPlaceholder(uniqueFilename, 'video');
+          // Create a simple SVG placeholder for now
+          // Later, the system can replace this with an actual frame extraction
+          const svgThumbnail = `<svg width="320" height="240" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#f0f0f0"/>
+            <rect x="130" y="95" width="60" height="50" fill="#333" rx="5"/>
+            <polygon points="155,110 175,120 155,130" fill="#fff"/>
+            <text x="160" y="155" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">Video</text>
+          </svg>`;
           
           await this.objectStorage.uploadFromBytes(thumbnailKey, Buffer.from(svgThumbnail));
           thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
           
-          console.log(`Created single thumbnail for video: ${thumbnailKey}`);
+          console.log(`Created simplified single thumbnail for video: ${thumbnailKey}`);
         } catch (thumbError) {
           console.error('Failed to create video thumbnail:', thumbError);
           // Continue without thumbnail
