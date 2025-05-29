@@ -24,56 +24,27 @@ interface VideoPlayerProps {
 function createSimplifiedPosterUrl(originalUrl?: string): string | undefined {
   if (!originalUrl) return undefined;
   
+  console.log('createSimplifiedPosterUrl called with:', originalUrl);
+  
   // Don't process if it's already a data URL
   if (originalUrl.startsWith('data:')) return originalUrl;
   
   try {
-    // If it's a direct-download URL, extract the fileUrl parameter
-    if (originalUrl.includes('/api/object-storage/direct-download')) {
-      const url = new URL(originalUrl, window.location.origin);
-      const fileUrl = url.searchParams.get('fileUrl');
-      if (!fileUrl) return originalUrl;
-      
-      // Extract just the filename without the path
-      let filename = fileUrl.split('/').pop();
-      if (!filename) return originalUrl;
-      
-      // For the new format, try getting just the base filename without extensions
-      let baseFilename = filename;
-      if (filename.includes('.')) {
-        baseFilename = filename.split('.')[0]; // Get just the base part of the filename
-      }
-      
-      // Use the new thumbnail naming format - thumb-{baseFilename}.jpg
-      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
-    }
+    // Now handle clean URLs without nesting
     
-    // For other URLs, try to simplify the path if it has poster.jpg
+    // For poster.jpg files, the URL is already correct
     if (originalUrl.includes('.poster.jpg')) {
-      const parts = originalUrl.split('/');
-      let filename = parts.pop();
-      if (!filename) return originalUrl;
-      
-      // Extract base filename without the .poster.jpg part
-      const baseFilename = filename.replace('.poster.jpg', '');
-      
-      // Use the new thumbnail naming format
-      return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
+      console.log('Video player: URL already has correct .poster.jpg format:', originalUrl);
+      return originalUrl;
     }
     
-    // If URL contains .mov or any other video extension, try the new naming pattern
+    // If URL contains .mov or any other video extension, it should already be handled by getVideoPoster
     if (originalUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
-      const parts = originalUrl.split('/');
-      const filename = parts.pop();
-      if (filename) {
-        // Extract base filename without the extension
-        const baseFilename = filename.split('.')[0];
-        
-        // Use the new thumbnail naming format
-        return `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/thumb-${baseFilename}.jpg`;
-      }
+      console.log('Video player: Video URL detected, returning as-is:', originalUrl);
+      return originalUrl;
     }
     
+    console.log('Video player returning original URL unchanged:', originalUrl);
     return originalUrl;
   } catch (error) {
     console.error("Error simplifying poster URL:", error);
@@ -128,71 +99,10 @@ export function VideoPlayer({
     }, 50);
   };
   
-  // Handle poster image load error using all available alternative poster URLs
+  // Handle poster image load error - no fallbacks as requested by user
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
-    
-    // Use imported getAlternativePosterUrls (no require)
-    // If we have an original src, use it to generate all possible alternative URLs
-    if (src) {
-      // Use the imported getAlternativePosterUrls function
-      const alternatives = getAlternativePosterUrls(src);
-      
-      if (alternatives.length > 0) {
-        console.log(`Found ${alternatives.length} alternative poster URLs to try`);
-        
-        // Try to preload each alternative poster to find one that works
-        const tryNextAlternative = (index = 0) => {
-          if (index >= alternatives.length) {
-            // If we've tried all alternatives and none worked, show the fallback
-            console.warn("All alternative poster URLs failed to load");
-            setPosterError(true);
-            return;
-          }
-          
-          const altPoster = alternatives[index];
-          console.log(`Trying alternative poster URL #${index + 1}:`, altPoster);
-          
-          // Create a new image element to test if the alternative URL works
-          const img = new Image();
-          img.onload = () => {
-            console.log(`Alternative poster URL #${index + 1} loaded successfully`);
-            setSimplifiedPoster(altPoster);
-            setPosterError(false); // Reset error state since we found a working URL
-          };
-          img.onerror = () => {
-            console.warn(`Alternative poster URL #${index + 1} failed to load`);
-            // Try the next alternative
-            tryNextAlternative(index + 1);
-          };
-          img.src = altPoster;
-        };
-        
-        // Start trying alternatives
-        tryNextAlternative();
-      } else {
-        // No alternatives found, show fallback
-        setPosterError(true);
-      }
-      
-      return;
-    }
-    
-    // Fallback to basic replacement logic if the advanced alternatives fail
-    if (simplifiedPoster && simplifiedPoster.includes('thumb-')) {
-      // Try alternate naming format without the 'thumb-' prefix
-      const altPoster = simplifiedPoster.replace('thumb-', '');
-      console.log("Trying basic alternate poster URL:", altPoster);
-      setSimplifiedPoster(altPoster);
-    } else if (simplifiedPoster && simplifiedPoster.includes('.poster.jpg')) {
-      // Try using the base filename without .poster.jpg
-      const basePoster = simplifiedPoster.replace('.poster.jpg', '.jpg');
-      console.log("Trying basic alternate poster URL:", basePoster);
-      setSimplifiedPoster(basePoster);
-    } else {
-      // If we've exhausted all options, show the fallback
-      setPosterError(true);
-    }
+    // As requested by user, no fallback images or alternatives - just fail silently
   };
   
   // Set up video loaded event
@@ -276,8 +186,8 @@ export function VideoPlayer({
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px] bg-gray-800">
-          {/* Only render img if we have a valid poster and no error */}
-          {simplifiedPoster && !posterError ? (
+          {/* Always render img if we have a poster - no longer hiding on errors */}
+          {simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
@@ -285,7 +195,9 @@ export function VideoPlayer({
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
-          ) : (
+          )}
+          {/* Show fallback only if no poster URL at all */}
+          {!simplifiedPoster && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
               className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
