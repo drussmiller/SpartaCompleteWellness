@@ -1360,29 +1360,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           if (isVideo) {
             logger.info(`Video file stored successfully in Object Storage: ${fileInfo.objectStorageUrl}`);
             
-            // For memory verse videos, also process the uploaded thumbnails
-            if (postData.type === 'memory_verse') {
-              const files = req.files as any;
-              
-              // Process each thumbnail field
-              for (const fieldName of ['thumbnail', 'thumbnail_alt', 'thumbnail_jpg']) {
-                if (files[fieldName] && files[fieldName][0]) {
-                  const thumbnailFile = files[fieldName][0];
-                  logger.info(`Processing ${fieldName}: ${thumbnailFile.originalname}`);
-                  
-                  try {
-                    const thumbnailInfo = await spartaStorage.storeFileFromBuffer(
-                      thumbnailFile.buffer,
-                      thumbnailFile.originalname,
-                      thumbnailFile.mimetype,
-                      false // thumbnails are images, not videos
-                    );
-                    logger.info(`${fieldName} stored successfully: ${thumbnailInfo.objectStorageUrl}`);
-                  } catch (thumbnailErr) {
-                    logger.error(`Error storing ${fieldName}:`, thumbnailErr);
-                  }
-                }
-              }
+            // DISABLED: Extra thumbnail processing creates duplicate files
+            // The clean thumbnail system automatically creates one JPG thumbnail per video
+            // No need to process additional thumbnail uploads
+            if (false && postData.type === 'memory_verse') {
+              logger.info('Skipping extra thumbnail processing - using clean single thumbnail system');
             }
           } else {
             logger.info(`Image file stored successfully in Object Storage: ${fileInfo.objectStorageUrl}`);
