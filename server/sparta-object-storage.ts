@@ -408,13 +408,13 @@ export class SpartaObjectStorage {
 
       let thumbnailUrl = null;
 
-      // Create thumbnail based on file type
-      // For videos, ensure the thumbnail has a jpg extension
+      // Create thumbnail based on file type (simplified system)
+      // For videos, create thumbnail with same name but .jpg extension
       let thumbnailFilename: string;
       if (isVideo || isVideoByExtension || mimeType.startsWith('video/')) {
-        // Ensure video thumbnails always have .jpg extension
+        // Simplified: same name as video but with .jpg extension
         const baseFileName = safeFilename.replace(/\.[^.]+$/, '');
-        thumbnailFilename = `thumb-${baseFileName}.jpg`;
+        thumbnailFilename = `${baseFileName}.jpg`;
       } else {
         thumbnailFilename = `thumb-${safeFilename}`;
       }
@@ -509,23 +509,7 @@ export class SpartaObjectStorage {
                 console.error(`Error setting permissions on thumbnail:`, permErr);
               }
 
-              // For memory verse and miscellaneous videos, always ensure thumbnail is in the standard location
-              if (originalFilename.toLowerCase().includes('memory_verse') || 
-                  (originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension)) {
-
-                // Special handling for videos - create a copy without the thumb- prefix too
-                // This is because some parts of the code might look for thumbnails without the prefix
-                const thumbDirResolved = path.resolve(this.thumbnailDir);
-                const alternateThumbPath = path.join(thumbDirResolved, safeFilename);
-                if (!fs.existsSync(alternateThumbPath)) {
-                  try {
-                    fs.copyFileSync(generatedThumbnailPath, alternateThumbPath);
-                    console.log(`Created alternate video thumbnail at ${alternateThumbPath}`);
-                  } catch (copyError) {
-                    console.error(`Error creating alternate video thumbnail:`, copyError);
-                  }
-                }
-              }
+              // No additional thumbnail copies needed - using simplified single thumbnail system
             } else {
               console.warn(`Thumbnail was not found at ${generatedThumbnailPath} after creation attempt`);
 
@@ -540,17 +524,7 @@ export class SpartaObjectStorage {
               fs.writeFileSync(generatedThumbnailPath, svgContent);
               console.log(`Created SVG fallback thumbnail at ${generatedThumbnailPath}`);
 
-              // Create a copy without the thumb- prefix for memory verse or miscellaneous videos
-              if (originalFilename.toLowerCase().includes('memory_verse') || 
-                  (originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension)) {
-                const alternateThumbPath = path.join(this.thumbnailDir, safeFilename);
-                try {
-                  fs.writeFileSync(alternateThumbPath, svgContent);
-                  console.log(`Created SVG fallback alternate thumbnail at ${alternateThumbPath}`);
-                } catch (fallbackError) {
-                  console.error(`Failed to create alternate thumbnail:`, fallbackError);
-                }
-              }
+              // No alternate thumbnails needed - using simplified single thumbnail system
             }
           } catch (videoThumbError) {
             console.error(`Error in video thumbnail creation:`, videoThumbError);
