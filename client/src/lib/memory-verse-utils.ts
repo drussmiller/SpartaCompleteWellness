@@ -134,9 +134,26 @@ export function getVideoPoster(mediaUrl: string | null): string | undefined {
     return undefined;
   }
   
-  // Extract the filename from the media URL
-  const urlParts = mediaUrl.split('/');
-  const filename = urlParts[urlParts.length - 1];
+  // Extract the filename from the media URL, handling serve-file URLs properly
+  let filename = '';
+  
+  if (mediaUrl.includes('/api/serve-file?filename=')) {
+    // Extract filename from serve-file URL
+    const filenameMatch = mediaUrl.match(/filename=([^&]+)/);
+    if (filenameMatch) {
+      filename = decodeURIComponent(filenameMatch[1]);
+    }
+  } else {
+    // Extract from regular path
+    const urlParts = mediaUrl.split('/');
+    filename = urlParts[urlParts.length - 1];
+  }
+  
+  if (!filename) {
+    console.error('getVideoPoster could not extract filename from:', mediaUrl);
+    return undefined;
+  }
+  
   const fileBase = filename.split('.')[0];
   const fileExt = filename.split('.').pop()?.toLowerCase() || '';
   
