@@ -4320,6 +4320,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Download the file from Object Storage
       const result = await objectStorage.downloadAsBytes(storageKey);
       
+      // Handle Object Storage API response format: {ok: true, value: Buffer} or {ok: false, error: ...}
+      if (!result || typeof result !== 'object' || !('ok' in result)) {
+        logger.error(`Invalid response format from Object Storage for ${storageKey}`);
+        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
+      }
+
+      if (!result.ok || !result.value || !Array.isArray(result.value) || !Buffer.isBuffer(result.value[0])) {
+        logger.error(`File not found or invalid data in Object Storage for ${storageKey}:`, result);
+        return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+      }
+
       // Set appropriate content type
       const ext = filename.toLowerCase().split('.').pop();
       let contentType = 'application/octet-stream';
@@ -4355,8 +4366,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
-      logger.info(`Successfully served file: ${storageKey}, size: ${fileData.length} bytes`);
-      return res.send(fileData);
+      logger.info(`Successfully served file: ${storageKey}, size: ${result.value[0].length} bytes`);
+      return res.send(result.value[0]);
       
     } catch (error) {
       logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
