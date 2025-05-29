@@ -4314,8 +4314,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Use Object Storage client (same approach as object-storage-routes.ts)
       const objectStorage = new ObjectStorageClient();
       
-      // Use the exact filename as stored in database - no path manipulation
-      const storageKey = filename;
+      // Check if this is a thumbnail request
+      const isThumbnail = req.query.thumbnail === 'true';
+      
+      // Construct the proper Object Storage key
+      let storageKey;
+      if (isThumbnail) {
+        storageKey = `shared/uploads/thumbnails/${filename}`;
+      } else {
+        // For regular files, add the shared/uploads prefix if not already present
+        storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
+      }
 
       // Download the file from Object Storage with proper error handling
       const result = await objectStorage.downloadAsBytes(storageKey);
