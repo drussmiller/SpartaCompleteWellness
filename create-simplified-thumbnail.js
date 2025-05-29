@@ -1,4 +1,4 @@
-const { Client } = require('@replit/object-storage');
+import { Client } from '@replit/object-storage';
 
 async function createSimplifiedThumbnail() {
   try {
