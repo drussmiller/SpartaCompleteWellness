@@ -1047,117 +1047,74 @@ export class SpartaObjectStorage {
                   const simplifiedThumbPath = path.join(path.dirname(targetPath), `${videoBaseName}.jpg`);
 
                   // Generate an actual frame capture using ffmpeg
-                  // For MOV files we'll use more precise settings
+                  // Extract a single JPG frame from the video
                   const ffmpeg = require('fluent-ffmpeg');
 
-                  console.log(`Extracting first frame from MOV file at ${normalizedVideoPath}`);
+                  console.log(`Extracting JPG thumbnail from video: ${normalizedVideoPath}`);
 
                   // Use a Promise to track the completion of ffmpeg
                   const generateFrameCapture = new Promise<void>((frameResolve, frameReject) => {
                     // Set a unique process ID for logging
                     const processId = Math.random().toString(36).substring(2, 8);
 
-                    // Configure ffmpeg with specific settings for MOV files
+                    // Configure ffmpeg to extract a single frame as JPG
                     const command = ffmpeg(normalizedVideoPath)
-                      .inputOptions([
-                        '-ss 0', // Seek to the very beginning
-                        '-t 0.1' // Limit input duration to improve speed
-                      ])
+                      .seekInput(1) // Seek to 1 second to avoid black frames
                       .outputOptions([
                         '-frames:v 1', // Extract exactly one frame
-                        '-q:v 2',      // High quality
-                        '-f image2'    // Force image output format
+                        '-q:v 2',      // High quality JPG
+                        '-f image2',   // Force image output format
+                        '-vf scale=600:400' // Resize to consistent dimensions
                       ])
                       .on('start', (commandLine: string) => {
-                        console.log(`[${processId}] MOV Extraction: ${commandLine}`);
+                        console.log(`[${processId}] Video thumbnail extraction: ${commandLine}`);
                       })
                       .on('end', () => {
-                        console.log(`[${processId}] Successfully extracted first frame from MOV file`);
+                        console.log(`[${processId}] Successfully extracted JPG thumbnail from video`);
                         frameResolve();
                       })
                       .on('error', (err: Error, stdout: string, stderr: string) => {
-                        console.error(`[${processId}] Error extracting frame: ${err.message}`);
+                        console.error(`[${processId}] Error extracting video frame: ${err.message}`);
                         console.error(`[${processId}] ffmpeg stdout: ${stdout}`);
                         console.error(`[${processId}] ffmpeg stderr: ${stderr}`);
-
-                        // Create a fallback thumbnail if frame extraction fails
-                        const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><text x="300" y="200" fill="#fff" text-anchor="middle" font-size="14">Video Thumbnail</text><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
-
-                        try {
-                          // Create all fallback versions
-                          fs.writeFileSync(jpgThumbPath, videoSvg);
-                          fs.writeFileSync(targetPath, videoSvg);
-                          fs.writeFileSync(posterPath, videoSvg);
-                          fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
-
-                          console.log(`[${processId}] Created fallback thumbnails after ffmpeg error`);
-                          frameResolve(); // Resolve even though we used fallbacks
-                        } catch (fbError) {
-                          console.error(`[${processId}] Failed to create fallback: ${fbError}`);
-                          frameReject(fbError);
-                        }
+                        frameReject(err);
                       });
 
-                    // Execute ffmpeg to create the simplified thumbnail
+                    // Save the extracted frame as JPG thumbnail
                     command.save(simplifiedThumbPath);
                   });
 
                   // Wait for frame capture to complete
                   generateFrameCapture.then(() => {
-                    // SIMPLIFIED: Only handle the single thumbnail we created
+                    // Check if the thumbnail was successfully created
                     if (fs.existsSync(simplifiedThumbPath)) {
-                      console.log(`Frame capture successful, uploading simplified thumbnail`);
+                      console.log(`Video thumbnail created successfully at ${simplifiedThumbPath}`);
 
-                      // Upload only the simplified thumbnail to Object Storage
+                      // Upload to Object Storage if available
                       if (this.objectStorage) {
                         const thumbnailBuffer = fs.readFileSync(simplifiedThumbPath);
                         const thumbnailBasename = path.basename(simplifiedThumbPath);
-
-                        // Store only in shared path to save space  
                         const sharedThumbKey = `shared/uploads/${thumbnailBasename}`;
 
-                        console.log(`Uploading simplified thumbnail to Object Storage: ${sharedThumbKey}`);
+                        console.log(`Uploading video thumbnail to Object Storage: ${sharedThumbKey}`);
 
-                        // Upload only the simplified thumbnail
                         this.objectStorage.uploadFromBytes(sharedThumbKey, thumbnailBuffer)
                           .then(() => {
-                            console.log(`Successfully uploaded simplified thumbnail to ${sharedThumbKey}`);
+                            console.log(`Successfully uploaded video thumbnail to ${sharedThumbKey}`);
                           })
                           .catch(e => {
-                            console.error(`Failed to upload simplified thumbnail to ${sharedThumbKey}:`, e);
+                            console.error(`Failed to upload video thumbnail to ${sharedThumbKey}:`, e);
                           });
-
-                        // Resolve the original promise since we've created the thumbnails
-                        resolve();
-                      } else {
-                        resolve();
                       }
+                      resolve();
                     } else {
-                      console.error(`Failed to create JPG thumbnail from MOV file at ${jpgThumbPath}`);
-
-                      // Create a fallback thumbnail if the JPG file doesn't exist
-                      const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#3A57E8"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><text x="300" y="200" fill="#fff" text-anchor="middle" font-size="14">Video Thumbnail</text><polygon points="270,160 270,240 350,200" fill="#fff"/></svg>');
-
-                      // Create all required versions
-                      try {
-                        fs.writeFileSync(jpgThumbPath, videoSvg);
-                        fs.writeFileSync(targetPath, videoSvg);
-                        fs.writeFileSync(posterPath, videoSvg);
-                        fs.writeFileSync(nonPrefixedThumbPath, videoSvg);
-
-                        console.log(`Created fallback thumbnails after ffmpeg failure`);
-                        resolve();
-                      } catch(fbError) {
-                        console.error(`Failed to create fallback thumbnails: ${fbError}`);
-                        reject(fbError);
-                      }
+                      console.error(`Failed to create video thumbnail at ${simplifiedThumbPath}`);
+                      reject(new Error('Video thumbnail creation failed'));
                     }
                   }).catch(err => {
-                    console.error(`Error in frame capture process: ${err}`);
+                    console.error(`Error in video thumbnail generation: ${err.message}`);
                     reject(err);
                   });
-
-                  resolve();
                 } catch (movError) {
                   console.error(`Error processing MOV file: ${movError}`);
 
