@@ -128,41 +128,24 @@ export async function createAllMovThumbnailVariants(
           const jpgBuffer = fs.readFileSync(tempJpgPath);
           fs.writeFileSync(jpgThumbPath, jpgBuffer);
           
-          // Upload only the single JPG thumbnail to Object Storage
+          // Upload only the single JPG thumbnail to Object Storage 
+          // Use the same name as the video but with .jpg extension
           try {
             const { spartaStorage } = await import('./sparta-object-storage');
-            const jpgThumbFilename = path.basename(jpgThumbPath);
+            const videoFilename = path.basename(sourceMovPath);
+            const thumbnailFilename = videoFilename.replace(/\.mov$/i, '.jpg');
             
             await spartaStorage.storeBuffer(
               jpgBuffer, 
-              jpgThumbFilename,
+              thumbnailFilename,
               'image/jpeg',
               true,
-              `shared/uploads/${jpgThumbFilename}`
+              `shared/uploads/${thumbnailFilename}`
             );
             
-            // IMPORTANT FIX: Also upload the thumbnail JPG to shared/uploads location with same name as MOV
-            // This ensures thumbnails are accessible when MOV files are accessed from shared/uploads
-            const nonPrefixedJpgFilename = filename.replace(/\.mov$/i, '.jpg');
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              nonPrefixedJpgFilename,
-              'image/jpeg',
-              true, 
-              `shared/uploads/${nonPrefixedJpgFilename}`
-            );
+
             
-            // Also upload thumb-prefixed version to shared/uploads for consistency
-            const thumbPrefixedJpgFilename = `thumb-${filename.replace(/\.mov$/i, '.jpg')}`;
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              thumbPrefixedJpgFilename,
-              'image/jpeg',
-              true, 
-              `shared/uploads/${thumbPrefixedJpgFilename}`
-            );
-            
-            logger.info(`Successfully uploaded all thumbnail variations to Object Storage for ${filename}`);
+            logger.info(`Successfully uploaded thumbnail to Object Storage: ${thumbnailFilename}`);
           } catch (objStorageError) {
             logger.error(`Failed to upload thumbnails to Object Storage: ${objStorageError}`, { 
               sourceFile: filename,
