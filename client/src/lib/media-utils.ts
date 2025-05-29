@@ -53,6 +53,12 @@ export function createMediaUrl(mediaUrl: string | null): string {
     return mediaUrl;
   }
 
+  // If it's already a serve-file URL, return as-is
+  if (mediaUrl.startsWith('/api/serve-file')) {
+    console.log('Already a serve-file URL, returning as-is');
+    return mediaUrl;
+  }
+
   // If it's already a direct download URL, return as-is
   if (mediaUrl.startsWith('/api/object-storage/direct-download')) {
     console.log('Already a direct download URL, returning as-is');
@@ -68,9 +74,8 @@ export function createMediaUrl(mediaUrl: string | null): string {
 
   console.log('Extracted clean filename:', filename);
 
-  // Create simple, direct path
-  const cleanPath = `shared/uploads/${filename}`;
-  const result = `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
+  // Use the /api/serve-file route that we know works correctly
+  const result = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
   
   console.log('Created clean media URL:', result);
   return result;
