@@ -82,6 +82,9 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       keysToTry.push(`uploads/thumbnails/${baseFilename}`);
       // Add direct shared path for thumbnails
       keysToTry.push(`shared/thumbnails/${baseFilename}`);
+      // Try environment-specific keys without shared prefix
+      keysToTry.push(`uploads-1746231712874-2e3265f3/thumbnails/${baseFilename}`);
+      keysToTry.push(`shared/uploads-1746231712874-2e3265f3/thumbnails/${baseFilename}`);
       
       // Also try without thumb- prefix if present
       if (baseFilename.startsWith('thumb-')) {
@@ -111,18 +114,17 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       // Try to directly serve from Object Storage without using spartaStorage
       for (const tryKey of keysToTry) {
         try {
-          logger.info(`Attempting direct Object Storage access for: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+          console.log(`[Object Storage] Attempting direct access for: ${tryKey}`);
           const data = await objectStorage.downloadAsBytes(tryKey);
           
           if (data && Buffer.isBuffer(data)) {
             const contentType = getContentType(tryKey);
             res.setHeader('Content-Type', contentType);
-            logger.info(`Successfully serving file directly from Object Storage: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+            console.log(`[Object Storage] Successfully serving file: ${tryKey}, size: ${data.length} bytes`);
             return res.send(data);
           }
         } catch (err) {
-          // Just log and continue to the next key
-          logger.info(`Key ${tryKey} not found in Object Storage, trying next option`, { route: '/api/object-storage/direct-download' });
+          console.log(`[Object Storage] Key ${tryKey} not found, error: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
       
