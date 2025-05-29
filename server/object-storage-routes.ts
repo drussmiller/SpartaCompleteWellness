@@ -126,6 +126,12 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       
       try {
         const data = await objectStorage.downloadAsBytes(cleanKey);
+        console.log(`[Object Storage] Download response for ${cleanKey}:`, {
+          type: typeof data,
+          isBuffer: Buffer.isBuffer(data),
+          hasOk: data && typeof data === 'object' && 'ok' in data,
+          hasValue: data && typeof data === 'object' && 'value' in data
+        });
         
         // Handle different response formats from Object Storage client
         let buffer: Buffer | null = null;
@@ -133,9 +139,18 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
         if (Buffer.isBuffer(data)) {
           buffer = data;
         } else if (data && typeof data === 'object' && 'ok' in data) {
-          if (data.ok && data.value && Buffer.isBuffer(data.value)) {
-            buffer = data.value;
+          // Object Storage returns {ok: true, value: Buffer} format
+          if (data.ok && data.value) {
+            if (Buffer.isBuffer(data.value)) {
+              buffer = data.value;
+            } else if (data.value instanceof Uint8Array) {
+              buffer = Buffer.from(data.value);
+            } else if (typeof data.value === 'string') {
+              buffer = Buffer.from(data.value, 'base64');
+            }
           }
+        } else if (data instanceof Uint8Array) {
+          buffer = Buffer.from(data);
         }
         
         if (buffer && buffer.length > 0) {
@@ -144,6 +159,8 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
           res.setHeader('Cache-Control', 'public, max-age=3600');
           console.log(`[Object Storage] Successfully serving file: ${cleanKey}, size: ${buffer.length} bytes`);
           return res.send(buffer);
+        } else {
+          console.log(`[Object Storage] No valid buffer data for ${cleanKey}`);
         }
       } catch (err) {
         console.log(`[Object Storage] Direct key ${cleanKey} failed: ${err instanceof Error ? err.message : String(err)}`);
