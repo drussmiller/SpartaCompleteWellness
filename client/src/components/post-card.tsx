@@ -164,39 +164,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
-  // Generate and request video thumbnails on component mount
-  useEffect(() => {
-    // Run for both memory verse and miscellaneous video posts
-    if (post.mediaUrl && 
-        (post.type === 'memory_verse' || 
-         (post.type === 'miscellaneous' && post.is_video)) && 
-        post.mediaUrl.toLowerCase().endsWith('.mov')) {
-
-      console.log(`${post.type} video post detected, generating thumbnails:`, post.id);
-
-      // Choose the appropriate API endpoint based on post type
-      const endpoint = post.type === 'memory_verse' 
-        ? '/api/memory-verse-thumbnails'
-        : '/api/object-storage/generate-thumbnail';
-
-      // Add the file URL for miscellaneous posts
-      const url = post.type === 'memory_verse'
-        ? endpoint
-        : `${endpoint}?fileUrl=${encodeURIComponent(post.mediaUrl)}`;
-
-      // Call the thumbnail generation API
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          console.log("Thumbnail generation response:", data);
-          // Force reload to use new thumbnails
-          setTriggerReload(prev => prev + 1);
-        })
-        .catch(error => {
-          console.error("Error generating thumbnails:", error);
-        });
-    }
-  }, [post.id, post.type, post.mediaUrl, post.is_video]);
+  // DISABLED: Auto-generation of thumbnails to prevent multiple thumbnail creation
+  // Thumbnails are now created during upload with simplified naming
+  // useEffect(() => {
+  //   // Run for both memory verse and miscellaneous video posts
+  //   if (post.mediaUrl && 
+  //       (post.type === 'memory_verse' || 
+  //        (post.type === 'miscellaneous' && post.is_video)) && 
+  //       post.mediaUrl.toLowerCase().endsWith('.mov')) {
+  //     console.log(`${post.type} video post detected, generating thumbnails:`, post.id);
+  //     // ... thumbnail generation code disabled to prevent multiple file creation
+  //   }
+  // }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
   // Handle video thumbnails with clean media utilities
   const getThumbnailUrl = (imageUrl: string) => {

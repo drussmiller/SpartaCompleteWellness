@@ -458,77 +458,37 @@ export class SpartaObjectStorage {
           console.log(`Image thumbnail created at ${generatedThumbnailPath}`);
           logger.info(`Created image thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('video/') || isVideo) {
-          // Process video thumbnail - check for existing thumbnails first
-          console.log(`Processing video thumbnail for ${safeFilename}`);
+          // For videos, create ONE simplified thumbnail
+          console.log(`Creating simplified thumbnail for video: ${safeFilename}`);
           
-          // Extract base filename without extension for checking existing thumbnails
-          const baseVideoName = path.parse(originalFilename).name;
+          // Create thumbnail with same base name as video but .jpg extension
+          const videoBaseName = path.parse(safeFilename).name;
+          const simplifiedThumbnailName = `${videoBaseName}.jpg`;
+          const simplifiedThumbnailPath = path.join(this.thumbnailDir, simplifiedThumbnailName);
           
-          // Check if there are already thumbnails for this video in Object Storage
           try {
-            const existingThumbnails = await this.listFiles(`shared/uploads/`);
-            const videoThumbnails = existingThumbnails.filter(file => 
-              file.includes(baseVideoName) && 
-              (file.includes('.poster.jpg') || file.includes('thumb-') || file.endsWith('.jpg'))
-            );
+            await this.createVideoThumbnail(filePath, simplifiedThumbnailPath);
             
-            console.log(`Found existing thumbnails for ${baseVideoName}:`, videoThumbnails);
-            
-            if (videoThumbnails.length > 0) {
-              // Use the first existing thumbnail and rename it to the simplified format
-              const sourceThumbnail = videoThumbnails[0];
-              console.log(`Using existing thumbnail: ${sourceThumbnail}`);
-              
-              try {
-                // Download the existing thumbnail
-                const thumbnailData = await this.downloadFile(sourceThumbnail);
-                
-                // Upload it with the simplified name
-                const simplifiedPath = `shared/uploads/${baseVideoName}.jpg`;
-                await this.uploadFile(simplifiedPath, thumbnailData);
-                console.log(`Created simplified thumbnail at ${simplifiedPath}`);
-                
-                // Also put a copy in thumbnails directory
-                const thumbsDirPath = `shared/uploads/thumbnails/${baseVideoName}.jpg`;
-                await this.uploadFile(thumbsDirPath, thumbnailData);
-                console.log(`Created thumbnail in thumbnails directory at ${thumbsDirPath}`);
-                
-                thumbnailUrl = `/shared/uploads/thumbnails/${baseVideoName}.jpg`;
-                
-                // Clean up extra thumbnails - keep only the simplified one
-                for (const extraThumb of videoThumbnails) {
-                  if (extraThumb !== sourceThumbnail) {
-                    try {
-                      await this.deleteFile(extraThumb);
-                      console.log(`Deleted extra thumbnail: ${extraThumb}`);
-                    } catch (deleteErr) {
-                      console.log(`Could not delete ${extraThumb}:`, deleteErr.message);
-                    }
-                  }
-                }
-                
-                logger.info(`Used existing thumbnail for ${safeFilename}`);
-                
-              } catch (renameError) {
-                console.error(`Error renaming existing thumbnail:`, renameError);
-                // Fall back to creating new thumbnail
-                await this.createVideoThumbnail(filePath, generatedThumbnailPath);
-                thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
-              }
-              
-            } else {
-              // No existing thumbnails, create new one
-              await this.createVideoThumbnail(filePath, generatedThumbnailPath);
-              thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
-              console.log(`Video thumbnail created at ${generatedThumbnailPath}`);
-              logger.info(`Created video thumbnail for ${safeFilename}`);
+            // Upload the simplified thumbnail to Object Storage
+            if (this.objectStorage) {
+              const thumbnailBuffer = fs.readFileSync(simplifiedThumbnailPath);
+              const thumbnailKey = `shared/uploads/${simplifiedThumbnailName}`;
+              await this.objectStorage.uploadFile(thumbnailKey, thumbnailBuffer);
+              console.log(`Uploaded simplified thumbnail to Object Storage: ${thumbnailKey}`);
             }
             
-          } catch (listError) {
-            console.error(`Error checking for existing thumbnails:`, listError);
-            // Fall back to creating new thumbnail
-            await this.createVideoThumbnail(filePath, generatedThumbnailPath);
-            thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
+            thumbnailUrl = `/shared/uploads/${simplifiedThumbnailName}`;
+            console.log(`Video thumbnail created at ${simplifiedThumbnailPath}`);
+            logger.info(`Created simplified video thumbnail for ${safeFilename}`);
+          } catch (error) {
+            console.error(`Error creating video thumbnail:`, error);
+            // Create a simple fallback thumbnail
+            const fallbackSvg = `<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100%" height="100%" fill="#f0f0f0"/>
+              <text x="50%" y="50%" text-anchor="middle" fill="#666">Video Thumbnail</text>
+            </svg>`;
+            fs.writeFileSync(simplifiedThumbnailPath, fallbackSvg);
+            thumbnailUrl = `/shared/uploads/${simplifiedThumbnailName}`;
           }
         }
 
