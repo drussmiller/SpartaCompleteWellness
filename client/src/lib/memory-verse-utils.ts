@@ -113,29 +113,39 @@ export function getMemoryVersePoster(mediaUrl: string | null): string | undefine
 export function getVideoPoster(mediaUrl: string | null): string | undefined {
   if (!mediaUrl) return undefined;
   
-  // Extract the filename from the media URL
-  const urlParts = mediaUrl.split('/');
-  const filename = urlParts[urlParts.length - 1];
+  let filename: string;
+  
+  // Handle direct-download URLs - extract the fileUrl parameter
+  if (mediaUrl.includes('/api/object-storage/direct-download')) {
+    try {
+      const url = new URL(mediaUrl, window.location.origin);
+      const fileUrl = url.searchParams.get('fileUrl');
+      if (!fileUrl) return undefined;
+      
+      // Extract filename from the fileUrl parameter
+      const fileUrlParts = fileUrl.split('/');
+      filename = fileUrlParts[fileUrlParts.length - 1];
+    } catch (error) {
+      console.error('Error parsing direct-download URL:', error);
+      return undefined;
+    }
+  } else {
+    // Extract the filename from a regular media URL
+    const urlParts = mediaUrl.split('/');
+    filename = urlParts[urlParts.length - 1];
+  }
+  
   const fileBase = filename.split('.')[0];
   const fileExt = filename.split('.').pop()?.toLowerCase() || '';
   
   // Check if it's a video file (support more formats than just .mov)
-  const isVideoFile = mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i);
+  const isVideoFile = filename.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/i);
   if (!isVideoFile) return undefined;
   
   // Add a random query parameter to bypass caching
   const timestamp = Date.now();
   
-  // Determine the base directory part of the URL
-  let baseDir = '';
-  if (mediaUrl.includes('/shared/uploads/')) {
-    baseDir = 'shared/uploads/';
-  } else if (mediaUrl.includes('/uploads/')) {
-    baseDir = 'uploads/';
-  }
-  
-  // FIRST TRY - Original filename with proper path structure
-  // Try with the new thumb-{filename}.jpg format first, which matches our updated thumbnail format
+  // Create the thumbnail URL with proper format
   const thumbFilename = `thumb-${fileBase}.jpg`;
   const directThumbUrl = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${thumbFilename}&v=${timestamp}`;
   
