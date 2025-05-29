@@ -313,7 +313,35 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       };
 
                       // Try direct formats without using the utility functions
-                      img.src = `/api/object-storage/direct-download?fileUrl=shared/uploads/thumbnails/${baseName.split('/').pop()}.poster.jpg`;
+                      // For memory verse videos, the thumbnails are uploaded with specific naming patterns
+                      const fileName = baseName.split('/').pop();
+                      
+                      // Try multiple thumbnail patterns that were uploaded
+                      const thumbnailPatterns = [
+                        `/api/serve-file?filename=${fileName}.poster.jpg`,
+                        `/api/serve-file?filename=thumb-${fileName}`,
+                        `/api/serve-file?filename=${fileName.replace(/\.mov$/i, '.jpg')}`,
+                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${fileName}.poster.jpg`,
+                        `/api/object-storage/direct-download?fileUrl=shared/uploads/thumb-${fileName}`,
+                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${fileName.replace(/\.mov$/i, '.jpg')}`
+                      ];
+                      
+                      // Try each pattern until one works
+                      let patternIndex = 0;
+                      const tryNextPattern = () => {
+                        if (patternIndex < thumbnailPatterns.length) {
+                          img.src = thumbnailPatterns[patternIndex];
+                          patternIndex++;
+                        }
+                      };
+                      
+                      img.onerror = () => {
+                        console.log(`Thumbnail pattern ${patternIndex} failed:`, img.src);
+                        tryNextPattern();
+                      };
+                      
+                      // Start with the first pattern
+                      tryNextPattern();
                     } else {
                       // For non-MOV files or if we can't extract baseName, just hide
                       const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
