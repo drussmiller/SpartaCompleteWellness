@@ -1042,11 +1042,9 @@ export class SpartaObjectStorage {
                     fs.mkdirSync(thumbDir, { recursive: true });
                   }
 
-                  // Define output paths
-                  const jpgThumbPath = targetPath.replace('.mov', '.jpg');
-                  const posterFilename = filename.replace('.mov', '.poster.jpg');
-                  const posterPath = path.join(path.dirname(videoPath), posterFilename);
-                  const nonPrefixedThumbPath = targetPath.replace('thumb-', '');
+                  // SIMPLIFIED: Only create ONE thumbnail with the video's base name + .jpg
+                  const videoBaseName = path.parse(filename).name;
+                  const simplifiedThumbPath = path.join(path.dirname(targetPath), `${videoBaseName}.jpg`);
 
                   // Generate an actual frame capture using ffmpeg
                   // For MOV files we'll use more precise settings
@@ -1100,60 +1098,34 @@ export class SpartaObjectStorage {
                         }
                       });
 
-                    // Execute ffmpeg to create the JPG thumbnail
-                    command.save(jpgThumbPath);
+                    // Execute ffmpeg to create the simplified thumbnail
+                    command.save(simplifiedThumbPath);
                   });
 
                   // Wait for frame capture to complete
                   generateFrameCapture.then(() => {
-                    // Now copy the JPG thumbnail to all required locations
-                    if (fs.existsSync(jpgThumbPath)) {
-                      console.log(`Frame capture successful, creating additional thumbnail versions`);
-                      const jpgBuffer = fs.readFileSync(jpgThumbPath);
+                    // SIMPLIFIED: Only handle the single thumbnail we created
+                    if (fs.existsSync(simplifiedThumbPath)) {
+                      console.log(`Frame capture successful, uploading simplified thumbnail`);
 
-                      // Make copies for all required formats
-                      fs.writeFileSync(targetPath, jpgBuffer);
-                      fs.writeFileSync(posterPath, jpgBuffer);
-                      fs.writeFileSync(nonPrefixedThumbPath, jpgBuffer);
-
-                      console.log(`Created all required thumbnail versions`);
-
-                      // Upload all created files to Object Storage
+                      // Upload only the simplified thumbnail to Object Storage
                       if (this.objectStorage) {
-                        const thumbnailBasename = path.basename(targetPath);
-                        const jpgThumbBasename = path.basename(jpgThumbPath);
-                        const posterBasename = path.basename(posterPath);
-                        const nonPrefixedBasename = path.basename(nonPrefixedThumbPath);
+                        const thumbnailBuffer = fs.readFileSync(simplifiedThumbPath);
+                        const thumbnailBasename = path.basename(simplifiedThumbPath);
 
-                        // Store only in shared path to save space
-                        const sharedThumbKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
-                        const sharedJpgThumbKey = `shared/uploads/thumbnails/${jpgThumbBasename}`;
-                        const sharedPosterKey = `shared/uploads/thumbnails/${posterBasename}`;
-                        const sharedNonPrefixedKey = `shared/uploads/thumbnails/${nonPrefixedBasename}`;
+                        // Store only in shared path to save space  
+                        const sharedThumbKey = `shared/uploads/${thumbnailBasename}`;
 
-                        console.log(`Uploading MOV thumbnails to Object Storage with shared keys`);
+                        console.log(`Uploading simplified thumbnail to Object Storage: ${sharedThumbKey}`);
 
-                        const uploadPromises = [
-                          this.objectStorage.uploadFromBytes(sharedThumbKey, jpgBuffer)
-                            .then(() => console.log(`Uploaded MOV thumbnail to ${sharedThumbKey}`))
-                            .catch(e => console.error(`Failed to upload to ${sharedThumbKey}:`, e)),
-
-                          this.objectStorage.uploadFromBytes(sharedJpgThumbKey, jpgBuffer)
-                            .then(() => console.log(`Uploaded JPG thumbnail to ${sharedJpgThumbKey}`))
-                            .catch(e => console.error(`Failed to upload to ${sharedJpgThumbKey}:`, e)),
-
-                          this.objectStorage.uploadFromBytes(sharedPosterKey, jpgBuffer)
-                            .then(() => console.log(`Uploaded poster to ${sharedPosterKey}`))
-                            .catch(e => console.error(`Failed to upload to ${sharedPosterKey}:`, e)),
-
-                          this.objectStorage.uploadFromBytes(sharedNonPrefixedKey, jpgBuffer)
-                            .then(() => console.log(`Uploaded non-prefixed thumbnail to ${sharedNonPrefixedKey}`))
-                            .catch(e => console.error(`Failed to upload to ${sharedNonPrefixedKey}:`, e))
-                        ];
-
-                        Promise.all(uploadPromises)
-                          .then(() => console.log(`Successfully uploaded all MOV thumbnails to Object Storage`))
-                          .catch(err => console.error('Error uploading thumbnails:', err));
+                        // Upload only the simplified thumbnail
+                        this.objectStorage.uploadFromBytes(sharedThumbKey, thumbnailBuffer)
+                          .then(() => {
+                            console.log(`Successfully uploaded simplified thumbnail to ${sharedThumbKey}`);
+                          })
+                          .catch(e => {
+                            console.error(`Failed to upload simplified thumbnail to ${sharedThumbKey}:`, e);
+                          });
 
                         // Resolve the original promise since we've created the thumbnails
                         resolve();
