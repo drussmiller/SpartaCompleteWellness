@@ -80,6 +80,8 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       keysToTry.push(`thumbnails/${baseFilename}`);
       keysToTry.push(`shared/uploads/thumbnails/${baseFilename}`);
       keysToTry.push(`uploads/thumbnails/${baseFilename}`);
+      // Add direct shared path for thumbnails
+      keysToTry.push(`shared/thumbnails/${baseFilename}`);
       
       // Also try without thumb- prefix if present
       if (baseFilename.startsWith('thumb-')) {
@@ -130,16 +132,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       logger.error(`Object Storage error: ${objError}`, { route: '/api/object-storage/direct-download' });
     }
     
-    // Generate a placeholder for missing images to prevent broken UI
-    const imageExtension = cleanKey.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
-    
-    if (imageExtension) {
-      // Create a simple 1x1 transparent PNG for missing images
-      const transparentPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAHiNbMJcgAAAABJRU5ErkJggg==', 'base64');
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Length', transparentPng.length.toString());
-      return res.send(transparentPng);
-    }
+    // No fallback placeholder images - if file not found, return 404
     
     // For non-images, return 404
     return res.status(404).json({
