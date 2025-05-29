@@ -10,98 +10,95 @@
  */
 export function createDirectDownloadUrl(key: string | null): string {
   if (!key) return '';
-
-  console.log('createDirectDownloadUrl called with:', key);
-
-  // If this is already a complete direct download URL, return as-is
-  if (key.startsWith('/api/object-storage/direct-download')) {
-    console.log('Already a direct download URL, returning as-is');
-    return key;
-  }
-
-  // If this is a full URL (starts with http), return as-is
-  if (key.startsWith('http://') || key.startsWith('https://')) {
-    console.log('Already a full URL, returning as-is');
-    return key;
-  }
-
-  // If this is a base64 data URL, return as-is
-  if (key.startsWith('data:')) {
-    console.log('Base64 data URL, returning as-is');
-    return key;
-  }
-
-  // CRITICAL: If the key contains any problematic patterns, extract the filename only
-  if (key.includes('direct-download') || key.includes('fileUrl=')) {
-    console.error('BLOCKED: Key contains nested URL patterns, extracting filename only:', key);
-
-    // Try to extract just the filename from the nested URL
-    const fileUrlMatch = key.match(/fileUrl=([^&]+)/);
-    if (fileUrlMatch) {
-      const decodedPath = decodeURIComponent(fileUrlMatch[1]);
-      const filename = decodedPath.split('/').pop();
-      if (filename) {
-        console.log('Extracted filename from nested URL:', filename);
-        const cleanPath = `shared/uploads/${filename}`;
-        return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
-      }
+  
+  // Remove leading slash if present (keys in Object Storage don't start with /)
+  const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+  
+  // Always use the shared Object Storage path to save space
+  // Only add the shared/ prefix if it's not already there
+  const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
+  
+  // Special handling for MOV files - use JPG versions for thumbnails
+  if (sharedKey.toLowerCase().endsWith('.mov') && sharedKey.includes('/thumbnails/')) {
+    // If this is a thumbnail for a MOV file, we need to prioritize the JPG version
+    
+    // Check if this is a thumb-prefixed version
+    const isThumbPrefixed = sharedKey.includes('thumb-');
+    
+    // Create multiple alternatives to try for maximum compatibility
+    // First: Try the .poster.jpg version in thumbnails directory (best quality)
+    let baseKey = sharedKey;
+    if (isThumbPrefixed) {
+      // Remove the thumb- prefix first if it exists
+      baseKey = sharedKey.replace('thumb-', '');
     }
-
-    // Fallback: extract any filename at the end
-    const filename = key.split('/').pop()?.split('?')[0];
-    if (filename && filename !== key) {
-      console.log('Fallback filename extraction:', filename);
-      const cleanPath = `shared/uploads/${filename}`;
-      return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
-    }
-
-    console.error('Could not extract filename from nested URL, returning empty');
-    return '';
+    
+    // Convert the extension
+    const baseNameWithoutExt = baseKey.substring(0, baseKey.lastIndexOf('.'));
+    const posterJpgKey = `${baseNameWithoutExt}.poster.jpg`;
+    
+    console.log(`Using poster JPG for MOV thumbnail: ${posterJpgKey}`);
+    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(posterJpgKey)}`;
   }
-
-  // Clean the key - remove leading slash and normalize path
-  let cleanKey = key.replace(/^\/+/, '');
-
-  // If it already starts with 'shared/', use it as-is
-  if (cleanKey.startsWith('shared/')) {
-    console.log(`Using path as-is: ${cleanKey}`);
-    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`;
-  }
-
-  // If it starts with 'uploads/', prepend 'shared/'
-  if (cleanKey.startsWith('uploads/')) {
-    const finalPath = `shared/${cleanKey}`;
-    console.log(`Converted uploads path: ${key} -> ${finalPath}`);
-    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`;
-  }
-
-  // Extract just the filename and use default path
-  const filename = cleanKey.split('/').pop() || cleanKey;
-  const finalPath = `shared/uploads/${filename}`;
-
-  console.log(`Creating clean URL: ${key} -> /api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`);
-
-  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`;
+  
+  // Return the URL with the key as a query parameter
+  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(sharedKey)}`;
 }
-
-/**
- * Alias for createDirectDownloadUrl to maintain compatibility
- */
-export const createCleanFileUrl = createDirectDownloadUrl;
 
 /**
  * Checks if a key exists in Object Storage
  * @param key The storage key to check
  */
 export async function checkFileExists(key: string): Promise<boolean> {
-  try {
-    const url = createDirectDownloadUrl(key);
-    if (!url) {
-      console.error('checkFileExists: Could not create valid URL for key:', key);
-      return false;
+  // Remove leading slash if present
+  const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+  
+  // Always use shared path if not provided
+  const sharedKey = cleanKey.startsWith('shared/') ? cleanKey : `shared/${cleanKey}`;
+  
+  // Special handling for MOV files - check for all possible variations of thumbnails
+  let keysToTry = [sharedKey];
+  if (sharedKey.toLowerCase().endsWith('.mov') && sharedKey.includes('/thumbnails/')) {
+    // Check if this is a thumb-prefixed version
+    const isThumbPrefixed = sharedKey.includes('thumb-');
+    
+    // First try the poster.jpg version
+    let baseKey = sharedKey;
+    if (isThumbPrefixed) {
+      // Remove the thumb- prefix if it exists
+      baseKey = sharedKey.replace('thumb-', '');
     }
-    const response = await fetch(url, { method: 'HEAD' });
-    return response.ok;
+    
+    // Create all possible variations
+    const baseNameWithoutExt = baseKey.substring(0, baseKey.lastIndexOf('.'));
+    const posterJpgKey = `${baseNameWithoutExt}.poster.jpg`;
+    const regularJpgKey = `${baseNameWithoutExt}.jpg`;
+    
+    // Add all variations to the keys to try with most preferred first
+    keysToTry = [
+      posterJpgKey,     // First try poster.jpg version - best quality
+      regularJpgKey,    // Then try regular jpg version
+      sharedKey         // Finally try the original key (MOV)
+    ];
+  }
+  
+  try {
+    // Try each key until one succeeds
+    for (const keyToTry of keysToTry) {
+      try {
+        const response = await fetch(`/api/object-storage/direct-download?fileUrl=${encodeURIComponent(keyToTry)}`, {
+          method: 'HEAD'
+        });
+        
+        if (response.ok) {
+          return true;
+        }
+      } catch (err) {
+        // Continue to next key
+      }
+    }
+    
+    return false;
   } catch (error) {
     console.error(`Error checking if file exists: ${key}`, error);
     return false;
@@ -113,17 +110,42 @@ export async function checkFileExists(key: string): Promise<boolean> {
  * @param prefix The prefix to search for
  */
 export async function listFiles(prefix: string): Promise<string[]> {
+  // Remove leading slash if present
+  const cleanPrefix = prefix.startsWith('/') ? prefix.substring(1) : prefix;
+  
+  // Always use shared path if not provided
+  const sharedPrefix = cleanPrefix.startsWith('shared/') ? cleanPrefix : `shared/${cleanPrefix}`;
+  
+  // Handle special case for MOV files
+  const isMOVPrefix = sharedPrefix.toLowerCase().includes('.mov');
+  let prefixesToTry = [sharedPrefix];
+  
+  if (isMOVPrefix) {
+    // Also look for JPG versions
+    const jpgPrefix = sharedPrefix.replace(/\.mov/i, '.jpg');
+    prefixesToTry.push(jpgPrefix);
+  }
+  
+  const allFiles: string[] = [];
+  
   try {
-    // Clean prefix
-    const cleanPrefix = prefix.startsWith('/') ? prefix.substring(1) : prefix;
-    const sharedPrefix = cleanPrefix.startsWith('shared/') ? cleanPrefix : `shared/${cleanPrefix}`;
-
-    const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(sharedPrefix)}`);
-    if (response.ok) {
-      const data = await response.json();
-      return data.files || [];
+    // Try each prefix and collect all files
+    for (const prefixToTry of prefixesToTry) {
+      try {
+        const response = await fetch(`/api/object-storage/list?prefix=${encodeURIComponent(prefixToTry)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.files && Array.isArray(data.files)) {
+            allFiles.push(...data.files);
+          }
+        }
+      } catch (err) {
+        // Continue to next prefix
+      }
     }
-    return [];
+    
+    // Return unique files
+    return Array.from(new Set(allFiles));
   } catch (error) {
     console.error(`Error listing files with prefix: ${prefix}`, error);
     return [];
@@ -140,27 +162,10 @@ export async function testObjectStorage(): Promise<any> {
     if (!response.ok) {
       throw new Error(`Failed to test Object Storage: ${response.status} ${response.statusText}`);
     }
-
+    
     return await response.json();
   } catch (error) {
     console.error('Error testing Object Storage API:', error);
     throw error;
   }
-}
-
-export function getObjectStorageUrl(path: string): string {
-  if (!path) return '';
-
-  // Check if this is already an Object Storage URL to prevent nesting
-  if (path.includes('direct-download?fileUrl=')) {
-    return path;
-  }
-
-  // Remove leading slash if present
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-
-  // Add timestamp to prevent caching issues
-  const timestamp = Date.now();
-
-  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}&v=${timestamp}`;
 }

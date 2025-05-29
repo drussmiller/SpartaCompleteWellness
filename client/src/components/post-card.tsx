@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
-import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
+import { createDirectDownloadUrl } from "../lib/object-storage-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
 
@@ -198,20 +198,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
   }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Handle video thumbnails with clean media utilities
-  const getThumbnailUrl = (imageUrl: string) => {
-    console.log('getThumbnailUrl called with:', imageUrl);
-    const result = createThumbnailUrl(imageUrl);
-    console.log('Thumbnail URL result:', result);
-    return result;
-  };
+  // Use direct download URL for images from Object Storage
+  const getImageUrl = (url: string | null): string => {
+    if (!url) return '';
 
-  // Helper function to get proper image URL with clean media utilities
-  const getImageUrl = (mediaUrl: string | null) => {
-    console.log('PostCard getImageUrl called with:', mediaUrl);
-    const result = createMediaUrl(mediaUrl);
-    console.log('PostCard getImageUrl result:', result);
-    return result;
+    // Check if this is an Object Storage URL
+    if (url.includes('uploads/') || url.includes('thumbnails/')) {
+      return createDirectDownloadUrl(url);
+    }
+
+    // For external URLs, use as-is
+    return url;
   };
 
   return (
@@ -309,7 +306,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       };
                       img.onerror = () => {
                         console.error('Alternative thumbnail failed to load');
-                        // No longer hiding containers - let images display even if some fail
+                        // Hide the container on all errors
+                        const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
+                        if (container) {
+                          container.style.display = 'none';
+                        }
                       };
 
                       // Try direct formats without using the utility functions
@@ -332,8 +333,27 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
                 onError={(e) => {
-                  // No longer hiding images - let them display even if some fail to load
-                  console.log('Image load error, but not hiding container');
+                  // Simply hide the image container without any retries
+                  // This is the most reliable approach with the strict Object Storage requirements
+                  const img = e.currentTarget as HTMLImageElement;
+
+                  // Hide the parent container if found
+                  const mediaContainer = img.closest('.relative.mt-2.w-screen.-mx-4') as HTMLElement;
+                  if (mediaContainer) {
+                    mediaContainer.style.display = 'none';
+                  } else {
+                    // If container not found, hide the image itself
+                    img.style.display = 'none';
+                  }
+
+                  // Also hide any background container
+                  const bgContainer = img.closest('.bg-gray-50') as HTMLElement;
+                  if (bgContainer) {
+                    bgContainer.style.display = 'none';
+                  }
+
+                  // Prevent further error handlers from firing
+                  img.onerror = null;
                 }}
               />
             )}

@@ -15,11 +15,10 @@ import { extractMovFrame } from './mov-frame-extractor';
 
 export const objectStorageRouter = express.Router();
 
-// Import Object Storage client directly
-import { Client as ObjectStorageClient } from '@replit/object-storage';
-
-// Initialize Object Storage client
-const objectStorage = new ObjectStorageClient();
+// Initialize Object Storage Client
+const objectStorage = new ObjectStorage.Client({
+  bucketId: process.env.REPLIT_OBJECT_STORAGE_BUCKET || "default-bucket"
+});
 
 /**
  * Direct route to serve files exclusively from Object Storage
@@ -38,9 +37,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     key: req.query.key,
     fileUrl: req.query.fileUrl,
     path: req.query.path,
-    file: req.query.file,
-    url: req.url,
-    originalUrl: req.originalUrl
+    file: req.query.file
   });
   
   if (!storageKey || typeof storageKey !== 'string') {
@@ -55,138 +52,128 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
     logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
     
-    // Create array of possible keys to try - comprehensive approach
+    // Create array of possible keys to try
     const keysToTry = [];
     
-    // Extract filename without path
-    const baseFilename = cleanKey.split('/').pop() || cleanKey;
+    // Special handling for MOV files - check multiple formats
+    if (cleanKey.toLowerCase().endsWith('.mov')) {
+      // Try different extensions in preferred order
+      const svgKey = cleanKey.replace(/\.mov$/i, '.svg');
+      const jpgKey = cleanKey.replace(/\.mov$/i, '.jpg');
+      const pngKey = cleanKey.replace(/\.mov$/i, '.png');
+      
+      // If we're accessing a thumbnail, prioritize images over video
+      if (cleanKey.includes('/thumbnails/')) {
+        // Always check shared path first - SVG highest priority as it's our fallback format
+        if (!svgKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${svgKey}`);
+        }
+        keysToTry.push(svgKey);
+        
+        // Then try JPG
+        if (!jpgKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${jpgKey}`);
+        }
+        keysToTry.push(jpgKey);
+        
+        // Then PNG
+        if (!pngKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${pngKey}`);
+        }
+        keysToTry.push(pngKey);
+      }
+    }
     
-    // Try the exact key as provided first
+    // Always check shared path first as that's our primary storage location
+    if (!cleanKey.startsWith('shared/')) {
+      keysToTry.push(`shared/${cleanKey}`);
+    }
+    
+    // Then try the original key
     keysToTry.push(cleanKey);
     
-    // For the specific path structure shown in Object Storage: shared/uploads/thumbnails/
-    if (cleanKey.includes('/thumbnails/') || cleanKey.includes('.poster.jpg')) {
-      // This is the exact path structure from the screenshot
-      keysToTry.push(cleanKey);
-      if (!cleanKey.startsWith('shared/')) {
-        keysToTry.push(`shared/${cleanKey}`);
+    // For thumbnails, we may have keys with or without 'thumb-' prefix, so check both
+    if (cleanKey.includes('/thumbnails/') && !cleanKey.includes('/thumbnails/thumb-')) {
+      const pathParts = cleanKey.split('/thumbnails/');
+      if (pathParts.length === 2) {
+        const thumbKey = `${pathParts[0]}/thumbnails/thumb-${pathParts[1]}`;
+        keysToTry.push(thumbKey);
+        
+        // Also try with shared prefix if needed
+        if (!thumbKey.startsWith('shared/')) {
+          keysToTry.push(`shared/${thumbKey}`);
+        }
       }
-    } else {
-      // Try with shared prefix if not already present
-      if (!cleanKey.startsWith('shared/')) {
-        keysToTry.push(`shared/${cleanKey}`);
-      }
-    }
-    
-    // Try simple uploads path variations
-    keysToTry.push(`uploads/${baseFilename}`);
-    keysToTry.push(`shared/uploads/${baseFilename}`);
-    
-    // Try environment-specific uploads (without shared prefix)
-    keysToTry.push(`uploads/${baseFilename}`);
-    
-    // For thumbnails or poster files
-    if (baseFilename.includes('thumb-') || baseFilename.includes('poster') || cleanKey.includes('thumbnails')) {
-      keysToTry.push(`thumbnails/${baseFilename}`);
-      keysToTry.push(`shared/uploads/thumbnails/${baseFilename}`);
-      keysToTry.push(`uploads/thumbnails/${baseFilename}`);
-      // Add direct shared path for thumbnails
-      keysToTry.push(`shared/thumbnails/${baseFilename}`);
-      // Try environment-specific keys without shared prefix
-      keysToTry.push(`uploads-1746231712874-2e3265f3/thumbnails/${baseFilename}`);
-      keysToTry.push(`shared/uploads-1746231712874-2e3265f3/thumbnails/${baseFilename}`);
-      
-      // Also try without thumb- prefix if present
-      if (baseFilename.startsWith('thumb-')) {
-        const withoutThumbPrefix = baseFilename.replace('thumb-', '');
-        keysToTry.push(`uploads/${withoutThumbPrefix}`);
-        keysToTry.push(`shared/uploads/${withoutThumbPrefix}`);
-      }
-    }
-    
-    // For video files, try poster variations
-    if (baseFilename.toLowerCase().endsWith('.mov')) {
-      const baseName = baseFilename.substring(0, baseFilename.lastIndexOf('.'));
-      ['jpg', 'png', 'svg'].forEach(ext => {
-        const posterName = `${baseName}.poster.${ext}`;
-        keysToTry.push(`uploads/${posterName}`);
-        keysToTry.push(`shared/uploads/${posterName}`);
-        keysToTry.push(`thumbnails/${posterName}`);
-        keysToTry.push(`uploads/thumbnails/${posterName}`);
-        keysToTry.push(`shared/uploads/thumbnails/${posterName}`);
-      });
     }
     
     // Log keys we're going to try
     logger.info(`Will try the following keys: ${JSON.stringify(keysToTry)}`, { route: '/api/object-storage/direct-download' });
     
     try {
-      // Simplify to try only the exact key first since we know files exist
-      console.log(`[Object Storage] Attempting direct access for exact key: ${cleanKey}`);
-      
-      try {
-        const result = await objectStorage.downloadAsBytes(cleanKey);
-        console.log(`[Object Storage] Download result for ${cleanKey}:`, {
-          type: typeof result,
-          hasOk: result && typeof result === 'object' && 'ok' in result,
-          ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
-        });
-        
-        // Handle Object Storage API response format: {ok: true, value: Buffer} or {ok: false, error: ...}
-        if (result && typeof result === 'object' && 'ok' in result) {
-          if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
-            const contentType = getContentType(cleanKey);
-            res.setHeader('Content-Type', contentType);
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-            console.log(`[Object Storage] Successfully serving file: ${cleanKey}, size: ${result.value.length} bytes`);
-            return res.send(result.value);
-          } else {
-            console.log(`[Object Storage] File not found or invalid response for ${cleanKey}:`, result);
-          }
-        } else {
-          console.log(`[Object Storage] Unexpected response format for ${cleanKey}:`, typeof result);
-        }
-      } catch (err) {
-        console.log(`[Object Storage] Direct key ${cleanKey} failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-      
-      // If direct key failed, try alternative keys
-      for (const tryKey of keysToTry.slice(1)) {
+      // Try to directly serve from Object Storage without using spartaStorage
+      for (const tryKey of keysToTry) {
         try {
-          console.log(`[Object Storage] Attempting fallback key: ${tryKey}`);
+          logger.info(`Attempting direct Object Storage access for: ${tryKey}`, { route: '/api/object-storage/direct-download' });
           const data = await objectStorage.downloadAsBytes(tryKey);
           
-          let buffer: Buffer | null = null;
-          
-          if (Buffer.isBuffer(data)) {
-            buffer = data;
-          } else if (data && typeof data === 'object' && 'ok' in data) {
-            if (data.ok && data.value && Buffer.isBuffer(data.value)) {
-              buffer = data.value;
-            }
-          }
-          
-          if (buffer && buffer.length > 0) {
+          if (data && Buffer.isBuffer(data)) {
             const contentType = getContentType(tryKey);
             res.setHeader('Content-Type', contentType);
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-            console.log(`[Object Storage] Successfully serving file: ${tryKey}, size: ${buffer.length} bytes`);
-            return res.send(buffer);
+            logger.info(`Successfully serving file directly from Object Storage: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+            return res.send(data);
           }
         } catch (err) {
-          console.log(`[Object Storage] Key ${tryKey} not found, error: ${err instanceof Error ? err.message : String(err)}`);
+          // Just log and continue to the next key
+          logger.info(`Key ${tryKey} not found in Object Storage, trying next option`, { route: '/api/object-storage/direct-download' });
         }
       }
       
-      // No fallback to local filesystem - Object Storage only
-      logger.info(`File not found in Object Storage with any of the attempted keys`, { route: '/api/object-storage/direct-download' });
+      // If direct access failed, try using spartaStorage as fallback
+      const { spartaStorage } = await import('./sparta-object-storage');
+      
+      // Try to get file with spartaStorage
+      for (const tryKey of keysToTry) {
+        try {
+          const fileInfo = await spartaStorage.getFileInfo(`/${tryKey}`);
+          
+          if (fileInfo) {
+            logger.info(`Found file with spartaStorage at key: ${tryKey}`, { route: '/api/object-storage/direct-download' });
+            
+            // Try to serve from filesystem cache if available
+            if (fs.existsSync(fileInfo.path)) {
+              const contentType = getContentType(tryKey);
+              res.setHeader('Content-Type', contentType);
+              logger.info(`Serving file from filesystem cache: ${fileInfo.path}`, { route: '/api/object-storage/direct-download' });
+              return res.sendFile(fileInfo.path);
+            } else {
+              // Try one more direct access attempt with the key we know worked in spartaStorage
+              try {
+                const directKey = tryKey.startsWith('shared/') ? tryKey : `shared/${tryKey}`;
+                logger.info(`Last attempt to fetch directly from Object Storage with key: ${directKey}`, { route: '/api/object-storage/direct-download' });
+                const data = await objectStorage.downloadAsBytes(directKey);
+                
+                if (data && Buffer.isBuffer(data)) {
+                  const contentType = getContentType(tryKey);
+                  res.setHeader('Content-Type', contentType);
+                  logger.info(`Last-chance success serving directly from Object Storage: ${directKey}`, { route: '/api/object-storage/direct-download' });
+                  return res.send(data);
+                }
+              } catch (lastError) {
+                logger.error(`Final direct access attempt failed: ${lastError}`, { route: '/api/object-storage/direct-download' });
+              }
+            }
+          }
+        } catch (objError) {
+          logger.info(`Failed to get file info for key ${tryKey}: ${objError}`, { route: '/api/object-storage/direct-download' });
+        }
+      }
     } catch (objError) {
       logger.error(`Object Storage error: ${objError}`, { route: '/api/object-storage/direct-download' });
     }
     
-    // No fallback placeholder images - if file not found, return 404
-    
-    // For non-images, return 404
+    // If we reach here, we couldn't find the file in Object Storage
+    // No longer check filesystem as requested by user
+    // Silent 404 response - don't log to reduce noise for expected 404s
     return res.status(404).json({
       success: false,
       message: 'File not found',
