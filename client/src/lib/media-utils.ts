@@ -103,12 +103,12 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
 
   console.log('Creating thumbnail for filename:', filename);
 
-  // For video files, try poster thumbnail
+  // For video files, use simplified thumbnail naming
   if (filename.toLowerCase().endsWith('.mov')) {
     const baseName = filename.substring(0, filename.lastIndexOf('.'));
-    const posterPath = `shared/uploads/thumbnails/${baseName}.poster.jpg`;
-    const result = `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(posterPath)}`;
-    console.log('Created video poster URL:', result);
+    const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+    const result = `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(thumbnailPath)}`;
+    console.log('Created video thumbnail URL:', result);
     return result;
   }
 

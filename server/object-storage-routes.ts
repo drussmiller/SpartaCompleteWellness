@@ -692,86 +692,26 @@ objectStorageRouter.get('/generate-thumbnail', async (req: Request, res: Respons
       fs.mkdirSync(SharedThumbnailsDir, { recursive: true });
     }
     
-    // Extract a frame using ffmpeg
+    // Use the clean thumbnail generation instead
     try {
-      // First try directly with ffmpeg for a high-quality frame
-      // Make sure the directory exists first
-      const uploadsLocation = path.dirname(posterJpgPathInUploads);
-      if (!fs.existsSync(uploadsLocation)) {
-        fs.mkdirSync(uploadsLocation, { recursive: true });
+      const { createMovThumbnail } = await import('./mov-frame-extractor-new');
+      const thumbnailFilename = await createMovThumbnail(sourcePath);
+      
+      if (thumbnailFilename) {
+        return res.status(200).json({
+          success: true,
+          fileUrl,
+          thumbnails: {
+            simplifiedJpg: thumbnailFilename
+          }
+        });
+      } else {
+        throw new Error('Failed to create thumbnail');
       }
-      
-      await extractMovFrame(sourcePath, posterJpgPathInUploads);
-      
-      // Copy extracted frame to all variations
-      const fileContent = fs.readFileSync(posterJpgPathInUploads);
-      fs.writeFileSync(posterJpgPathInThumbnails, fileContent);
-      fs.writeFileSync(regularJpgPath, fileContent);
-      
-      // Upload to object storage if available
-      if (objectStorage) {
-        const sharedPosterJpgKey = `shared/uploads/${targetBaseName}.poster.jpg`;
-        const sharedThumbnailPosterJpgKey = `shared/uploads/thumbnails/${targetBaseName}.poster.jpg`;
-        const sharedThumbnailJpgKey = `shared/uploads/thumbnails/${targetBaseName}.jpg`;
-        
-        await objectStorage.uploadFromBytes(sharedPosterJpgKey, fileContent);
-        await objectStorage.uploadFromBytes(sharedThumbnailPosterJpgKey, fileContent);
-        await objectStorage.uploadFromBytes(sharedThumbnailJpgKey, fileContent);
-      }
-      
-      // Return success with all created paths
-      return res.status(200).json({
-        success: true,
-        fileUrl,
-        thumbnails: {
-          posterJpgInUploads: posterJpgPathInUploads,
-          posterJpgInThumbnails: posterJpgPathInThumbnails,
-          regularJpg: regularJpgPath
-        }
-      });
     } catch (error: any) {
-      // If ffmpeg fails, try to generate a fallback SVG thumbnail
-      logger.error(`Error extracting frame from MOV: ${error.message}`);
-      
-      // Create fallback SVG with timestamp to prevent caching
-      const timestamp = Date.now();
-      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
-        <rect width="640" height="480" fill="#333" />
-        <text x="320" y="240" font-family="Arial" font-size="24" fill="#fff" text-anchor="middle">
-          Video preview unavailable (${timestamp})
-        </text>
-      </svg>`;
-      
-      // Write SVG files to all variants
-      // Make sure the directories exist
-      const uploadsLocation = path.dirname(posterJpgPathInUploads);
-      const thumbnailsLocation = path.dirname(posterJpgPathInThumbnails);
-      
-      if (!fs.existsSync(uploadsLocation)) {
-        fs.mkdirSync(uploadsLocation, { recursive: true });
-      }
-      if (!fs.existsSync(thumbnailsLocation)) {
-        fs.mkdirSync(thumbnailsLocation, { recursive: true });
-      }
-      
-      fs.writeFileSync(posterJpgPathInUploads.replace('.jpg', '.svg'), svgContent);
-      fs.writeFileSync(posterJpgPathInThumbnails.replace('.jpg', '.svg'), svgContent);
-      fs.writeFileSync(regularJpgPath.replace('.jpg', '.svg'), svgContent);
-      
-      // Upload SVG to object storage
-      if (objectStorage) {
-        const sharedPosterSvgKey = `shared/uploads/${targetBaseName}.poster.svg`;
-        const sharedThumbnailPosterSvgKey = `shared/uploads/thumbnails/${targetBaseName}.poster.svg`;
-        const sharedThumbnailSvgKey = `shared/uploads/thumbnails/${targetBaseName}.svg`;
-        
-        await objectStorage.uploadFromBytes(sharedPosterSvgKey, Buffer.from(svgContent));
-        await objectStorage.uploadFromBytes(sharedThumbnailPosterSvgKey, Buffer.from(svgContent));
-        await objectStorage.uploadFromBytes(sharedThumbnailSvgKey, Buffer.from(svgContent));
-      }
-      
+      logger.error(`Error creating thumbnail: ${error.message}`);
       return res.status(500).json({
-        error: `Failed to extract frame with ffmpeg: ${error.message}`,
-        fallback: 'Generated SVG fallbacks instead'
+        error: `Failed to create thumbnail: ${error.message}`
       });
     }
   } catch (error: any) {
