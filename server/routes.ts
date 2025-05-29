@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
+import { Client as ObjectStorageClient } from '@replit/object-storage';
 import { db } from "./db";
 import { eq, and, desc, sql, gte, lte, or, isNull, not, lt } from "drizzle-orm";
 import {
@@ -4310,9 +4311,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
-      // Import Object Storage client directly
-      const { Client } = await import('@replit/object-storage');
-      const objectStorage = new Client();
+      // Use Object Storage client (same approach as object-storage-routes.ts)
+      const objectStorage = new ObjectStorageClient();
       
       // Use the exact filename as stored in database - no path manipulation
       const storageKey = filename;
