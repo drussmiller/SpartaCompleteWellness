@@ -4317,18 +4317,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Use the exact filename as stored in database - no path manipulation
       const storageKey = filename;
 
-      // Download the file from Object Storage
+      // Download the file from Object Storage with proper error handling
       const result = await objectStorage.downloadAsBytes(storageKey);
       
-      // Handle Object Storage API response format: {ok: true, value: Buffer} or {ok: false, error: ...}
-      if (!result || typeof result !== 'object' || !('ok' in result)) {
-        logger.error(`Invalid response format from Object Storage for ${storageKey}`);
+      // Handle the Object Storage response format based on test results
+      let fileBuffer: Buffer;
+      
+      if (Buffer.isBuffer(result)) {
+        fileBuffer = result;
+      } else if (result && typeof result === 'object' && 'ok' in result) {
+        if (result.ok === true && result.value) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+            fileBuffer = result.value[0];
+          } else {
+            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
+            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+          }
+        } else {
+          logger.error(`File not found in Object Storage for ${storageKey}:`, result);
+          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+        }
+      } else {
+        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
         return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
-      }
-
-      if (!result.ok || !result.value || !Array.isArray(result.value) || !Buffer.isBuffer(result.value[0])) {
-        logger.error(`File not found or invalid data in Object Storage for ${storageKey}:`, result);
-        return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
       }
 
       // Set appropriate content type
@@ -4366,8 +4379,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
-      logger.info(`Successfully served file: ${storageKey}, size: ${result.value[0].length} bytes`);
-      return res.send(result.value[0]);
+      logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
       
     } catch (error) {
       logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
