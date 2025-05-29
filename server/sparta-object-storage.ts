@@ -458,87 +458,77 @@ export class SpartaObjectStorage {
           console.log(`Image thumbnail created at ${generatedThumbnailPath}`);
           logger.info(`Created image thumbnail for ${safeFilename}`);
         } else if (mimeType.startsWith('video/') || isVideo) {
-          // Process video thumbnail
-          console.log(`Processing video thumbnail for ${safeFilename}`, {
-            filePath: filePath,
-            absolutePath: path.resolve(filePath),
-            fileExists: fs.existsSync(filePath),
-            fileSize: fs.existsSync(filePath) ? fs.statSync(filePath).size : 'file not found',
-            mimeType: mimeType,
-            isVideo: isVideo,
-            isMemoryVerse: originalFilename.toLowerCase().includes('memory_verse'),
-            hasProvidedThumbnail: !!thumbnailPath
-          });
-
-          // For memory verse and miscellaneous videos, ensure we preserve the file exactly as is
-          if (originalFilename.toLowerCase().includes('memory_verse') || 
-              (originalFilename.toLowerCase().includes('miscellaneous') && isVideoByExtension)) {
-            console.log(`${originalFilename.toLowerCase().includes('memory_verse') ? 'Memory verse' : 'Miscellaneous'} video detected, ensuring direct file copy`);
-
-            // Just ensure the file exists in the correct uploads folder
-            const uploadsFilePath = path.join(this.baseDir, safeFilename);
-            if (filePath !== uploadsFilePath && fs.existsSync(filePath)) {
-              try {
-                fs.copyFileSync(filePath, uploadsFilePath);
-                console.log(`Copied video to proper location: ${uploadsFilePath}`);
-              } catch (copyError) {
-                console.error("Error copying video:", copyError);
-              }
-            }
-
-            // We need to ensure the thumbnail exists with the proper naming convention and in the proper location
-            console.log(`Ensuring video thumbnail exists with proper naming`);
-          }
-
+          // Process video thumbnail - check for existing thumbnails first
+          console.log(`Processing video thumbnail for ${safeFilename}`);
+          
+          // Extract base filename without extension for checking existing thumbnails
+          const baseVideoName = path.parse(originalFilename).name;
+          
+          // Check if there are already thumbnails for this video in Object Storage
           try {
-            // Create memory verse video thumbnail
+            const existingThumbnails = await this.listFiles(`shared/uploads/`);
+            const videoThumbnails = existingThumbnails.filter(file => 
+              file.includes(baseVideoName) && 
+              (file.includes('.poster.jpg') || file.includes('thumb-') || file.endsWith('.jpg'))
+            );
+            
+            console.log(`Found existing thumbnails for ${baseVideoName}:`, videoThumbnails);
+            
+            if (videoThumbnails.length > 0) {
+              // Use the first existing thumbnail and rename it to the simplified format
+              const sourceThumbnail = videoThumbnails[0];
+              console.log(`Using existing thumbnail: ${sourceThumbnail}`);
+              
+              try {
+                // Download the existing thumbnail
+                const thumbnailData = await this.downloadFile(sourceThumbnail);
+                
+                // Upload it with the simplified name
+                const simplifiedPath = `shared/uploads/${baseVideoName}.jpg`;
+                await this.uploadFile(simplifiedPath, thumbnailData);
+                console.log(`Created simplified thumbnail at ${simplifiedPath}`);
+                
+                // Also put a copy in thumbnails directory
+                const thumbsDirPath = `shared/uploads/thumbnails/${baseVideoName}.jpg`;
+                await this.uploadFile(thumbsDirPath, thumbnailData);
+                console.log(`Created thumbnail in thumbnails directory at ${thumbsDirPath}`);
+                
+                thumbnailUrl = `/shared/uploads/thumbnails/${baseVideoName}.jpg`;
+                
+                // Clean up extra thumbnails - keep only the simplified one
+                for (const extraThumb of videoThumbnails) {
+                  if (extraThumb !== sourceThumbnail) {
+                    try {
+                      await this.deleteFile(extraThumb);
+                      console.log(`Deleted extra thumbnail: ${extraThumb}`);
+                    } catch (deleteErr) {
+                      console.log(`Could not delete ${extraThumb}:`, deleteErr.message);
+                    }
+                  }
+                }
+                
+                logger.info(`Used existing thumbnail for ${safeFilename}`);
+                
+              } catch (renameError) {
+                console.error(`Error renaming existing thumbnail:`, renameError);
+                // Fall back to creating new thumbnail
+                await this.createVideoThumbnail(filePath, generatedThumbnailPath);
+                thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
+              }
+              
+            } else {
+              // No existing thumbnails, create new one
+              await this.createVideoThumbnail(filePath, generatedThumbnailPath);
+              thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
+              console.log(`Video thumbnail created at ${generatedThumbnailPath}`);
+              logger.info(`Created video thumbnail for ${safeFilename}`);
+            }
+            
+          } catch (listError) {
+            console.error(`Error checking for existing thumbnails:`, listError);
+            // Fall back to creating new thumbnail
             await this.createVideoThumbnail(filePath, generatedThumbnailPath);
             thumbnailUrl = `/shared/uploads/thumbnails/${thumbnailFilename}`;
-            console.log(`Video thumbnail created at ${generatedThumbnailPath}`);
-            logger.info(`Created video thumbnail for ${safeFilename}`);
-
-            // Double-check the thumbnail was created
-            if (fs.existsSync(generatedThumbnailPath)) {
-              console.log(`Verified thumbnail exists at ${generatedThumbnailPath}`);
-
-              // Set proper file permissions
-              try {
-                fs.chmodSync(generatedThumbnailPath, 0o644);
-                console.log(`Set proper permissions on thumbnail file: ${generatedThumbnailPath}`);
-              } catch (permErr) {
-                console.error(`Error setting permissions on thumbnail:`, permErr);
-              }
-
-              // No additional thumbnail copies needed - using simplified single thumbnail system
-            } else {
-              console.warn(`Thumbnail was not found at ${generatedThumbnailPath} after creation attempt`);
-
-              // Create a simple SVG thumbnail as fallback
-              const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-                <rect width="100%" height="100%" fill="#000"/>
-                <text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text>
-                <circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
-                <polygon points="290,180 290,220 320,200" fill="#fff"/>
-              </svg>`;
-
-              fs.writeFileSync(generatedThumbnailPath, svgContent);
-              console.log(`Created SVG fallback thumbnail at ${generatedThumbnailPath}`);
-
-              // No alternate thumbnails needed - using simplified single thumbnail system
-            }
-          } catch (videoThumbError) {
-            console.error(`Error in video thumbnail creation:`, videoThumbError);
-
-            // Create a simple SVG thumbnail as fallback on error
-            const svgContent = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-              <rect width="100%" height="100%" fill="#000"/>
-              <text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text>
-              <circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>
-              <polygon points="290,180 290,220 320,200" fill="#fff"/>
-            </svg>`;
-
-            fs.writeFileSync(generatedThumbnailPath, svgContent);
-            console.log(`Created SVG fallback thumbnail after error at ${generatedThumbnailPath}`);
           }
         }
 
