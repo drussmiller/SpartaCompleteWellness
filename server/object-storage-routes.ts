@@ -15,8 +15,11 @@ import { extractMovFrame } from './mov-frame-extractor';
 
 export const objectStorageRouter = express.Router();
 
-// Import the same Object Storage client used throughout the app
-import { spartaStorage } from './sparta-object-storage';
+// Import Object Storage client directly
+import { Client as ObjectStorageClient } from '@replit/object-storage';
+
+// Initialize Object Storage client
+const objectStorage = new ObjectStorageClient();
 
 /**
  * Direct route to serve files exclusively from Object Storage
@@ -118,17 +121,56 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     logger.info(`Will try the following keys: ${JSON.stringify(keysToTry)}`, { route: '/api/object-storage/direct-download' });
     
     try {
-      // Try to directly serve from Object Storage without using spartaStorage
-      for (const tryKey of keysToTry) {
+      // Simplify to try only the exact key first since we know files exist
+      console.log(`[Object Storage] Attempting direct access for exact key: ${cleanKey}`);
+      
+      try {
+        const data = await objectStorage.downloadAsBytes(cleanKey);
+        
+        // Handle different response formats from Object Storage client
+        let buffer: Buffer | null = null;
+        
+        if (Buffer.isBuffer(data)) {
+          buffer = data;
+        } else if (data && typeof data === 'object' && 'ok' in data) {
+          if (data.ok && data.value && Buffer.isBuffer(data.value)) {
+            buffer = data.value;
+          }
+        }
+        
+        if (buffer && buffer.length > 0) {
+          const contentType = getContentType(cleanKey);
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          console.log(`[Object Storage] Successfully serving file: ${cleanKey}, size: ${buffer.length} bytes`);
+          return res.send(buffer);
+        }
+      } catch (err) {
+        console.log(`[Object Storage] Direct key ${cleanKey} failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      
+      // If direct key failed, try alternative keys
+      for (const tryKey of keysToTry.slice(1)) {
         try {
-          console.log(`[Object Storage] Attempting direct access for: ${tryKey}`);
-          const data = await spartaStorage.downloadAsBytes(tryKey);
+          console.log(`[Object Storage] Attempting fallback key: ${tryKey}`);
+          const data = await objectStorage.downloadAsBytes(tryKey);
           
-          if (data && Buffer.isBuffer(data)) {
+          let buffer: Buffer | null = null;
+          
+          if (Buffer.isBuffer(data)) {
+            buffer = data;
+          } else if (data && typeof data === 'object' && 'ok' in data) {
+            if (data.ok && data.value && Buffer.isBuffer(data.value)) {
+              buffer = data.value;
+            }
+          }
+          
+          if (buffer && buffer.length > 0) {
             const contentType = getContentType(tryKey);
             res.setHeader('Content-Type', contentType);
-            console.log(`[Object Storage] Successfully serving file: ${tryKey}, size: ${data.length} bytes`);
-            return res.send(data);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            console.log(`[Object Storage] Successfully serving file: ${tryKey}, size: ${buffer.length} bytes`);
+            return res.send(buffer);
           }
         } catch (err) {
           console.log(`[Object Storage] Key ${tryKey} not found, error: ${err instanceof Error ? err.message : String(err)}`);
