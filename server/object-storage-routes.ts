@@ -125,42 +125,26 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
       console.log(`[Object Storage] Attempting direct access for exact key: ${cleanKey}`);
       
       try {
-        const data = await objectStorage.downloadAsBytes(cleanKey);
-        console.log(`[Object Storage] Download response for ${cleanKey}:`, {
-          type: typeof data,
-          isBuffer: Buffer.isBuffer(data),
-          hasOk: data && typeof data === 'object' && 'ok' in data,
-          hasValue: data && typeof data === 'object' && 'value' in data
+        const result = await objectStorage.downloadAsBytes(cleanKey);
+        console.log(`[Object Storage] Download result for ${cleanKey}:`, {
+          type: typeof result,
+          hasOk: result && typeof result === 'object' && 'ok' in result,
+          ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
         });
         
-        // Handle different response formats from Object Storage client
-        let buffer: Buffer | null = null;
-        
-        if (Buffer.isBuffer(data)) {
-          buffer = data;
-        } else if (data && typeof data === 'object' && 'ok' in data) {
-          // Object Storage returns {ok: true, value: Buffer} format
-          if (data.ok && data.value) {
-            if (Buffer.isBuffer(data.value)) {
-              buffer = data.value;
-            } else if (data.value instanceof Uint8Array) {
-              buffer = Buffer.from(data.value);
-            } else if (typeof data.value === 'string') {
-              buffer = Buffer.from(data.value, 'base64');
-            }
+        // Handle Object Storage API response format: {ok: true, value: Buffer} or {ok: false, error: ...}
+        if (result && typeof result === 'object' && 'ok' in result) {
+          if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
+            const contentType = getContentType(cleanKey);
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            console.log(`[Object Storage] Successfully serving file: ${cleanKey}, size: ${result.value.length} bytes`);
+            return res.send(result.value);
+          } else {
+            console.log(`[Object Storage] File not found or invalid response for ${cleanKey}:`, result);
           }
-        } else if (data instanceof Uint8Array) {
-          buffer = Buffer.from(data);
-        }
-        
-        if (buffer && buffer.length > 0) {
-          const contentType = getContentType(cleanKey);
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          console.log(`[Object Storage] Successfully serving file: ${cleanKey}, size: ${buffer.length} bytes`);
-          return res.send(buffer);
         } else {
-          console.log(`[Object Storage] No valid buffer data for ${cleanKey}`);
+          console.log(`[Object Storage] Unexpected response format for ${cleanKey}:`, typeof result);
         }
       } catch (err) {
         console.log(`[Object Storage] Direct key ${cleanKey} failed: ${err instanceof Error ? err.message : String(err)}`);

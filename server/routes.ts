@@ -4310,15 +4310,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
-      // Import Object Storage client
-      const spartaObjectStorage = await import('./sparta-object-storage');
-      const objectStorage = spartaObjectStorage.spartaStorage;
+      // Import Object Storage client directly
+      const { Client } = await import('@replit/object-storage');
+      const objectStorage = new Client();
       
       // Use the exact filename as stored in database - no path manipulation
       const storageKey = filename;
 
       // Download the file from Object Storage
-      const fileData = await objectStorage.downloadAsBytes(storageKey);
+      const result = await objectStorage.downloadAsBytes(storageKey);
       
       // Set appropriate content type
       const ext = filename.toLowerCase().split('.').pop();
