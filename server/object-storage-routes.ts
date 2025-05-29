@@ -63,9 +63,18 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     // Try the exact key as provided first
     keysToTry.push(cleanKey);
     
-    // Try with shared prefix if not already present
-    if (!cleanKey.startsWith('shared/')) {
-      keysToTry.push(`shared/${cleanKey}`);
+    // For the specific path structure shown in Object Storage: shared/uploads/thumbnails/
+    if (cleanKey.includes('/thumbnails/') || cleanKey.includes('.poster.jpg')) {
+      // This is the exact path structure from the screenshot
+      keysToTry.push(cleanKey);
+      if (!cleanKey.startsWith('shared/')) {
+        keysToTry.push(`shared/${cleanKey}`);
+      }
+    } else {
+      // Try with shared prefix if not already present
+      if (!cleanKey.startsWith('shared/')) {
+        keysToTry.push(`shared/${cleanKey}`);
+      }
     }
     
     // Try simple uploads path variations
