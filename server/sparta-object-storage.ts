@@ -502,6 +502,7 @@ export class SpartaObjectStorage {
         }
 
         // Now that thumbnail is created (or fallback is in place), upload to Object Storage
+        console.log(`Thumbnail upload check - thumbnailUrl: ${thumbnailUrl}, fileExists: ${fs.existsSync(generatedThumbnailPath)}, hasObjectStorage: ${!!this.objectStorage}`);
         if (thumbnailUrl && fs.existsSync(generatedThumbnailPath) && this.objectStorage) {
           try {
             const thumbnailBasename = path.basename(generatedThumbnailPath);
@@ -520,6 +521,8 @@ export class SpartaObjectStorage {
             console.error(`Failed to upload thumbnail to Object Storage:`, objStoreError);
             // Continue with local thumbnail only
           }
+        } else {
+          console.log(`Skipping thumbnail upload - one of the conditions failed`);
         }
       } catch (thumbnailError) {
         console.error(`Error creating thumbnail for ${safeFilename}:`, thumbnailError);
