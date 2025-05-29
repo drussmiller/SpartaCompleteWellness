@@ -4299,5 +4299,125 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
+  // Main file serving route that thumbnails expect
+  app.get('/api/serve-file', async (req: Request, res: Response) => {
+    try {
+      const filename = req.query.filename as string;
+      const isThumbnail = req.query.thumbnail === 'true';
+      
+      if (!filename) {
+        return res.status(400).json({ error: 'Filename parameter is required' });
+      }
+
+      logger.info(`Serving file: ${filename}, thumbnail: ${isThumbnail}`, { route: '/api/serve-file' });
+
+      // Import Object Storage client
+      const { objectStorage } = await import('./sparta-object-storage');
+      
+      // Determine the correct path based on whether it's a thumbnail
+      let storageKey: string | undefined;
+      
+      if (isThumbnail) {
+        // For thumbnails, try multiple possible paths
+        const possibleKeys = [
+          `shared/uploads/thumbnails/${filename}`,
+          `uploads/thumbnails/${filename}`,
+          `shared/uploads/${filename}`,
+          `uploads/${filename}`
+        ];
+        
+        // Try each possible key until we find one that exists
+        for (const key of possibleKeys) {
+          try {
+            const exists = await objectStorage.exists(key);
+            if (exists) {
+              storageKey = key;
+              break;
+            }
+          } catch (err) {
+            // Continue to next key
+            continue;
+          }
+        }
+        
+        if (!storageKey) {
+          logger.info(`Thumbnail not found for any of the attempted keys: ${possibleKeys.join(', ')}`);
+          return res.status(404).json({ error: 'Thumbnail not found' });
+        }
+      } else {
+        // For regular files, try both shared and regular uploads
+        const possibleKeys = [
+          `shared/uploads/${filename}`,
+          `uploads/${filename}`
+        ];
+        
+        for (const key of possibleKeys) {
+          try {
+            const exists = await objectStorage.exists(key);
+            if (exists) {
+              storageKey = key;
+              break;
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+        
+        if (!storageKey) {
+          logger.info(`File not found for any of the attempted keys: ${possibleKeys.join(', ')}`);
+          return res.status(404).json({ error: 'File not found' });
+        }
+      }
+
+      // Download the file from Object Storage
+      const fileData = await objectStorage.downloadAsBytes(storageKey);
+      
+      // Set appropriate content type
+      const ext = filename.toLowerCase().split('.').pop();
+      let contentType = 'application/octet-stream';
+      
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'webm':
+          contentType = 'video/webm';
+          break;
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      logger.info(`Successfully served file: ${storageKey}, size: ${fileData.length} bytes`);
+      return res.send(fileData);
+      
+    } catch (error) {
+      logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
+      return res.status(500).json({ 
+        error: 'Failed to serve file',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   return httpServer;
 };
