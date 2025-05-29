@@ -314,16 +314,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
                       // Try direct formats without using the utility functions
                       // For memory verse videos, the thumbnails are uploaded with specific naming patterns
-                      const fileName = baseName.split('/').pop();
+                      // Extract the actual filename from the serve-file URL
+                      const urlMatch = mediaUrl.match(/filename=([^&]+)/);
+                      const actualFileName = urlMatch ? urlMatch[1] : baseName.split('/').pop() || '';
+                      
+                      console.log('Extracted filename for thumbnail search:', actualFileName);
                       
                       // Try multiple thumbnail patterns that were uploaded
                       const thumbnailPatterns = [
-                        `/api/serve-file?filename=${fileName}.poster.jpg`,
-                        `/api/serve-file?filename=thumb-${fileName}`,
-                        `/api/serve-file?filename=${fileName.replace(/\.mov$/i, '.jpg')}`,
-                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${fileName}.poster.jpg`,
-                        `/api/object-storage/direct-download?fileUrl=shared/uploads/thumb-${fileName}`,
-                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${fileName.replace(/\.mov$/i, '.jpg')}`
+                        `/api/serve-file?filename=${actualFileName}.poster.jpg`,
+                        `/api/serve-file?filename=thumb-${actualFileName}`,
+                        `/api/serve-file?filename=${actualFileName.replace(/\.mov$/i, '.jpg')}`,
+                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${actualFileName}.poster.jpg`,
+                        `/api/object-storage/direct-download?fileUrl=shared/uploads/thumb-${actualFileName}`,
+                        `/api/object-storage/direct-download?fileUrl=shared/uploads/${actualFileName.replace(/\.mov$/i, '.jpg')}`
                       ];
                       
                       // Try each pattern until one works
