@@ -854,16 +854,20 @@ export class SpartaObjectStorage {
       let thumbnailUrl: string | undefined;
       if (isVideo) {
         try {
+          // Create thumbnail with the same name as video but with .jpg extension
+          // Remove the original extension and add .jpg
+          const baseFilename = uniqueFilename.replace(/\.[^/.]+$/, '');
+          const thumbnailFilename = `${baseFilename}.jpg`;
+          const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
+          
           // For videos, we'll create a fallback SVG thumbnail immediately
           // since we can't extract frames from a buffer directly
           const svgThumbnail = this.createSvgPlaceholder(uniqueFilename, 'video');
-          const thumbnailFilename = `thumb-${uniqueFilename}.jpg`;
-          const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
           
           await this.objectStorage.uploadFromBytes(thumbnailKey, Buffer.from(svgThumbnail));
-          thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}&thumbnail=true`;
+          thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
           
-          console.log(`Created fallback thumbnail for video: ${thumbnailKey}`);
+          console.log(`Created single thumbnail for video: ${thumbnailKey}`);
         } catch (thumbError) {
           console.error('Failed to create video thumbnail:', thumbError);
           // Continue without thumbnail

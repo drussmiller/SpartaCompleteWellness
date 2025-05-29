@@ -325,16 +325,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       
                       console.log('Base video name for matching:', baseVideoName);
                       
-                      // Try multiple thumbnail patterns that were uploaded with different timestamp prefixes
-                      // For the current video: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV
-                      // Try the actual thumbnail files that exist in Object Storage
+                      // New simplified thumbnail naming: same name as video but with .jpg extension
+                      // For video: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV
+                      // Thumbnail: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.jpg
+                      const baseFileName = actualFileName.replace(/\.[^/.]+$/, '');
+                      const simplifiedThumbnailUrl = `/api/serve-file?filename=${baseFileName}.jpg`;
+                      
                       const thumbnailPatterns = [
+                        simplifiedThumbnailUrl,
+                        // Fallback patterns for older thumbnails that might still exist
                         `/api/serve-file?filename=1748529997124-43ad0541-8902-4ab6-a24a-27dd42cdb918-IMG-7923.MOV.poster.jpg`,
                         `/api/serve-file?filename=1748529997484-408ee8f6-edb6-45f0-9150-8b31423599c7-thumb-IMG-7923.MOV`,
-                        `/api/serve-file?filename=1748529997847-d77d98d7-6baa-4ad5-b11c-d4e13335eea5-IMG-7923.jpg`,
-                        `/api/serve-file?filename=${actualFileName}.poster.jpg`,
-                        `/api/serve-file?filename=thumb-${actualFileName}`,
-                        `/api/serve-file?filename=${actualFileName.replace(/\.mov$/i, '.jpg')}`
+                        `/api/serve-file?filename=1748529997847-d77d98d7-6baa-4ad5-b11c-d4e13335eea5-IMG-7923.jpg`
                       ];
                       
                       // Try each pattern until one works
