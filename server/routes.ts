@@ -1252,7 +1252,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Update the post creation endpoint to ensure correct point assignment
-  router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+  router.post("/api/posts", authenticate, upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
+  ]), async (req, res) => {
     // Set content type early to prevent browser confusion
     res.set({
       'Cache-Control': 'no-store',
@@ -1328,21 +1331,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (postData.type === 'scripture') {
         logger.info('Scripture post created with no media');
         mediaUrl = null;
-      } else if (req.file) {
+      } else if (req.files && (req.files as any).image && (req.files as any).image[0]) {
         try {
           // Use SpartaObjectStorage for direct buffer upload (no local files)
           const { spartaStorage } = await import('./sparta-object-storage');
           
-          // Handle video files differently
-          const isVideo = req.file.mimetype.startsWith('video/');
+          // Get the uploaded file from the files object
+          const uploadedFile = (req.files as any).image[0];
           
-          logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}`);
+          // Handle video files differently
+          const isVideo = uploadedFile.mimetype.startsWith('video/');
+          
+          logger.info(`Processing media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}`);
           
           // Store the file directly from memory buffer to Object Storage
           const fileInfo = await spartaStorage.storeFileFromBuffer(
-            req.file.buffer,
-            req.file.originalname,
-            req.file.mimetype,
+            uploadedFile.buffer,
+            uploadedFile.originalname,
+            uploadedFile.mimetype,
             isVideo
           );
           
