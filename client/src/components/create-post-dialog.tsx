@@ -577,7 +577,9 @@ export function CreatePostDialog({
                                 
                                 // Generate a thumbnail for the video
                                 console.log("Starting thumbnail generation for video:", file.name, file.type);
+                                setVideoThumbnail(null); // Reset thumbnail state
                                 generateVideoThumbnail(file).then(thumbnailUrl => {
+                                  console.log("Thumbnail generation result:", thumbnailUrl ? "SUCCESS" : "FAILED");
                                   if (thumbnailUrl) {
                                     setVideoThumbnail(thumbnailUrl);
                                     console.log("Generated video thumbnail successfully:", thumbnailUrl.substring(0, 50) + "...");
@@ -748,16 +750,25 @@ export function CreatePostDialog({
                           </>
                         )}
                       </FormControl>
-                      {imagePreview && (
+                      {(imagePreview || videoThumbnail) && (
                         <div className="mt-2">
                           {/* Display video thumbnails for memory verse posts or miscellaneous video posts */}
-                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && videoThumbnail && (
+                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && (
                             <div className="mt-2">
-                              <img 
-                                src={videoThumbnail}
-                                alt="Video Thumbnail"
-                                className="max-h-40 rounded-md border border-gray-300"
-                              />
+                              {videoThumbnail ? (
+                                <div>
+                                  <img 
+                                    src={videoThumbnail}
+                                    alt="Video Thumbnail"
+                                    className="max-h-40 rounded-md border border-gray-300"
+                                  />
+                                  <p className="text-sm text-gray-600 mt-1">Video thumbnail preview</p>
+                                </div>
+                              ) : (
+                                <div className="max-h-40 flex items-center justify-center border border-gray-300 rounded-md bg-gray-50 p-8">
+                                  <p className="text-sm text-gray-500">Generating thumbnail...</p>
+                                </div>
+                              )}
                             </div>
                           )}
                           {/* Display regular images for other post types or miscellaneous image posts */}
