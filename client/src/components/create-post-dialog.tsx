@@ -892,13 +892,15 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
         console.log('Video metadata loaded:', {
           duration: video.duration,
           videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight
+          videoHeight: video.videoHeight,
+          readyState: video.readyState
         });
         
         // Seek to 1 second or 10% of duration, whichever is smaller
         const seekTime = Math.min(1, video.duration * 0.1);
+        console.log('Setting currentTime to:', seekTime);
         video.currentTime = seekTime;
-        console.log('Seeking to time:', seekTime);
+        console.log('After setting currentTime:', video.currentTime);
       };
       
       // When seeking completes, capture the thumbnail
