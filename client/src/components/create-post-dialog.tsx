@@ -852,29 +852,48 @@ function dataURLToBlob(dataURL: string): Blob {
 async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
   return new Promise((resolve) => {
     try {
+      console.log('Starting video thumbnail generation for:', videoFile.name, videoFile.type);
+      
       // Create a video element
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.muted = true;
       video.playsInline = true;
+      video.crossOrigin = 'anonymous';
+      
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        console.warn('Video thumbnail generation timed out');
+        URL.revokeObjectURL(video.src);
+        resolve(null);
+      }, 10000); // 10 second timeout
       
       // Create a URL for the video file
       const videoUrl = URL.createObjectURL(videoFile);
-      video.src = videoUrl;
       
-      // When video metadata is loaded, seek to the middle point
+      // When video metadata is loaded, seek to a frame
       video.onloadedmetadata = () => {
-        // Set the current time to 1 second or the middle of the video (whichever is less)
-        video.currentTime = Math.min(1, video.duration / 2);
+        console.log('Video metadata loaded:', {
+          duration: video.duration,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight
+        });
+        
+        // Seek to 1 second or 10% of duration, whichever is smaller
+        const seekTime = Math.min(1, video.duration * 0.1);
+        video.currentTime = seekTime;
+        console.log('Seeking to time:', seekTime);
       };
       
       // When seeking completes, capture the thumbnail
       video.onseeked = () => {
         try {
+          console.log('Video seek completed, generating thumbnail');
+          
           // Create a canvas with video dimensions
           const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 480;
           
           // Draw the current frame to the canvas
           const ctx = canvas.getContext('2d');
@@ -882,35 +901,72 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             // Convert canvas to data URL
-            const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+            const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+            
+            console.log('Video thumbnail generated successfully');
             
             // Clean up
+            clearTimeout(timeout);
             URL.revokeObjectURL(videoUrl);
             
             // Return the thumbnail
             resolve(thumbnailUrl);
           } else {
             console.error('Failed to get canvas context');
+            clearTimeout(timeout);
+            URL.revokeObjectURL(videoUrl);
             resolve(null);
           }
         } catch (error) {
-          console.error('Error generating thumbnail:', error);
+          console.error('Error generating thumbnail in onseeked:', error);
+          clearTimeout(timeout);
+          URL.revokeObjectURL(videoUrl);
           resolve(null);
         }
       };
       
       // Handle errors
-      video.onerror = () => {
-        console.error('Error loading video for thumbnail');
+      video.onerror = (e) => {
+        console.error('Error loading video for thumbnail:', e);
+        clearTimeout(timeout);
         URL.revokeObjectURL(videoUrl);
         resolve(null);
       };
       
-      // Start loading the video
+      // Handle cases where seeking might not trigger
+      video.oncanplay = () => {
+        console.log('Video can play, checking if seeking happened');
+        // If we haven't generated a thumbnail yet, try to capture current frame
+        setTimeout(() => {
+          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth || 640;
+              canvas.height = video.videoHeight || 480;
+              
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                
+                console.log('Fallback thumbnail generated from canplay');
+                clearTimeout(timeout);
+                URL.revokeObjectURL(videoUrl);
+                resolve(thumbnailUrl);
+              }
+            } catch (error) {
+              console.log('Fallback thumbnail generation failed:', error);
+            }
+          }
+        }, 500);
+      };
+      
+      // Set the video source and start loading
+      video.src = videoUrl;
       video.load();
       
     } catch (error) {
-      console.error('Error generating thumbnail:', error);
+      console.error('Error setting up video thumbnail generation:', error);
       resolve(null);
     }
   });
