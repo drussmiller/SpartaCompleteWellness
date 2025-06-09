@@ -576,11 +576,16 @@ export function CreatePostDialog({
                                 setImagePreview(videoUrl);
                                 
                                 // Generate a thumbnail for the video
+                                console.log("Starting thumbnail generation for video:", file.name, file.type);
                                 generateVideoThumbnail(file).then(thumbnailUrl => {
                                   if (thumbnailUrl) {
                                     setVideoThumbnail(thumbnailUrl);
-                                    console.log("Generated video thumbnail");
+                                    console.log("Generated video thumbnail successfully:", thumbnailUrl.substring(0, 50) + "...");
+                                  } else {
+                                    console.log("Failed to generate video thumbnail");
                                   }
+                                }).catch(error => {
+                                  console.error("Error in thumbnail generation promise:", error);
                                 });
                                 
                                 // Important: we need to set the field value to a marker so we know to use the video file
