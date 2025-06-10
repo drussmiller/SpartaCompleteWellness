@@ -460,15 +460,15 @@ export class SpartaObjectStorage {
         } else if (mimeType.startsWith('video/') || isVideo) {
           // For videos, create ONE simplified thumbnail
           console.log(`Creating simplified thumbnail for video: ${safeFilename}`);
-          
+
           // Create thumbnail with same base name as video but .jpg extension
           const videoBaseName = path.parse(safeFilename).name;
           const simplifiedThumbnailName = `${videoBaseName}.jpg`;
           const simplifiedThumbnailPath = path.join(this.thumbnailDir, simplifiedThumbnailName);
-          
+
           try {
             await this.createVideoThumbnail(filePath, simplifiedThumbnailPath);
-            
+
             // Upload the simplified thumbnail to Object Storage
             if (this.objectStorage) {
               const thumbnailBuffer = fs.readFileSync(simplifiedThumbnailPath);
@@ -476,19 +476,19 @@ export class SpartaObjectStorage {
               await this.objectStorage.uploadFile(thumbnailKey, thumbnailBuffer);
               console.log(`Uploaded simplified thumbnail to Object Storage: ${thumbnailKey}`);
             }
-            
+
             thumbnailUrl = `/shared/uploads/${simplifiedThumbnailName}`;
             console.log(`Video thumbnail created at ${simplifiedThumbnailPath}`);
             logger.info(`Created simplified video thumbnail for ${safeFilename}`);
           } catch (error) {
             console.error(`Error creating video thumbnail:`, error);
             // Create a simple fallback thumbnail
-            const fallbackSvg = `<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-              <rect width="100%" height="100%" fill="#f0f0f0"/>
-              <text x="50%" y="50%" text-anchor="middle" fill="#666">Video Thumbnail</text>
-            </svg>`;
-            fs.writeFileSync(simplifiedThumbnailPath, fallbackSvg);
-            thumbnailUrl = `/shared/uploads/${simplifiedThumbnailName}`;
+            // const fallbackSvg = `<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            //   <rect width="100%" height="100%" fill="#f0f0f0"/>
+            //   <text x="50%" y="50%" text-anchor="middle" fill="#666">Video Thumbnail</text>
+            // </svg>`;
+            // fs.writeFileSync(simplifiedThumbnailPath, fallbackSvg);
+            // thumbnailUrl = `/shared/uploads/${simplifiedThumbnailName}`;
           }
         }
 
@@ -771,12 +771,12 @@ export class SpartaObjectStorage {
 
     try {
       console.log(`Storing file directly to Object Storage: ${sharedKey}`);
-      
+
       // Upload file buffer directly to Object Storage
       await this.objectStorage.uploadFromBytes(sharedKey, buffer);
-      
+
       const objectStorageUrl = `/api/serve-file?filename=${encodeURIComponent(uniqueFilename)}`;
-      
+
       // Generate thumbnail if it's a video (simplified system)
       let thumbnailUrl: string | undefined;
       if (isVideo) {
@@ -786,10 +786,10 @@ export class SpartaObjectStorage {
           const baseFilename = uniqueFilename.replace(/\.[^/.]+$/, '');
           const thumbnailFilename = `${baseFilename}.jpg`;
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
-          
+
           // Create a simple placeholder JPG image using Sharp
           const sharp = await import('sharp');
-          
+
           // Create a 320x240 JPG placeholder with a play button
           const thumbnailBuffer = await sharp.default({
             create: {
@@ -813,10 +813,10 @@ export class SpartaObjectStorage {
           ])
           .jpeg({ quality: 80 })
           .toBuffer();
-          
+
           await this.objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
           thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
-          
+
           console.log(`Created simplified single thumbnail for video: ${thumbnailKey}`);
         } catch (thumbError) {
           console.error('Failed to create video thumbnail:', thumbError);
@@ -825,13 +825,13 @@ export class SpartaObjectStorage {
       }
 
       console.log(`Successfully stored file in Object Storage: ${sharedKey}`);
-      
+
       return {
         filename: uniqueFilename,
         objectStorageUrl,
         thumbnailUrl
       };
-      
+
     } catch (error) {
       console.error(`Failed to store file in Object Storage:`, error);
       throw new Error(`Failed to upload file: ${error.message}`);
@@ -1037,9 +1037,9 @@ export class SpartaObjectStorage {
                 try {
                   // Import and use our clean thumbnail function
                   const { createMovThumbnail } = await import('./mov-frame-extractor-new');
-                  
+
                   const thumbnailFilename = await createMovThumbnail(normalizedVideoPath);
-                  
+
                   if (thumbnailFilename) {
                     console.log(`Successfully created thumbnail: ${thumbnailFilename}`);
                     resolve();
@@ -1115,38 +1115,8 @@ export class SpartaObjectStorage {
                     console.log(`[${processId}] Creating fallback thumbnail`);
 
                     // Create a default video thumbnail as SVG for failed conversions
-                    const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#6366f1"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
-
-                    try {
-                      fs.writeFileSync(targetPath, videoSvg);
-                      console.log(`[${processId}] Created fallback thumbnail at ${targetPath}`);
-
-                      // Upload the fallback thumbnail to Object Storage
-                      if (this.objectStorage) {
-                        const thumbnailBasename = path.basename(targetPath);
-
-                        // Store only in shared path to save space
-                        const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
-
-                        console.log(`[${processId}] Uploading fallback thumbnail to Object Storage with shared key: ${sharedKey}`);
-
-                        this.objectStorage.uploadFromBytes(sharedKey, videoSvg)
-                          .then(() => {
-                            console.log(`[${processId}] Successfully uploaded fallback thumbnail to Object Storage`);
-                            resolve();
-                          })
-                          .catch(objStoreError => {
-                            console.error(`[${processId}] Failed to upload fallback thumbnail to Object Storage:`, objStoreError);
-                            // We can still resolve since the local thumbnail was created
-                            resolve();
-                          });
-                      } else {
-                        resolve();
-                      }
-                    } catch (writeError) {
-                      console.error(`[${processId}] Error writing fallback thumbnail: ${writeError}`);
-                      reject(writeError);
-                    }
+                    console.log(`[${processId}] No fallback thumbnail will be created`);
+                    reject(new Error(`Failed to generate video thumbnail: ${err.message}`));
                   })
                   .screenshots({
                     count: 1,
@@ -1163,27 +1133,8 @@ export class SpartaObjectStorage {
                   // Try to create a fallback thumbnail
                   try {
                     // Create a default video thumbnail
-                    const videoSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="#dc2626"/><circle cx="300" cy="200" r="80" stroke="#fff" stroke-width="8" fill="none"/><circle cx="300" cy="200" r="120" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
-                    fs.writeFileSync(targetPath, videoSvg);
-                    console.log(`[${processId}] Created timeout fallback thumbnail at ${targetPath}`);
-
-                    // Upload the fallback thumbnail to Object Storage
-                    if (this.objectStorage) {
-                      const thumbnailBasename = path.basename(targetPath);
-
-                      // Store only in shared path to save space
-                      const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
-
-                      this.objectStorage.uploadFromBytes(sharedKey, videoSvg)
-                        .then(() => {
-                          console.log(`[${processId}] Successfully uploaded timeout fallback thumbnail to Object Storage`);
-                        })
-                        .catch(objStoreError => {
-                          console.error(`[${processId}] Failed to upload timeout fallback thumbnail to Object Storage:`, objStoreError);
-                        });
-                    }
-
-                    resolve();
+                    console.log(`[${processId}] No fallback thumbnail will be created`);
+                    reject(new Error(`Failed to generate video thumbnail: Timeout after 60s`));
                   } catch (fallbackError) {
                     console.error(`[${processId}] Failed to create fallback thumbnail after timeout: ${fallbackError}`);
                     reject(fallbackError);
@@ -1350,28 +1301,9 @@ export class SpartaObjectStorage {
             logger.error(`Error generating video thumbnail: ${errorMessage}`);
 
             // Try to create a basic thumbnail as fallback
-            try {
-              // Use sharp to create a blank thumbnail with text as fallback
-              const textBuffer = Buffer.from('<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#000"/><text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text><circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
-              fs.writeFileSync(targetPath, textBuffer);
-              console.log(`Created fallback video thumbnail at ${targetPath}`);
-              logger.info(`Created fallback video thumbnail at ${targetPath}`);
-
-              // Ensure thumbnails directory is accessible with proper permissions
-              try {
-                const thumbnailsDir = path.dirname(targetPath);
-                fs.chmodSync(thumbnailsDir, 0o755);
-                fs.chmodSync(targetPath, 0o644);
-                console.log(`Set proper permissions on thumbnail file and directory`);
-              } catch (permissionError) {
-                console.error(`Error setting permissions:`, permissionError);
-              }
-
-              resolve(); // Continue even with the fallback
-            } catch (fallbackError) {
-              console.error('Failed to create fallback video thumbnail:', fallbackError);
-              reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
-            }
+            // Use direct file approach to create a basic thumbnail
+            console.log(`[${processId}] No fallback thumbnail will be created`);
+            reject(new Error(`Failed to generate video thumbnail: ${errorMessage}`));
           })
           .on('end', () => {
             console.log(`Successfully created video thumbnail at ${targetPath}`);
@@ -1413,17 +1345,8 @@ export class SpartaObjectStorage {
         logger.error('Error creating video thumbnail:', error instanceof Error ? error : new Error(String(error)));
 
         // Try to create a basic thumbnail as fallback
-        try {
-          // Use direct file approach to create a basic thumbnail
-          const textBuffer = Buffer.from('<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#000"/><text x="50%" y="50%" fill="#fff" text-anchor="middle" font-size="24">Video Preview</text><circle cx="300" cy="200" r="50" stroke="#fff" stroke-width="2" fill="rgba(255,255,255,0.2)"/><polygon points="290,180 290,220 320,200" fill="#fff"/></svg>');
-          fs.writeFileSync(targetPath, textBuffer);
-          console.log(`Created fallback video thumbnail at ${targetPath} (catch block)`);
-          logger.info(`Created fallback video thumbnail at ${targetPath} (catch block)`);
-          resolve(); // Continue even with the fallback
-        } catch (fallbackError) {
-          console.error('Failed to create fallback video thumbnail in catch block:', fallbackError);
-          reject(new Error('Failed to create video thumbnail and fallback'));
-        }
+        console.log(`[${processId}] No fallback thumbnail will be created`);
+        reject(new Error('Failed to create video thumbnail and fallback'));
       }
     });
   }
@@ -1782,8 +1705,9 @@ export class SpartaObjectStorage {
 
         // Add special thumbnail locations for memory verse and miscellaneous videos
         if (isMemoryVerse || isMiscellaneousVideo) {
-          // For videos, try png and jpg extensions
+          // For videos, try both jpg and png extensions
           const baseFilename = filename.substring(0, filename.lastIndexOf('.')) || filename;
+
           thumbnailPathsToCheck.push(
             path.join(this.thumbnailDir, `${baseFilename}.jpg`),
             path.join(this.thumbnailDir, `${baseFilename}.png`),
@@ -1791,7 +1715,7 @@ export class SpartaObjectStorage {
             path.join(this.thumbnailDir, `thumb-${baseFilename}.png`)
           );
 
-          // For memory verse videos, check special directories
+          // Add special directory paths
           if (isMemoryVerse) {
             thumbnailPathsToCheck.push(
               path.join(this.thumbnailDir, 'memory_verse', filename),
@@ -1799,10 +1723,7 @@ export class SpartaObjectStorage {
               path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse', filename),
               path.join(process.cwd(), 'uploads', 'thumbnails', 'memory_verse', `thumb-${filename}`)
             );
-          }
-
-          // For miscellaneous videos, check special directories
-          if (isMiscellaneousVideo) {
+          } else if (isMiscellaneousVideo) {
             thumbnailPathsToCheck.push(
               path.join(this.thumbnailDir, 'miscellaneous', filename),
               path.join(this.thumbnailDir, 'miscellaneous', `thumb-${filename}`),
