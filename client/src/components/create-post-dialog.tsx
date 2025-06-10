@@ -945,8 +945,12 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
         setTimeout(() => {
           if (hasResolved) return;
           
-          console.log('🔍 Seeking to 1 second for thumbnail');
-          video.currentTime = Math.min(1, video.duration * 0.1);
+          // For memory verse videos, try to seek to a better position
+          const seekTime = video.duration > 0 
+            ? Math.min(video.duration * 0.15, 3) // 15% into video or 3 seconds max
+            : 1;
+          console.log(`🔍 Seeking to ${seekTime} seconds for thumbnail (duration: ${video.duration}s)`);
+          video.currentTime = seekTime;
           
           // Try again after seeking
           setTimeout(() => {
