@@ -894,10 +894,16 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
       
       // Function to generate thumbnail from current frame
       const generateThumbnailFromCurrentFrame = () => {
-        if (hasResolved) return;
+        if (hasResolved) return false;
         
         try {
           console.log('📸 Attempting to capture frame at currentTime:', video.currentTime);
+          
+          // Ensure video has valid dimensions
+          if (!video.videoWidth || !video.videoHeight) {
+            console.warn('⚠️ Video dimensions not available yet');
+            return false;
+          }
           
           const canvas = document.createElement('canvas');
           const targetWidth = 400; // Fixed width for consistency
@@ -911,13 +917,14 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
             return false;
           }
           
-          // Draw the current frame to the canvas
+          // Clear canvas and draw the current frame
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           
-          // Convert canvas to data URL
-          const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.85);
+          // Convert canvas to data URL with higher quality
+          const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.9);
           
-          if (thumbnailUrl && thumbnailUrl.length > 100) { // Basic validation
+          if (thumbnailUrl && thumbnailUrl.length > 1000) { // More stringent validation
             console.log('✅ Video thumbnail generated successfully! Size:', thumbnailUrl.length, 'chars');
             hasResolved = true;
             clearTimeout(timeout);
@@ -925,7 +932,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
             resolve(thumbnailUrl);
             return true;
           } else {
-            console.warn('⚠️ Generated thumbnail seems invalid');
+            console.warn('⚠️ Generated thumbnail seems invalid, size:', thumbnailUrl?.length);
             return false;
           }
         } catch (error) {
