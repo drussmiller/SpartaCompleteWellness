@@ -12,6 +12,28 @@
   display: flex;
 }
 
+/* Thumbnail container styles - ensure natural aspect ratio */
+.video-thumbnail-container {
+  width: 100% !important;
+  height: auto !important;
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+/* Thumbnail image styles - force natural dimensions */
+.video-thumbnail-image {
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: unset !important;
+  display: block !important;
+  object-fit: contain !important;
+  aspect-ratio: auto !important;
+}
+
 /* Video styles to ensure controls are visible */
 .video-player-container video {
   width: 100%;

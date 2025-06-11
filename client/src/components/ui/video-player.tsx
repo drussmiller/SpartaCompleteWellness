@@ -185,29 +185,27 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full bg-gray-800" style={{ aspectRatio: '16/9' }}>
+        <div className="video-thumbnail-container bg-gray-800">
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-full object-contain cursor-pointer"
+              className="video-thumbnail-image cursor-pointer"
               onClick={handleThumbnailClick}
               onError={handlePosterError}
-              style={{ aspectRatio: 'inherit' }}
             />
           )}
           {/* Show fallback only if no poster URL at all */}
           {!simplifiedPoster && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
-              className="w-full h-full flex flex-col items-center justify-center cursor-pointer"
+              className="w-full min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
               onClick={handleThumbnailClick}
               style={{
                 background: posterError ? 
                   "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
-                  "black",
-                aspectRatio: 'inherit'
+                  "black"
               }}
             >
               <div className="p-4 rounded-lg flex flex-col items-center">
@@ -231,20 +229,19 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")} style={{ aspectRatio: '16/9' }}>
+      <div className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")}>
         <video
           ref={videoRef}
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-full object-contain"
+          className="w-full h-auto object-contain"
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
             maxHeight: "none", 
-            width: "100%",
-            aspectRatio: 'inherit'
+            width: "100%"
           }}
         />
       </div>
