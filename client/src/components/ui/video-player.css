@@ -11,10 +11,9 @@
   line-height: 0;
 }
 
-/* Thumbnail container styles - CSS Grid for proper aspect ratio */
+/* Thumbnail container styles - allow JavaScript height control */
 .video-thumbnail-container {
   width: 100%;
-  height: auto;
   position: relative;
   display: grid;
   grid-template-columns: 1fr;
@@ -55,14 +54,13 @@ div.video-thumbnail-container img.video-thumbnail-image,
   box-sizing: border-box !important;
 }
 
-/* Override parent container constraints */
+/* Override parent container constraints - allow JavaScript height override */
 .video-container,
 .video-container .video-thumbnail-container,
 .video-player-container .video-thumbnail-container,
 div[data-post-id] .video-thumbnail-container,
 .bg-gray-50 .video-thumbnail-container,
 .relative .video-thumbnail-container {
-  height: fit-content !important;
   min-height: 0 !important;
   max-height: none !important;
   aspect-ratio: auto !important;
