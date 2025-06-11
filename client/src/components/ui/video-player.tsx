@@ -77,6 +77,7 @@ export function VideoPlayer({
   const [posterError, setPosterError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
@@ -189,11 +190,28 @@ export function VideoPlayer({
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && (
             <img 
+              ref={imageRef}
               src={simplifiedPoster} 
               alt="Video thumbnail" 
               className="cursor-pointer video-thumbnail-image"
-              onLoad={() => {
+              onLoad={(e) => {
                 console.log('Video thumbnail loaded successfully');
+                // Force container to match image aspect ratio
+                const img = e.target as HTMLImageElement;
+                const container = img.closest('.video-thumbnail-container') as HTMLElement;
+                if (container && img.naturalWidth && img.naturalHeight) {
+                  const aspectRatio = img.naturalWidth / img.naturalHeight;
+                  const containerWidth = container.offsetWidth;
+                  const calculatedHeight = containerWidth / aspectRatio;
+                  
+                  // Apply dimensions directly to container
+                  container.style.height = `${calculatedHeight}px`;
+                  container.style.aspectRatio = `${aspectRatio}`;
+                  
+                  console.log(`Image natural dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+                  console.log(`Container forced to: ${containerWidth}x${calculatedHeight}`);
+                  console.log(`Aspect ratio: ${aspectRatio}`);
+                }
               }}
               onClick={handleThumbnailClick}
               onError={handlePosterError}

@@ -62,7 +62,7 @@ div.video-thumbnail-container img.video-thumbnail-image,
 div[data-post-id] .video-thumbnail-container,
 .bg-gray-50 .video-thumbnail-container,
 .relative .video-thumbnail-container {
-  height: auto !important;
+  height: fit-content !important;
   min-height: 0 !important;
   max-height: none !important;
   aspect-ratio: auto !important;
