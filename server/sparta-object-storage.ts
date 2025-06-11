@@ -1098,7 +1098,7 @@ export class SpartaObjectStorage {
                 }
               } else {
                 // For non-MOV files, use ffmpeg to extract a frame
-                const ffmpeg = require('fluent-ffmpeg');
+                const ffmpeg = (await import('fluent-ffmpeg')).default;
 
                 console.log(`[${processId}] Starting ffmpeg process for ${normalizedVideoPath}`);
 

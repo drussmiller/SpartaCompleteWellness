@@ -239,8 +239,8 @@ app.use('/api', (req, res, next) => {
         console.log(`Processing shared file request: ${filePath}`);
 
         // Import required modules
-        const { Client } = require('@replit/object-storage');
-        const fs = require('fs');
+        const { Client } = await import('@replit/object-storage');
+        const fs = await import('fs');
 
         // Check if Replit Object Storage is available
         if (!process.env.REPLIT_DB_ID) {
