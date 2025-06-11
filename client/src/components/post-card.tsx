@@ -258,10 +258,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <div className="w-full bg-gray-50" style={{ height: 'auto', minHeight: '200px' }}>
             {shouldShowAsVideo ? (
               <div 
-                className="w-full video-container" 
-                data-post-id={post.id}
-                style={{ height: 'auto', minHeight: '200px', maxHeight: 'none' }}
-              >
+                  className="w-full video-container" 
+                  data-post-id={post.id}
+                  style={{ height: 'auto', maxHeight: 'none' }}
+                >
                 {/* Import and use VideoPlayer instead of standard video element */}
                 <VideoPlayer 
                   key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
@@ -300,20 +300,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       // Extract the actual filename from the serve-file URL
                       const urlMatch = mediaUrl.match(/filename=([^&]+)/);
                       const actualFileName = urlMatch ? urlMatch[1] : baseName.split('/').pop() || '';
-                      
+
                       console.log('Extracted filename for thumbnail search:', actualFileName);
-                      
+
                       // Extract the base video name (e.g., "IMG_7923.MOV" from "1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV")
                       const baseVideoName = actualFileName.split('-').slice(2).join('-'); // Gets "IMG_7923.MOV"
-                      
+
                       console.log('Base video name for matching:', baseVideoName);
-                      
+
                       // New simplified thumbnail naming: same name as video but with .jpg extension
                       // For video: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV
                       // Thumbnail: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.jpg
                       const baseFileName = actualFileName.replace(/\.[^/.]+$/, '');
                       const simplifiedThumbnailUrl = `/api/serve-file?filename=${baseFileName}.jpg`;
-                      
+
                       const thumbnailPatterns = [
                         simplifiedThumbnailUrl,
                         // Fallback patterns for older thumbnails that might still exist
@@ -321,7 +321,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         `/api/serve-file?filename=1748529997484-408ee8f6-edb6-45f0-9150-8b31423599c7-thumb-IMG-7923.MOV`,
                         `/api/serve-file?filename=1748529997847-d77d98d7-6baa-4ad5-b11c-d4e13335eea5-IMG-7923.jpg`
                       ];
-                      
+
                       // Try each pattern until one works
                       let patternIndex = 0;
                       const tryNextPattern = () => {
@@ -330,12 +330,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                           patternIndex++;
                         }
                       };
-                      
+
                       img.onerror = () => {
                         console.log(`Thumbnail pattern ${patternIndex} failed:`, img.src);
                         tryNextPattern();
                       };
-                      
+
                       // Start with the first pattern
                       tryNextPattern();
                     } else {

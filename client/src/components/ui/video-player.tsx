@@ -190,12 +190,9 @@ export function VideoPlayer({
           style={{
             width: '100%',
             height: 'auto',
-            minHeight: '200px',
+            minHeight: '0',
             maxHeight: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            justifyContent: 'flex-start',
+            display: 'block',
             overflow: 'visible',
             position: 'relative'
           }}
@@ -221,63 +218,8 @@ export function VideoPlayer({
                 verticalAlign: 'top',
                 flex: 'none'
               }}
-              onLoad={(e) => {
-                // Force natural dimensions after load
-                const img = e.target as HTMLImageElement;
-                const naturalWidth = img.naturalWidth;
-                const naturalHeight = img.naturalHeight;
-                
-                if (naturalWidth && naturalHeight) {
-                  const containerWidth = img.offsetWidth;
-                  const aspectRatio = naturalHeight / naturalWidth;
-                  const naturalHeightAtCurrentWidth = containerWidth * aspectRatio;
-                  
-                  console.log('Video thumbnail loaded:', {
-                    naturalWidth,
-                    naturalHeight,
-                    containerWidth,
-                    aspectRatio,
-                    calculatedHeight: naturalHeightAtCurrentWidth
-                  });
-                  
-                  // Force the natural height on the image
-                  img.style.height = `${naturalHeightAtCurrentWidth}px`;
-                  img.style.maxHeight = 'none';
-                  img.style.minHeight = '0';
-                  img.style.objectFit = 'contain';
-                  
-                  // Set heights on all parent containers to prevent compression
-                  const thumbnailContainer = img.parentElement;
-                  if (thumbnailContainer) {
-                    thumbnailContainer.style.height = `${naturalHeightAtCurrentWidth}px`;
-                    thumbnailContainer.style.maxHeight = 'none';
-                    thumbnailContainer.style.minHeight = '0';
-                    
-                    // Update the video player container
-                    const videoPlayerContainer = thumbnailContainer.parentElement;
-                    if (videoPlayerContainer) {
-                      videoPlayerContainer.style.height = `${naturalHeightAtCurrentWidth}px`;
-                      videoPlayerContainer.style.maxHeight = 'none';
-                      videoPlayerContainer.style.minHeight = '0';
-                      
-                      // Update the main container in post-card
-                      const mediaContainer = videoPlayerContainer.parentElement;
-                      if (mediaContainer) {
-                        mediaContainer.style.height = `${naturalHeightAtCurrentWidth}px`;
-                        mediaContainer.style.maxHeight = 'none';
-                        mediaContainer.style.minHeight = '0';
-                        
-                        // Update the outermost container
-                        const outerContainer = mediaContainer.parentElement;
-                        if (outerContainer) {
-                          outerContainer.style.height = `${naturalHeightAtCurrentWidth}px`;
-                          outerContainer.style.maxHeight = 'none';
-                          outerContainer.style.minHeight = '0';
-                        }
-                      }
-                    }
-                  }
-                }
+              onLoad={() => {
+                console.log('Video thumbnail loaded successfully');
               }}
               onClick={handleThumbnailClick}
               onError={handlePosterError}
