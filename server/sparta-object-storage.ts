@@ -794,44 +794,27 @@ export class SpartaObjectStorage {
           const tempVideoPath = path.join(process.cwd(), 'uploads', uniqueFilename);
           fs.writeFileSync(tempVideoPath, buffer);
 
-          // Extract frame using FFmpeg and then resize with Sharp (preserving aspect ratio like Canvas API)
+          // Use FFmpeg to extract a frame from the video
           const ffmpeg = await import('fluent-ffmpeg');
-          const tempFramePath = path.join(process.cwd(), 'uploads', `temp_${thumbnailFilename}`);
+          const thumbnailPath = path.join(process.cwd(), 'uploads', thumbnailFilename);
 
-          // First extract a frame at full resolution
           await new Promise<void>((resolve, reject) => {
             ffmpeg.default(tempVideoPath)
               .screenshots({
                 timestamps: ['1.0'],
-                filename: `temp_${thumbnailFilename}`,
+                filename: thumbnailFilename,
                 folder: path.join(process.cwd(), 'uploads'),
-                size: '?x?' // Full resolution extraction
+                size: '600x400'
               })
               .on('end', () => {
-                console.log('Video frame extracted successfully');
+                console.log('Video thumbnail extracted successfully');
                 resolve();
               })
               .on('error', (err: Error) => {
-                console.error('FFmpeg frame extraction failed:', err);
+                console.error('FFmpeg thumbnail extraction failed:', err);
                 reject(err);
               });
           });
-
-          // Now use Sharp to resize with preserved aspect ratio (like Canvas API)
-          const thumbnailPath = path.join(process.cwd(), 'uploads', thumbnailFilename);
-          if (fs.existsSync(tempFramePath)) {
-            await sharp(tempFramePath)
-              .resize(390, null, { // Fixed width 390px, height auto (preserves aspect ratio)
-                withoutEnlargement: true,
-                fit: 'inside'
-              })
-              .jpeg({ quality: 85 })
-              .toFile(thumbnailPath);
-            
-            // Clean up temp frame
-            try { fs.unlinkSync(tempFramePath); } catch(e) {}
-            console.log('Video thumbnail resized with preserved aspect ratio using Sharp');
-          }
 
           // Upload the thumbnail to Object Storage
           if (fs.existsSync(thumbnailPath)) {

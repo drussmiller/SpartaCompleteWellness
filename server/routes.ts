@@ -4315,7 +4315,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
-  // Optimized file serving route with streaming and caching
+  // Main file serving route that thumbnails expect
   app.get('/api/serve-file', async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
@@ -4324,39 +4324,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ error: 'Filename parameter is required' });
       }
 
-      // Set cache headers immediately
-      res.setHeader('Cache-Control', 'public, max-age=86400');
+      logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
+
+      // Use Object Storage client (same approach as object-storage-routes.ts)
+      const objectStorage = new ObjectStorageClient();
       
-      const fs = await import('fs');
-      const path = await import('path');
+      // Check if this is a thumbnail request
+      const isThumbnail = req.query.thumbnail === 'true';
       
-      const localPaths = [
-        path.join(process.cwd(), 'uploads', filename),
-        path.join(process.cwd(), 'uploads', 'thumbnails', filename),
-        path.join(process.cwd(), filename)
-      ];
-      
-      let filePath: string | null = null;
-      let stats: any = null;
-      
-      // Find the file quickly without reading it
-      for (const localPath of localPaths) {
-        try {
-          stats = fs.statSync(localPath);
-          if (stats.isFile() && stats.size > 0) {
-            filePath = localPath;
-            break;
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-      
-      if (!filePath || !stats) {
-        return res.status(404).json({ error: 'File not found', message: `Could not find ${filename}` });
+      // Construct the proper Object Storage key
+      let storageKey;
+      if (isThumbnail) {
+        storageKey = `shared/uploads/thumbnails/${filename}`;
+      } else {
+        // For regular files, add the shared/uploads prefix if not already present
+        storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
       }
 
-      // Set content type
+      // Download the file from Object Storage with proper error handling
+      const result = await objectStorage.downloadAsBytes(storageKey);
+      
+      // Handle the Object Storage response format based on test results
+      let fileBuffer: Buffer;
+      
+      if (Buffer.isBuffer(result)) {
+        fileBuffer = result;
+      } else if (result && typeof result === 'object' && 'ok' in result) {
+        if (result.ok === true && result.value) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+            fileBuffer = result.value[0];
+          } else {
+            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
+            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+          }
+        } else {
+          logger.error(`File not found in Object Storage for ${storageKey}:`, result);
+          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+        }
+      } else {
+        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
+        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
+      }
+
+      // Set appropriate content type
       const ext = filename.toLowerCase().split('.').pop();
       let contentType = 'application/octet-stream';
       
@@ -4389,18 +4401,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Length', stats.size);
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
-      // Stream the file for better performance
-      const readStream = fs.createReadStream(filePath);
-      readStream.pipe(res);
-      
-      readStream.on('error', (error) => {
-        logger.error(`Error streaming file ${filename}: ${error}`);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Failed to stream file' });
-        }
-      });
+      logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
       
     } catch (error) {
       logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
