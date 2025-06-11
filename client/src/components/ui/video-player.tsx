@@ -186,13 +186,15 @@ export function VideoPlayer({
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
         <div 
-          className="video-thumbnail-container bg-gray-800"
+          className="bg-gray-800"
           style={{
             width: '100%',
-            height: 'auto',
-            maxHeight: 'none',
-            minHeight: '0',
-            overflow: 'visible'
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            justifyContent: 'flex-start',
+            overflow: 'visible',
+            position: 'relative'
           }}
         >
           {/* Always render img if we have a poster - no longer hiding on errors */}
@@ -200,15 +202,38 @@ export function VideoPlayer({
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="video-thumbnail-image cursor-pointer"
+              className="cursor-pointer"
               style={{
                 width: '100%',
                 height: 'auto',
-                maxHeight: 'none',
-                minHeight: '0',
-                aspectRatio: 'auto',
+                maxHeight: 'unset',
+                minHeight: 'unset',
+                aspectRatio: 'unset',
                 objectFit: 'contain',
-                display: 'block'
+                display: 'block',
+                border: 'none',
+                outline: 'none',
+                margin: '0',
+                padding: '0',
+                verticalAlign: 'top',
+                flex: 'none'
+              }}
+              onLoad={(e) => {
+                // Force natural dimensions after load
+                const img = e.target as HTMLImageElement;
+                const naturalWidth = img.naturalWidth;
+                const naturalHeight = img.naturalHeight;
+                
+                if (naturalWidth && naturalHeight) {
+                  const containerWidth = img.offsetWidth;
+                  const aspectRatio = naturalHeight / naturalWidth;
+                  const naturalHeightAtCurrentWidth = containerWidth * aspectRatio;
+                  
+                  // Force the natural height
+                  img.style.height = `${naturalHeightAtCurrentWidth}px`;
+                  img.style.maxHeight = 'none';
+                  img.style.minHeight = '0';
+                }
               }}
               onClick={handleThumbnailClick}
               onError={handlePosterError}

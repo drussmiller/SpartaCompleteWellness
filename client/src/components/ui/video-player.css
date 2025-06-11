@@ -37,6 +37,24 @@
   vertical-align: top !important;
 }
 
+/* Ultra-specific selectors to override any framework CSS */
+img.video-thumbnail-image,
+.video-thumbnail-container img.video-thumbnail-image,
+div.video-thumbnail-container img.video-thumbnail-image,
+.video-container .video-thumbnail-container img.video-thumbnail-image,
+.video-player-container .video-thumbnail-container img.video-thumbnail-image {
+  width: 100% !important;
+  height: auto !important;
+  max-height: unset !important;
+  min-height: unset !important;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+  vertical-align: top !important;
+  box-sizing: border-box !important;
+}
+
 /* Override parent container constraints */
 .video-container .video-thumbnail-container,
 .video-player-container .video-thumbnail-container,
