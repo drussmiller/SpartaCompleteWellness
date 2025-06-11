@@ -794,7 +794,7 @@ export class SpartaObjectStorage {
           const tempVideoPath = path.join(process.cwd(), 'uploads', uniqueFilename);
           fs.writeFileSync(tempVideoPath, buffer);
 
-          // Use FFmpeg to extract a frame from the video
+          // Use FFmpeg to extract a frame preserving natural aspect ratio (like Canvas API)
           const ffmpeg = await import('fluent-ffmpeg');
           const thumbnailPath = path.join(process.cwd(), 'uploads', thumbnailFilename);
 
@@ -804,10 +804,10 @@ export class SpartaObjectStorage {
                 timestamps: ['1.0'],
                 filename: thumbnailFilename,
                 folder: path.join(process.cwd(), 'uploads'),
-                size: '600x400'
+                size: '390x?' // Fixed width, preserve aspect ratio like Canvas API
               })
               .on('end', () => {
-                console.log('Video thumbnail extracted successfully');
+                console.log('Video thumbnail extracted successfully with preserved aspect ratio');
                 resolve();
               })
               .on('error', (err: Error) => {
