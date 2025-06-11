@@ -185,13 +185,31 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="video-thumbnail-container bg-gray-800">
+        <div 
+          className="video-thumbnail-container bg-gray-800"
+          style={{
+            width: '100%',
+            height: 'auto',
+            maxHeight: 'none',
+            minHeight: '0',
+            overflow: 'visible'
+          }}
+        >
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
               className="video-thumbnail-image cursor-pointer"
+              style={{
+                width: '100%',
+                height: 'auto',
+                maxHeight: 'none',
+                minHeight: '0',
+                aspectRatio: 'auto',
+                objectFit: 'contain',
+                display: 'block'
+              }}
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
