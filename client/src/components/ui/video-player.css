@@ -21,6 +21,8 @@
   margin: 0;
   padding: 0;
   line-height: 0;
+  min-height: 0 !important;
+  max-height: none !important;
 }
 
 /* Thumbnail image styles - force natural dimensions */
@@ -28,10 +30,52 @@
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
-  min-height: unset !important;
+  min-height: 0 !important;
   display: block !important;
   object-fit: contain !important;
   aspect-ratio: auto !important;
+  vertical-align: top !important;
+}
+
+/* Override parent container constraints */
+.video-container .video-thumbnail-container,
+.video-player-container .video-thumbnail-container,
+div[data-post-id] .video-thumbnail-container,
+.bg-gray-50 .video-thumbnail-container,
+.relative .video-thumbnail-container {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+}
+
+.video-container .video-thumbnail-image,
+.video-player-container .video-thumbnail-image,
+div[data-post-id] .video-thumbnail-image,
+.bg-gray-50 .video-thumbnail-image,
+.relative .video-thumbnail-image {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+}
+
+/* Force parent containers to allow natural height */
+.w-screen .video-container,
+.w-full.bg-gray-50,
+.relative.mt-2.w-screen.-mx-4 {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+/* Ensure the video player container itself doesn't constrain height */
+.video-player-container {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 /* Video styles to ensure controls are visible */
