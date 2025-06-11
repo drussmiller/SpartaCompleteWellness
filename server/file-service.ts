@@ -88,7 +88,7 @@ class FileService {
       return null;
     }
 
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | null = null;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => reject(new Error(`Download timeout after ${timeoutMs}ms`)), timeoutMs);
     });
@@ -99,7 +99,7 @@ class FileService {
         timeoutPromise
       ]);
 
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
 
       // Handle different result formats
       if (Buffer.isBuffer(result)) {
@@ -112,7 +112,7 @@ class FileService {
       }
       return null;
     } catch (error) {
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       throw error;
     }
   }
@@ -123,9 +123,10 @@ class FileService {
       await this.initializeObjectStorage();
 
       if (!this.isObjectStorageAvailable || !this.objectStorageClient) {
+        logger.warn(`Object Storage not available for file: ${filename}`);
         return {
           success: false,
-          error: 'Object Storage not available'
+          error: 'Object Storage service unavailable - please check configuration'
         };
       }
 
@@ -139,11 +140,11 @@ class FileService {
 
       logger.info(`Attempting to serve file: ${filename}`);
 
-      // Try each key pattern with aggressive timeout
+      // Try each key pattern with very aggressive timeout
       for (const key of keyPatterns) {
         try {
           logger.debug(`Trying key: ${key}`);
-          const buffer = await this.downloadWithTimeout(key, 1500);
+          const buffer = await this.downloadWithTimeout(key, 800); // Even shorter timeout
           
           if (buffer && buffer.length > 0) {
             logger.info(`Successfully downloaded file with key: ${key}, size: ${buffer.length} bytes`);
@@ -154,20 +155,35 @@ class FileService {
             };
           }
         } catch (error) {
-          logger.debug(`Failed to download with key ${key}: ${error.message}`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          if (errorMsg.includes('timeout')) {
+            logger.warn(`Timeout downloading ${key} - Object Storage may be experiencing connectivity issues`);
+          } else {
+            logger.debug(`Failed to download with key ${key}: ${errorMsg}`);
+          }
           continue;
         }
       }
 
+      logger.warn(`File not found after trying all key patterns for: ${filename}`);
       return {
         success: false,
-        error: 'File not found in Object Storage'
+        error: 'File not found in Object Storage - please verify the file exists and is accessible'
       };
     } catch (error) {
-      logger.error(`Error in file service for ${filename}:`, error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error in file service for ${filename}:`, error instanceof Error ? error : new Error(String(error)));
+      
+      if (errorMsg.includes('timeout') || errorMsg.includes('Import timeout')) {
+        return {
+          success: false,
+          error: 'Object Storage connection timeout - service may be temporarily unavailable'
+        };
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: 'File service temporarily unavailable'
       };
     }
   }
