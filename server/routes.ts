@@ -4326,47 +4326,72 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
-      // Use Object Storage client (same approach as object-storage-routes.ts)
-      const objectStorage = new ObjectStorageClient();
+      // First try Object Storage, then fallback to local filesystem
+      let fileBuffer: Buffer | null = null;
+      let foundLocation: string | null = null;
       
-      // Check if this is a thumbnail request
-      const isThumbnail = req.query.thumbnail === 'true';
-      
-      // Construct the proper Object Storage key
-      let storageKey;
-      if (isThumbnail) {
-        storageKey = `shared/uploads/thumbnails/${filename}`;
-      } else {
-        // For regular files, add the shared/uploads prefix if not already present
-        storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
-      }
-
-      // Download the file from Object Storage with proper error handling
-      const result = await objectStorage.downloadAsBytes(storageKey);
-      
-      // Handle the Object Storage response format based on test results
-      let fileBuffer: Buffer;
-      
-      if (Buffer.isBuffer(result)) {
-        fileBuffer = result;
-      } else if (result && typeof result === 'object' && 'ok' in result) {
-        if (result.ok === true && result.value) {
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
-            fileBuffer = result.value[0];
-          } else {
-            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
-            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+      // Try Object Storage first
+      try {
+        const objectStorage = new ObjectStorageClient();
+        const isThumbnail = req.query.thumbnail === 'true';
+        
+        const keysToTry = [
+          `shared/uploads/${filename}`,
+          ...(isThumbnail ? [`shared/uploads/thumbnails/${filename}`] : []),
+          `uploads/${filename}`,
+          filename
+        ];
+        
+        for (const key of keysToTry) {
+          try {
+            const result = await objectStorage.downloadAsBytes(key);
+            if (Buffer.isBuffer(result)) {
+              fileBuffer = result;
+              foundLocation = `Object Storage: ${key}`;
+              break;
+            } else if (result && typeof result === 'object' && 'ok' in result && result.ok && Buffer.isBuffer(result.value)) {
+              fileBuffer = result.value;
+              foundLocation = `Object Storage: ${key}`;
+              break;
+            }
+          } catch (error) {
+            continue;
           }
-        } else {
-          logger.error(`File not found in Object Storage for ${storageKey}:`, result);
-          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
-      } else {
-        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
-        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
+      } catch (error) {
+        logger.info(`Object Storage unavailable, trying local filesystem: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
+      
+      // Fallback to local filesystem if Object Storage failed
+      if (!fileBuffer) {
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        const localPaths = [
+          path.join(process.cwd(), 'uploads', filename),
+          path.join(process.cwd(), 'uploads', 'thumbnails', filename),
+          path.join(process.cwd(), filename)
+        ];
+        
+        for (const localPath of localPaths) {
+          try {
+            if (fs.existsSync(localPath)) {
+              fileBuffer = fs.readFileSync(localPath);
+              foundLocation = `Local: ${localPath}`;
+              break;
+            }
+          } catch (error) {
+            continue;
+          }
+        }
+      }
+      
+      if (!fileBuffer || !foundLocation) {
+        logger.error(`File not found in Object Storage or local filesystem: ${filename}`);
+        return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${filename}` });
+      }
+      
+      logger.info(`File served from: ${foundLocation}`);
 
       // Set appropriate content type
       const ext = filename.toLowerCase().split('.').pop();
@@ -4403,7 +4428,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
-      logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      logger.info(`Successfully served file: ${filename}, size: ${fileBuffer.length} bytes`);
       return res.send(fileBuffer);
       
     } catch (error) {
