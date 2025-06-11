@@ -4330,37 +4330,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let fileBuffer: Buffer | null = null;
       let foundLocation: string | null = null;
       
-      // Try Object Storage first
-      try {
-        const objectStorage = new ObjectStorageClient();
-        const isThumbnail = req.query.thumbnail === 'true';
-        
-        const keysToTry = [
-          `shared/uploads/${filename}`,
-          ...(isThumbnail ? [`shared/uploads/thumbnails/${filename}`] : []),
-          `uploads/${filename}`,
-          filename
-        ];
-        
-        for (const key of keysToTry) {
-          try {
-            const result = await objectStorage.downloadAsBytes(key);
-            if (Buffer.isBuffer(result)) {
-              fileBuffer = result;
-              foundLocation = `Object Storage: ${key}`;
-              break;
-            } else if (result && typeof result === 'object' && 'ok' in result && result.ok && Buffer.isBuffer(result.value)) {
-              fileBuffer = result.value;
-              foundLocation = `Object Storage: ${key}`;
-              break;
-            }
-          } catch (error) {
-            continue;
-          }
-        }
-      } catch (error) {
-        logger.info(`Object Storage unavailable, trying local filesystem: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
+      // Skip Object Storage for faster local file serving
       
       // Fallback to local filesystem if Object Storage failed
       if (!fileBuffer) {
@@ -4378,9 +4348,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             if (fs.existsSync(localPath)) {
               fileBuffer = fs.readFileSync(localPath);
               foundLocation = `Local: ${localPath}`;
+              logger.info(`Found file locally: ${localPath}`);
               break;
             }
           } catch (error) {
+            logger.debug(`Failed to read local file ${localPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             continue;
           }
         }
