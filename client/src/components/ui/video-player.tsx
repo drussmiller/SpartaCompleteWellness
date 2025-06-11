@@ -229,10 +229,26 @@ export function VideoPlayer({
                   const aspectRatio = naturalHeight / naturalWidth;
                   const naturalHeightAtCurrentWidth = containerWidth * aspectRatio;
                   
-                  // Force the natural height
+                  // Force the natural height on both image and container
                   img.style.height = `${naturalHeightAtCurrentWidth}px`;
                   img.style.maxHeight = 'none';
                   img.style.minHeight = '0';
+                  
+                  // Also set the container height to match
+                  const container = img.parentElement;
+                  if (container) {
+                    container.style.height = `${naturalHeightAtCurrentWidth}px`;
+                    container.style.maxHeight = 'none';
+                    container.style.minHeight = '0';
+                    
+                    // Also update the main video player container
+                    const videoPlayerContainer = container.parentElement;
+                    if (videoPlayerContainer) {
+                      videoPlayerContainer.style.height = `${naturalHeightAtCurrentWidth}px`;
+                      videoPlayerContainer.style.maxHeight = 'none';
+                      videoPlayerContainer.style.minHeight = '0';
+                    }
+                  }
                 }
               }}
               onClick={handleThumbnailClick}
