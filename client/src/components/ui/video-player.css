@@ -5,11 +5,12 @@
   width: 100%;
   position: relative;
   display: block;
-  min-height: 50px;
+  min-height: 200px;
+  height: auto;
   margin: 0;
   padding: 0;
   line-height: 0;
-  display: flex;
+  max-height: none !important;
 }
 
 /* Thumbnail container styles - ensure natural aspect ratio */
@@ -21,7 +22,7 @@
   margin: 0;
   padding: 0;
   line-height: 0;
-  min-height: 0 !important;
+  min-height: 200px !important;
   max-height: none !important;
 }
 
