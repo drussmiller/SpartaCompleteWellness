@@ -4316,9 +4316,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
-  // Main file serving route that thumbnails expect - now using robust file service
+  // Emergency file serving route with circuit breaker pattern for Object Storage timeouts
   app.get('/api/serve-file', async (req: Request, res: Response) => {
-    await fileService.handleFileRequest(req, res);
+    try {
+      const { emergencyFileService } = await import('./emergency-file-service');
+      await emergencyFileService.handleFileRequest(req, res);
+    } catch (error) {
+      logger.error('Critical error in emergency file service:', error instanceof Error ? error : new Error(String(error)));
+      res.status(500).json({
+        error: 'Internal server error',
+        message: 'File service encountered an unexpected error'
+      });
+    }
   });
 
   return httpServer;
