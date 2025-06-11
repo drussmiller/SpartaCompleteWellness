@@ -134,24 +134,16 @@ scheduleDailyScoreCheck = () => {
       logger.info('Completed daily checks for all hours');
     } catch (error) {
       logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
-      // Schedule a retry in 5 minutes if there's an error
-      setTimeout(runDailyCheck, 5 * 60 * 1000);
+      // Don't retry automatically to prevent server instability
     }
   };
 
-  // Run an immediate check during startup for debugging purposes
-  // This helps us verify the notification system quickly
+  // Schedule daily check for proper time only (no immediate startup check)
   setTimeout(() => {
-    logger.info('Running immediate daily score check for debugging...');
     runDailyCheck();
-
-    // Schedule next check for tomorrow
-    setTimeout(() => {
-      runDailyCheck();
-      // Schedule subsequent checks every 24 hours
-      setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
-    }, timeUntilCheck);
-  }, 10 * 1000); // Reduced to 10 seconds to check sooner
+    // Schedule subsequent checks every 24 hours
+    setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
+  }, timeUntilCheck);
 
   // Also run a check every hour to catch notifications throughout the day
   const runHourlyCheck = async () => {
@@ -182,11 +174,11 @@ scheduleDailyScoreCheck = () => {
     }
   };
 
-  // Start the hourly check after 60 seconds, then run every hour
+  // Start the hourly check after 10 minutes, then run every 4 hours
   setTimeout(() => {
     runHourlyCheck();
-    setInterval(runHourlyCheck, 60 * 60 * 1000); // Every hour
-  }, 60 * 1000);
+    setInterval(runHourlyCheck, 4 * 60 * 60 * 1000); // Every 4 hours
+  }, 10 * 60 * 1000); // 10 minutes
 
   // Log the schedule
   logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes and immediate check in 10 seconds`);
