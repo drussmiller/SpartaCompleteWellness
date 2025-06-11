@@ -28,7 +28,10 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    // Generate compact unique filename
+    const now = Date.now();
+    const shortId = Math.random().toString(36).substring(2, 7); // 5 chars
+    const shortTime = (now % 100000000).toString(36); // Last 8 digits in base36 (~5 chars)
     
     // Check if it's a video based on is_video flag in the request or file mimetype
     let isVideo = false;
@@ -55,14 +58,15 @@ const storage = multer.diskStorage({
       fileExt
     });
     
-    // Use appropriate extension
+    // Use appropriate extension with shorter filename
     if (isVideo) {
       // For videos, preserve the original extension or default to .mp4
       const fileExtension = fileExt || '.mp4';
-      cb(null, `${uniqueSuffix}-message-video${fileExtension}`);
+      cb(null, `${shortTime}${shortId}-msg${fileExtension}`);
     } else {
-      // For images
-      cb(null, `${uniqueSuffix}-${file.originalname}`);
+      // For images, use original extension
+      const origExt = path.extname(file.originalname) || '.jpg';
+      cb(null, `${shortTime}${shortId}-msg${origExt}`);
     }
   }
 });

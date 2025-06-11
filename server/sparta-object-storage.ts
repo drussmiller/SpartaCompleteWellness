@@ -250,11 +250,11 @@ export class SpartaObjectStorage {
         throw new Error(`File type ${mimeType} not allowed`);
       }
 
-      // Generate a unique filename
-      const timestamp = Date.now();
-      const uniqueId = uuidv4().substring(0, 8);
-      // Use the already defined fileExt from above
-      const safeFilename = `${timestamp}-${uniqueId}${fileExt}`;
+      // Generate a compact unique filename
+      const now = Date.now();
+      const shortId = Math.random().toString(36).substring(2, 7); // 5 chars
+      const shortTime = (now % 100000000).toString(36); // Last 8 digits in base36 (~5 chars)
+      const safeFilename = `${shortTime}${shortId}${fileExt}`;
 
       // Determine which directory to use based on original filename and video status
       let targetDir = this.baseDir;
