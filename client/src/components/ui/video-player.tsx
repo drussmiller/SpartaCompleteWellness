@@ -185,27 +185,29 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px] bg-gray-800">
+        <div className="relative w-full bg-gray-800" style={{ aspectRatio: '16/9' }}>
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
+              className="w-full h-full object-contain cursor-pointer"
               onClick={handleThumbnailClick}
               onError={handlePosterError}
+              style={{ aspectRatio: 'inherit' }}
             />
           )}
           {/* Show fallback only if no poster URL at all */}
           {!simplifiedPoster && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
-              className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
+              className="w-full h-full flex flex-col items-center justify-center cursor-pointer"
               onClick={handleThumbnailClick}
               style={{
                 background: posterError ? 
                   "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
-                  "black"
+                  "black",
+                aspectRatio: 'inherit'
               }}
             >
               <div className="p-4 rounded-lg flex flex-col items-center">
@@ -229,19 +231,20 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div className={cn("w-full h-full video-wrapper", showVideo ? "block" : "hidden")}>
+      <div className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")} style={{ aspectRatio: '16/9' }}>
         <video
           ref={videoRef}
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-full object-contain" /* Ensure video fills container properly */
+          className="w-full h-full object-contain"
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}
           style={{ 
             maxHeight: "none", 
-            width: "100%"
+            width: "100%",
+            aspectRatio: 'inherit'
           }}
         />
       </div>
