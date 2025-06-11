@@ -254,8 +254,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       )}
 
       {post.mediaUrl && (
-        <div className="relative mt-2 w-screen -mx-4" style={{ minHeight: '200px', height: 'auto' }}>
-          <div className="w-full bg-gray-50" style={{ height: 'auto', minHeight: '200px' }}>
+        <div className="relative mt-2 w-screen -mx-4" style={{ height: 'auto' }}>
+          <div className="w-full bg-gray-50" style={{ height: 'auto' }}>
             {shouldShowAsVideo ? (
               <div 
                   className="w-full video-container" 

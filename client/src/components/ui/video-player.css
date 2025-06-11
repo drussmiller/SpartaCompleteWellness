@@ -24,6 +24,7 @@
   line-height: 0;
   min-height: 0 !important;
   max-height: none !important;
+  aspect-ratio: auto !important;
 }
 
 /* Thumbnail image styles - force natural dimensions */

@@ -190,10 +190,7 @@ export function VideoPlayer({
           style={{
             width: '100%',
             height: 'auto',
-            minHeight: '0',
-            maxHeight: 'none',
             display: 'block',
-            overflow: 'visible',
             position: 'relative'
           }}
         >
