@@ -231,28 +231,34 @@ app.use('/api', (req, res, next) => {
     });
 
 
-    // Setup route for shared files from object storage
+    // Setup route for shared files from object storage with enhanced error handling
     console.log("[Startup] Setting up shared files path handler for cross-environment compatibility");
     app.use('/shared/uploads', async (req, res, next) => {
+      const startTime = Date.now();
+      const filePath = req.path;
+      console.log(`Processing shared file request: ${filePath}`);
+
       try {
-        const filePath = req.path;
-        console.log(`Processing shared file request: ${filePath}`);
-
-        // Import required modules
-        const { Client } = await import('@replit/object-storage');
-        const fs = await import('fs');
-
-        // Check if Replit Object Storage is available
+        // Check if Object Storage is available
         if (!process.env.REPLIT_DB_ID) {
-          console.log(`Object Storage not available, redirecting to local path`);
-          return res.redirect(`/uploads${filePath}`);
+          console.log(`Object Storage not available, serving 404`);
+          return res.status(404).json({ error: 'File not found', message: 'Object Storage not available' });
         }
 
-        // Initialize Object Storage client
-        const objectStorage = new Client();
-        console.log(`Object Storage client initialized`);
+        // Dynamic import with timeout protection
+        const importTimeout = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Import timeout')), 2000)
+        );
 
-        // Define all possible key formats to try
+        const { Client } = await Promise.race([
+          import('@replit/object-storage'),
+          importTimeout
+        ]);
+
+        const objectStorage = new Client();
+        console.log(`Object Storage client initialized in ${Date.now() - startTime}ms`);
+
+        // Define key formats to try with priority order
         const keysToCheck = [
           `shared/uploads${filePath}`,
           `uploads${filePath}`,
@@ -260,36 +266,49 @@ app.use('/api', (req, res, next) => {
           filePath.startsWith('/') ? filePath.substring(1) : filePath
         ];
 
-        // Try to find the file with any of the keys
-        console.log(`Attempting to download file using the following keys: ${JSON.stringify(keysToCheck)}`);
-        let fileBuffer = null;
-        let usedKey = null;
+        console.log(`Attempting download with keys: ${JSON.stringify(keysToCheck)}`);
+        
+        // Enhanced timeout helper with cancellation
+        const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+          let timeoutId: NodeJS.Timeout;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+          });
 
-        // Try each key directly with downloadAsBytes without checking existence first
+          return Promise.race([
+            promise.finally(() => clearTimeout(timeoutId)),
+            timeoutPromise
+          ]);
+        };
+
+        // Try each key with aggressive timeout
+        let fileBuffer: Buffer | null = null;
+        let usedKey: string | null = null;
+
         for (const key of keysToCheck) {
           try {
-            console.log(`Trying to download ${key} directly...`);
-            const result = await objectStorage.downloadAsBytes(key);
+            console.log(`Downloading ${key}...`);
+            const downloadStart = Date.now();
+            
+            const result = await withTimeout(objectStorage.downloadAsBytes(key), 2000);
+            console.log(`Download attempt for ${key} completed in ${Date.now() - downloadStart}ms`);
 
-            // Parse the result based on its format
+            // Handle different result formats
             if (Buffer.isBuffer(result)) {
-              console.log(`Success! Downloaded ${key} as direct Buffer`);
               fileBuffer = result;
               usedKey = key;
               break;
-            } else if (typeof result === 'object' && result !== null && 'ok' in result) {
-              if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
-                console.log(`Success! Downloaded ${key} as Buffer in result object`);
-                fileBuffer = result.value;
+            } else if (result && typeof result === 'object' && 'ok' in result && result.ok) {
+              const data = (result as any).value || (result as any).data;
+              if (Buffer.isBuffer(data)) {
+                fileBuffer = data;
                 usedKey = key;
                 break;
-              } else {
-                console.log(`Download attempt for ${key} returned non-buffer or failure: ${JSON.stringify(result)}`);
               }
             }
           } catch (error) {
-            console.log(`Failed to download ${key}: ${error.message}`);
-            // Continue to next key
+            console.log(`Download ${key} failed: ${error.message}`);
+            continue;
           }
         }
 

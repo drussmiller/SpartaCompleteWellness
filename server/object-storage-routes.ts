@@ -204,27 +204,37 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
 });
 
 /**
- * Simple Object Storage test route
+ * Simple Object Storage test route with timeout protection
  * Tests basic Object Storage connectivity without external imports
  */
 objectStorageRouter.get('/test', async (req: Request, res: Response) => {
   try {
     logger.info('Running Object Storage connectivity test', { route: '/api/object-storage/test' });
     
-    // Simple connectivity test
+    // Simple connectivity test with timeout protection
     const testKey = 'connectivity-test-' + Date.now();
     const testContent = Buffer.from('Simple connectivity test');
     
-    // Test basic operations using correct API methods
-    const uploadResult = await objectStorage.uploadFromBytes(testKey, testContent);
-    const existsResult = await objectStorage.exists(testKey);
-    const downloadResult = await objectStorage.downloadAsBytes(testKey);
-    await objectStorage.delete(testKey);
+    // Helper function to add timeout to async operations
+    const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => 
+          setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+    };
+    
+    // Test basic operations with 5-second timeout each
+    const uploadResult = await withTimeout(objectStorage.uploadFromBytes(testKey, testContent), 5000);
+    const existsResult = await withTimeout(objectStorage.exists(testKey), 5000);
+    const downloadResult = await withTimeout(objectStorage.downloadAsBytes(testKey), 5000);
+    await withTimeout(objectStorage.delete(testKey), 5000);
     
     // Handle Result types properly
-    const uploadSuccess = uploadResult && 'ok' in uploadResult ? uploadResult.ok : false;
-    const existsSuccess = existsResult && 'ok' in existsResult ? existsResult.ok : false;
-    const downloadSuccess = downloadResult && 'ok' in downloadResult ? downloadResult.ok : false;
+    const uploadSuccess = uploadResult && 'ok' in uploadResult ? uploadResult.ok : Boolean(uploadResult);
+    const existsSuccess = existsResult && 'ok' in existsResult ? existsResult.ok : Boolean(existsResult);
+    const downloadSuccess = downloadResult && 'ok' in downloadResult ? downloadResult.ok : Boolean(downloadResult);
 
     return res.json({
       success: true,

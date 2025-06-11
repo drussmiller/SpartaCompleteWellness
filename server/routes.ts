@@ -39,6 +39,7 @@ import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { objectStorageRouter } from './object-storage-routes';
+import { fileService } from './file-service';
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
