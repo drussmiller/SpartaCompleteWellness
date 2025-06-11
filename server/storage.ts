@@ -330,64 +330,28 @@ export const storage = {
           logger.debug(`Extracted filename: ${filename}`);
           
           if (filename) {
-            // Build the actual Object Storage paths
-            const videoPath = `shared/uploads/${filename}`;
+            // Build the actual Object Storage path
+            const filePath = `shared/uploads/${filename}`;
             
-            // Delete the main video file
+            // Delete the main media file
             try {
-              await spartaStorage.deleteFile(videoPath);
-              logger.info(`Deleted main video file: ${videoPath}`);
+              await spartaStorage.deleteFile(filePath);
+              logger.info(`Deleted main media file: ${filePath}`);
             } catch (err) {
-              logger.warn(`Could not delete main video file ${videoPath}: ${err}`);
+              logger.warn(`Could not delete main media file ${filePath}: ${err}`);
             }
             
-            // If it's a video, also delete thumbnails
+            // If it's a video, also delete the thumbnail
             if (isVideo) {
+              // With the new compact naming, thumbnails have the same base name but .jpg extension
               const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const thumbnailPath = `shared/uploads/${baseName}.jpg`;
               
-              // Delete simplified JPG thumbnail (same name but .jpg extension)
-              const simpleThumbnailPath = `shared/uploads/${baseName}.jpg`;
               try {
-                await spartaStorage.deleteFile(simpleThumbnailPath);
-                logger.info(`Deleted simple thumbnail: ${simpleThumbnailPath}`);
+                await spartaStorage.deleteFile(thumbnailPath);
+                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
               } catch (err) {
-                logger.debug(`Could not delete simple thumbnail ${simpleThumbnailPath}: ${err}`);
-              }
-              
-              // Delete poster-style thumbnail
-              const posterPath = `shared/uploads/${baseName}.poster.jpg`;
-              try {
-                await spartaStorage.deleteFile(posterPath);
-                logger.info(`Deleted poster thumbnail: ${posterPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete poster thumbnail ${posterPath}: ${err}`);
-              }
-              
-              // Delete thumbnails directory variants
-              const thumbnailsPath = `shared/uploads/thumbnails/${baseName}.jpg`;
-              try {
-                await spartaStorage.deleteFile(thumbnailsPath);
-                logger.info(`Deleted thumbnails directory file: ${thumbnailsPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete thumbnails directory file ${thumbnailsPath}: ${err}`);
-              }
-              
-              // Delete thumb-prefixed variants
-              const prefixedThumbPath = `shared/uploads/thumbnails/thumb-${filename.replace('.mov', '.jpg')}`;
-              try {
-                await spartaStorage.deleteFile(prefixedThumbPath);
-                logger.info(`Deleted prefixed thumbnail: ${prefixedThumbPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete prefixed thumbnail ${prefixedThumbPath}: ${err}`);
-              }
-              
-              // Also try thumb-prefixed in main uploads directory
-              const prefixedMainPath = `shared/uploads/thumb-${filename.replace('.mov', '.jpg')}`;
-              try {
-                await spartaStorage.deleteFile(prefixedMainPath);
-                logger.info(`Deleted prefixed main thumbnail: ${prefixedMainPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete prefixed main thumbnail ${prefixedMainPath}: ${err}`);
+                logger.debug(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
               }
             }
           }

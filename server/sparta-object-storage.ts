@@ -765,8 +765,12 @@ export class SpartaObjectStorage {
       throw new Error('Object Storage not available');
     }
 
-    // Generate unique filename to avoid conflicts
-    const uniqueFilename = `${Date.now()}-${uuidv4()}-${filename}`;
+    // Generate compact unique filename
+    const now = Date.now();
+    const shortId = Math.random().toString(36).substring(2, 7); // 5 chars
+    const shortTime = (now % 100000000).toString(36); // Last 8 digits in base36 (~5 chars)
+    const fileExt = path.extname(filename) || (isVideo ? '.mp4' : '.jpg');
+    const uniqueFilename = `${shortTime}${shortId}${fileExt}`;
     const sharedKey = `shared/uploads/${uniqueFilename}`;
 
     try {
@@ -777,50 +781,91 @@ export class SpartaObjectStorage {
 
       const objectStorageUrl = `/api/serve-file?filename=${encodeURIComponent(uniqueFilename)}`;
 
-      // Generate thumbnail if it's a video (simplified system)
+      // Generate actual video thumbnail if it's a video
       let thumbnailUrl: string | undefined;
       if (isVideo) {
         try {
-          // Create thumbnail with the same name as video but with .jpg extension
-          // Remove the original extension and add .jpg
+          // Create thumbnail with the same base name but .jpg extension
           const baseFilename = uniqueFilename.replace(/\.[^/.]+$/, '');
           const thumbnailFilename = `${baseFilename}.jpg`;
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
 
-          // Create a simple placeholder JPG image using Sharp
-          const sharp = await import('sharp');
+          // Write video file temporarily to extract frame
+          const tempVideoPath = path.join(process.cwd(), 'uploads', uniqueFilename);
+          fs.writeFileSync(tempVideoPath, buffer);
 
-          // Create a 320x240 JPG placeholder with a play button
-          const thumbnailBuffer = await sharp.default({
-            create: {
-              width: 320,
-              height: 240,
-              channels: 3,
-              background: { r: 240, g: 240, b: 240 }
-            }
-          })
-          .composite([
-            {
-              input: Buffer.from(`
-                <svg width="60" height="60" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="30" cy="30" r="25" fill="rgba(0,0,0,0.7)"/>
-                  <polygon points="20,18 20,42 42,30" fill="white"/>
-                </svg>
-              `),
-              top: 90,
-              left: 130
-            }
-          ])
-          .jpeg({ quality: 80 })
-          .toBuffer();
+          // Use FFmpeg to extract a frame from the video
+          const ffmpeg = await import('fluent-ffmpeg');
+          const thumbnailPath = path.join(process.cwd(), 'uploads', thumbnailFilename);
 
-          await this.objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
-          thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
+          await new Promise<void>((resolve, reject) => {
+            ffmpeg.default(tempVideoPath)
+              .screenshots({
+                timestamps: ['1.0'],
+                filename: thumbnailFilename,
+                folder: path.join(process.cwd(), 'uploads'),
+                size: '600x400'
+              })
+              .on('end', () => {
+                console.log('Video thumbnail extracted successfully');
+                resolve();
+              })
+              .on('error', (err: Error) => {
+                console.error('FFmpeg thumbnail extraction failed:', err);
+                reject(err);
+              });
+          });
 
-          console.log(`Created simplified single thumbnail for video: ${thumbnailKey}`);
+          // Upload the thumbnail to Object Storage
+          if (fs.existsSync(thumbnailPath)) {
+            const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+            await this.objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
+            
+            // Clean up local files
+            try { fs.unlinkSync(tempVideoPath); } catch(e) {}
+            try { fs.unlinkSync(thumbnailPath); } catch(e) {}
+            
+            thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
+            console.log(`Video thumbnail created: ${thumbnailFilename}`);
+          }
         } catch (thumbError) {
           console.error('Failed to create video thumbnail:', thumbError);
-          // Continue without thumbnail
+          // Create fallback placeholder thumbnail
+          try {
+            const sharp = await import('sharp');
+            const placeholderBuffer = await sharp.default({
+              create: {
+                width: 320,
+                height: 240,
+                channels: 3,
+                background: { r: 240, g: 240, b: 240 }
+              }
+            })
+            .composite([
+              {
+                input: Buffer.from(`
+                  <svg width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="30" cy="30" r="25" fill="rgba(0,0,0,0.7)"/>
+                    <polygon points="20,18 20,42 42,30" fill="white"/>
+                  </svg>
+                `),
+                top: 90,
+                left: 130
+              }
+            ])
+            .jpeg({ quality: 80 })
+            .toBuffer();
+
+            const baseFilename = uniqueFilename.replace(/\.[^/.]+$/, '');
+            const thumbnailFilename = `${baseFilename}.jpg`;
+            const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
+            
+            await this.objectStorage.uploadFromBytes(thumbnailKey, placeholderBuffer);
+            thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
+            console.log(`Created fallback placeholder thumbnail: ${thumbnailFilename}`);
+          } catch (fallbackError) {
+            console.error('Failed to create fallback thumbnail:', fallbackError);
+          }
         }
       }
 
