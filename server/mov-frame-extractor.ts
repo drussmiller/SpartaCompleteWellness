@@ -39,7 +39,7 @@ export async function extractMovFrame(
       .outputOptions([
         '-frames:v 1',     // Extract exactly one frame
         '-q:v 2',          // High quality (1-31, where 1 is best)
-        '-vf scale=390:-1', // Scale to 390px width while maintaining aspect ratio
+        '-vf scale=640:-1', // Scale to 640px width while maintaining aspect ratio
         '-f image2'        // Force image output format
       ])
       .on('start', (commandLine: string) => {
