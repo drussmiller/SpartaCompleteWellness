@@ -75,18 +75,69 @@ export function VideoPlayer({
   const [showVideo, setShowVideo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [posterError, setPosterError] = useState(false);
+  const [thumbnailDimensions, setThumbnailDimensions] = useState<{width: number, height: number, aspectRatio: number} | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const videoWrapperRef = useRef<HTMLDivElement>(null);
 
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, showing video player");
+    
+    // Log thumbnail dimensions before switching to video
+    if (imageRef.current) {
+      const thumbnailRect = imageRef.current.getBoundingClientRect();
+      console.log("THUMBNAIL DIMENSIONS:", {
+        width: thumbnailRect.width,
+        height: thumbnailRect.height,
+        naturalWidth: imageRef.current.naturalWidth,
+        naturalHeight: imageRef.current.naturalHeight,
+        aspectRatio: thumbnailRect.width / thumbnailRect.height
+      });
+    }
+    
     setShowVideo(true);
     
-    // Start video playback after showing
+    // Start video playback and log video dimensions after showing
     setTimeout(() => {
-      if (videoRef.current) {
+      if (videoRef.current && videoWrapperRef.current) {
+        // Apply stored thumbnail dimensions to video wrapper first
+        if (thumbnailDimensions) {
+          videoWrapperRef.current.style.height = `${thumbnailDimensions.height}px`;
+          videoWrapperRef.current.style.aspectRatio = `${thumbnailDimensions.aspectRatio}`;
+          console.log("APPLIED THUMBNAIL DIMENSIONS TO VIDEO:", {
+            width: thumbnailDimensions.width,
+            height: thumbnailDimensions.height,
+            aspectRatio: thumbnailDimensions.aspectRatio
+          });
+        }
+        
+        const videoRect = videoRef.current.getBoundingClientRect();
+        const wrapperRect = videoWrapperRef.current.getBoundingClientRect();
+        
+        console.log("VIDEO PLAYER DIMENSIONS:", {
+          videoElement: {
+            width: videoRect.width,
+            height: videoRect.height,
+            videoWidth: videoRef.current.videoWidth,
+            videoHeight: videoRef.current.videoHeight,
+            aspectRatio: videoRect.width / videoRect.height
+          },
+          videoWrapper: {
+            width: wrapperRect.width,
+            height: wrapperRect.height,
+            aspectRatio: wrapperRect.width / wrapperRect.height
+          }
+        });
+        
+        console.log("DIMENSION COMPARISON:", {
+          thumbnailSize: thumbnailDimensions ? `${thumbnailDimensions.width}x${thumbnailDimensions.height}` : 'unknown',
+          videoWrapperSize: `${wrapperRect.width}x${wrapperRect.height}`,
+          videoElementSize: `${videoRect.width}x${videoRect.height}`,
+          heightMatch: thumbnailDimensions ? Math.abs(thumbnailDimensions.height - wrapperRect.height) < 2 : false
+        });
+        
         console.log("Starting video playback");
         videoRef.current.play()
           .then(() => {
@@ -204,6 +255,13 @@ export function VideoPlayer({
                   const containerWidth = container.offsetWidth;
                   const calculatedHeight = containerWidth / aspectRatio;
                   
+                  // Store dimensions for video player use
+                  setThumbnailDimensions({
+                    width: containerWidth,
+                    height: calculatedHeight,
+                    aspectRatio: aspectRatio
+                  });
+                  
                   // Apply dimensions directly to container
                   container.style.height = `${calculatedHeight}px`;
                   container.style.aspectRatio = `${aspectRatio}`;
@@ -250,7 +308,7 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")}>
+      <div ref={videoWrapperRef} className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")}>
         <video
           ref={videoRef}
           src={src}
