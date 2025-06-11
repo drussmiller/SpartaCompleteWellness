@@ -4315,7 +4315,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
-  // Main file serving route that thumbnails expect
+  // Optimized file serving route with streaming and caching
   app.get('/api/serve-file', async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
@@ -4324,48 +4324,39 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ error: 'Filename parameter is required' });
       }
 
-      logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
-
-      // First try Object Storage, then fallback to local filesystem
-      let fileBuffer: Buffer | null = null;
-      let foundLocation: string | null = null;
+      // Set cache headers immediately
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       
-      // Skip Object Storage for faster local file serving
+      const fs = await import('fs');
+      const path = await import('path');
       
-      // Fallback to local filesystem if Object Storage failed
-      if (!fileBuffer) {
-        const fs = await import('fs');
-        const path = await import('path');
-        
-        const localPaths = [
-          path.join(process.cwd(), 'uploads', filename),
-          path.join(process.cwd(), 'uploads', 'thumbnails', filename),
-          path.join(process.cwd(), filename)
-        ];
-        
-        for (const localPath of localPaths) {
-          try {
-            if (fs.existsSync(localPath)) {
-              fileBuffer = fs.readFileSync(localPath);
-              foundLocation = `Local: ${localPath}`;
-              logger.info(`Found file locally: ${localPath}`);
-              break;
-            }
-          } catch (error) {
-            logger.debug(`Failed to read local file ${localPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            continue;
+      const localPaths = [
+        path.join(process.cwd(), 'uploads', filename),
+        path.join(process.cwd(), 'uploads', 'thumbnails', filename),
+        path.join(process.cwd(), filename)
+      ];
+      
+      let filePath: string | null = null;
+      let stats: any = null;
+      
+      // Find the file quickly without reading it
+      for (const localPath of localPaths) {
+        try {
+          stats = fs.statSync(localPath);
+          if (stats.isFile() && stats.size > 0) {
+            filePath = localPath;
+            break;
           }
+        } catch (error) {
+          continue;
         }
       }
       
-      if (!fileBuffer || !foundLocation) {
-        logger.error(`File not found in Object Storage or local filesystem: ${filename}`);
-        return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${filename}` });
+      if (!filePath || !stats) {
+        return res.status(404).json({ error: 'File not found', message: `Could not find ${filename}` });
       }
-      
-      logger.info(`File served from: ${foundLocation}`);
 
-      // Set appropriate content type
+      // Set content type
       const ext = filename.toLowerCase().split('.').pop();
       let contentType = 'application/octet-stream';
       
@@ -4398,10 +4389,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      res.setHeader('Content-Length', stats.size);
       
-      logger.info(`Successfully served file: ${filename}, size: ${fileBuffer.length} bytes`);
-      return res.send(fileBuffer);
+      // Stream the file for better performance
+      const readStream = fs.createReadStream(filePath);
+      readStream.pipe(res);
+      
+      readStream.on('error', (error) => {
+        logger.error(`Error streaming file ${filename}: ${error}`);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to stream file' });
+        }
+      });
       
     } catch (error) {
       logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
