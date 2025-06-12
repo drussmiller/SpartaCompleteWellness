@@ -4316,17 +4316,85 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
-  // Emergency file serving route with circuit breaker pattern for Object Storage timeouts
+  // File serving route with timeout protection
   app.get('/api/serve-file', async (req: Request, res: Response) => {
+    const { filename } = req.query;
+    
+    if (!filename || typeof filename !== 'string') {
+      return res.status(400).json({ error: 'Filename parameter required' });
+    }
+
+    // Set timeout for the entire request
+    const timeoutId = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(404).json({ error: 'File not found', timeout: true });
+      }
+    }, 2000); // 2 second timeout
+
     try {
-      const { emergencyFileService } = await import('./emergency-file-service');
-      await emergencyFileService.handleFileRequest(req, res);
+      // Initialize Object Storage client
+      const objectStorageClient = new ObjectStorageClient();
+      
+      // Try different key patterns that the app uses
+      const possibleKeys = [
+        `shared/uploads/${filename}`,
+        `uploads/${filename}`,
+        filename
+      ];
+      
+      for (const key of possibleKeys) {
+        try {
+          // Add Promise.race for individual download timeout
+          const fileBuffer = await Promise.race([
+            objectStorageClient.downloadAsBytes(key),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Download timeout')), 1500)
+            )
+          ]);
+          
+          clearTimeout(timeoutId);
+          
+          if (res.headersSent) return;
+          
+          // Set appropriate content type
+          const ext = filename.split('.').pop()?.toLowerCase();
+          let contentType = 'application/octet-stream';
+          
+          if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+          else if (ext === 'png') contentType = 'image/png';
+          else if (ext === 'gif') contentType = 'image/gif';
+          else if (ext === 'webp') contentType = 'image/webp';
+          else if (ext === 'svg') contentType = 'image/svg+xml';
+          else if (ext === 'mp4') contentType = 'video/mp4';
+          else if (ext === 'mov') contentType = 'video/quicktime';
+          
+          res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=31536000',
+            'Content-Length': fileBuffer.length.toString()
+          });
+          
+          return res.send(fileBuffer);
+        } catch (keyError) {
+          // Continue to next key pattern
+          continue;
+        }
+      }
+      
+      clearTimeout(timeoutId);
+      
+      // If no key worked, return 404
+      if (!res.headersSent) {
+        res.status(404).json({ error: 'File not found' });
+      }
+      
     } catch (error) {
-      logger.error('Critical error in emergency file service:', error instanceof Error ? error : new Error(String(error)));
-      res.status(500).json({
-        error: 'Internal server error',
-        message: 'File service encountered an unexpected error'
-      });
+      clearTimeout(timeoutId);
+      
+      if (!res.headersSent) {
+        logger.error('Error serving file:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
     }
   });
 
