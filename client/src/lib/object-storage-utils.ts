@@ -37,8 +37,22 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Extract just the filename if this looks like a full path
   const filename = cleanKey.split('/').pop() || cleanKey;
   
+  // For thumbnails, check if the filename has the duplicate timestamp pattern
+  // Pattern: TIMESTAMP-TIMESTAMP-originalname.jpg
+  let finalFilename = filename;
+  if (filename.includes('.jpg') && filename.match(/^\d+-\d+-/)) {
+    // Extract the original filename part after the second timestamp
+    const parts = filename.split('-');
+    if (parts.length >= 3) {
+      // Keep only the parts after the first two timestamps
+      finalFilename = parts.slice(2).join('-');
+      // Add back a single timestamp prefix
+      finalFilename = `${parts[0]}-${finalFilename}`;
+    }
+  }
+  
   // Construct the proper Object Storage key
-  const storageKey = `shared/uploads/${filename}`;
+  const storageKey = `shared/uploads/${finalFilename}`;
 
   console.log(`Creating Object Storage URL: ${key} -> storageKey=${storageKey}`);
 

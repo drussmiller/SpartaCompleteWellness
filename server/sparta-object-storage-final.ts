@@ -21,7 +21,7 @@ export class SpartaObjectStorageFinal {
     ]
   ) {
     this.allowedTypes = allowedTypes;
-    
+
     // Initialize Object Storage client (default config that was working)
     this.objectStorage = new Client();
     console.log('Object Storage Final client initialized - OBJECT STORAGE ONLY mode');
@@ -35,11 +35,11 @@ export class SpartaObjectStorageFinal {
     operationName: string
   ): Promise<T> {
     let lastError: any;
-    
+
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const result = await operation();
-        
+
         // Check if result has the error format we've seen
         if (result && typeof result === 'object' && 'ok' in result) {
           const typedResult = result as { ok: boolean; error?: any; errorExtras?: any };
@@ -49,20 +49,20 @@ export class SpartaObjectStorageFinal {
           // If ok is true or undefined, assume success and return the result
           return result;
         }
-        
+
         // For operations that don't return the ok/error format, return as-is
         return result;
-        
+
       } catch (error) {
         lastError = error;
         console.log(`${operationName} attempt ${attempt}/${this.maxRetries} failed:`, (error as Error).message);
-        
+
         if (attempt < this.maxRetries) {
           await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
         }
       }
     }
-    
+
     throw new Error(`${operationName} failed after ${this.maxRetries} attempts: ${(lastError as Error).message}`);
   }
 
@@ -120,16 +120,29 @@ export class SpartaObjectStorageFinal {
     if (mimeType.startsWith('image/') || isVideo) {
       try {
         let thumbnailBuffer: Buffer;
-        const thumbnailFilename = `thumb-${uniqueFilename.replace(fileExt, '.jpg')}`;
-        
+        // Create thumbnail filename - use original filename but change extension to .jpg
+        // Make sure we don't add another timestamp if one already exists
+        let baseFilename = originalFilename;
+
+        // If the original filename already has a timestamp prefix, use it as-is
+        if (originalFilename.match(/^\d+-/)) {
+          baseFilename = originalFilename.replace(/\.[^.]+$/, '.jpg');
+        } else {
+          // Only add timestamp if the filename doesn't already have one
+          baseFilename = `${Date.now()}-${originalFilename.replace(/\.[^.]+$/, '.jpg')}`;
+        }
+
+        const thumbnailFilename = baseFilename;
+        const thumbnailKey = `shared/uploads/thumbnails/thumb-${thumbnailFilename}`;
+
         if (isVideo) {
           // Create temporary file for video processing
           const tempVideoPath = `/tmp/${uniqueFilename}`;
           const tempThumbnailPath = `/tmp/${thumbnailFilename}`;
-          
+
           fs.writeFileSync(tempVideoPath, fileBuffer);
           await createMovThumbnail(tempVideoPath);
-          
+
           if (fs.existsSync(tempThumbnailPath)) {
             thumbnailBuffer = fs.readFileSync(tempThumbnailPath);
             fs.unlinkSync(tempVideoPath);
@@ -146,12 +159,12 @@ export class SpartaObjectStorageFinal {
         }
 
         // Upload thumbnail to Object Storage
-        const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
-        await this.uploadToObjectStorage(thumbnailKey, thumbnailBuffer);
-        
-        result.thumbnailUrl = `/api/object-storage/direct-download?storageKey=${thumbnailKey}`;
-        console.log(`Created and uploaded thumbnail: ${thumbnailKey}`);
-        
+        const thumbnailStorageKey = `shared/uploads/thumbnails/thumb-${thumbnailFilename}`;
+        await this.uploadToObjectStorage(thumbnailStorageKey, thumbnailBuffer);
+
+        result.thumbnailUrl = `/api/object-storage/direct-download?storageKey=${thumbnailStorageKey}`;
+        console.log(`Created and uploaded thumbnail: ${thumbnailStorageKey}`);
+
       } catch (error) {
         console.error(`Failed to create thumbnail for ${uniqueFilename}:`, (error as Error).message);
         // Don't fail the upload if thumbnail creation fails
@@ -197,7 +210,7 @@ export class SpartaObjectStorageFinal {
       () => this.objectStorage.downloadAsBytes(storageKey),
       `Download ${storageKey}`
     );
-    
+
     // Handle the result format from Object Storage API
     if (result && typeof result === 'object' && 'ok' in result) {
       const typedResult = result as { ok: boolean; data?: Buffer; error?: any };
@@ -206,7 +219,7 @@ export class SpartaObjectStorageFinal {
       }
       throw new Error(`Download failed: ${typedResult.error?.message || 'Unknown error'}`);
     }
-    
+
     // Assume it's a Buffer if not in the ok/error format
     return result as Buffer;
   }
@@ -221,7 +234,7 @@ export class SpartaObjectStorageFinal {
         () => this.objectStorage.list(options),
         `List files ${prefix || 'all'}`
       );
-      
+
       // Handle different possible return formats
       if (Array.isArray(result)) {
         return result;
