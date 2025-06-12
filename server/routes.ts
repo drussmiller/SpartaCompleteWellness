@@ -1327,6 +1327,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Handle regular post creation
       let mediaUrl = null;
       let mediaProcessed = false;
+      let isVideo = false;
       
       // Scripture posts shouldn't have images/videos
       // Miscellaneous posts may or may not have images/videos
@@ -1335,42 +1336,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         mediaUrl = null;
       } else if (req.files && (req.files as any).image && (req.files as any).image[0]) {
         try {
-          // Use SpartaObjectStorage for direct buffer upload (no local files)
+          // Use SpartaObjectStorage for file upload processing
           const { spartaStorage } = await import('./sparta-object-storage');
           
           // Get the uploaded file from the files object
           const uploadedFile = (req.files as any).image[0];
           
           // Handle video files differently
-          const isVideo = uploadedFile.mimetype.startsWith('video/');
+          isVideo = uploadedFile.mimetype.startsWith('video/');
           
           logger.info(`Processing media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}`);
           
-          // Store the file directly from memory buffer to Object Storage
-          const fileInfo = await spartaStorage.storeFileFromBuffer(
+          // Store the file using buffer data
+          const fileInfo = await spartaStorage.storeBuffer(
             uploadedFile.buffer,
             uploadedFile.originalname,
-            uploadedFile.mimetype,
-            isVideo
+            uploadedFile.mimetype
           );
           
-          mediaUrl = fileInfo.objectStorageUrl;
+          mediaUrl = fileInfo;
           mediaProcessed = true;
           
           if (isVideo) {
-            logger.info(`Video file stored successfully in Object Storage: ${fileInfo.objectStorageUrl}`);
-            
-            // DISABLED: Extra thumbnail processing creates duplicate files
-            // The clean thumbnail system automatically creates one JPG thumbnail per video
-            // No need to process additional thumbnail uploads
-            if (false && postData.type === 'memory_verse') {
-              logger.info('Skipping extra thumbnail processing - using clean single thumbnail system');
-            }
+            logger.info(`Video file stored successfully: ${fileInfo}`);
           } else {
-            logger.info(`Image file stored successfully in Object Storage: ${fileInfo.objectStorageUrl}`);
-            if (fileInfo.thumbnailUrl) {
-              logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
-            }
+            logger.info(`Image file stored successfully: ${fileInfo}`);
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
@@ -1393,6 +1383,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           type: postData.type,
           content: postData.content?.trim() || '',
           mediaUrl: mediaUrl,
+          is_video: isVideo,
           points: points,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
