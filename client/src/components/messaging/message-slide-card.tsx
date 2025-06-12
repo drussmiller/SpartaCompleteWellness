@@ -288,98 +288,42 @@ export function MessageSlideCard() {
         // Add image/video if present
         if (pastedImage) {
           if (isVideoFile && window._SPARTA_ORIGINAL_VIDEO_FILE) {
-            // If we have a video file, use the original video file, not the thumbnail
-            console.log('Using ORIGINAL video file for upload with type:', window._SPARTA_ORIGINAL_VIDEO_FILE.type);
-            
-            // Determine file extension based on mimetype
-            let videoExt = '.mp4'; // Default extension
-            let mimeType = window._SPARTA_ORIGINAL_VIDEO_FILE.type;
-            
-            if (mimeType.includes('mp4')) {
-              videoExt = '.mp4';
-            } else if (mimeType.includes('quicktime') || mimeType.includes('mov')) {
-              videoExt = '.mov';
-              // Force it to be recognized as QuickTime/MOV
-              mimeType = 'video/quicktime';
-            } else if (window._SPARTA_ORIGINAL_VIDEO_FILE.name) {
-              // Use the original file extension if available
-              const origExt = window._SPARTA_ORIGINAL_VIDEO_FILE.name.split('.').pop();
-              if (origExt) videoExt = `.${origExt}`;
-            }
-            
-            // Create a unique filename with the right extension
-            const timestamp = Date.now();
-            const uniqueFilename = `video-message-${timestamp}${videoExt}`;
-            console.log('Sending video with filename:', uniqueFilename);
-            
-            // Create a fresh blob from the file content to ensure proper typing
-            const fileReader = new FileReader();
-            
-            // We need to wrap the file processing in a promise to ensure it completes before moving on
-            const processedFile = await new Promise<File>((resolve) => {
-              fileReader.onloadend = () => {
-                // Create a new blob with explicit video MIME type
-                const videoBlob = new Blob([fileReader.result as ArrayBuffer], { type: mimeType });
-                
-                // Create a new file with the proper name and MIME type
-                const newVideoFile = new File([videoBlob], uniqueFilename, { 
-                  type: mimeType,
-                  lastModified: window._SPARTA_ORIGINAL_VIDEO_FILE?.lastModified || Date.now()
-                });
-                
-                resolve(newVideoFile);
-              };
-              
-              // Start reading the file - use null check to avoid error
-              if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
-                fileReader.readAsArrayBuffer(window._SPARTA_ORIGINAL_VIDEO_FILE);
-              } else {
-                // If for some reason the original file is missing, reject with an error
-                console.error('Original video file is missing');
-                // Create a fallback empty file with the right MIME type
-                const fallbackFile = new File([], uniqueFilename, { type: mimeType });
-                resolve(fallbackFile);
-              }
+            // Use the original video file for upload
+            console.log('Using original video file for upload:', {
+              name: window._SPARTA_ORIGINAL_VIDEO_FILE.name,
+              type: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
+              size: window._SPARTA_ORIGINAL_VIDEO_FILE.size
             });
             
-            // Attach processed video file with corrected metadata
-            formData.append('image', processedFile);
+            // Attach the original video file directly
+            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE);
             
             // Set the is_video flag explicitly 
-            console.log('Sending message with video flag set to true');
             formData.append('is_video', 'true');
             
-            // Add the video extension as an explicit field to help server-side processing
-            formData.append('video_extension', videoExt.substring(1)); // Remove the dot
-            
-            // DEBUG: Add extra debugging info about the file
-            console.log('Video file details:', {
-              originalName: window._SPARTA_ORIGINAL_VIDEO_FILE?.name || 'unknown',
-              originalType: window._SPARTA_ORIGINAL_VIDEO_FILE?.type || 'unknown',
-              size: processedFile.size,
-              newType: processedFile.type,
-              lastModified: processedFile.lastModified,
-              generatedName: uniqueFilename
-            });
+            // Add video extension for server processing
+            const ext = window._SPARTA_ORIGINAL_VIDEO_FILE.name.split('.').pop() || 'mp4';
+            formData.append('video_extension', ext);
           } else {
-            // Normal image case - convert base64 to blob
+            // Handle image case - convert base64 to blob
             const response = await fetch(pastedImage);
             const blob = await response.blob();
             
-            // Attach image file with .png extension
-            formData.append('image', blob, 'pasted-image.png');
+            // Create a proper file from the blob
+            const file = new File([blob], 'pasted-image.png', { type: blob.type });
+            formData.append('image', file);
             
-            // Add is_video flag as false explicitly
+            // Set is_video flag as false
             formData.append('is_video', 'false');
           }
         }
 
         formData.append('recipientId', selectedMember.id.toString());
 
-        console.log('Sending message formData:', {
+        console.log('Sending message with media:', {
           recipientId: selectedMember.id,
           hasContent: !!messageText.trim(),
-          hasImage: !!pastedImage,
+          hasMedia: !!pastedImage,
           isVideo: isVideoFile
         });
 
@@ -390,7 +334,9 @@ export function MessageSlideCard() {
         });
 
         if (!res.ok) {
-          throw new Error("Failed to send message");
+          const errorText = await res.text();
+          console.error('Message send failed:', res.status, errorText);
+          throw new Error(`Failed to send message: ${res.status} ${res.statusText}`);
         }
 
         const data = await res.json();
