@@ -138,12 +138,22 @@ export class SpartaObjectStorage {
     if (this.objectStorage) {
       try {
         const key = `shared/uploads/${uniqueFilename}`;
-        await this.objectStorage.uploadFromBytes(key, fileBuffer);
-        console.log(`Successfully uploaded ${uniqueFilename} to Object Storage with key: ${key}`);
+        const uploadResult = await this.objectStorage.uploadFromBytes(key, fileBuffer);
+        
+        // Check if upload actually succeeded
+        if (uploadResult && typeof uploadResult === 'object' && 'ok' in uploadResult) {
+          if (uploadResult.ok === true) {
+            console.log(`Successfully uploaded ${uniqueFilename} to Object Storage with key: ${key}`);
+          } else {
+            throw new Error(`Object Storage upload failed: ${uploadResult.error || 'Unknown error'}`);
+          }
+        } else {
+          console.log(`Upload completed for ${uniqueFilename} (legacy API format)`);
+        }
         
         const result = {
           filename: uniqueFilename,
-          url: `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`,
+          url: `/api/object-storage/direct-download?storageKey=shared/uploads/${uniqueFilename}`,
         } as any;
         
         // Create thumbnail if it's an image or video

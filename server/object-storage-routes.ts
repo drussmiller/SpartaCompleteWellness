@@ -192,12 +192,12 @@ objectStorageRouter.get('/test', async (req: Request, res: Response) => {
     const testContent = Buffer.from('Object Storage test content');
     
     // Upload test file
-    const uploadResult = await objectStorage.uploadFromBytes(testKey, testContent, 'text/plain');
-    logger.info('Object Storage test upload completed', { action: 'test-upload', key: testKey });
+    const uploadResult = await objectStorage.uploadFromBytes(testKey, testContent);
+    logger.info('Object Storage test upload completed', { route: '/api/object-storage/test' });
     
     // Download test file
     const downloadResult = await objectStorage.downloadAsBytes(testKey);
-    logger.info('Object Storage test download completed', { action: 'test-download', key: testKey });
+    logger.info('Object Storage test download completed', { route: '/api/object-storage/test' });
     
     // Clean up test file
     try {
@@ -237,7 +237,7 @@ objectStorageRouter.get('/list', async (req: Request, res: Response) => {
 
   try {
     const { prefix = '' } = req.query;
-    const files = await objectStorage.list(prefix as string);
+    const files = await objectStorage.list({ prefix: prefix as string });
     
     return res.json({
       success: true,
