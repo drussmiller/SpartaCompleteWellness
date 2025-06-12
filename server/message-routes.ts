@@ -149,18 +149,18 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           }
         }
         
-        logger.info(`Processing message media file with SpartaObjectStorage: ${req.file.originalname}, type: ${mimeType}, isVideo: ${isVideo}`);
+        logger.info(`Processing message media file with Object Storage: ${req.file.originalname}, type: ${mimeType}, isVideo: ${isVideo}`);
         
-        // Store the file using SpartaObjectStorage - same approach that works for comment media
-        const fileInfo = await spartaStorage.storeFile(
-          req.file.path,
+        // Store the file using Object Storage only
+        const fileInfo = await spartaObjectStorage.storeFile(
+          Buffer.from(await require('fs').promises.readFile(req.file.path)),
           req.file.originalname,
           mimeType,
           isVideo // Pass the isVideo flag to ensure proper handling
         );
         
         // Set the mediaUrl from the stored file info
-        mediaUrl = fileInfo.url;
+        mediaUrl = fileInfo;
         console.log(`Stored message media file:`, { url: mediaUrl, isVideo });
       } catch (fileError) {
         console.error('Error processing media file for message:', fileError);
