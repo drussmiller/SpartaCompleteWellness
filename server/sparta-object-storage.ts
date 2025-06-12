@@ -30,10 +30,13 @@ export class SpartaObjectStorage {
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
 
+    // Temporarily disable Object Storage due to upload failures
     // Initialize Object Storage if available
     try {
-      this.objectStorage = new Client();
-      console.log('Object Storage initialized successfully');
+      // this.objectStorage = new Client();
+      // console.log('Object Storage initialized successfully');
+      console.log('Object Storage disabled - using local storage only for stability');
+      this.objectStorage = null;
     } catch (error) {
       console.log('Object Storage not available, using local filesystem only');
       this.objectStorage = null;
