@@ -18,8 +18,8 @@ export const objectStorageRouter = express.Router();
 // Import Object Storage client directly
 import { Client as ObjectStorageClient } from '@replit/object-storage';
 
-// Initialize Object Storage client
-const objectStorage = new ObjectStorageClient();
+// Object Storage temporarily disabled for stability
+// const objectStorage = new ObjectStorageClient();
 
 /**
  * Direct route to serve files exclusively from Object Storage
@@ -30,24 +30,11 @@ const objectStorage = new ObjectStorageClient();
  *   this route will check for thumbnail variants in different locations
  */
 objectStorageRouter.get('/direct-download', async (req: Request, res: Response) => {
-  // Extract the key parameter from query string - support all variations of parameter names
-  const storageKey = req.query.key || req.query.fileUrl || req.query.path || req.query.file;
-  
-  // Log what parameter is actually being received for debugging
-  console.log('Object storage request params:', {
-    key: req.query.key,
-    fileUrl: req.query.fileUrl,
-    path: req.query.path,
-    file: req.query.file,
-    url: req.url,
-    originalUrl: req.originalUrl
+  // Object Storage temporarily disabled - return 404 immediately
+  return res.status(404).json({
+    success: false,
+    message: 'Object Storage temporarily disabled - using local storage'
   });
-  
-  if (!storageKey || typeof storageKey !== 'string') {
-    return res.status(400).json({
-      success: false,
-      message: 'Missing or invalid "key" parameter'
-    });
   }
   
   try {
