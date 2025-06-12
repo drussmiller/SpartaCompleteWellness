@@ -30,9 +30,14 @@ export class SpartaObjectStorage {
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
 
-    // Using local storage only - Object Storage credentials not available
-    console.log('Using local storage for all file operations');
-    this.objectStorage = null;
+    // Initialize Object Storage if available
+    try {
+      this.objectStorage = new Client();
+      console.log('Object Storage initialized successfully');
+    } catch (error) {
+      console.log('Object Storage not available, using local filesystem only');
+      this.objectStorage = null;
+    }
 
     this.ensureDirectories();
   }
