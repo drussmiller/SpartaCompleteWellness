@@ -22,11 +22,8 @@ export class SpartaObjectStorageFinal {
   ) {
     this.allowedTypes = allowedTypes;
     
-    // Initialize Object Storage client
-    this.objectStorage = new Client({
-      bucketId: 'replit-objstore-4b249457-61b0-4fe4-bc15-0408c0209445'
-    });
-    
+    // Initialize Object Storage client (default config that was working)
+    this.objectStorage = new Client();
     console.log('Object Storage Final client initialized - OBJECT STORAGE ONLY mode');
   }
 
