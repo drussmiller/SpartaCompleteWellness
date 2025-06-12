@@ -884,6 +884,33 @@ export class SpartaObjectStorage {
   }
 
   /**
+   * Gets video dimensions using FFprobe
+   * @param videoPath Path to source video
+   * @returns Promise with video dimensions
+   */
+  private async getVideoDimensions(videoPath: string): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const ffmpeg = require('fluent-ffmpeg');
+      ffmpeg.ffprobe(videoPath, (err: any, metadata: any) => {
+        if (err) {
+          console.error('Error getting video dimensions:', err);
+          // Return default dimensions on error
+          resolve({ width: 640, height: 360 });
+          return;
+        }
+        
+        const videoStream = metadata.streams?.find((stream: any) => stream.codec_type === 'video');
+        if (videoStream && videoStream.width && videoStream.height) {
+          resolve({ width: videoStream.width, height: videoStream.height });
+        } else {
+          // Fallback to default dimensions
+          resolve({ width: 640, height: 360 });
+        }
+      });
+    });
+  }
+
+  /**
    * Creates a thumbnail from a video file
    * @param videoPath Path to source video
    * @param targetPath Path to save thumbnail
@@ -1097,78 +1124,121 @@ export class SpartaObjectStorage {
                   reject(movError);
                 }
               } else {
-                // For non-MOV files, use ffmpeg to extract a frame
-                const ffmpeg = require('fluent-ffmpeg');
+                // For non-MOV files, use ffmpeg to extract a frame with proper dimensions
+                this.getVideoDimensions(normalizedVideoPath)
+                  .then((dimensions) => {
+                    console.log(`[${processId}] Video dimensions: ${dimensions.width}x${dimensions.height}`);
 
-                console.log(`[${processId}] Starting ffmpeg process for ${normalizedVideoPath}`);
+                    // Calculate thumbnail dimensions (max 600px width, preserve aspect ratio)
+                    const maxWidth = 600;
+                    const aspectRatio = dimensions.width / dimensions.height;
+                    const thumbnailWidth = Math.min(maxWidth, dimensions.width);
+                    const thumbnailHeight = Math.round(thumbnailWidth / aspectRatio);
 
-                const command = ffmpeg(normalizedVideoPath)
-                  .on('start', (commandLine: string) => {
-                    console.log(`[${processId}] Executing ffmpeg command: ${commandLine}`);
-                  })
-                  .on('end', () => {
-                    console.log(`[${processId}] Successfully created video thumbnail at ${targetPath}`);
-                    logger.info(`Created video thumbnail at ${targetPath}`);
+                    const tempPath = targetPath.replace('.jpg', '_temp.jpg');
+                    const ffmpeg = require('fluent-ffmpeg');
 
-                    // Check if the thumbnail was actually created
-                    if (!fs.existsSync(targetPath)) {
-                      console.error(`[${processId}] Thumbnail file doesn't exist after ffmpeg completion: ${targetPath}`);
-                      reject(new Error('Thumbnail file not created by ffmpeg'));
-                      return;
-                    }
+                    console.log(`[${processId}] Starting ffmpeg process for ${normalizedVideoPath}`);
 
-                    // Upload the thumbnail to Object Storage
-                    if (this.objectStorage) {
-                      // Capture the thumbnail into a buffer
-                      fs.readFile(targetPath, (readErr, thumbnailBuffer) => {
-                        if (readErr) {
-                          console.error(`[${processId}] Error reading thumbnail for upload: ${readErr}`);
-                          // We can still resolve since the local thumbnail was created
-                          resolve();
+                    const command = ffmpeg(normalizedVideoPath)
+                      .on('start', (commandLine: string) => {
+                        console.log(`[${processId}] Executing ffmpeg command: ${commandLine}`);
+                      })
+                      .on('end', async () => {
+                        console.log(`[${processId}] Successfully extracted frame to ${tempPath}`);
+
+                        // Check if the temp frame was created
+                        if (!fs.existsSync(tempPath)) {
+                          console.error(`[${processId}] Temp frame doesn't exist after ffmpeg completion: ${tempPath}`);
+                          reject(new Error('Temp frame not created by ffmpeg'));
                           return;
                         }
 
-                        const thumbnailBasename = path.basename(targetPath);
+                        try {
+                          // Use Sharp to optimize the thumbnail
+                          const sharp = require('sharp');
+                          await sharp(tempPath)
+                            .resize(thumbnailWidth, thumbnailHeight, {
+                              fit: 'cover',
+                              position: 'center'
+                            })
+                            .jpeg({ quality: 85, progressive: true })
+                            .toFile(targetPath);
 
-                        // Store only in shared path to save space
-                        const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+                          // Clean up temp file
+                          if (fs.existsSync(tempPath)) {
+                            fs.unlinkSync(tempPath);
+                          }
 
-                        console.log(`[${processId}] Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
+                          console.log(`[${processId}] Successfully created optimized thumbnail at ${targetPath}`);
+                          logger.info(`Created optimized video thumbnail at ${targetPath}`);
 
-                        this.objectStorage!.uploadFromBytes(sharedKey, thumbnailBuffer)
-                          .then(() => {
-                            console.log(`[${processId}] Successfully uploaded video thumbnail to Object Storage`);
+                          // Upload the thumbnail to Object Storage
+                          if (this.objectStorage) {
+                            // Capture the thumbnail into a buffer
+                            fs.readFile(targetPath, (readErr, thumbnailBuffer) => {
+                              if (readErr) {
+                                console.error(`[${processId}] Error reading thumbnail for upload: ${readErr}`);
+                                // We can still resolve since the local thumbnail was created
+                                resolve();
+                                return;
+                              }
+
+                              const thumbnailBasename = path.basename(targetPath);
+
+                              // Store only in shared path to save space
+                              const sharedKey = `shared/uploads/thumbnails/${thumbnailBasename}`;
+
+                              console.log(`[${processId}] Uploading thumbnail to Object Storage with shared key: ${sharedKey}`);
+
+                              this.objectStorage!.uploadFromBytes(sharedKey, thumbnailBuffer)
+                                .then(() => {
+                                  console.log(`[${processId}] Successfully uploaded video thumbnail to Object Storage`);
+                                  resolve();
+                                })
+                                .catch(objStoreError => {
+                                  console.error(`[${processId}] Failed to upload thumbnail to Object Storage:`, objStoreError);
+                                  // We can still resolve since the local thumbnail was created
+                                  resolve();
+                                });
+                            });
+                          } else {
                             resolve();
-                          })
-                          .catch(objStoreError => {
-                            console.error(`[${processId}] Failed to upload thumbnail to Object Storage:`, objStoreError);
-                            // We can still resolve since the local thumbnail was created
+                          }
+                        } catch (sharpError) {
+                          console.error(`[${processId}] Error optimizing with Sharp:`, sharpError);
+                          // If Sharp fails, try to use the temp file as the thumbnail
+                          if (fs.existsSync(tempPath)) {
+                            fs.renameSync(tempPath, targetPath);
+                            console.log(`[${processId}] Used unoptimized frame as thumbnail`);
                             resolve();
-                          });
-                      });
-                    } else {
-                      resolve();
-                    }
-                  })
-                  .on('error', (err: Error, stdout: string, stderr: string) => {
-                    console.error(`[${processId}] Error creating video thumbnail: ${err.message}`);
-                    console.error(`[${processId}] ffmpeg stdout: ${stdout}`);
-                    console.error(`[${processId}] ffmpeg stderr: ${stderr}`);
-                    logger.error(`Error creating video thumbnail: ${err.message}`, { stderr });
+                          } else {
+                            reject(new Error(`Failed to create thumbnail: ${sharpError}`));
+                          }
+                        }
+                      })
+                      .on('error', (err: Error, stdout: string, stderr: string) => {
+                        console.error(`[${processId}] Error creating video thumbnail: ${err.message}`);
+                        console.error(`[${processId}] ffmpeg stdout: ${stdout}`);
+                        console.error(`[${processId}] ffmpeg stderr: ${stderr}`);
+                        logger.error(`Error creating video thumbnail: ${err.message}`, { stderr });
 
-                    // Instead of failing completely, try to create a fallback thumbnail
-                    console.log(`[${processId}] Creating fallback thumbnail`);
+                        // Clean up temp file if it exists
+                        if (fs.existsSync(tempPath)) {
+                          fs.unlinkSync(tempPath);
+                        }
 
-                    // Create a default video thumbnail as SVG for failed conversions
-                    console.log(`[${processId}] No fallback thumbnail will be created`);
-                    reject(new Error(`Failed to generate video thumbnail: ${err.message}`));
+                        reject(new Error(`Failed to generate video thumbnail: ${err.message}`));
+                      })
+                      .seekInput(1)           // Seek to 1 second
+                      .frames(1)              // Extract 1 frame
+                      .size(`${thumbnailWidth}x${thumbnailHeight}`)  // Use calculated dimensions
+                      .output(tempPath)
+                      .run();
                   })
-                  .screenshots({
-                    count: 1,
-                    folder: path.dirname(targetPath),
-                    filename: path.basename(targetPath),
-                    timemarks: ['1'],     // Take screenshot at 1 second
-                    size: '600x?'         // Resize to 600px width, maintain aspect ratio
+                  .catch((dimensionError) => {
+                    console.error(`[${processId}] Error getting video dimensions:`, dimensionError);
+                    reject(new Error(`Failed to get video dimensions: ${dimensionError}`));
                   });
 
                 // Create a timeout to prevent hanging
@@ -1186,51 +1256,11 @@ export class SpartaObjectStorage {
                   }
                 }, 60000); // 60 second timeout
 
-                // Clear the timeout when the process completes or errors
-                command.on('end', () => clearTimeout(timeout));
-                command.on('error', () => clearTimeout(timeout));
               }
-            };
-
-            // This function tries local fallbacks if Object Storage retrieval fails
-            const tryLocalFallbacks = () => {
-              // Try to find the video in alternative locations (for memory verse or miscellaneous videos)
-              if (isMemoryVerse || isMiscellaneousVideo) {
-                // Look for the file in common alternate locations
-                const alternateLocations = [
-                  path.join(process.cwd(), 'uploads', filename),
-                  path.join(process.cwd(), 'uploads', 'videos', filename),
-                  path.join(process.cwd(), 'uploads', 'memory_verse', filename),
-                  path.join(process.cwd(), 'uploads', 'miscellaneous', filename)
-                ];
-
-                console.log(`Checking alternate locations for ${isMemoryVerse ? 'memory verse' : 'miscellaneous'} video: ${filename}`);
-                let foundAlternate = false;
-
-                for (const alternate of alternateLocations) {
-                  console.log(`Checking alternate path: ${alternate}`);
-                  if (fs.existsSync(alternate)) {
-                    console.log(`Found video at alternate path: ${alternate}`);
-                    // Use this path instead
-                    videoPath = alternate;
-                    foundAlternate = true;
-                    break;
-                  }
-                }
-
-                if (foundAlternate) {
-                  console.log(`Using alternate video path: ${videoPath}`);
-                  continueWithThumbnailGeneration();
-                } else {
-                  const error = new Error(`Source video file not found: ${videoPath}`);
-                  console.error(`Could not find video in any alternate locations`);
-                  reject(error);
-                }
-              } else {
-                const error = new Error(`Source video file not found: ${videoPath}`);
-                reject(error);
-              }
-            };
+            } catch (videoProcessingError) {
+              console.error(`Video processing error:`, videoProcessingError);
+              reject(videoProcessingError);
+            }
 
             // We'll handle the rest of the method through our callback structure
             return;
