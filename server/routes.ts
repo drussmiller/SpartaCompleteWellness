@@ -37,7 +37,7 @@ import { requestLogger } from './middleware/request-logger';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
-import { spartaStorage } from './sparta-object-storage';
+import { spartaObjectStorage } from './sparta-object-storage-final';
 import { objectStorageRouter } from './object-storage-routes';
 
 // Configure multer for memory storage (no local files)
@@ -1336,9 +1336,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         mediaUrl = null;
       } else if (req.files && (req.files as any).image && (req.files as any).image[0]) {
         try {
-          // Use SpartaObjectStorage for file upload processing
-          const { spartaStorage } = await import('./sparta-object-storage');
-          
           // Get the uploaded file from the files object
           const uploadedFile = (req.files as any).image[0];
           
@@ -1347,11 +1344,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           
           logger.info(`Processing media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}`);
           
-          // Store the file using buffer data
-          const fileInfo = await spartaStorage.storeBuffer(
+          // Store the file using Object Storage only
+          const fileInfo = await spartaObjectStorage.storeFile(
             uploadedFile.buffer,
             uploadedFile.originalname,
-            uploadedFile.mimetype
+            uploadedFile.mimetype,
+            isVideo
           );
           
           mediaUrl = fileInfo;

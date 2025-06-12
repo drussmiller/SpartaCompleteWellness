@@ -13,7 +13,7 @@ import { db } from './db';
 import { messages, users } from '@shared/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { logger } from './logger';
-import { spartaStorage } from './sparta-object-storage';
+import { spartaObjectStorage } from './sparta-object-storage-final';
 
 // Create uploads directory if it doesn't exist
 const uploadDir = path.join(process.cwd(), 'uploads');
