@@ -120,25 +120,26 @@ export class SpartaObjectStorageFinal {
     if (mimeType.startsWith('image/') || isVideo) {
       try {
         let thumbnailBuffer: Buffer;
-        // Create thumbnail filename - use original filename but change extension to .jpg
-        // Make sure we don't add another timestamp if one already exists
-        let baseFilename = originalFilename;
-
-        // If the original filename already has a timestamp prefix, use it as-is
-        if (originalFilename.match(/^\d+-/)) {
-          baseFilename = originalFilename.replace(/\.[^.]+$/, '.jpg');
+        // Create thumbnail filename to match the video filename
+        let thumbnailFilename: string;
+        
+        if (isVideo) {
+          // For videos, use the same base name as the unique video filename but with .jpg extension
+          thumbnailFilename = uniqueFilename.replace(/\.[^.]+$/, '.jpg');
         } else {
-          // Only add timestamp if the filename doesn't already have one
-          baseFilename = `${Date.now()}-${originalFilename.replace(/\.[^.]+$/, '.jpg')}`;
+          // For images, use thumb- prefix with unique filename
+          thumbnailFilename = `thumb-${uniqueFilename.replace(/\.[^.]+$/, '.jpg')}`;
         }
 
-        const thumbnailFilename = baseFilename;
-        const thumbnailKey = `shared/uploads/thumbnails/thumb-${thumbnailFilename}`;
+        const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
 
         if (isVideo) {
           // Create temporary file for video processing
           const tempVideoPath = `/tmp/${uniqueFilename}`;
-          const tempThumbnailPath = `/tmp/${thumbnailFilename}`;
+          // Use the same base name as the video but with .jpg extension
+          const videoBaseName = uniqueFilename.replace(/\.[^.]+$/, '');
+          const videoThumbnailName = `${videoBaseName}.jpg`;
+          const tempThumbnailPath = `/tmp/${videoThumbnailName}`;
 
           fs.writeFileSync(tempVideoPath, fileBuffer);
           await createMovThumbnail(tempVideoPath);
@@ -159,11 +160,10 @@ export class SpartaObjectStorageFinal {
         }
 
         // Upload thumbnail to Object Storage
-        const thumbnailStorageKey = `shared/uploads/thumbnails/thumb-${thumbnailFilename}`;
-        await this.uploadToObjectStorage(thumbnailStorageKey, thumbnailBuffer);
+        await this.uploadToObjectStorage(thumbnailKey, thumbnailBuffer);
 
-        result.thumbnailUrl = `/api/object-storage/direct-download?storageKey=${thumbnailStorageKey}`;
-        console.log(`Created and uploaded thumbnail: ${thumbnailStorageKey}`);
+        result.thumbnailUrl = `/api/object-storage/direct-download?storageKey=${thumbnailKey}`;
+        console.log(`Created and uploaded thumbnail: ${thumbnailKey}`);
 
       } catch (error) {
         console.error(`Failed to create thumbnail for ${uniqueFilename}:`, (error as Error).message);
