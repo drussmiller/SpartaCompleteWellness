@@ -1170,36 +1170,197 @@ export class SpartaObjectStorage {
                 command.on('end', () => clearTimeout(timeout));
                 command.on('error', () => clearTimeout(timeout));
               }
+            };
+
+            // Execute the async function and continue only if we found the file
+            checkObjectStorage().then(found => {
+              if (found) {
+                // Continue with thumbnail generation
+                continueWithThumbnailGeneration();
+              } else {
+                // Try local file fallbacks before giving up
+                tryLocalFallbacks();
+              }
+            }).catch(objStoreError => {
+              console.error(`Error accessing Object Storage:`, objStoreError);
+              // Fall back to local file search
+              tryLocalFallbacks();
+            });
+
+            // This function handles the actual thumbnail generation once we have the source file
+            const continueWithThumbnailGeneration = async () => {
+              // Log file details
+              try {
+                const stats = fs.statSync(videoPath);
+                console.log(`Video file stats:`, {
+                  size: stats.size,
+                  isFile: stats.isFile(),
+                  created: stats.birthtime,
+                  absolutePath: path.resolve(videoPath)
+                });
+              } catch (statError) {
+                console.error(`Error getting video file stats: ${statError}`);
+              }
+
+              // Make sure the thumbnails directory exists
+              const thumbnailDir = path.dirname(targetPath);
+              if (!fs.existsSync(thumbnailDir)) {
+                console.log(`Creating thumbnails directory: ${thumbnailDir}`);
+                fs.mkdirSync(thumbnailDir, { recursive: true });
+              }
+
+              // Special handling for video types - ensure the path is correct
+              const filename = path.basename(videoPath);
+              const isMemoryVerseFilename = filename.toLowerCase().includes('memory_verse');
+              const isMiscellaneousVideoFilename = filename.toLowerCase().includes('miscellaneous');
+
+              // For memory verse or miscellaneous videos, copy the file to uploads directory if needed
+              if (isMemoryVerseFilename || isMiscellaneousVideoFilename) {
+                const uploadsDir = path.join(process.cwd(), 'uploads');
+                const correctPath = path.join(uploadsDir, filename);
+
+                if (videoPath !== correctPath && fs.existsSync(videoPath)) {
+                  try {
+                    // Ensure destination directory exists
+                    if (!fs.existsSync(uploadsDir)) {
+                      fs.mkdirSync(uploadsDir, { recursive: true });
+                    }
+                    // Copy the file to ensure it's in the right place
+                    fs.copyFileSync(videoPath, correctPath);
+                    console.log(`Copied video to standard uploads directory: ${correctPath}`);
+
+                    // Use the new path for thumbnail generation
+                    videoPath = correctPath;
+                  } catch (copyError) {
+                    console.error(`Error copying video to standard uploads directory: ${copyError}`);
+                  }
+                }
+              }
+
+              // Now we can attempt to generate the thumbnail from the video
+              console.log(`Generating thumbnail from video using ffmpeg: ${videoPath} -> ${targetPath}`);
+
+              // Sometimes the video path contains spaces, so use the path module to normalize
+              const normalizedVideoPath = path.normalize(videoPath);
+
+              // Create a random ID for this process
+              const processId = Math.random().toString(36).substring(2, 8);
+
+              // Use ffmpeg to extract a thumbnail at 1 second
+              // For MOV files, use a different approach to avoid issues
+              const isMovFile = normalizedVideoPath.toLowerCase().endsWith('.mov');
+
+              if (isMovFile) {
+                console.log(`Using clean MOV thumbnail generation for: ${normalizedVideoPath}`);
+
+                try {
+                  // Import and use our clean thumbnail function
+                  const { createMovThumbnail } = await import('./mov-frame-extractor-new');
+
+                  const thumbnailFilename = await createMovThumbnail(normalizedVideoPath);
+
+                  if (thumbnailFilename) {
+                    console.log(`Successfully created thumbnail: ${thumbnailFilename}`);
+                    resolve();
+                  } else {
+                    console.error(`Failed to create thumbnail for ${normalizedVideoPath}`);
+                    reject(new Error('Thumbnail creation failed'));
+                  }
+                } catch (movError) {
+                  console.error(`Error processing MOV file: ${movError}`);
+                  reject(movError);
+                }
+              } else {
+                // For non-MOV files, use ffmpeg to extract a frame
+                const ffmpeg = require('fluent-ffmpeg');
+
+                console.log(`[${processId}] Starting ffmpeg process for ${normalizedVideoPath}`);
+
+                const command = ffmpeg(normalizedVideoPath)
+                  .on('start', (commandLine: string) => {
+                    console.log(`[${processId}] Executing ffmpeg command: ${commandLine}`);
+                  })
+                  .on('end', () => {
+                    console.log(`[${processId}] Successfully created video thumbnail at ${targetPath}`);
+                    logger.info(`Created video thumbnail at ${targetPath}`);
+
+                    // Check if the thumbnail was actually created
+                    if (!fs.existsSync(targetPath)) {
+                      console.error(`[${processId}] Thumbnail file doesn't exist after ffmpeg completion: ${targetPath}`);
+                      reject(new Error('Thumbnail file not created by ffmpeg'));
+                      return;
+                    }
+
+                    resolve();
+                  })
+                  .on('error', (error: any, stdout: string, stderr: string) => {
+                    console.error(`[${processId}] Error creating video thumbnail: ${error.message}`);
+                    console.error(`[${processId}] ffmpeg stdout: ${stdout}`);
+                    console.error(`[${processId}] ffmpeg stderr: ${stderr}`);
+                    logger.error(`Error creating video thumbnail: ${error.message}`, { stderr });
+
+                    reject(new Error(`Failed to generate video thumbnail: ${error.message}`));
+                  })
+                  .seekInput(1)           // Seek to 1 second
+                  .frames(1)              // Extract 1 frame
+                  .size('640x360')        // Fixed size to avoid invalid parameters
+                  .output(targetPath)
+                  .run();
+
+                // Create a timeout to prevent hanging
+                const timeout = setTimeout(() => {
+                  console.error(`[${processId}] Thumbnail generation timeout after 60s for ${normalizedVideoPath}`);
+                  reject(new Error(`Failed to generate video thumbnail: Timeout after 60s`));
+                }, 60000); // 60 second timeout
+
+                // Clear the timeout when the process completes or errors
+                command.on('end', () => clearTimeout(timeout));
+                command.on('error', () => clearTimeout(timeout));
+              }
+            };
+
+            // Function to try local file fallbacks when Object Storage doesn't have the file
+            const tryLocalFallbacks = () => {
+              console.log(`Trying local file fallbacks for ${videoPath}`);
+              
+              // Check if the file exists locally first
+              if (fs.existsSync(videoPath)) {
+                console.log(`Found local file at ${videoPath}`);
+                continueWithThumbnailGeneration();
+                return;
+              }
+
+              // If not found, try other possible locations
+              const filename = path.basename(videoPath);
+              const possiblePaths = [
+                path.join(process.cwd(), 'uploads', filename),
+                path.join(this.baseDir, filename),
+                path.join(this.baseDir, 'videos', filename)
+              ];
+
+              let foundPath = null;
+              for (const possiblePath of possiblePaths) {
+                if (fs.existsSync(possiblePath)) {
+                  foundPath = possiblePath;
+                  break;
+                }
+              }
+
+              if (foundPath) {
+                console.log(`Found file at alternative location: ${foundPath}`);
+                videoPath = foundPath;
+                continueWithThumbnailGeneration();
+              } else {
+                reject(new Error(`Source video file not found: ${videoPath}`));
+              }
+            };
         } else {
           // If no Object Storage, fall back to checking local files
           reject(new Error(`Source video file not found: ${videoPath}`));
           return;
         }
       });
-
-        // Log file details
-        try {
-          const stats = fs.statSync(videoPath);
-          console.log(`Video file stats:`, {
-            size: stats.size,
-            isFile: stats.isFile(),
-            created: stats.birthtime,
-            absolutePath: path.resolve(videoPath)
-          });
-        } catch (statError) {
-          console.error(`Error getting video file stats: ${statError}`);
-        }
-
-        // Make sure the thumbnails directory exists
-        const thumbnailDir = path.dirname(targetPath);
-        if (!fs.existsSync(thumbnailDir)) {
-          console.log(`Creating thumbnails directory: ${thumbnailDir}`);
-          fs.mkdirSync(thumbnailDir, { recursive: true });
-        }
-
-        // Special handling for video types - ensure the path is correct
-        const filename = path.basename(videoPath);
-        const isMemoryVerseFilename = filename.toLowerCase().includes('memory_verse');
+    }
         const isMiscellaneousVideoFilename = filename.toLowerCase().includes('miscellaneous');
 
         // For memory verse or miscellaneous videos, copy the file to uploads directory if needed
