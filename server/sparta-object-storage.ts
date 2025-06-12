@@ -84,8 +84,13 @@ export class SpartaObjectStorage {
         const key = `shared/uploads/${uniqueFilename}`;
         await this.objectStorage.uploadFromBytes(key, buffer);
         console.log(`Successfully uploaded ${uniqueFilename} to Object Storage`);
+        
+        // Return URL that points to Object Storage direct access
+        return `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`;
       } catch (error) {
         console.error(`Failed to upload ${uniqueFilename} to Object Storage:`, error);
+        // Fallback to local path if Object Storage fails
+        return `/uploads/${uniqueFilename}`;
       }
     }
 
@@ -137,6 +142,19 @@ export class SpartaObjectStorage {
         const key = `shared/uploads/${uniqueFilename}`;
         await this.objectStorage.uploadFromBytes(key, fileBuffer);
         console.log(`Successfully uploaded ${uniqueFilename} to Object Storage`);
+        
+        const result = {
+          filename: uniqueFilename,
+          url: `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`,
+        } as any;
+        
+        // Create thumbnail if it's an image or video
+        if (mimeType.startsWith('image/') || isVideo) {
+          // For Object Storage, thumbnails are handled automatically during display
+          result.thumbnailUrl = result.url;
+        }
+        
+        return result;
       } catch (error) {
         console.error(`Failed to upload ${uniqueFilename} to Object Storage:`, error);
       }

@@ -4317,8 +4317,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
-      // Use Object Storage client (same approach as object-storage-routes.ts)
-      const objectStorage = new ObjectStorageClient();
+      // Use Object Storage client
+      const { Client } = await import('@replit/object-storage');
+      const objectStorage = new Client();
       
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === 'true';
