@@ -14,11 +14,20 @@ export const objectStorageRouter = express.Router();
 // Initialize Object Storage client
 let objectStorage: Client | null = null;
 try {
-  objectStorage = new Client();
-  console.log('Object Storage routes initialized successfully');
+  // Try with bucket ID first
+  objectStorage = new Client({
+    bucketId: 'replit-objstore-4b249457-61b0-4fe4-bc15-0408c0209445'
+  });
+  console.log('Object Storage routes initialized successfully with bucket ID');
 } catch (error) {
-  console.log('Object Storage not available for routes:', error);
-  objectStorage = null;
+  try {
+    // Fallback to default initialization (no config)
+    objectStorage = new Client();
+    console.log('Object Storage routes initialized successfully with default config');
+  } catch (fallbackError) {
+    console.log('Object Storage not available for routes:', fallbackError);
+    objectStorage = null;
+  }
 }
 
 /**

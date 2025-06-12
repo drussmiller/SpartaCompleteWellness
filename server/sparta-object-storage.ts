@@ -32,11 +32,20 @@ export class SpartaObjectStorage {
 
     // Initialize Object Storage if available
     try {
-      this.objectStorage = new Client();
-      console.log('Object Storage initialized successfully');
+      // Try with bucket ID first
+      this.objectStorage = new Client({
+        bucketId: 'replit-objstore-4b249457-61b0-4fe4-bc15-0408c0209445'
+      });
+      console.log('Object Storage initialized successfully with bucket ID');
     } catch (error) {
-      console.log('Object Storage not available, using local filesystem only');
-      this.objectStorage = null;
+      try {
+        // Fallback to default initialization (no config)
+        this.objectStorage = new Client();
+        console.log('Object Storage initialized successfully with default config');
+      } catch (fallbackError) {
+        console.log('Object Storage not available, using local filesystem only');
+        this.objectStorage = null;
+      }
     }
 
     this.ensureDirectories();
