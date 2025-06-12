@@ -1354,7 +1354,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             isVideo
           );
           
-          mediaUrl = fileInfo;
+          // Use the filename for storage, we'll construct URLs in the frontend
+          mediaUrl = fileInfo.filename;
           mediaProcessed = true;
           
           if (isVideo) {

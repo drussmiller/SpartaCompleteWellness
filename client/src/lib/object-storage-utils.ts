@@ -31,57 +31,18 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // CRITICAL: If the key contains any problematic patterns, extract the filename only
-  if (key.includes('direct-download') || key.includes('fileUrl=')) {
-    console.error('BLOCKED: Key contains nested URL patterns, extracting filename only:', key);
-
-    // Try to extract just the filename from the nested URL
-    const fileUrlMatch = key.match(/fileUrl=([^&]+)/);
-    if (fileUrlMatch) {
-      const decodedPath = decodeURIComponent(fileUrlMatch[1]);
-      const filename = decodedPath.split('/').pop();
-      if (filename) {
-        console.log('Extracted filename from nested URL:', filename);
-        const cleanPath = `shared/uploads/${filename}`;
-        return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
-      }
-    }
-
-    // Fallback: extract any filename at the end
-    const filename = key.split('/').pop()?.split('?')[0];
-    if (filename && filename !== key) {
-      console.log('Fallback filename extraction:', filename);
-      const cleanPath = `shared/uploads/${filename}`;
-      return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}`;
-    }
-
-    console.error('Could not extract filename from nested URL, returning empty');
-    return '';
-  }
-
   // Clean the key - remove leading slash and normalize path
   let cleanKey = key.replace(/^\/+/, '');
 
-  // If it already starts with 'shared/', use it as-is
-  if (cleanKey.startsWith('shared/')) {
-    console.log(`Using path as-is: ${cleanKey}`);
-    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanKey)}`;
-  }
-
-  // If it starts with 'uploads/', prepend 'shared/'
-  if (cleanKey.startsWith('uploads/')) {
-    const finalPath = `shared/${cleanKey}`;
-    console.log(`Converted uploads path: ${key} -> ${finalPath}`);
-    return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`;
-  }
-
-  // Extract just the filename and use default path
+  // Extract just the filename if this looks like a full path
   const filename = cleanKey.split('/').pop() || cleanKey;
-  const finalPath = `shared/uploads/${filename}`;
+  
+  // Construct the proper Object Storage key
+  const storageKey = `shared/uploads/${filename}`;
 
-  console.log(`Creating clean URL: ${key} -> /api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`);
+  console.log(`Creating Object Storage URL: ${key} -> storageKey=${storageKey}`);
 
-  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(finalPath)}`;
+  return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
 }
 
 /**
