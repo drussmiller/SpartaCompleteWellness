@@ -12,7 +12,7 @@ export class SpartaObjectStorage {
   private baseDir: string;
   private thumbnailDir: string;
   private allowedTypes: string[];
-  private objectStorage: ObjectStorageClient | null = null;
+  private objectStorage: Client | null = null;
   private isProductionEnv: boolean = process.env.NODE_ENV === 'production';
 
   /**
@@ -32,7 +32,7 @@ export class SpartaObjectStorage {
 
     // Initialize Object Storage if available
     try {
-      this.objectStorage = new ObjectStorageClient();
+      this.objectStorage = new Client();
       console.log('Object Storage initialized successfully');
     } catch (error) {
       console.log('Object Storage not available, using local filesystem only');
