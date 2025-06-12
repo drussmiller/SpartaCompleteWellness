@@ -5,7 +5,7 @@
  */
 
 // Using require instead of import
-import { Client as ObjectStorageClient } from '@replit/object-storage';
+const { default: ObjectStorageClient } = require('@replit/object-storage');
 
 async function testObjectStorage() {
   try {

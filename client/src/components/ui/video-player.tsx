@@ -75,69 +75,17 @@ export function VideoPlayer({
   const [showVideo, setShowVideo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [posterError, setPosterError] = useState(false);
-  const [thumbnailDimensions, setThumbnailDimensions] = useState<{width: number, height: number, aspectRatio: number} | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const videoWrapperRef = useRef<HTMLDivElement>(null);
 
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, showing video player");
-    
-    // Log thumbnail dimensions before switching to video
-    if (imageRef.current) {
-      const thumbnailRect = imageRef.current.getBoundingClientRect();
-      console.log("THUMBNAIL DIMENSIONS:", {
-        width: thumbnailRect.width,
-        height: thumbnailRect.height,
-        naturalWidth: imageRef.current.naturalWidth,
-        naturalHeight: imageRef.current.naturalHeight,
-        aspectRatio: thumbnailRect.width / thumbnailRect.height
-      });
-    }
-    
     setShowVideo(true);
     
-    // Start video playback and log video dimensions after showing
+    // Start video playback after showing
     setTimeout(() => {
-      if (videoRef.current && videoWrapperRef.current) {
-        // Apply stored thumbnail dimensions to video wrapper first
-        if (thumbnailDimensions) {
-          videoWrapperRef.current.style.height = `${thumbnailDimensions.height}px`;
-          videoWrapperRef.current.style.aspectRatio = `${thumbnailDimensions.aspectRatio}`;
-          console.log("APPLIED THUMBNAIL DIMENSIONS TO VIDEO:", {
-            width: thumbnailDimensions.width,
-            height: thumbnailDimensions.height,
-            aspectRatio: thumbnailDimensions.aspectRatio
-          });
-        }
-        
-        const videoRect = videoRef.current.getBoundingClientRect();
-        const wrapperRect = videoWrapperRef.current.getBoundingClientRect();
-        
-        console.log("VIDEO PLAYER DIMENSIONS:", {
-          videoElement: {
-            width: videoRect.width,
-            height: videoRect.height,
-            videoWidth: videoRef.current.videoWidth,
-            videoHeight: videoRef.current.videoHeight,
-            aspectRatio: videoRect.width / videoRect.height
-          },
-          videoWrapper: {
-            width: wrapperRect.width,
-            height: wrapperRect.height,
-            aspectRatio: wrapperRect.width / wrapperRect.height
-          }
-        });
-        
-        console.log("DIMENSION COMPARISON:", {
-          thumbnailSize: thumbnailDimensions ? `${thumbnailDimensions.width}x${thumbnailDimensions.height}` : 'unknown',
-          videoWrapperSize: `${wrapperRect.width}x${wrapperRect.height}`,
-          videoElementSize: `${videoRect.width}x${videoRect.height}`,
-          heightMatch: thumbnailDimensions ? Math.abs(thumbnailDimensions.height - wrapperRect.height) < 2 : false
-        });
-        
+      if (videoRef.current) {
         console.log("Starting video playback");
         videoRef.current.play()
           .then(() => {
@@ -237,40 +185,13 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="bg-gray-800 video-thumbnail-container">
+        <div className="relative w-full h-full min-h-[200px] bg-gray-800">
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && (
             <img 
-              ref={imageRef}
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="cursor-pointer video-thumbnail-image"
-              onLoad={(e) => {
-                console.log('Video thumbnail loaded successfully');
-                // Force container to match image aspect ratio
-                const img = e.target as HTMLImageElement;
-                const container = img.closest('.video-thumbnail-container') as HTMLElement;
-                if (container && img.naturalWidth && img.naturalHeight) {
-                  const aspectRatio = img.naturalWidth / img.naturalHeight;
-                  const containerWidth = container.offsetWidth;
-                  const calculatedHeight = containerWidth / aspectRatio;
-                  
-                  // Store dimensions for video player use
-                  setThumbnailDimensions({
-                    width: containerWidth,
-                    height: calculatedHeight,
-                    aspectRatio: aspectRatio
-                  });
-                  
-                  // Apply dimensions directly to container
-                  container.style.height = `${calculatedHeight}px`;
-                  container.style.aspectRatio = `${aspectRatio}`;
-                  
-                  console.log(`Image natural dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
-                  console.log(`Container forced to: ${containerWidth}x${calculatedHeight}`);
-                  console.log(`Aspect ratio: ${aspectRatio}`);
-                }
-              }}
+              className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
             />
@@ -279,7 +200,7 @@ export function VideoPlayer({
           {!simplifiedPoster && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
-              className="w-full min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
+              className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
               onClick={handleThumbnailClick}
               style={{
                 background: posterError ? 
@@ -308,13 +229,13 @@ export function VideoPlayer({
       )}
       
       {/* Video player (initially hidden) */}
-      <div ref={videoWrapperRef} className={cn("w-full video-wrapper", showVideo ? "block" : "hidden")}>
+      <div className={cn("w-full h-full video-wrapper", showVideo ? "block" : "hidden")}>
         <video
           ref={videoRef}
           src={src}
           preload={preload}
           playsInline={playsInline}
-          className="w-full h-auto object-contain"
+          className="w-full h-full object-contain" /* Ensure video fills container properly */
           controls={true}
           controlsList={controlsList}
           disablePictureInPicture={disablePictureInPicture}

@@ -362,36 +362,38 @@ export class SpartaObjectStorage {
       }
 
       // Write the file
-        // Store in Object Storage with fast timeout - continue on failure
+        // Store in Object Storage only - no local duplication
         if (this.objectStorage) {
           try {
+            // Create a key based on path structure to maintain same organization
+            // Create environment-agnostic keys by removing env-specific parts
             const relativePath = filePath.replace(this.baseDir, '').replace(/^\/+/, '');
+
+            // Only store with shared key to save space
+            // The environment-agnostic key has 'shared/' prefix and works across environments
             const sharedKey = `shared/uploads/${relativePath}`;
 
-            console.log(`Storing file in Object Storage with shared key: ${sharedKey}`);
-            
-            // Upload with very aggressive timeout to prevent hanging
-            await Promise.race([
-              this.objectStorage.uploadFromBytes(sharedKey, fileBuffer),
-              new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error('Object Storage upload timeout after 3 seconds')), 3000)
-              )
-            ]);
+            logger.info(`Object Storage: Storing file with shared key only`, {
+              sharedKey,
+              fileSize: fileBuffer.length,
+              mimeType
+            });
 
-            console.log(`File stored successfully in Object Storage: ${sharedKey}`);
-            logger.info(`File stored successfully with shared key`, { sharedKey, fileSize: fileBuffer.length });
+            console.log(`Storing file in Replit Object Storage with shared key: ${sharedKey}`);
+            await this.objectStorage.uploadFromBytes(sharedKey, fileBuffer);
+
+            console.log(`File stored successfully in Replit Object Storage - no local copy needed`);
+            logger.info(`File stored successfully with shared key only`, {
+              sharedKey,
+              fileSize: fileBuffer.length
+            });
           } catch (objStorageError) {
-            console.warn(`Object Storage upload failed, saving locally:`, objStorageError);
-            logger.warn(`Object Storage upload failed, falling back to local storage`, { error: objStorageError });
-            
-            // Fall back to local storage when Object Storage times out
-            fs.writeFileSync(filePath, fileBuffer);
-            console.log(`File saved locally as fallback: ${filePath}`);
+            console.error(`Error storing file in Replit Object Storage:`, objStorageError);
+            logger.error(`Error storing file in Replit Object Storage:`, objStorageError);
+            throw new Error(`Failed to store file in Object Storage: ${objStorageError}`);
           }
         } else {
-          // No Object Storage, save locally
-          fs.writeFileSync(filePath, fileBuffer);
-          console.log(`File saved locally: ${filePath}`);
+          throw new Error('Object Storage is not available and local storage is disabled to reduce costs');
         }
 
       // Get file size or use buffer size if the file doesn't exist on disk
@@ -1096,7 +1098,7 @@ export class SpartaObjectStorage {
                 }
               } else {
                 // For non-MOV files, use ffmpeg to extract a frame
-                const ffmpeg = (await import('fluent-ffmpeg')).default;
+                const ffmpeg = require('fluent-ffmpeg');
 
                 console.log(`[${processId}] Starting ffmpeg process for ${normalizedVideoPath}`);
 

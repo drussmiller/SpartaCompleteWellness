@@ -18,7 +18,7 @@ export const objectStorageRouter = express.Router();
 // Import Object Storage client directly
 import { Client as ObjectStorageClient } from '@replit/object-storage';
 
-// Initialize Object Storage client with explicit config
+// Initialize Object Storage client
 const objectStorage = new ObjectStorageClient();
 
 /**
@@ -204,53 +204,30 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
 });
 
 /**
- * Simple Object Storage test route with timeout protection
- * Tests basic Object Storage connectivity without external imports
+ * Test route for Object Storage API capabilities
+ * Runs a comprehensive test of Object Storage operations
  */
 objectStorageRouter.get('/test', async (req: Request, res: Response) => {
   try {
-    logger.info('Running Object Storage connectivity test', { route: '/api/object-storage/test' });
+    logger.info('Running Object Storage API test', { route: '/api/object-storage/test' });
     
-    // Simple connectivity test with timeout protection
-    const testKey = 'connectivity-test-' + Date.now();
-    const testContent = Buffer.from('Simple connectivity test');
+    // Import test function
+    const { testObjectStorage } = await import('./test-storage-api');
     
-    // Helper function to add timeout to async operations
-    const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-      return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => 
-          setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
-        )
-      ]);
-    };
+    // Run the test
+    const results = await testObjectStorage();
     
-    // Test basic operations with 5-second timeout each
-    const uploadResult = await withTimeout(objectStorage.uploadFromBytes(testKey, testContent), 5000);
-    const existsResult = await withTimeout(objectStorage.exists(testKey), 5000);
-    const downloadResult = await withTimeout(objectStorage.downloadAsBytes(testKey), 5000);
-    await withTimeout(objectStorage.delete(testKey), 5000);
-    
-    // Handle Result types properly
-    const uploadSuccess = uploadResult && 'ok' in uploadResult ? uploadResult.ok : Boolean(uploadResult);
-    const existsSuccess = existsResult && 'ok' in existsResult ? existsResult.ok : Boolean(existsResult);
-    const downloadSuccess = downloadResult && 'ok' in downloadResult ? downloadResult.ok : Boolean(downloadResult);
-
+    // Return results
     return res.json({
       success: true,
-      message: 'Object Storage connectivity test completed',
-      results: {
-        upload: uploadSuccess,
-        exists: existsSuccess,
-        download: downloadSuccess,
-        testKey: testKey
-      }
+      message: 'Object Storage API test completed',
+      results
     });
   } catch (error) {
     logger.error(`Error running Object Storage test: ${error}`, { route: '/api/object-storage/test' });
     return res.status(500).json({
       success: false,
-      message: 'Failed to run Object Storage connectivity test',
+      message: 'Failed to run Object Storage API test',
       error: error instanceof Error ? error.message : String(error)
     });
   }

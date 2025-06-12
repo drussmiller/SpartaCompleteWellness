@@ -39,7 +39,6 @@ import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { spartaStorage } from './sparta-object-storage';
 import { objectStorageRouter } from './object-storage-routes';
-import { fileService } from './file-service';
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
@@ -4316,84 +4315,104 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
-  // Fast-response file serving route with immediate timeout
-  app.get('/api/serve-file', (req: Request, res: Response) => {
-    const { filename } = req.query;
-    
-    if (!filename || typeof filename !== 'string') {
-      return res.status(400).json({ error: 'Filename parameter required' });
-    }
-
-    // Immediate response with fast timeout to prevent hanging
-    let responded = false;
-    const respondWith404 = () => {
-      if (!responded) {
-        responded = true;
-        res.status(404).json({ error: 'File not found' });
+  // Main file serving route that thumbnails expect
+  app.get('/api/serve-file', async (req: Request, res: Response) => {
+    try {
+      const filename = req.query.filename as string;
+      
+      if (!filename) {
+        return res.status(400).json({ error: 'Filename parameter is required' });
       }
-    };
 
-    // Very aggressive timeout
-    const timeoutId = setTimeout(respondWith404, 200);
+      logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
-    // Attempt to serve file but don't block the response
-    (async () => {
-      try {
-        const objectStorageClient = new ObjectStorageClient();
-        
-        const possibleKeys = [
-          `shared/uploads/${filename}`,
-          `uploads/${filename}`,
-          filename
-        ];
-        
-        for (const key of possibleKeys) {
-          try {
-            const fileBuffer = await Promise.race([
-              objectStorageClient.downloadAsBytes(key),
-              new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error('Download timeout')), 150)
-              )
-            ]);
-            
-            clearTimeout(timeoutId);
-            
-            if (!responded) {
-              responded = true;
-              
-              const ext = filename.split('.').pop()?.toLowerCase();
-              let contentType = 'application/octet-stream';
-              
-              if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
-              else if (ext === 'png') contentType = 'image/png';
-              else if (ext === 'gif') contentType = 'image/gif';
-              else if (ext === 'webp') contentType = 'image/webp';
-              else if (ext === 'svg') contentType = 'image/svg+xml';
-              else if (ext === 'mp4') contentType = 'video/mp4';
-              else if (ext === 'mov') contentType = 'video/quicktime';
-              
-              res.set({
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=31536000',
-                'Content-Length': fileBuffer.length.toString()
-              });
-              
-              return res.send(fileBuffer);
-            }
-            return;
-          } catch (keyError) {
-            continue;
+      // Use Object Storage client (same approach as object-storage-routes.ts)
+      const objectStorage = new ObjectStorageClient();
+      
+      // Check if this is a thumbnail request
+      const isThumbnail = req.query.thumbnail === 'true';
+      
+      // Construct the proper Object Storage key
+      let storageKey;
+      if (isThumbnail) {
+        storageKey = `shared/uploads/thumbnails/${filename}`;
+      } else {
+        // For regular files, add the shared/uploads prefix if not already present
+        storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
+      }
+
+      // Download the file from Object Storage with proper error handling
+      const result = await objectStorage.downloadAsBytes(storageKey);
+      
+      // Handle the Object Storage response format based on test results
+      let fileBuffer: Buffer;
+      
+      if (Buffer.isBuffer(result)) {
+        fileBuffer = result;
+      } else if (result && typeof result === 'object' && 'ok' in result) {
+        if (result.ok === true && result.value) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+            fileBuffer = result.value[0];
+          } else {
+            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
+            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
           }
+        } else {
+          logger.error(`File not found in Object Storage for ${storageKey}:`, result);
+          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
-        
-        clearTimeout(timeoutId);
-        respondWith404();
-        
-      } catch (error) {
-        clearTimeout(timeoutId);
-        respondWith404();
+      } else {
+        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
+        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
       }
-    })();
+
+      // Set appropriate content type
+      const ext = filename.toLowerCase().split('.').pop();
+      let contentType = 'application/octet-stream';
+      
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'webm':
+          contentType = 'video/webm';
+          break;
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
+      
+    } catch (error) {
+      logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
+      return res.status(500).json({ 
+        error: 'Failed to serve file',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   });
 
   return httpServer;

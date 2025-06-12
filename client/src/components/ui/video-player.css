@@ -1,100 +1,15 @@
 /* Custom CSS for video player to prevent cropping */
 
-/* Main video container styles - no forced dimensions */
+/* Main video container styles */
 .video-player-container {
   width: 100%;
   position: relative;
   display: block;
-  height: auto;
+  min-height: 50px;
   margin: 0;
   padding: 0;
   line-height: 0;
-}
-
-/* Thumbnail container styles - CSS Grid for proper aspect ratio */
-.video-thumbnail-container {
-  width: 100%;
-  height: auto;
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: min-content;
-  margin: 0;
-  padding: 0;
-  line-height: 0;
-  aspect-ratio: auto;
-  place-items: stretch;
-}
-
-/* Thumbnail image styles - completely natural aspect ratio */
-.video-thumbnail-image {
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: contain;
-  vertical-align: top;
-  flex: none;
-  align-self: stretch;
-}
-
-/* Ultra-specific selectors to override any framework CSS */
-img.video-thumbnail-image,
-.video-thumbnail-container img.video-thumbnail-image,
-div.video-thumbnail-container img.video-thumbnail-image,
-.video-container .video-thumbnail-container img.video-thumbnail-image,
-.video-player-container .video-thumbnail-container img.video-thumbnail-image {
-  width: 100% !important;
-  height: auto !important;
-  max-height: unset !important;
-  min-height: unset !important;
-  aspect-ratio: auto !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  display: block !important;
-  vertical-align: top !important;
-  box-sizing: border-box !important;
-}
-
-/* Override parent container constraints */
-.video-container,
-.video-container .video-thumbnail-container,
-.video-player-container .video-thumbnail-container,
-div[data-post-id] .video-thumbnail-container,
-.bg-gray-50 .video-thumbnail-container,
-.relative .video-thumbnail-container {
-  height: fit-content !important;
-  min-height: 0 !important;
-  max-height: none !important;
-  aspect-ratio: auto !important;
-  overflow: visible !important;
-}
-
-.video-container .video-thumbnail-image,
-.video-player-container .video-thumbnail-image,
-div[data-post-id] .video-thumbnail-image,
-.bg-gray-50 .video-thumbnail-image,
-.relative .video-thumbnail-image {
-  height: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-  aspect-ratio: auto !important;
-}
-
-/* Force parent containers to allow natural height */
-.w-screen .video-container,
-.w-full.bg-gray-50,
-.relative.mt-2.w-screen.-mx-4 {
-  height: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-}
-
-/* Ensure the video player container itself doesn't constrain height */
-.video-player-container {
-  height: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-  overflow: visible !important;
+  display: flex;
 }
 
 /* Video styles to ensure controls are visible */
