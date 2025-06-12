@@ -82,15 +82,28 @@ export class SpartaObjectStorage {
     if (this.objectStorage) {
       try {
         const key = `shared/uploads/${uniqueFilename}`;
-        await this.objectStorage.uploadFromBytes(key, buffer);
-        console.log(`Successfully uploaded ${uniqueFilename} to Object Storage`);
+        const uploadResult = await this.objectStorage.uploadFromBytes(key, buffer);
+        console.log(`Object Storage upload result for ${uniqueFilename}:`, uploadResult);
         
-        // Return URL that points to Object Storage direct access
-        return `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`;
+        // Verify upload by attempting to download
+        const verifyResult = await this.objectStorage.downloadAsBytes(key);
+        console.log(`Object Storage verification for ${uniqueFilename}:`, {
+          type: typeof verifyResult,
+          hasOk: verifyResult && typeof verifyResult === 'object' && 'ok' in verifyResult,
+          ok: verifyResult && typeof verifyResult === 'object' && 'ok' in verifyResult ? verifyResult.ok : undefined
+        });
+        
+        if (verifyResult && typeof verifyResult === 'object' && 'ok' in verifyResult && verifyResult.ok) {
+          console.log(`Successfully uploaded and verified ${uniqueFilename} to Object Storage`);
+          // Return URL that points to Object Storage direct access
+          return `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`;
+        } else {
+          console.error(`Upload verification failed for ${uniqueFilename}, falling back to local storage`);
+          // Fall through to local storage
+        }
       } catch (error) {
         console.error(`Failed to upload ${uniqueFilename} to Object Storage:`, error);
-        // Fallback to local path if Object Storage fails
-        return `/uploads/${uniqueFilename}`;
+        // Fall through to local storage
       }
     }
 
@@ -140,23 +153,39 @@ export class SpartaObjectStorage {
     if (this.objectStorage) {
       try {
         const key = `shared/uploads/${uniqueFilename}`;
-        await this.objectStorage.uploadFromBytes(key, fileBuffer);
-        console.log(`Successfully uploaded ${uniqueFilename} to Object Storage`);
+        const uploadResult = await this.objectStorage.uploadFromBytes(key, fileBuffer);
+        console.log(`Object Storage upload result for ${uniqueFilename}:`, uploadResult);
         
-        const result = {
-          filename: uniqueFilename,
-          url: `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`,
-        } as any;
+        // Verify upload by attempting to download
+        const verifyResult = await this.objectStorage.downloadAsBytes(key);
+        console.log(`Object Storage verification for ${uniqueFilename}:`, {
+          type: typeof verifyResult,
+          hasOk: verifyResult && typeof verifyResult === 'object' && 'ok' in verifyResult,
+          ok: verifyResult && typeof verifyResult === 'object' && 'ok' in verifyResult ? verifyResult.ok : undefined
+        });
         
-        // Create thumbnail if it's an image or video
-        if (mimeType.startsWith('image/') || isVideo) {
-          // For Object Storage, thumbnails are handled automatically during display
-          result.thumbnailUrl = result.url;
+        if (verifyResult && typeof verifyResult === 'object' && 'ok' in verifyResult && verifyResult.ok) {
+          console.log(`Successfully uploaded and verified ${uniqueFilename} to Object Storage`);
+          
+          const result = {
+            filename: uniqueFilename,
+            url: `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`,
+          } as any;
+          
+          // Create thumbnail if it's an image or video
+          if (mimeType.startsWith('image/') || isVideo) {
+            // For Object Storage, thumbnails are handled automatically during display
+            result.thumbnailUrl = result.url;
+          }
+          
+          return result;
+        } else {
+          console.error(`Upload verification failed for ${uniqueFilename}, falling back to local storage`);
+          // Fall through to local storage
         }
-        
-        return result;
       } catch (error) {
         console.error(`Failed to upload ${uniqueFilename} to Object Storage:`, error);
+        // Fall through to local storage
       }
     }
 
