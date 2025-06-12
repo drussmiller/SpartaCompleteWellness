@@ -4316,86 +4316,84 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Register Object Storage routes
   app.use('/api/object-storage', objectStorageRouter);
 
-  // File serving route with timeout protection
-  app.get('/api/serve-file', async (req: Request, res: Response) => {
+  // Fast-response file serving route with immediate timeout
+  app.get('/api/serve-file', (req: Request, res: Response) => {
     const { filename } = req.query;
     
     if (!filename || typeof filename !== 'string') {
       return res.status(400).json({ error: 'Filename parameter required' });
     }
 
-    // Set timeout for the entire request
-    const timeoutId = setTimeout(() => {
-      if (!res.headersSent) {
-        res.status(404).json({ error: 'File not found', timeout: true });
-      }
-    }, 2000); // 2 second timeout
-
-    try {
-      // Initialize Object Storage client
-      const objectStorageClient = new ObjectStorageClient();
-      
-      // Try different key patterns that the app uses
-      const possibleKeys = [
-        `shared/uploads/${filename}`,
-        `uploads/${filename}`,
-        filename
-      ];
-      
-      for (const key of possibleKeys) {
-        try {
-          // Add Promise.race for individual download timeout
-          const fileBuffer = await Promise.race([
-            objectStorageClient.downloadAsBytes(key),
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Download timeout')), 1500)
-            )
-          ]);
-          
-          clearTimeout(timeoutId);
-          
-          if (res.headersSent) return;
-          
-          // Set appropriate content type
-          const ext = filename.split('.').pop()?.toLowerCase();
-          let contentType = 'application/octet-stream';
-          
-          if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
-          else if (ext === 'png') contentType = 'image/png';
-          else if (ext === 'gif') contentType = 'image/gif';
-          else if (ext === 'webp') contentType = 'image/webp';
-          else if (ext === 'svg') contentType = 'image/svg+xml';
-          else if (ext === 'mp4') contentType = 'video/mp4';
-          else if (ext === 'mov') contentType = 'video/quicktime';
-          
-          res.set({
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=31536000',
-            'Content-Length': fileBuffer.length.toString()
-          });
-          
-          return res.send(fileBuffer);
-        } catch (keyError) {
-          // Continue to next key pattern
-          continue;
-        }
-      }
-      
-      clearTimeout(timeoutId);
-      
-      // If no key worked, return 404
-      if (!res.headersSent) {
+    // Immediate response with fast timeout to prevent hanging
+    let responded = false;
+    const respondWith404 = () => {
+      if (!responded) {
+        responded = true;
         res.status(404).json({ error: 'File not found' });
       }
-      
-    } catch (error) {
-      clearTimeout(timeoutId);
-      
-      if (!res.headersSent) {
-        logger.error('Error serving file:', error);
-        res.status(500).json({ error: 'Internal server error' });
+    };
+
+    // Very aggressive timeout
+    const timeoutId = setTimeout(respondWith404, 200);
+
+    // Attempt to serve file but don't block the response
+    (async () => {
+      try {
+        const objectStorageClient = new ObjectStorageClient();
+        
+        const possibleKeys = [
+          `shared/uploads/${filename}`,
+          `uploads/${filename}`,
+          filename
+        ];
+        
+        for (const key of possibleKeys) {
+          try {
+            const fileBuffer = await Promise.race([
+              objectStorageClient.downloadAsBytes(key),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Download timeout')), 150)
+              )
+            ]);
+            
+            clearTimeout(timeoutId);
+            
+            if (!responded) {
+              responded = true;
+              
+              const ext = filename.split('.').pop()?.toLowerCase();
+              let contentType = 'application/octet-stream';
+              
+              if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+              else if (ext === 'png') contentType = 'image/png';
+              else if (ext === 'gif') contentType = 'image/gif';
+              else if (ext === 'webp') contentType = 'image/webp';
+              else if (ext === 'svg') contentType = 'image/svg+xml';
+              else if (ext === 'mp4') contentType = 'video/mp4';
+              else if (ext === 'mov') contentType = 'video/quicktime';
+              
+              res.set({
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=31536000',
+                'Content-Length': fileBuffer.length.toString()
+              });
+              
+              return res.send(fileBuffer);
+            }
+            return;
+          } catch (keyError) {
+            continue;
+          }
+        }
+        
+        clearTimeout(timeoutId);
+        respondWith404();
+        
+      } catch (error) {
+        clearTimeout(timeoutId);
+        respondWith404();
       }
-    }
+    })();
   });
 
   return httpServer;
