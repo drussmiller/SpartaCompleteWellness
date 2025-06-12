@@ -87,7 +87,7 @@ export class SpartaObjectStorage {
         // Return URL that points to Object Storage direct access
         return `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`;
       } catch (error) {
-        console.error(`Failed to upload ${uniqueFilename} to Object Storage:`, error);
+        console.error(`Object Storage upload failed for ${uniqueFilename}, using local storage:`, error.message);
         // Fall through to local storage
       }
     }
@@ -154,7 +154,7 @@ export class SpartaObjectStorage {
         
         return result;
       } catch (error) {
-        console.error(`Failed to upload ${uniqueFilename} to Object Storage:`, error);
+        console.error(`Object Storage upload failed for ${uniqueFilename}, using local storage:`, error.message);
         // Fall through to local storage
       }
     }
