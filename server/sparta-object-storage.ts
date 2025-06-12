@@ -30,22 +30,15 @@ export class SpartaObjectStorage {
     this.thumbnailDir = thumbnailDir;
     this.allowedTypes = allowedTypes;
 
-    // Initialize Object Storage if available
+    // Initialize Object Storage if available - client initialization only
     try {
-      // Try with bucket ID first
       this.objectStorage = new Client({
         bucketId: 'replit-objstore-4b249457-61b0-4fe4-bc15-0408c0209445'
       });
-      console.log('Object Storage initialized successfully with bucket ID');
+      console.log('Object Storage client initialized with bucket ID - functionality will be tested on first use');
     } catch (error) {
-      try {
-        // Fallback to default initialization (no config)
-        this.objectStorage = new Client();
-        console.log('Object Storage initialized successfully with default config');
-      } catch (fallbackError) {
-        console.log('Object Storage not available, using local filesystem only');
-        this.objectStorage = null;
-      }
+      console.log('Object Storage client initialization failed, using local filesystem only:', (error as Error).message);
+      this.objectStorage = null;
     }
 
     this.ensureDirectories();
