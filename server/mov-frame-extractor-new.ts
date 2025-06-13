@@ -74,7 +74,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
           // Read the valid JPG data
           const jpgBuffer = fs.readFileSync(tempJpgPath);
 
-          // Upload the single JPG thumbnail to Object Storage 
+          // Upload the single JPG thumbnail to Object Storage in main uploads directory
         try {
           const { Client } = await import('@replit/object-storage');
           const client = new Client();

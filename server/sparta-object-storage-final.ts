@@ -122,53 +122,29 @@ export class SpartaObjectStorageFinal {
         let thumbnailBuffer: Buffer;
         // Create thumbnail filename to match the video filename
         let thumbnailFilename: string;
-        
-        if (isVideo) {
-          // For videos, use the exact same filename as the video but with .jpg extension
-          thumbnailFilename = uniqueFilename.replace(/\.[^.]+$/, '.jpg');
-        } else {
-          // For images, use thumb- prefix with unique filename
-          thumbnailFilename = `thumb-${uniqueFilename.replace(/\.[^.]+$/, '.jpg')}`;
-        }
-
-        const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
 
         if (isVideo) {
           // Create temporary file for video processing
           const tempVideoPath = `/tmp/${uniqueFilename}`;
 
           fs.writeFileSync(tempVideoPath, fileBuffer);
-          
+
           // Call createMovThumbnail which will create a thumbnail with matching filename
           const createdThumbnailFilename = await createMovThumbnail(tempVideoPath);
 
           if (createdThumbnailFilename) {
             // The thumbnail should already be uploaded to Object Storage by createMovThumbnail
             console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
-            
+
             // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
-            
-            // Set thumbnailBuffer to indicate success (we don't need the actual buffer since it's already uploaded)
-            thumbnailBuffer = Buffer.from('thumbnail_created');
           } else {
             // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
             throw new Error('Video thumbnail creation failed');
           }
-        } else {
-          // Create image thumbnail
-          thumbnailBuffer = await sharp(fileBuffer)
-            .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 85 })
-            .toBuffer();
         }
-
-        // Upload thumbnail to Object Storage
-        await this.uploadToObjectStorage(thumbnailKey, thumbnailBuffer);
-
-        result.thumbnailUrl = `/api/object-storage/direct-download?storageKey=${thumbnailKey}`;
-        console.log(`Created and uploaded thumbnail: ${thumbnailKey}`);
+        // No thumbnail creation for images - they will be displayed as-is
 
       } catch (error) {
         console.error(`Failed to create thumbnail for ${uniqueFilename}:`, (error as Error).message);
