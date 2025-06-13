@@ -159,8 +159,14 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           isVideo // Pass the isVideo flag to ensure proper handling
         );
         
-        // Set the mediaUrl from the stored file info
-        mediaUrl = fileInfo;
+        // Extract just the filename for the database storage
+        // This ensures consistency with how comments handle media URLs
+        if (typeof fileInfo === 'string') {
+          const filename = fileInfo.split('/').pop() || fileInfo;
+          mediaUrl = filename;
+        } else {
+          mediaUrl = fileInfo;
+        }
         console.log(`Stored message media file:`, { url: mediaUrl, isVideo });
       } catch (fileError) {
         console.error('Error processing media file for message:', fileError);
@@ -391,8 +397,17 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
         console.log(`Found sender: ${senderInfo.username} (${senderInfo.id})`);
       }
         
+      // Format the imageUrl for proper serving if it exists
+      let formattedImageUrl = msg.imageUrl;
+      if (formattedImageUrl && !formattedImageUrl.startsWith('/api/serve-file') && !formattedImageUrl.startsWith('http')) {
+        // Extract filename from the stored path
+        const filename = formattedImageUrl.split('/').pop() || formattedImageUrl;
+        formattedImageUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+      }
+      
       messageList.push({
         ...msg,
+        imageUrl: formattedImageUrl,
         is_video: isVideo,
         sender: senderInfo || { id: msg.senderId, username: 'Unknown User' }
       });
