@@ -1502,20 +1502,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             } catch (err) {
               logger.warn(`Could not delete main media file ${filePath}: ${err}`);
             }
-            
-            // If it's a video, also delete the thumbnail with the new naming convention
-            if (post.is_video) {
-              // With the new compact naming, thumbnails have the same base name but .jpg extension
-              const baseName = filename.substring(0, filename.lastIndexOf('.'));
-              const thumbnailPath = `shared/uploads/thumbnails/${baseName}.jpg`;
-              
-              try {
-                await spartaObjectStorage.deleteFile(thumbnailPath);
-                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
-              } catch (err) {
-                logger.warn(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
-              }
-            }
           }
         } catch (fileError) {
           logger.error(`Error deleting media file for post ${postId}:`, fileError);
