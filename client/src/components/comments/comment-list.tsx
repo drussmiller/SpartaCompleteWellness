@@ -380,20 +380,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(e) => {
                         console.error("Error loading comment image:", comment.mediaUrl);
-                        console.error("Full URL attempted:", `/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`);
-                        // Try alternative URL construction as fallback
-                        const altUrl = comment.mediaUrl.startsWith('shared/uploads/') 
-                          ? `/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`
-                          : `/api/object-storage/direct-download?storageKey=shared/uploads/${comment.mediaUrl}`;
-                        
-                        if (e.target.src !== altUrl) {
-                          console.log("Trying alternative URL:", altUrl);
-                          e.target.src = altUrl;
-                        } else {
-                          // Show placeholder if all attempts fail
-                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=';
-                          e.target.onerror = null; // Prevent infinite loop
-                        }
+                        console.error("Full URL attempted:", e.target.src);
+                        // Hide the broken image instead of showing placeholder to prevent blinking
+                        e.target.style.display = 'none';
+                        e.target.onerror = null; // Prevent infinite loop
                       }}
                     />
                   </div>
