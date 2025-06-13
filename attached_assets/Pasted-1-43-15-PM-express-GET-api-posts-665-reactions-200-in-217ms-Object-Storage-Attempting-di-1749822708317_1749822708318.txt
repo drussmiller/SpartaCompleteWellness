@@ -1,0 +1,57 @@
+1:43:15 PM [express] GET /api/posts/665/reactions 200 in 217ms :: []
+[Object Storage] Attempting direct access for key: shared/uploads/1749775745446-IMG_7923.MOV
+1:43:15 PM [express] GET /api/posts/667/reactions 200 in 236ms :: []
+[Object Storage] Download result for shared/uploads/1749775745446-IMG_7923.MOV: { type: 'object', hasOk: true, ok: true }
+[Object Storage] Attempting direct access for key: uploads/1749775745446-IMG_7923.MOV
+[Object Storage] Download result for uploads/1749775745446-IMG_7923.MOV: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/1749775745446-IMG_7923.MOV - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/1749775745446-IMG_7923.MOV
+[Object Storage] Download result for shared/uploads/1749775745446-IMG_7923.MOV: { type: 'object', hasOk: true, ok: true }
+[Object Storage] Attempting direct access for key: uploads/1749775745446-IMG_7923.MOV
+[Object Storage] Download result for uploads/1749775745446-IMG_7923.MOV: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/1749775745446-IMG_7923.MOV - [object Object]
+[Object Storage] Attempting direct access for key: uploads/1749775745446-IMG_7923.poster.jpg
+[Object Storage] Download result for uploads/1749775745446-IMG_7923.poster.jpg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/1749775745446-IMG_7923.poster.jpg - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/1749775745446-IMG_7923.poster.jpg
+[Object Storage] Download result for shared/uploads/1749775745446-IMG_7923.poster.jpg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: shared/uploads/1749775745446-IMG_7923.poster.jpg - [object Object]
+[Object Storage] Attempting direct access for key: thumbnails/1749775745446-IMG_7923.poster.jpg
+[Object Storage] Download result for thumbnails/1749775745446-IMG_7923.poster.jpg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: thumbnails/1749775745446-IMG_7923.poster.jpg - [object Object]
+[Object Storage] Attempting direct access for key: uploads/thumbnails/1749775745446-IMG_7923.poster.jpg
+[Object Storage] Download result for uploads/thumbnails/1749775745446-IMG_7923.poster.jpg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/thumbnails/1749775745446-IMG_7923.poster.jpg - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/thumbnails/1749775745446-IMG_7923.poster.jpg
+[Object Storage] Download result for shared/uploads/thumbnails/1749775745446-IMG_7923.poster.jpg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: shared/uploads/thumbnails/1749775745446-IMG_7923.poster.jpg - [object Object]
+[Object Storage] Attempting direct access for key: uploads/1749775745446-IMG_7923.poster.png
+[Object Storage] Download result for uploads/1749775745446-IMG_7923.poster.png: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/1749775745446-IMG_7923.poster.png - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/1749775745446-IMG_7923.poster.png
+[Object Storage] Download result for shared/uploads/1749775745446-IMG_7923.poster.png: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: shared/uploads/1749775745446-IMG_7923.poster.png - [object Object]
+[Object Storage] Attempting direct access for key: thumbnails/1749775745446-IMG_7923.poster.png
+[Object Storage] Download result for thumbnails/1749775745446-IMG_7923.poster.png: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: thumbnails/1749775745446-IMG_7923.poster.png - [object Object]
+[Object Storage] Attempting direct access for key: uploads/thumbnails/1749775745446-IMG_7923.poster.png
+[Object Storage] Download result for uploads/thumbnails/1749775745446-IMG_7923.poster.png: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/thumbnails/1749775745446-IMG_7923.poster.png - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/thumbnails/1749775745446-IMG_7923.poster.png
+[Object Storage] Download result for shared/uploads/thumbnails/1749775745446-IMG_7923.poster.png: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: shared/uploads/thumbnails/1749775745446-IMG_7923.poster.png - [object Object]
+[Object Storage] Attempting direct access for key: uploads/1749775745446-IMG_7923.poster.svg
+[Object Storage] Download result for uploads/1749775745446-IMG_7923.poster.svg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/1749775745446-IMG_7923.poster.svg - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/1749775745446-IMG_7923.poster.svg
+[Object Storage] Download result for shared/uploads/1749775745446-IMG_7923.poster.svg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: shared/uploads/1749775745446-IMG_7923.poster.svg - [object Object]
+[Object Storage] Attempting direct access for key: thumbnails/1749775745446-IMG_7923.poster.svg
+[Object Storage] Download result for thumbnails/1749775745446-IMG_7923.poster.svg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: thumbnails/1749775745446-IMG_7923.poster.svg - [object Object]
+[Object Storage] Attempting direct access for key: uploads/thumbnails/1749775745446-IMG_7923.poster.svg
+[Object Storage] Download result for uploads/thumbnails/1749775745446-IMG_7923.poster.svg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: uploads/thumbnails/1749775745446-IMG_7923.poster.svg - [object Object]
+[Object Storage] Attempting direct access for key: shared/uploads/thumbnails/1749775745446-IMG_7923.poster.svg
+[Object Storage] Download result for shared/uploads/thumbnails/1749775745446-IMG_7923.poster.svg: { type: 'object', hasOk: true, ok: false }
+[Object Storage] File not found at key: shared/uploads/thumbnails/1749775745446-IMG_7923.poster.svg - [object Object]
