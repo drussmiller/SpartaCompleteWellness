@@ -333,6 +333,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
     const isReplying = replyingTo === comment.id;
+    const [imageError, setImageError] = useState(false);
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -375,30 +376,31 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {/* Display media if present */}
                 {comment.mediaUrl && !comment.is_video && (
                   <div className="mt-2">
-                    <img 
-                      src={createDirectDownloadUrl(comment.mediaUrl)}
-                      alt="Comment image" 
-                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                      onLoad={(e) => {
-                        console.log("Comment image loaded successfully:", comment.mediaUrl);
-                        console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
-                      }}
-                      onError={(e) => {
-                        console.error("Error loading comment image:", comment.mediaUrl);
-                        console.error("Full URL attempted:", e.target.src);
-                        console.error("Image error event:", e);
-                        
-                        // Show a placeholder or error message instead of hiding
-                        e.target.alt = "Failed to load image";
-                        e.target.className = "w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded-md";
-                        e.target.style.display = 'block';
-                        e.target.onerror = null;
-                      }}
-                      style={{
-                        minHeight: '50px',
-                        backgroundColor: '#f3f4f6'
-                      }}
-                    />
+                    {imageError ? (
+                      <div className="w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded-md">
+                        <span>Failed to load image</span>
+                      </div>
+                    ) : (
+                      <img 
+                        src={createDirectDownloadUrl(comment.mediaUrl)}
+                        alt="Comment image" 
+                        className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                        onLoad={(e) => {
+                          console.log("Comment image loaded successfully:", comment.mediaUrl);
+                          console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
+                          setImageError(false);
+                        }}
+                        onError={(e) => {
+                          console.error("Error loading comment image:", comment.mediaUrl);
+                          console.error("Full URL attempted:", e.target.src);
+                          setImageError(true);
+                        }}
+                        style={{
+                          minHeight: '50px',
+                          backgroundColor: '#f3f4f6'
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
