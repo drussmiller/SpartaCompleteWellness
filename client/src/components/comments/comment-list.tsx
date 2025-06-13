@@ -375,15 +375,25 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {comment.mediaUrl && !comment.is_video && (
                   <div className="mt-2">
                     <img 
-                      src={`/api/object-storage/direct-download?storageKey=${encodeURIComponent(comment.mediaUrl)}`}
+                      src={`/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
                       alt="Comment image" 
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(e) => {
                         console.error("Error loading comment image:", comment.mediaUrl);
-                        console.error("Full URL attempted:", `/api/object-storage/direct-download?storageKey=${encodeURIComponent(comment.mediaUrl)}`);
-                        // Show a placeholder instead of hiding completely
-                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=';
-                        e.target.onerror = null; // Prevent infinite loop
+                        console.error("Full URL attempted:", `/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`);
+                        // Try alternative URL construction as fallback
+                        const altUrl = comment.mediaUrl.startsWith('shared/uploads/') 
+                          ? `/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`
+                          : `/api/object-storage/direct-download?storageKey=shared/uploads/${comment.mediaUrl}`;
+                        
+                        if (e.target.src !== altUrl) {
+                          console.log("Trying alternative URL:", altUrl);
+                          e.target.src = altUrl;
+                        } else {
+                          // Show placeholder if all attempts fail
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=';
+                          e.target.onerror = null; // Prevent infinite loop
+                        }
                       }}
                     />
                   </div>
@@ -391,7 +401,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {comment.mediaUrl && comment.is_video && (
                   <div className="mt-2">
                     <VideoPlayer
-                      src={`/api/object-storage/direct-download?storageKey=${encodeURIComponent(comment.mediaUrl)}`}
+                      src={`/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                     />
