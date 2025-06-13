@@ -422,7 +422,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               </Button>
             </div>
             <CommentForm
-              onSubmit={async (content) => {
+              onSubmit={async (content, file) => {
                 await editCommentMutation.mutateAsync({ id: comment.id, content });
               }}
               isSubmitting={editCommentMutation.isPending}

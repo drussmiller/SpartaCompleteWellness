@@ -78,13 +78,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     try {
       if (!content.trim() && !selectedFile) return;
 
-      // For edit forms (no file support), just pass content
-      if (defaultValue && !selectedFile) {
-        await onSubmit(content);
-      } else {
-        // For new comments, pass both content and file
-        await onSubmit(content, selectedFile || undefined);
-      }
+      // Always pass both content and file (file can be undefined)
+      await onSubmit(content, selectedFile || undefined);
 
       setContent('');
       setSelectedFile(null);
