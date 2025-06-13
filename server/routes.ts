@@ -580,7 +580,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             fileSize: req.file.size
           });
           
-          const fileInfo = await spartaStorage.storeFileFromBuffer(
+          const fileInfo = await spartaStorage.storeFile(
             req.file.buffer,
             req.file.originalname,
             req.file.mimetype,
