@@ -110,26 +110,36 @@ export function MessageSlideCard() {
         const data = await response.json();
         console.log('Messages response:', data);
         console.log('Messages count:', data.length);
-        if (data.length > 0) {
-          console.log('First message sample:', {
-            id: data[0].id,
-            content: data[0].content,
-            senderId: data[0].senderId,
-            recipientId: data[0].recipientId,
-            hasImage: !!data[0].imageUrl || !!data[0].mediaUrl,
-            is_video: data[0].is_video,
-            createdAt: data[0].createdAt,
-            sender: data[0].sender
+        
+        // Filter out messages with undefined/null image URLs to prevent display issues
+        const cleanedData = data.map((message: any) => ({
+          ...message,
+          imageUrl: (message.imageUrl === '/uploads/undefined' || message.imageUrl === 'undefined' || !message.imageUrl) ? null : message.imageUrl,
+          mediaUrl: (message.mediaUrl === '/uploads/undefined' || message.mediaUrl === 'undefined' || !message.mediaUrl) ? null : message.mediaUrl
+        }));
+        
+        if (cleanedData.length > 0) {
+          console.log('First message sample (cleaned):', {
+            id: cleanedData[0].id,
+            content: cleanedData[0].content,
+            senderId: cleanedData[0].senderId,
+            recipientId: cleanedData[0].recipientId,
+            hasImage: !!cleanedData[0].imageUrl || !!cleanedData[0].mediaUrl,
+            is_video: cleanedData[0].is_video,
+            createdAt: cleanedData[0].createdAt,
+            sender: cleanedData[0].sender
           });
         }
-        return data;
+        return cleanedData;
       } catch (error) {
         console.error("Error fetching messages:", error);
         throw error instanceof Error ? error : new Error("Failed to fetch messages");
       }
     },
     enabled: !!selectedMember,
-    retry: 2
+    retry: 2,
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache data
   });
 
   // Query for unread message count
@@ -349,9 +359,10 @@ export function MessageSlideCard() {
       }
     },
     onSuccess: () => {
-      // Invalidate both messages and unread count queries
-      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember?.id] });
+      // Invalidate all message-related queries to force fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
       
       // Clean up stored states
       setMessageText("");
@@ -511,7 +522,9 @@ export function MessageSlideCard() {
                           />
                         )}
                         {/* Handle both images and videos - using Object Storage pattern like comments */}
-                        {(message.imageUrl || message.mediaUrl) && (
+                        {(message.imageUrl || message.mediaUrl) && 
+                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                           message.is_video ? (
                             <VideoPlayer
                               src={createDirectDownloadUrl(message.imageUrl || message.mediaUrl || '')}
