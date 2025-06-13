@@ -2362,7 +2362,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           senderId: req.user.id,
           recipientId: parseInt(recipientId),
           content: content || null,
-          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+          imageUrl: null, // FIXED: Using message-routes.ts for Object Storage instead
           isRead: false,
         })
         .returning();
@@ -3090,7 +3090,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           senderId: req.user.id,
           recipientId: parseInt(recipientId),
           content: content || null,
-          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+          imageUrl: null, // FIXED: Using message-routes.ts for Object Storage instead
           isRead: false,
         })
         .returning();
