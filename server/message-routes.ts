@@ -161,18 +161,34 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         
         // Extract just the filename for the database storage
         // This ensures consistency with how comments handle media URLs
-        if (typeof fileInfo === 'string') {
+        if (typeof fileInfo === 'string' && fileInfo) {
           const filename = fileInfo.split('/').pop() || fileInfo;
-          mediaUrl = filename;
-        } else {
+          // Only set mediaUrl if we have a valid filename
+          if (filename && filename !== 'undefined' && filename.trim() !== '') {
+            mediaUrl = filename;
+          } else {
+            console.warn('Invalid filename extracted from fileInfo:', fileInfo);
+            mediaUrl = null;
+          }
+        } else if (fileInfo && typeof fileInfo === 'object') {
           mediaUrl = fileInfo;
+        } else {
+          console.warn('Invalid fileInfo returned from storage:', fileInfo);
+          mediaUrl = null;
         }
-        console.log(`Stored message media file:`, { url: mediaUrl, isVideo });
+        console.log(`Stored message media file:`, { url: mediaUrl, isVideo, originalFileInfo: fileInfo });
       } catch (fileError) {
         console.error('Error processing media file for message:', fileError);
         logger.error('Error processing media file for message:', fileError);
-        // Continue without the file if there's an error
+        // Set mediaUrl to null on error instead of leaving it undefined
+        mediaUrl = null;
       }
+    }
+
+    // Validate mediaUrl before storing to prevent undefined values
+    let validatedImageUrl = null;
+    if (mediaUrl && typeof mediaUrl === 'string' && mediaUrl !== 'undefined' && mediaUrl.trim() !== '') {
+      validatedImageUrl = mediaUrl;
     }
 
     // Create message with the properly processed media URL
@@ -182,7 +198,7 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         senderId: req.user.id,
         recipientId: parseInt(recipientId),
         content: content || null,
-        imageUrl: mediaUrl,
+        imageUrl: validatedImageUrl,
         isRead: false,
         is_video: isVideoFlag,
       })
