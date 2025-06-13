@@ -489,12 +489,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             </Button>
           </div>
           <CommentForm
-            onSubmit={async (data) => {
-              await createReplyMutation.mutateAsync(data);
-              if (replyInputRef.current) {
-                replyInputRef.current.value = '';
-              }
-            }}
+              onSubmit={async (content, file) => {
+                await createReplyMutation.mutateAsync({ content, file });
+                if (replyInputRef.current) {
+                  replyInputRef.current.value = '';
+                }
+              }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}

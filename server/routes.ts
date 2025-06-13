@@ -2491,6 +2491,58 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // PATCH endpoint for editing posts and comments
+  router.patch("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      const { content } = req.body;
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Content cannot be empty" });
+      }
+
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId));
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user is admin or the post owner
+      if (!req.user.isAdmin && post.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to edit this post" });
+      }
+
+      // Update the post
+      const [updatedPost] = await db
+        .update(posts)
+        .set({ content: content.trim() })
+        .where(eq(posts.id, postId))
+        .returning();
+
+      return res.status(200).json(updatedPost);
+    } catch (error) {
+      logger.error("Error updating post:", error);
+      return res.status(500).json({
+        message: "Failed to update post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add this endpoint before the app.use(router) line
   // This endpoint has been moved to line ~3116 to support achievement_notifications_enabled
 
