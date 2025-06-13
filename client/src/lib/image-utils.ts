@@ -22,6 +22,25 @@ export function getImageUrl(originalUrl: string | null): string {
  * @returns A thumbnail URL
  */
 export function getThumbnailUrl(originalUrl: string | null, size?: string): string {
+  // For images, try the thumbnail first, but fallback to original if needed
+  if (!originalUrl) return '';
+  
+  // If this is already a serve-file URL, return as-is
+  if (originalUrl.includes('/api/serve-file')) {
+    return originalUrl;
+  }
+  
+  // Check if this is an image file
+  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(originalUrl);
+  
+  if (isImage) {
+    // For images, try to use the original file directly via serve-file
+    const filename = originalUrl.split('/').pop() || '';
+    const timestamp = Date.now();
+    return `/api/serve-file?filename=${encodeURIComponent(filename)}&v=${timestamp}`;
+  }
+  
+  // For videos, use the thumbnail creation logic
   return createThumbnailUrl(originalUrl);
 }
 
