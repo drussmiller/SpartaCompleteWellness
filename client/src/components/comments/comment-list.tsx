@@ -375,16 +375,20 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {comment.mediaUrl && !comment.is_video && (
                   <div className="mt-2">
                     <img 
-                      src={comment.mediaUrl.startsWith('/api/') ? comment.mediaUrl : `/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`} 
+                      src={`/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
                       alt="Comment image" 
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                      onError={(e) => {
+                        console.error("Error loading comment image:", comment.mediaUrl);
+                        e.target.style.display = 'none';
+                      }}
                     />
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
                   <div className="mt-2">
                     <VideoPlayer
-                      src={comment.mediaUrl.startsWith('/api/') ? comment.mediaUrl : `/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
+                      src={`/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(error) => console.error("Error loading comment video:", error)}
                     />
