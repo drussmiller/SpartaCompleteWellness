@@ -38,6 +38,7 @@ import { errorHandler } from './middleware/error-handler';
 import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { objectStorageRouter } from './object-storage-routes';
+import { messageRouter } from './message-routes';
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
@@ -3321,6 +3322,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Register message routes first (with Object Storage implementation)
+  app.use(messageRouter);
+  
   app.use(router);
 
   // Create HTTP server
