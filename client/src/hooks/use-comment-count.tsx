@@ -1,15 +1,15 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export function useCommentCount(postId: number) {
   const [count, setCount] = useState(0);
   const prevCountRef = useRef(0);
-  const queryClient = useQueryClient();
+  const eventListenerAddedRef = useRef(false);
 
-  // Subscribe to comment events using a custom event listener
+  // Define the function that will handle comment count updates
   useEffect(() => {
-    if (!postId) return;
+    if (!postId || eventListenerAddedRef.current) return;
 
     // Define the function that will handle comment count updates
     const handleCommentCountUpdate = (event: CustomEvent) => {
@@ -18,12 +18,12 @@ export function useCommentCount(postId: number) {
         if (typeof event.detail.count === 'number') {
           setCount(event.detail.count);
           prevCountRef.current = event.detail.count;
-          
+
           // Also update the query cache for consistency
           queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { 
             count: event.detail.count 
           });
-          
+
           console.log(`Updated comment count for post ${postId} to ${event.detail.count} from event`);
         } 
         // If we just have an increment signal, increment the current count
@@ -31,25 +31,27 @@ export function useCommentCount(postId: number) {
           const newCount = prevCountRef.current + 1;
           setCount(newCount);
           prevCountRef.current = newCount;
-          
+
           // Also update the query cache for consistency
           queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { 
             count: newCount 
           });
-          
+
           console.log(`Incremented comment count for post ${postId} to ${newCount} from event`);
         }
       }
     };
 
-    // Add the event listener
+    // Add the event listener only once
     window.addEventListener('commentCountUpdate', handleCommentCountUpdate as EventListener);
+    eventListenerAddedRef.current = true;
 
     // Clean up the event listener on unmount
     return () => {
       window.removeEventListener('commentCountUpdate', handleCommentCountUpdate as EventListener);
+      eventListenerAddedRef.current = false;
     };
-  }, [postId, queryClient]);
+  }, [postId]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [`/api/posts/comments/${postId}/count`],
@@ -61,55 +63,26 @@ export function useCommentCount(postId: number) {
           return { count: 0 };
         }
 
-        // Add explicit request headers to ensure expected response format
-        const requestOptions = {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        };
-
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
         if (!res.ok) {
           console.warn(`Comment count request for post ${postId} failed with status ${res.status}`);
           return { count: 0 };
         }
 
-        try {
-          // Add explicit JSON parsing error handling
-          const comments = await res.json();
-          
-          // Validate response structure to prevent downstream errors
-          if (!Array.isArray(comments)) {
-            console.warn(`Comment response for post ${postId} is not an array`, comments);
-            return { count: 0 };
-          }
-          
-          return { count: comments.length };
-        } catch (jsonError) {
-          console.error(`JSON parsing error for post ${postId} comments:`, jsonError);
-          return { count: 0 };
-        }
+        const comments = await res.json();
+        const commentCount = Array.isArray(comments) ? comments.length : 0;
+
+        console.log(`Fetched ${commentCount} comments for post ${postId}`);
+        return { count: commentCount };
       } catch (error) {
         console.error(`Error fetching comment count for post ${postId}:`, error);
-        // Return a default value instead of throwing
         return { count: 0 };
       }
     },
-    // Always retry at least once
-    retry: 1,
-    // Lower staleTime for more frequent updates
-    staleTime: 5000, // 5 seconds
-    // We use placeholderData instead of keepPreviousData in React Query v5
-    placeholderData: prevData => prevData,
-    // Enable automatic refetching on window focus
-    refetchOnWindowFocus: true,
-    // Poll for updates more frequently
-    refetchInterval: 15000, // 15 seconds
-    // Always refetch when component mounts
-    refetchOnMount: true,
-    // Disable request during SSR
-    enabled: typeof window !== 'undefined' && !!postId
+    enabled: Boolean(postId && !isNaN(Number(postId)) && Number(postId) > 0),
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Only update the count state if the count has changed from query data
@@ -130,17 +103,17 @@ export function useCommentCount(postId: number) {
       const newCount = prevCountRef.current + 1;
       setCount(newCount);
       prevCountRef.current = newCount;
-      
+
       // Update the query cache
       queryClient.setQueryData([`/api/posts/comments/${postId}/count`], { 
         count: newCount 
       });
-      
+
       // Dispatch an event so other components with the same postId can update
       window.dispatchEvent(new CustomEvent('commentCountUpdate', {
         detail: { postId, count: newCount }
       }));
-      
+
       console.log(`Manually incremented comment count for post ${postId} to ${newCount}`);
     }
   };

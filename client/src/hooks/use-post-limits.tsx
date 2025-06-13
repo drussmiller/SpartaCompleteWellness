@@ -1,7 +1,6 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../lib/queryClient";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useAuth } from "./use-auth";
 
 export interface PostLimits {
@@ -23,11 +22,11 @@ export function usePostLimits(date: Date = new Date()) {
     queryFn: async () => {
       try {
         console.log("Fetching post counts for date:", dateKey);
-        
+
         // Set up timeout to avoid hanging requests
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
+
         try {
           const response = await apiRequest(
             "GET", 
@@ -35,23 +34,23 @@ export function usePostLimits(date: Date = new Date()) {
             undefined,
             { signal: controller.signal }
           );
-          
+
           // Clear timeout since request completed
           clearTimeout(timeoutId);
-          
+
           if (!response.ok) {
             // Try to get error details if available
             const errorBody = await response.json().catch(() => ({}));
             throw new Error(`Failed to fetch post limits: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
           }
-          
+
           const result = await response.json();
           console.log("Post counts result:", result);
           return result;
         } catch (fetchError) {
           // Clean up timeout if fetch throws
           clearTimeout(timeoutId);
-          
+
           if (fetchError.name === 'AbortError') {
             console.warn('Post counts request timed out');
             // Return the last known good data instead of failing
@@ -61,7 +60,7 @@ export function usePostLimits(date: Date = new Date()) {
             }
             throw new Error('Request timed out');
           }
-          
+
           throw fetchError;
         }
       } catch (err) {
@@ -120,7 +119,7 @@ export function usePostLimits(date: Date = new Date()) {
   const counts = data?.counts || defaultCounts;
   const canPost = data?.canPost || defaultCanPost;
   const remaining = data?.remaining || defaultRemaining;
-  
+
   console.log("usePostLimits hook returning:", { 
     counts, canPost, remaining, 
     food_count: counts.food,

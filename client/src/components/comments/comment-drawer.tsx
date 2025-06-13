@@ -235,6 +235,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
   const createCommentMutation = useMutation({
     mutationFn: async ({ content, file }: { content: string, file?: File }) => {
+      if (!content.trim()) {
+        throw new Error("Comment content cannot be empty");
+      }
+      
       console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file });
       
       // Use FormData to handle both text and file uploads
