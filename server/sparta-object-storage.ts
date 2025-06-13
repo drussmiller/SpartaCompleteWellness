@@ -155,12 +155,11 @@ export class SpartaObjectStorage {
         
         const result = {
           filename: uniqueFilename,
-          url: `/api/object-storage/direct-download?storageKey=shared/uploads/${uniqueFilename}`,
+          url: `/api/object-storage/direct-download?storageKey=${key}`,
         } as any;
         
         // Create thumbnail if it's an image or video
         if (mimeType.startsWith('image/') || isVideo) {
-          // For Object Storage, thumbnails are handled automatically during display
           result.thumbnailUrl = result.url;
         }
         
@@ -342,11 +341,6 @@ export class SpartaObjectStorage {
         const key = `shared/uploads/${filename}`;
         await this.objectStorage.delete(key);
         console.log(`Deleted from Object Storage: ${key}`);
-
-        // Delete thumbnail from Object Storage
-        const thumbnailKey = `shared/uploads/thumbnails/${thumbnailFilename}`;
-        await this.objectStorage.delete(thumbnailKey);
-        console.log(`Deleted thumbnail from Object Storage: ${thumbnailKey}`);
       } catch (error) {
         console.error(`Error deleting from Object Storage:`, error);
       }
