@@ -15,6 +15,7 @@ import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
+import { getThumbnailUrl } from "@/lib/image-utils";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -382,7 +383,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                       </div>
                     ) : (
                       <img 
-                        src={createDirectDownloadUrl(comment.mediaUrl)}
+                        src={getThumbnailUrl(comment.mediaUrl, 'medium')}
                         alt="Comment image" 
                         className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onLoad={(e) => {

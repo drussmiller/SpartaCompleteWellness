@@ -39,7 +39,7 @@ export function PostView({ post }: PostViewProps) {
           {post.mediaUrl && !post.is_video && (
             <div className="mt-3 mb-3 flex justify-center">
               <img
-                src={createDirectDownloadUrl(post.mediaUrl)}
+                src={getThumbnailUrl(post.mediaUrl, 'medium')}
                 alt={post.type}
                 className="max-w-full h-auto object-contain rounded-md"
               />
