@@ -38,7 +38,7 @@ try {
  */
 objectStorageRouter.get('/direct-download', async (req: Request, res: Response) => {
   const { storageKey } = req.query;
-  
+
   if (!storageKey || typeof storageKey !== 'string') {
     return res.status(400).json({
       success: false,
@@ -57,18 +57,18 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
     // Clean key (remove leading slash if present)
     const cleanKey = storageKey.startsWith('/') ? storageKey.substring(1) : storageKey;
     logger.info(`Object Storage direct access for key: ${cleanKey}`, { route: '/api/object-storage/direct-download' });
-    
+
     // Only use the valid shared/uploads/ path pattern
     let finalKey = cleanKey;
-    
+
     // If the key doesn't start with shared/uploads/, add the prefix
     if (!cleanKey.startsWith('shared/uploads/')) {
       const filename = cleanKey.split('/').pop() || cleanKey;
       finalKey = `shared/uploads/${filename}`;
     }
-    
+
     console.log(`[Object Storage] Using key: ${finalKey}`);
-    
+
     try {
       const result = await objectStorage.downloadAsBytes(finalKey);
       console.log(`[Object Storage] Download result for ${finalKey}:`, {
@@ -76,39 +76,46 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
         hasOk: result && typeof result === 'object' && 'ok' in result,
         ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
       });
-      
-      // Handle Object Storage API response format: {ok: true, value: Buffer} or {ok: false, error: ...}
-      if (result && typeof result === 'object' && 'ok' in result) {
-        if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
-          console.log(`[Object Storage] Successfully found file at key: ${finalKey}`);
-          const filename = finalKey.split('/').pop() || '';
-          res.setHeader('Content-Type', getContentType(filename));
-          res.setHeader('Cache-Control', 'public, max-age=31536000');
-          return res.send(result.value);
-        } else if (result.ok === false) {
-          console.log(`[Object Storage] File not found at key: ${finalKey}`);
-          return res.status(404).json({
-            success: false,
-            message: `File not found in Object Storage: ${finalKey}`
-          });
-        }
-      }
-      
-      // If result is a Buffer directly (older API format)
+
+      // Handle the Object Storage response format
+      let fileBuffer: Buffer;
+
       if (Buffer.isBuffer(result)) {
-        console.log(`[Object Storage] Successfully found file (Buffer format) at key: ${finalKey}`);
-        const filename = finalKey.split('/').pop() || '';
-        res.setHeader('Content-Type', getContentType(filename));
-        res.setHeader('Cache-Control', 'public, max-age=31536000');
-        return res.send(result);
+        fileBuffer = result;
+      } else if (result && typeof result === 'object') {
+        // Handle the actual Replit Object Storage response format
+        if ('ok' in result && result.ok === true) {
+          if (result.value) {
+            if (Buffer.isBuffer(result.value)) {
+              fileBuffer = result.value;
+            } else if (typeof result.value === 'string') {
+              fileBuffer = Buffer.from(result.value, 'base64');
+            } else if (Array.isArray(result.value)) {
+              // Handle array of bytes
+              fileBuffer = Buffer.from(result.value);
+            } else {
+              logger.error(`Unexpected value type from Object Storage for ${storageKey}:`, typeof result.value);
+              return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+            }
+          } else {
+            logger.error(`No value in Object Storage result for ${storageKey}`);
+            return res.status(404).json({ error: 'File not found', message: `No data for ${storageKey}` });
+          }
+        } else {
+          logger.error(`Object Storage download failed for ${storageKey}:`, result);
+          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+        }
+      } else {
+        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
+        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
       }
-      
-      // If we get here, the result format was unexpected
-      console.log(`[Object Storage] Unexpected result format for: ${finalKey}`);
-      return res.status(404).json({
-        success: false,
-        message: `File not found in Object Storage: ${finalKey}`
-      });
+
+      console.log(`[Object Storage] Successfully found file at key: ${finalKey}`);
+      const filename = finalKey.split('/').pop() || '';
+      res.setHeader('Content-Type', getContentType(filename));
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      return res.send(fileBuffer);
+
     } catch (error) {
       console.log(`[Object Storage] Error accessing key ${finalKey}:`, error);
       return res.status(404).json({
@@ -116,7 +123,7 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
         message: `File not found in Object Storage: ${finalKey}`
       });
     }
-    
+
   } catch (error) {
     console.error('[Object Storage] Direct download error:', error);
     logger.error('Object Storage direct download failed', error, { route: '/api/object-storage/direct-download' });
@@ -144,15 +151,15 @@ objectStorageRouter.get('/test', async (req: Request, res: Response) => {
     // Test basic Object Storage functionality
     const testKey = `test-${Date.now()}.txt`;
     const testContent = Buffer.from('Object Storage test content');
-    
+
     // Upload test file
     const uploadResult = await objectStorage.uploadFromBytes(testKey, testContent);
     logger.info('Object Storage test upload completed', { route: '/api/object-storage/test' });
-    
+
     // Download test file
     const downloadResult = await objectStorage.downloadAsBytes(testKey);
     logger.info('Object Storage test download completed', { route: '/api/object-storage/test' });
-    
+
     // Clean up test file
     try {
       await objectStorage.delete(testKey);
@@ -160,14 +167,14 @@ objectStorageRouter.get('/test', async (req: Request, res: Response) => {
     } catch (cleanupError) {
       console.log('Test cleanup failed (non-critical):', cleanupError);
     }
-    
+
     return res.json({
       success: true,
       message: 'Object Storage is working correctly',
       uploadResult,
       downloadResult
     });
-    
+
   } catch (error) {
     console.error('Object Storage test failed:', error);
     return res.status(500).json({
@@ -192,13 +199,13 @@ objectStorageRouter.get('/list', async (req: Request, res: Response) => {
   try {
     const { prefix = '' } = req.query;
     const files = await objectStorage.list({ prefix: prefix as string });
-    
+
     return res.json({
       success: true,
       files,
       count: Array.isArray(files) ? files.length : 0
     });
-    
+
   } catch (error) {
     console.error('Object Storage list failed:', error);
     return res.status(500).json({

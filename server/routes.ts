@@ -580,14 +580,34 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             fileSize: req.file.size
           });
           
+          // Clean up the filename to avoid double timestamps
+          let cleanFilename = req.file.originalname;
+          
+          // Remove any existing timestamp prefixes (pattern: TIMESTAMP-...)
+          const timestampPattern = /^\d{13}-/;
+          if (timestampPattern.test(cleanFilename)) {
+            cleanFilename = cleanFilename.replace(timestampPattern, '');
+          }
+          
+          // Remove UUID patterns from filename to make it cleaner
+          const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/gi;
+          cleanFilename = cleanFilename.replace(uuidPattern, '');
+          
+          // Ensure we have a valid filename
+          if (!cleanFilename || cleanFilename.length < 5) {
+            const ext = req.file.originalname.split('.').pop() || 'jpg';
+            cleanFilename = `comment-media.${ext}`;
+          }
+          
           const fileInfo = await spartaStorage.storeFile(
             req.file.buffer,
-            req.file.originalname,
+            cleanFilename,
             req.file.mimetype,
             isVideo
           );
           
-          commentMediaUrl = fileInfo.url;
+          // Store just the storage key for the database, not the full URL
+          commentMediaUrl = `shared/uploads/${fileInfo.filename}`;
           console.log(`Stored comment media file:`, { url: commentMediaUrl });
         } catch (error) {
           logger.error("Error processing comment media file:", error);
