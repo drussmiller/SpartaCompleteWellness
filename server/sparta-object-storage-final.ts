@@ -136,17 +136,24 @@ export class SpartaObjectStorageFinal {
         if (isVideo) {
           // Create temporary file for video processing
           const tempVideoPath = `/tmp/${uniqueFilename}`;
-          // Use the exact same base name as the video file for the thumbnail
-          const tempThumbnailPath = `/tmp/${thumbnailFilename}`;
 
           fs.writeFileSync(tempVideoPath, fileBuffer);
-          await createMovThumbnail(tempVideoPath);
+          
+          // Call createMovThumbnail which will create a thumbnail with matching filename
+          const createdThumbnailFilename = await createMovThumbnail(tempVideoPath);
 
-          if (fs.existsSync(tempThumbnailPath)) {
-            thumbnailBuffer = fs.readFileSync(tempThumbnailPath);
+          if (createdThumbnailFilename) {
+            // The thumbnail should already be uploaded to Object Storage by createMovThumbnail
+            console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
+            
+            // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
-            fs.unlinkSync(tempThumbnailPath);
+            
+            // Set thumbnailBuffer to indicate success (we don't need the actual buffer since it's already uploaded)
+            thumbnailBuffer = Buffer.from('thumbnail_created');
           } else {
+            // Clean up temp video file
+            fs.unlinkSync(tempVideoPath);
             throw new Error('Video thumbnail creation failed');
           }
         } else {

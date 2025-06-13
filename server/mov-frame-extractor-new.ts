@@ -21,7 +21,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
   const videoFilename = path.basename(sourceMovPath);
   const thumbnailFilename = videoFilename.replace(/\.mov$/i, '.jpg');
 
-  logger.info(`Creating thumbnail for: ${videoFilename}`);
+  logger.info(`Creating thumbnail for: ${videoFilename} -> ${thumbnailFilename}`);
 
   try {
     // Check if video exists and get duration first
