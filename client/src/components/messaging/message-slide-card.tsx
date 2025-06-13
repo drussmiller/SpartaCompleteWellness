@@ -13,6 +13,7 @@ import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { getThumbnailUrl } from "@/lib/image-utils";
+import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -509,21 +510,22 @@ export function MessageSlideCard() {
                             }}
                           />
                         )}
-                        {/* Handle both images and videos */}
+                        {/* Handle both images and videos - using Object Storage pattern like comments */}
                         {(message.imageUrl || message.mediaUrl) && (
                           message.is_video ? (
                             <VideoPlayer
-                              src={(message.imageUrl || message.mediaUrl) || ''}
+                              src={createDirectDownloadUrl(message.imageUrl || message.mediaUrl || '')}
                               className="max-w-full rounded mt-2"
-                              onError={(error) => console.error("Error loading message video:", error)}
+                              onError={(error) => console.error("Error loading message video:", message.imageUrl || message.mediaUrl, error)}
                             />
                           ) : (
                             <img
-                              src={getThumbnailUrl(message.imageUrl || message.mediaUrl || '', 'medium')}
+                              src={createDirectDownloadUrl(message.imageUrl || message.mediaUrl || '')}
                               alt="Message image"
                               className="max-w-full rounded mt-2"
+                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
                               onError={(e) => {
-                                console.error("Failed to load message image:", message.imageUrl || message.mediaUrl);
+                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
                                 e.currentTarget.style.display = 'none';
                               }}
                             />

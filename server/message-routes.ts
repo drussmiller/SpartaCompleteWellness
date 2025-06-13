@@ -159,21 +159,12 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
           isVideo // Pass the isVideo flag to ensure proper handling
         );
         
-        // Extract just the filename for the database storage
-        // This ensures consistency with how comments handle media URLs
-        if (typeof fileInfo === 'string' && fileInfo) {
-          const filename = fileInfo.split('/').pop() || fileInfo;
-          // Only set mediaUrl if we have a valid filename
-          if (filename && filename !== 'undefined' && filename.trim() !== '') {
-            mediaUrl = filename;
-          } else {
-            console.warn('Invalid filename extracted from fileInfo:', fileInfo);
-            mediaUrl = null;
-          }
-        } else if (fileInfo && typeof fileInfo === 'object') {
-          mediaUrl = fileInfo;
+        // Store the full Object Storage key for proper URL construction - same as comments
+        if (fileInfo && fileInfo.filename) {
+          mediaUrl = `shared/uploads/${fileInfo.filename}`;
+          console.log(`Stored message media file with full path:`, { url: mediaUrl, isVideo });
         } else {
-          console.warn('Invalid fileInfo returned from storage:', fileInfo);
+          console.warn('Invalid fileInfo returned from Object Storage:', fileInfo);
           mediaUrl = null;
         }
         console.log(`Stored message media file:`, { url: mediaUrl, isVideo, originalFileInfo: fileInfo });
@@ -185,12 +176,6 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
       }
     }
 
-    // Validate mediaUrl before storing to prevent undefined values
-    let validatedImageUrl = null;
-    if (mediaUrl && typeof mediaUrl === 'string' && mediaUrl !== 'undefined' && mediaUrl.trim() !== '') {
-      validatedImageUrl = mediaUrl;
-    }
-
     // Create message with the properly processed media URL
     const [message] = await db
       .insert(messages)
@@ -198,7 +183,7 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         senderId: req.user.id,
         recipientId: parseInt(recipientId),
         content: content || null,
-        imageUrl: validatedImageUrl,
+        imageUrl: mediaUrl, // Use the full Object Storage path like comments do
         isRead: false,
         is_video: isVideoFlag,
       })
