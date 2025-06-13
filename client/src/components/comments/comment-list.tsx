@@ -62,32 +62,52 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      const formData = new FormData();
-      formData.append('data', JSON.stringify({
-        content: data.content.trim(),
-        parentId: replyingTo,
-        depth: (replyingToComment?.depth ?? 0) + 1,
-        type: "comment",
-        points: 0
-      }));
       if (data.file) {
+        // Send as FormData when there's a file
+        const formData = new FormData();
+        formData.append('data', JSON.stringify({
+          content: data.content.trim(),
+          parentId: replyingTo,
+          depth: (replyingToComment?.depth ?? 0) + 1
+        }));
         formData.append('file', data.file);
+
+        const res = await fetch("/api/posts/comments", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to post reply:", errorText);
+          throw new Error(`Failed to post reply: ${errorText}`);
+        }
+
+        return res.json();
+      } else {
+        // Send as JSON when there's no file
+        const res = await fetch("/api/posts/comments", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: data.content.trim(),
+            parentId: replyingTo,
+            depth: (replyingToComment?.depth ?? 0) + 1
+          }),
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to post reply:", errorText);
+          throw new Error(`Failed to post reply: ${errorText}`);
+        }
+
+        return res.json();
       }
-
-      const res = await fetch("/api/posts/comments", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Failed to post reply:", errorText);
-        throw new Error(`Failed to post reply: ${errorText}`);
-      }
-
-      const json = await res.json();
-      return json;
     },
     onSuccess: (newReply) => {
       const repliedToCommentId = replyingTo;

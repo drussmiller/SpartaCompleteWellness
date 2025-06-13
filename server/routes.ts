@@ -504,7 +504,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   });
 
   // Create a comment on a post
-  router.post("/api/posts/comments", authenticate, async (req, res) => {
+  router.post("/api/posts/comments", authenticate, upload.single('file'), async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
       res.setHeader('Content-Type', 'application/json');
@@ -513,14 +513,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Validate request body
-      const { content, parentId, depth = 0 } = req.body;
+      // Check if we have FormData or regular JSON body
+      let content, parentId, depth = 0;
+      
+      if (req.body.data) {
+        // FormData request - parse the JSON data
+        try {
+          const parsedData = JSON.parse(req.body.data);
+          content = parsedData.content;
+          parentId = parsedData.parentId;
+          depth = parsedData.depth || 0;
+        } catch (e) {
+          return res.status(400).json({ message: "Invalid JSON data in FormData" });
+        }
+      } else {
+        // Regular JSON request
+        content = req.body.content;
+        parentId = req.body.parentId;
+        depth = req.body.depth || 0;
+      }
 
       logger.info('Creating comment with data:', {
         userId: req.user.id, 
         parentId, 
         contentLength: content ? content.length : 0,
-        depth
+        depth,
+        hasFile: !!req.file
       });
 
       if (!content || !parentId) {
@@ -537,12 +555,54 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid parent post ID" });
       }
 
+      // Process media file if present
+      let commentMediaUrl = null;
+      if (req.file) {
+        try {
+          // Use SpartaObjectStorage for file handling
+          const { spartaStorage } = await import('./sparta-object-storage');
+          
+          // Determine if this is a video file
+          const originalFilename = req.file.originalname.toLowerCase();
+          const isVideoMimetype = req.file.mimetype.startsWith('video/');
+          const isVideoExtension = originalFilename.endsWith('.mov') ||
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
+          
+          const isVideo = isVideoMimetype || isVideoExtension;
+          
+          console.log(`Processing comment media file:`, {
+            originalFilename: req.file.originalname,
+            mimetype: req.file.mimetype,
+            isVideo: isVideo,
+            fileSize: req.file.size
+          });
+          
+          const fileInfo = await spartaStorage.storeFileFromBuffer(
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype,
+            isVideo
+          );
+          
+          commentMediaUrl = fileInfo.url;
+          console.log(`Stored comment media file:`, { url: commentMediaUrl });
+        } catch (error) {
+          logger.error("Error processing comment media file:", error);
+          // Continue with comment creation even if media processing fails
+        }
+      }
+
       const comment = await storage.createComment({
         userId: req.user.id,
         content,
         parentId: parentIdNum,
         depth,
-        type: 'comment' // Explicitly set type for comments
+        type: 'comment', // Explicitly set type for comments
+        points: 0, // Comments have 0 points
+        mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
       });
 
       // Return the created comment with author information
