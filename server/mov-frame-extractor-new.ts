@@ -20,14 +20,14 @@ import { logger } from './logger';
 export async function createMovThumbnail(sourceMovPath: string): Promise<string | null> {
   const videoFilename = path.basename(sourceMovPath);
   const thumbnailFilename = videoFilename.replace(/\.mov$/i, '.jpg');
-  
+
   logger.info(`Creating thumbnail for: ${videoFilename}`);
 
   try {
     // Check if video exists and get duration first
     const videoDuration = await getVideoDuration(sourceMovPath);
     logger.info(`Video duration: ${videoDuration} seconds`);
-    
+
     // For memory verse videos, try positions throughout the video
     // Start closer to the middle and work outward
     const positions = videoDuration > 0 
@@ -45,7 +45,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
     for (const position of positions) {
       try {
         const tempJpgPath = path.join('./uploads', `temp-${thumbnailFilename}`);
-        
+
         // Use FFmpeg to extract a frame at the specified position
         await new Promise<void>((resolve, reject) => {
           ffmpeg(sourceMovPath)
@@ -68,32 +68,28 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
 
         // Check if the extracted frame is valid (not too small, indicating a black frame)
         const stats = fs.statSync(tempJpgPath);
-        
+
         // Only consider it valid if the size is reasonable (> 1KB)
         if (stats.size > 1024) {
           // Read the valid JPG data
           const jpgBuffer = fs.readFileSync(tempJpgPath);
-          
+
           // Upload the single JPG thumbnail to Object Storage 
-          try {
-            const { spartaStorage } = await import('./sparta-object-storage');
-            
-            await spartaStorage.storeBuffer(
-              jpgBuffer, 
-              thumbnailFilename,
-              'image/jpeg',
-              true,
-              `shared/uploads/${thumbnailFilename}`
-            );
-            
-            logger.info(`Successfully created and uploaded thumbnail: ${thumbnailFilename} from position ${position}s`);
-          } catch (objStorageError) {
+        try {
+          const { Client } = await import('@replit/object-storage');
+          const client = new Client();
+
+          const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
+          await client.uploadFromBytes(thumbnailKey, jpgBuffer);
+
+          logger.info(`Successfully created and uploaded thumbnail: ${thumbnailFilename} from position ${position}s`);
+        } catch (objStorageError) {
             logger.error(`Failed to upload thumbnail to Object Storage: ${objStorageError}`);
           }
-          
+
           // Clean up temp file
           try { fs.unlinkSync(tempJpgPath); } catch(e) { /* ignore cleanup errors */ }
-          
+
           return thumbnailFilename;
         } else {
           logger.warn(`Frame at ${position}s is too small (${stats.size} bytes), trying another position.`);
@@ -104,7 +100,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
         continue;
       }
     }
-    
+
     logger.error(`Failed to extract usable frame after trying multiple positions for ${videoFilename}`);
     return null;
   } catch (error) {
