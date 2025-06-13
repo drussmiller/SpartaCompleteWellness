@@ -379,14 +379,24 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                       src={createDirectDownloadUrl(comment.mediaUrl)}
                       alt="Comment image" 
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                      onLoad={() => {
+                      onLoad={(e) => {
                         console.log("Comment image loaded successfully:", comment.mediaUrl);
+                        console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
                       }}
                       onError={(e) => {
                         console.error("Error loading comment image:", comment.mediaUrl);
                         console.error("Full URL attempted:", e.target.src);
-                        e.target.style.display = 'none';
+                        console.error("Image error event:", e);
+                        
+                        // Show a placeholder or error message instead of hiding
+                        e.target.alt = "Failed to load image";
+                        e.target.className = "w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded-md";
+                        e.target.style.display = 'block';
                         e.target.onerror = null;
+                      }}
+                      style={{
+                        minHeight: '50px',
+                        backgroundColor: '#f3f4f6'
                       }}
                     />
                   </div>
