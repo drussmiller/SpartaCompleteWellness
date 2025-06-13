@@ -53,7 +53,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
             .frames(1)
             .output(tempJpgPath)
             .outputOptions([
-              '-vf', 'scale=600:400:force_original_aspect_ratio=decrease,pad=600:400:(ow-iw)/2:(oh-ih)/2:black',
+              '-vf', 'scale=600:-1',  // Scale to 600px width, maintain aspect ratio
               '-q:v', '2',
               '-f', 'image2'
             ])
