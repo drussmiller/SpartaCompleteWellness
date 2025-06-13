@@ -185,13 +185,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     return result;
   };
 
-  // Helper function to get proper image URL with clean media utilities
-  const getImageUrl = (mediaUrl: string | null) => {
-    console.log('PostCard getImageUrl called with:', mediaUrl);
-    const result = createMediaUrl(mediaUrl);
+  // Memoize media URLs to prevent re-computation on every render
+  const imageUrl = useMemo(() => {
+    if (!post.mediaUrl) return null;
+    console.log('PostCard getImageUrl called with:', post.mediaUrl);
+    const result = createMediaUrl(post.mediaUrl);
     console.log('PostCard getImageUrl result:', result);
     return result;
-  };
+  }, [post.mediaUrl]);
+
+  const thumbnailUrl = useMemo(() => {
+    if (!post.mediaUrl) return null;
+    console.log('getThumbnailUrl called with:', post.mediaUrl);
+    const result = createThumbnailUrl(post.mediaUrl);
+    console.log('Thumbnail URL result:', result);
+    return result;
+  }, [post.mediaUrl]);
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -260,8 +269,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <div className="w-full video-container" data-post-id={post.id}>
                 {/* Import and use VideoPlayer instead of standard video element */}
                 <VideoPlayer 
-                  key={`video-${post.id}-${triggerReload}-${Date.now()}`} 
-                  src={getImageUrl(post.mediaUrl)}
+                  key={`video-${post.id}-${triggerReload}`} 
+                  src={imageUrl}
                   poster={getVideoPoster(post.mediaUrl)}
                   className="w-full video-player-container"
                   preload="metadata"
@@ -346,7 +355,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               <img
-                src={getImageUrl(post.mediaUrl)}
+                src={imageUrl}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"

@@ -76,8 +76,8 @@ export default function HomePage() {
       return filtered;
     },
     enabled: !!user,
-    refetchOnWindowFocus: true,
-    staleTime: 1000 * 60, // Consider data stale after 1 minute
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
   });
 
   // Import usePrayerRequests hook to mark prayer requests as viewed

@@ -46,7 +46,7 @@ export function CreatePostDialog({
   const queryClient = useQueryClient();
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
-  
+
   // Define the type for memory verse video objects
   type MemoryVerseVideo = {
     id: number;
@@ -57,7 +57,7 @@ export function CreatePostDialog({
 
   // Use defaultType if provided, otherwise use initialType
   const actualType = defaultType || initialType;
-  
+
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
@@ -68,7 +68,7 @@ export function CreatePostDialog({
       postDate: selectedDate
     }
   });
-  
+
   // Fetch existing memory verse videos for reuse
   const { data: existingMemoryVerseVideos, isLoading: loadingVideos } = useQuery<MemoryVerseVideo[]>({
     queryKey: ['/api/memory-verse-videos'],
@@ -161,10 +161,10 @@ export function CreatePostDialog({
           // Extract the existing video ID
           const existingVideoId = data.mediaUrl.replace('EXISTING_VIDEO:', '');
           console.log("Using existing memory verse video:", { id: existingVideoId });
-          
+
           // Include a special field in the post data to indicate we're using an existing video
           formData.append("existing_video_id", existingVideoId);
-          
+
           // We don't need to append any image/video file since we're using an existing one
         } 
         // Handle regular media uploads
@@ -174,39 +174,39 @@ export function CreatePostDialog({
             mediaUrlLength: data.mediaUrl.length,
             urlPreview: data.mediaUrl.substring(0, 30) + "..."
           });
-          
+
           try {
             // Handle memory verse and miscellaneous post video uploads
             if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video')) && 
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
-              
+
               // Append the video file to the formData with the 'image' field name
               // The server will detect the post type based on the data.type field
               formData.append("image", videoFile);
-              
+
               // Explicitly set is_video flag for miscellaneous posts
               formData.append("is_video", "true");
               formData.append("selected_media_type", "video");
-              
+
               // Attach the generated thumbnail if we have one
               if (videoThumbnail) {
                 console.log("Attaching video thumbnail to the form data");
-                
+
                 // Convert the data URL to a Blob that we can send to the server
                 const thumbnailBlob = dataURLToBlob(videoThumbnail);
-                
+
                 // Create a clean filename without any special characters
                 const cleanFilename = videoFile.name.replace(/[^a-zA-Z0-9.]/g, '-');
-                
+
                 // Add the main poster thumbnail
                 formData.append("thumbnail", thumbnailBlob, `${cleanFilename}.poster.jpg`);
                 console.log(`Added poster thumbnail as: ${cleanFilename}.poster.jpg`);
-                
+
                 // Also add JPG version with thumb- prefix for consistent naming
                 formData.append("thumbnail_alt", thumbnailBlob, `thumb-${cleanFilename}`);
                 console.log(`Added thumb- prefixed thumbnail`);
-                
+
                 // Add a plain JPG version with the same basename for direct access
                 const baseFilename = cleanFilename.replace(/\.mov$/i, '.jpg');
                 formData.append("thumbnail_jpg", thumbnailBlob, baseFilename);
@@ -214,7 +214,7 @@ export function CreatePostDialog({
               } else {
                 console.warn("No video thumbnail available when uploading video");
               }
-              
+
               console.log(`Uploading ${data.type} video file:`, {
                 fileName: videoFile.name,
                 fileType: videoFile.type, 
@@ -250,7 +250,7 @@ export function CreatePostDialog({
 
         // Use the content as-is without adding a [VIDEO] marker
         let content = data.content?.trim() || '';
-        
+
         const postData = {
           type: data.type,
           content: content,
@@ -267,21 +267,21 @@ export function CreatePostDialog({
         // Add special identifier for miscellaneous post type if it has video
         if (data.type === 'miscellaneous' && selectedMediaType) {
           formData.append("selected_media_type", selectedMediaType);
-          
+
           // Explicitly add an is_video flag to ensure server-side detection works correctly
           if (selectedMediaType === "video") {
             formData.append("is_video", "true");
           }
-          
+
           console.log("Added media type marker for miscellaneous post:", {
             selectedMediaType,
             isVideo: selectedMediaType === "video",
             contentWithVideoMarker: postData.content
           });
         }
-        
+
         formData.append("data", JSON.stringify(postData));
-        
+
         console.log("FormData ready for submission", {
           formDataKeys: Array.from(formData.keys()),
           hasImageKey: formData.has('image'),
@@ -289,16 +289,16 @@ export function CreatePostDialog({
         });
 
         console.log("Sending POST request to /api/posts");
-        
+
         const response = await fetch("/api/posts", {
           method: "POST",
           body: formData,
           credentials: "include",
         });
-        
+
         // Add more detailed logging of response
         console.log(`Response status: ${response.status} ${response.statusText}`);
-        
+
         // Log the full response headers for debugging
         const responseHeaders: Record<string, string> = {};
         response.headers.forEach((value, key) => {
@@ -351,7 +351,7 @@ export function CreatePostDialog({
       setVideoThumbnail(null);
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
-      
+
       // Clear any file inputs
       if (videoInputRef.current) {
         videoInputRef.current.value = "";
@@ -361,7 +361,7 @@ export function CreatePostDialog({
       }
 
       console.log("Post created successfully, invalidating queries to update UI");
-      
+
       // Also update prayer requests cache if this is a prayer post
       if (newPost.type === "prayer") {
         queryClient.setQueryData(["/api/posts/prayer-requests"], (old: any[] = []) => {
@@ -369,13 +369,22 @@ export function CreatePostDialog({
         });
       }
 
-      // First directly invalidate the most common query keys
-      // This is more explicit and reliable than using predicates
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      // Only invalidate the specific posts query we're using
       queryClient.invalidateQueries({ queryKey: ["/api/posts", "team-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
-      
+
+      // Invalidate post limits only once with specific key
+      const today = new Date();
+      const tzOffset = today.getTimezoneOffset();
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/counts", today.toISOString(), tzOffset],
+        exact: true 
+      });
+
+      // If this was a prayer post, also invalidate the prayer requests cache
+      if (newPost.type === "prayer") {
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
+      }
+
       // Then use predicate for any other post-related queries we might have missed
       queryClient.invalidateQueries({
         predicate: (query) => {
@@ -386,7 +395,7 @@ export function CreatePostDialog({
           return false;
         }
       });
-      
+
       // Display success toast
       toast({
         title: "Post Created",
@@ -552,7 +561,7 @@ export function CreatePostDialog({
                               <span>Select video</span>
                             </div>
                           </Button>
-                          
+
                           {/* Hidden video input file */}
                           <Input
                             type="file"
@@ -574,7 +583,7 @@ export function CreatePostDialog({
                                 // For video, create a preview and store the file reference
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
-                                
+
                                 // Generate a thumbnail for the video
                                 console.log("Starting thumbnail generation for video:", file.name, file.type);
                                 setVideoThumbnail(null); // Reset thumbnail state
@@ -589,11 +598,11 @@ export function CreatePostDialog({
                                 }).catch(error => {
                                   console.error("Error in thumbnail generation promise:", error);
                                 });
-                                
+
                                 // Important: we need to set the field value to a marker so we know to use the video file
                                 const marker = "VIDEO_FILE_UPLOAD";
                                 field.onChange(marker);
-                                
+
                                 // Log detailed information about the selected file
                                 console.log("Memory verse video file selected:", {
                                   name: file.name,
@@ -602,7 +611,7 @@ export function CreatePostDialog({
                                   sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
                                   fieldValue: marker
                                 });
-                                
+
                                 // Log video selection without showing toast
                                 console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
                               }
@@ -650,7 +659,7 @@ export function CreatePostDialog({
                                         const compressed = await compressImage(reader.result as string);
                                         setImagePreview(compressed);
                                         field.onChange(compressed);
-                                        
+
                                         // Set media type to image
                                         if (form.watch("type") === "miscellaneous") {
                                           setSelectedMediaType("image");
@@ -670,7 +679,7 @@ export function CreatePostDialog({
                               }}
                               className="hidden"
                             />
-                            
+
                             {/* Add Select Video button for Miscellaneous and Prayer Request post types */}
                             {(form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
                               <div className="mt-3">
@@ -693,7 +702,7 @@ export function CreatePostDialog({
                                 >
                                   Select Video
                                 </Button>
-                                
+
                                 {/* Hidden video input field for miscellaneous posts */}
                                 <Input
                                   type="file"
@@ -712,12 +721,12 @@ export function CreatePostDialog({
                                         });
                                         return;
                                       }
-                                      
+
                                       // For video, create a preview and set media type
                                       const videoUrl = URL.createObjectURL(file);
                                       setImagePreview(videoUrl);
                                       setSelectedMediaType("video");
-                                      
+
                                       // Generate a thumbnail for the video
                                       generateVideoThumbnail(file).then(thumbnailUrl => {
                                         if (thumbnailUrl) {
@@ -725,11 +734,11 @@ export function CreatePostDialog({
                                           console.log("Generated video thumbnail for miscellaneous post");
                                         }
                                       });
-                                      
+
                                       // Set the field value to a marker so we know to use the video file
                                       const marker = "VIDEO_FILE_UPLOAD";
                                       field.onChange(marker);
-                                      
+
                                       // Log detailed information about the selected file
                                       console.log("Miscellaneous video file selected:", {
                                         name: file.name,
@@ -739,7 +748,7 @@ export function CreatePostDialog({
                                         selectedMediaType: "video",
                                         fieldValue: marker
                                       });
-                                      
+
                                       // Log video selection without showing toast
                                       console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
                                     }
@@ -854,13 +863,13 @@ function dataURLToBlob(dataURL: string): Blob {
   const contentType = parts[0].split(':')[1];
   const raw = window.atob(parts[1]);
   const rawLength = raw.length;
-  
+
   // Create an array buffer with the binary data
   const uInt8Array = new Uint8Array(rawLength);
   for (let i = 0; i < rawLength; ++i) {
     uInt8Array[i] = raw.charCodeAt(i);
   }
-  
+
   // Create a Blob from the array buffer
   return new Blob([uInt8Array], { type: contentType });
 }
@@ -869,16 +878,16 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
   return new Promise((resolve) => {
     try {
       console.log('🎬 Starting video thumbnail generation for:', videoFile.name, videoFile.type);
-      
+
       // Create a video element
       const video = document.createElement('video');
       video.preload = 'auto';
       video.muted = true;
       video.playsInline = true;
       video.autoplay = false;
-      
+
       let hasResolved = false;
-      
+
       // Add timeout to prevent hanging
       const timeout = setTimeout(() => {
         if (!hasResolved) {
@@ -888,42 +897,42 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           resolve(null);
         }
       }, 15000); // 15 second timeout
-      
+
       // Create a URL for the video file
       const videoUrl = URL.createObjectURL(videoFile);
-      
+
       // Function to generate thumbnail from current frame
       const generateThumbnailFromCurrentFrame = () => {
         if (hasResolved) return false;
-        
+
         try {
           console.log('📸 Attempting to capture frame at currentTime:', video.currentTime);
-          
+
           // Ensure video has valid dimensions
           if (!video.videoWidth || !video.videoHeight) {
             console.warn('⚠️ Video dimensions not available yet');
             return false;
           }
-          
+
           const canvas = document.createElement('canvas');
           const targetWidth = 400; // Fixed width for consistency
           const aspectRatio = video.videoHeight / video.videoWidth;
           canvas.width = targetWidth;
           canvas.height = Math.round(targetWidth * aspectRatio);
-          
+
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             console.error('❌ Failed to get canvas context');
             return false;
           }
-          
+
           // Clear canvas and draw the current frame
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
+
           // Convert canvas to data URL with higher quality
           const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.9);
-          
+
           if (thumbnailUrl && thumbnailUrl.length > 1000) { // More stringent validation
             console.log('✅ Video thumbnail generated successfully! Size:', thumbnailUrl.length, 'chars');
             hasResolved = true;
@@ -940,25 +949,25 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           return false;
         }
       };
-      
+
       // When video can play through, try multiple methods
       video.oncanplaythrough = () => {
         console.log('🎥 Video can play through - attempting thumbnail generation');
-        
+
         // Try generating thumbnail immediately
         if (generateThumbnailFromCurrentFrame()) return;
-        
+
         // If immediate capture failed, try seeking to a specific time
         setTimeout(() => {
           if (hasResolved) return;
-          
+
           // For memory verse videos, try to seek to a better position
           const seekTime = video.duration > 0 
             ? Math.min(video.duration * 0.15, 3) // 15% into video or 3 seconds max
             : 1;
           console.log(`🔍 Seeking to ${seekTime} seconds for thumbnail (duration: ${video.duration}s)`);
           video.currentTime = seekTime;
-          
+
           // Try again after seeking
           setTimeout(() => {
             if (!hasResolved) {
@@ -967,7 +976,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           }, 100);
         }, 100);
       };
-      
+
       // When seeking completes
       video.onseeked = () => {
         console.log('✨ Video seeking completed');
@@ -975,7 +984,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           generateThumbnailFromCurrentFrame();
         }
       };
-      
+
       // When video loads enough data
       video.onloadeddata = () => {
         console.log('📊 Video data loaded - trying thumbnail generation');
@@ -983,7 +992,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           generateThumbnailFromCurrentFrame();
         }
       };
-      
+
       // When metadata is loaded
       video.onloadedmetadata = () => {
         console.log('📋 Video metadata loaded:', {
@@ -993,7 +1002,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           readyState: video.readyState
         });
       };
-      
+
       // Handle errors
       video.onerror = (e) => {
         console.error('❌ Error loading video for thumbnail:', e);
@@ -1004,12 +1013,12 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           resolve(null);
         }
       };
-      
+
       // Set the video source and start loading
       console.log('🚀 Setting video source and starting load');
       video.src = videoUrl;
       video.load();
-      
+
     } catch (error) {
       console.error('💥 Error setting up video thumbnail generation:', error);
       resolve(null);

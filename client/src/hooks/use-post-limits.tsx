@@ -79,20 +79,20 @@ export function usePostLimits(date: Date = new Date()) {
       }
     },
     enabled: !!user,
-    staleTime: 1000 * 60, // 60 seconds
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000, // Poll every 30 seconds to reduce server load
-    refetchOnMount: true,
-    retry: 2,
-    retryDelay: attempt => Math.min(attempt > 1 ? 2 ** attempt * 1000 : 1000, 30 * 1000)
+    staleTime: 1000 * 60 * 5, // 5 minutes - reduce staleness checks
+    refetchOnWindowFocus: false, // Don't refetch on focus to reduce updates
+    refetchInterval: false, // Disable polling to prevent constant updates
+    refetchOnMount: false, // Don't refetch on mount if data exists
+    retry: 1,
+    retryDelay: 2000
   });
 
-  // Force a refetch when component mounts
+  // Only refetch when user changes, not on every mount
   useEffect(() => {
-    if (user) {
+    if (user && !data) {
       refetch();
     }
-  }, [refetch, user, dateKey]);
+  }, [user]); // Remove dateKey and refetch dependencies
 
   // Default values
   const defaultCounts = {
