@@ -124,7 +124,7 @@ export class SpartaObjectStorageFinal {
         let thumbnailFilename: string;
         
         if (isVideo) {
-          // For videos, use the same base name as the unique video filename but with .jpg extension
+          // For videos, use the exact same filename as the video but with .jpg extension
           thumbnailFilename = uniqueFilename.replace(/\.[^.]+$/, '.jpg');
         } else {
           // For images, use thumb- prefix with unique filename
@@ -136,10 +136,8 @@ export class SpartaObjectStorageFinal {
         if (isVideo) {
           // Create temporary file for video processing
           const tempVideoPath = `/tmp/${uniqueFilename}`;
-          // Use the same base name as the video but with .jpg extension
-          const videoBaseName = uniqueFilename.replace(/\.[^.]+$/, '');
-          const videoThumbnailName = `${videoBaseName}.jpg`;
-          const tempThumbnailPath = `/tmp/${videoThumbnailName}`;
+          // Use the exact same base name as the video file for the thumbnail
+          const tempThumbnailPath = `/tmp/${thumbnailFilename}`;
 
           fs.writeFileSync(tempVideoPath, fileBuffer);
           await createMovThumbnail(tempVideoPath);
