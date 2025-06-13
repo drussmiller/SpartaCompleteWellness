@@ -375,15 +375,25 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {comment.mediaUrl && !comment.is_video && (
                   <div className="mt-2">
                     <img 
-                      src={`/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
+                      src={`/api/object-storage/direct-download?storageKey=${encodeURIComponent(comment.mediaUrl)}`}
                       alt="Comment image" 
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                      onLoad={() => {
+                        console.log("Comment image loaded successfully:", comment.mediaUrl);
+                      }}
                       onError={(e) => {
                         console.error("Error loading comment image:", comment.mediaUrl);
                         console.error("Full URL attempted:", e.target.src);
-                        // Hide the broken image instead of showing placeholder to prevent blinking
-                        e.target.style.display = 'none';
-                        e.target.onerror = null; // Prevent infinite loop
+                        // Try alternative URL format
+                        const altUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${comment.mediaUrl.split('/').pop()}`)}`;
+                        if (e.target.src !== altUrl) {
+                          console.log("Trying alternative URL format:", altUrl);
+                          e.target.src = altUrl;
+                        } else {
+                          console.error("Both URL formats failed for:", comment.mediaUrl);
+                          e.target.style.display = 'none';
+                          e.target.onerror = null;
+                        }
                       }}
                     />
                   </div>
@@ -391,7 +401,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {comment.mediaUrl && comment.is_video && (
                   <div className="mt-2">
                     <VideoPlayer
-                      src={`/api/object-storage/direct-download?storageKey=${comment.mediaUrl}`}
+                      src={`/api/object-storage/direct-download?storageKey=${encodeURIComponent(comment.mediaUrl)}`}
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                     />
