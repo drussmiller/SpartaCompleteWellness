@@ -78,13 +78,13 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     try {
       if (!content.trim() && !selectedFile) return;
 
-      const formData = new FormData();
-      formData.append('content', content);
-      if (selectedFile) {
-        formData.append('image', selectedFile);  // Using 'image' to match server's multer config
+      // For edit forms (no file support), just pass content
+      if (defaultValue && !selectedFile) {
+        await onSubmit(content);
+      } else {
+        // For new comments, pass both content and file
+        await onSubmit(content, selectedFile || undefined);
       }
-
-      await onSubmit(content, selectedFile || undefined);
 
       setContent('');
       setSelectedFile(null);

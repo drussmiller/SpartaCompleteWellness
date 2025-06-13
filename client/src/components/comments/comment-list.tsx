@@ -149,8 +149,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         throw new Error("Comment content cannot be empty");
       }
 
-      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        content: content.trim()
+      const res = await fetch(`/api/posts/${id}`, {
+        method: "PATCH",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content.trim()
+        }),
+        credentials: 'include'
       });
 
       if (!res.ok) {
@@ -204,7 +211,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: number) => {
       if (!user?.id) throw new Error("You must be logged in to delete a comment");
-      const res = await apiRequest("DELETE", `/api/posts/comments/${commentId}`);
+      const res = await fetch(`/api/posts/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(errorText || "Failed to delete comment");
@@ -400,7 +413,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 variant="ghost"
                 size="sm"
                 className="ml-2"
-                onClick={() => setEditingComment(null)}
+                onClick={() => {
+                  setEditingComment(null);
+                  onVisibilityChange?.(false, replyingTo !== null);
+                }}
               >
                 Cancel
               </Button>
@@ -411,7 +427,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               }}
               isSubmitting={editCommentMutation.isPending}
               defaultValue={comment.content || ""}
-              onCancel={() => setEditingComment(null)}
+              onCancel={() => {
+                setEditingComment(null);
+                onVisibilityChange?.(false, replyingTo !== null);
+              }}
               inputRef={editInputRef}
             />
           </div>
@@ -461,7 +480,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               variant="ghost"
               size="sm"
               className="ml-2"
-              onClick={() => setReplyingTo(null)}
+              onClick={() => {
+                setReplyingTo(null);
+                onVisibilityChange?.(editingComment !== null, false);
+              }}
             >
               Cancel
             </Button>
@@ -476,7 +498,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
-            onCancel={() => setReplyingTo(null)}
+            onCancel={() => {
+              setReplyingTo(null);
+              onVisibilityChange?.(editingComment !== null, false);
+            }}
             key={`reply-form-${replyingTo}`}
           />
         </div>

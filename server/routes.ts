@@ -2446,6 +2446,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Delete a comment
+  router.delete("/api/posts/comments/:commentId", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const commentId = parseInt(req.params.commentId);
+      if (isNaN(commentId)) {
+        return res.status(400).json({ message: "Invalid comment ID" });
+      }
+
+      // Get the comment to check ownership
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, commentId));
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check if user is admin or the comment owner
+      if (!req.user.isAdmin && comment.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      }
+
+      // Delete the comment
+      await db
+        .delete(posts)
+        .where(eq(posts.id, commentId));
+
+      return res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      logger.error("Error deleting comment:", error);
+      return res.status(500).json({
+        message: "Failed to delete comment",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add this endpoint before the app.use(router) line
   // This endpoint has been moved to line ~3116 to support achievement_notifications_enabled
 
