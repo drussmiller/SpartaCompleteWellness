@@ -12,6 +12,7 @@ import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
+import { getThumbnailUrl } from "@/lib/image-utils";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -518,7 +519,7 @@ export function MessageSlideCard() {
                             />
                           ) : (
                             <img
-                              src={message.mediaUrl || message.imageUrl || ''}
+                              src={getThumbnailUrl(message.mediaUrl || message.imageUrl || '', 'medium')}
                               alt="Message image"
                               className="max-w-full rounded mt-2"
                             />
