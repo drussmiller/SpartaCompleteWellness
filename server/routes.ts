@@ -1468,9 +1468,55 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Delete associated media files if they exist
       if (post.mediaUrl) {
         try {
+          // Import the Object Storage utility
+          const { spartaObjectStorage } = await import('./sparta-object-storage-final');
+          
           logger.info(`Deleting file associated with post: ${post.mediaUrl}`);
-          await spartaStorage.deleteFile(post.mediaUrl);
-          logger.info(`Successfully deleted media file for post: ${postId}`);
+          
+          // Extract filename from mediaUrl
+          let filename = '';
+          if (post.mediaUrl.includes('filename=')) {
+            // Handle serve-file URLs like /api/serve-file?filename=...
+            const urlParams = new URLSearchParams(post.mediaUrl.split('?')[1]);
+            filename = urlParams.get('filename') || '';
+          } else if (post.mediaUrl.includes('storageKey=')) {
+            // Handle Object Storage URLs like /api/object-storage/direct-download?storageKey=...
+            const urlParams = new URLSearchParams(post.mediaUrl.split('?')[1]);
+            const storageKey = urlParams.get('storageKey') || '';
+            filename = storageKey.split('/').pop() || '';
+          } else {
+            // Handle direct paths
+            filename = post.mediaUrl.split('/').pop() || '';
+          }
+          
+          logger.info(`Extracted filename for deletion: ${filename}`);
+          
+          if (filename) {
+            // Build the actual Object Storage path
+            const filePath = `shared/uploads/${filename}`;
+            
+            // Delete the main media file
+            try {
+              await spartaObjectStorage.deleteFile(filePath);
+              logger.info(`Deleted main media file: ${filePath}`);
+            } catch (err) {
+              logger.warn(`Could not delete main media file ${filePath}: ${err}`);
+            }
+            
+            // If it's a video, also delete the thumbnail with the new naming convention
+            if (post.is_video) {
+              // With the new compact naming, thumbnails have the same base name but .jpg extension
+              const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const thumbnailPath = `shared/uploads/thumbnails/${baseName}.jpg`;
+              
+              try {
+                await spartaObjectStorage.deleteFile(thumbnailPath);
+                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
+              } catch (err) {
+                logger.warn(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
+              }
+            }
+          }
         } catch (fileError) {
           logger.error(`Error deleting media file for post ${postId}:`, fileError);
           // Continue with post deletion even if file deletion fails
