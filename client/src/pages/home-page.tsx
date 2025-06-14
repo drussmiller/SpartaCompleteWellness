@@ -42,6 +42,7 @@ export default function HomePage() {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const ticking = useRef(false);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -95,30 +96,37 @@ export default function HomePage() {
   // Handle scroll for hiding/showing navigation
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const scrollDifference = Math.abs(currentScrollY - lastScrollY.current);
-      
-      // Only update if scroll difference is significant (more than 5px)
-      if (scrollDifference > 5) {
-        if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
-          // Scrolling down and past 100px - hide header
-          setIsHeaderVisible(false);
-        } else if (currentScrollY < lastScrollY.current) {
-          // Scrolling up - show header
-          setIsHeaderVisible(true);
-        }
-        lastScrollY.current = currentScrollY;
-      }
+      if (!ticking.current) {
+        requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const scrollDifference = Math.abs(currentScrollY - lastScrollY.current);
+          
+          // Only update if scroll difference is significant (more than 10px)
+          if (scrollDifference > 10) {
+            if (currentScrollY > lastScrollY.current && currentScrollY > 150) {
+              // Scrolling down and past 150px - hide header
+              setIsHeaderVisible(false);
+            } else if (currentScrollY < lastScrollY.current) {
+              // Scrolling up - show header
+              setIsHeaderVisible(true);
+            }
+            lastScrollY.current = currentScrollY;
+          }
 
-      // Clear any existing timeout
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
+          // Clear any existing timeout
+          if (scrollTimeout.current) {
+            clearTimeout(scrollTimeout.current);
+          }
 
-      // Show header after scroll stops for 2 seconds
-      scrollTimeout.current = setTimeout(() => {
-        setIsHeaderVisible(true);
-      }, 2000);
+          // Show header after scroll stops for 1.5 seconds
+          scrollTimeout.current = setTimeout(() => {
+            setIsHeaderVisible(true);
+          }, 1500);
+
+          ticking.current = false;
+        });
+        ticking.current = true;
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -148,8 +156,8 @@ export default function HomePage() {
     <AppLayout isBottomNavVisible={isHeaderVisible}>
       <div className="flex flex-col min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
-        <div className={`fixed top-0 left-0 right-0 z-50 bg-background border-b border-border transition-transform duration-300 ease-in-out ${
-          isHeaderVisible ? 'transform translate-y-0' : 'transform -translate-y-full'
+        <div className={`fixed top-0 left-0 right-0 z-50 bg-background border-b border-border transition-all duration-300 ease-in-out ${
+          isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
         }`}>
           <div className="w-full max-w-[768px] mx-auto px-4">
             <div className="flex items-center justify-between pt-12">
