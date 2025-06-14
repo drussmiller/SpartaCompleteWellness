@@ -53,7 +53,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
       orientation === "vertical" && "w-full hidden",
       // Visibility animation - explicit transform classes
       orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
-    )}></nav>
+    )}>
       <div className={cn(
         // Container styles
         "flex items-center",
