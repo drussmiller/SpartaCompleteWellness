@@ -21,14 +21,20 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
 
     const handleScroll = () => {
       const currentScrollY = window.pageYOffset;
-
-      setIsHeaderVisible(currentScrollY < lastScrollY || currentScrollY === 0);
-      setIsBottomNavVisible(currentScrollY < lastScrollY || currentScrollY === 0);
-
-      lastScrollY = currentScrollY > 0 ? currentScrollY : 0;
+      const scrollDelta = Math.abs(currentScrollY - lastScrollY);
+      
+      // Only trigger if scroll delta is significant (prevents minor scrolls from triggering)
+      if (scrollDelta > 5) {
+        const scrollingDown = currentScrollY > lastScrollY;
+        
+        setIsHeaderVisible(!scrollingDown || currentScrollY === 0);
+        setIsBottomNavVisible(!scrollingDown || currentScrollY === 0);
+        
+        lastScrollY = currentScrollY > 0 ? currentScrollY : 0;
+      }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
