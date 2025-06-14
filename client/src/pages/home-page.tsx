@@ -95,9 +95,9 @@ export default function HomePage() {
   // Handle scroll for hiding/showing navigation
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop;
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
       
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current);
+      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'window.scrollY:', window.scrollY, 'docElement.scrollTop:', document.documentElement.scrollTop);
       
       // Simple logic: hide header when scrolling down past 50px, show when scrolling up or near top
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
@@ -113,22 +113,27 @@ export default function HomePage() {
       lastScrollY.current = currentScrollY;
     };
 
-    // Use throttled scroll handling
-    let ticking = false;
-    const throttledScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          handleScroll();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', throttledScroll, { passive: true });
+    // Test scroll immediately to see current state
+    console.log('Setting up scroll listener - current scroll:', window.scrollY);
+    
+    // Add multiple event listeners to catch scroll events
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    document.body.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Also try listening on the main content area
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
     
     return () => {
-      window.removeEventListener('scroll', throttledScroll);
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      document.body.removeEventListener('scroll', handleScroll);
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', handleScroll);
+      }
     };
   }, []);
 
