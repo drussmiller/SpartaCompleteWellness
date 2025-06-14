@@ -58,10 +58,11 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     store: storage.sessionStore,
     name: 'sparta.sid',
+    rolling: true, // Reset expiration on each request
     cookie: {
       secure: !isDevelopment,
       sameSite: isDevelopment ? 'lax' : 'strict',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days instead of 24 hours
       httpOnly: true,
       path: '/',
     }
