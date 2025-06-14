@@ -95,25 +95,39 @@ export default function HomePage() {
 
   // Handle scroll for hiding/showing navigation
   useEffect(() => {
+    let scrollVelocity = 0;
+    let lastScrollTime = Date.now();
+    
     const handleScroll = () => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      const currentTime = Date.now();
+      const timeDelta = currentTime - lastScrollTime;
       
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current);
+      // Calculate scroll velocity (pixels per millisecond)
+      if (timeDelta > 0) {
+        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
+      }
       
-      // Simple logic: hide header when scrolling down past 50px, show when scrolling up or near top
+      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
+      
+      // Hide header when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - hide header and bottom nav
         console.log('Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
         setIsHeaderVisible(false);
         setIsBottomNavVisible(false);
-      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
-        // Scrolling up or near top - show header and bottom nav
-        console.log('Showing header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to true');
+      } 
+      // Show header/nav when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
+      else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
+        // Near top OR scrolling up fast - show header and bottom nav
+        const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
+        console.log(`Showing header and bottom nav - ${reason} - scrollY:`, currentScrollY, 'setting isBottomNavVisible to true');
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
       
       lastScrollY.current = currentScrollY;
+      lastScrollTime = currentTime;
     };
 
     // Test scroll immediately to see current state
