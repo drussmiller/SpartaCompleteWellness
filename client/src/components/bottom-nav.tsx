@@ -52,7 +52,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
       // Desktop styles (side nav) - now we use VerticalNav component instead
       orientation === "vertical" && "w-full hidden",
       // Visibility animation
-      orientation === "horizontal" && (isVisible ? "transform translate-y-0" : "transform translate-y-full")
+      orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
     )}>
       <div className={cn(
         // Container styles
