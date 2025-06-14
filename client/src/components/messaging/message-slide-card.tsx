@@ -12,7 +12,7 @@ import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { createThumbnailUrl } from "@/lib/media-utils";
+import { createMediaUrl } from "@/lib/media-utils";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -539,13 +539,13 @@ export function MessageSlideCard() {
                          (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                           message.is_video ? (
                             <VideoPlayer
-                              src={createThumbnailUrl(message.imageUrl || message.mediaUrl || '')}
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
                               className="max-w-full rounded mt-2"
                               onError={(error) => console.error("Error loading message video:", message.imageUrl || message.mediaUrl, error)}
                             />
                           ) : (
                             <img
-                              src={createThumbnailUrl(message.imageUrl || message.mediaUrl || '')}
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
                               alt="Message image"
                               className="max-w-full rounded mt-2"
                               onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
