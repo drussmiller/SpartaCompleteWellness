@@ -97,8 +97,10 @@ export default function HomePage() {
     const handleScroll = () => {
       if (!ticking.current) {
         requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
+          const currentScrollY = window.scrollY || document.documentElement.scrollTop;
           const scrollDifference = Math.abs(currentScrollY - lastScrollY.current);
+          
+          console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'diff:', scrollDifference);
           
           // Only update if scroll difference is significant (more than 3px)
           if (scrollDifference > 3) {
@@ -120,10 +122,13 @@ export default function HomePage() {
       }
     };
 
+    // Add event listeners to both window and document
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -142,7 +147,7 @@ export default function HomePage() {
 
   return (
     <AppLayout isBottomNavVisible={isHeaderVisible}>
-      <div className="flex flex-col min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-auto">
         {/* Fixed Header - spans full width */}
         <div className={`fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-200 ease-in-out ${
           isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
