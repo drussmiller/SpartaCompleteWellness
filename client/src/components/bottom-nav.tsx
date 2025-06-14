@@ -15,9 +15,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Debug logging for visibility
-  console.log('BottomNav render - orientation:', orientation, 'isVisible:', isVisible);
-
   // Query for unread notifications count
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["/api/notifications/unread"],
@@ -51,14 +48,14 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
     <nav 
       className={cn(
         // Base styles
-        "bg-background z-[100] shadow-lg transition-transform duration-700 ease-in-out",
+        "bg-background z-[100] shadow-lg",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
         // Desktop styles (side nav) - now we use VerticalNav component instead
         orientation === "vertical" && "w-full hidden"
       )}
       style={orientation === "horizontal" ? {
-        transform: isVisible ? 'translateY(0%)' : 'translateY(100%)',
+        transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 700ms ease-in-out'
       } : undefined}>
       <div className={cn(
