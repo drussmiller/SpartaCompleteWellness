@@ -95,40 +95,40 @@ export default function HomePage() {
   // Handle scroll for hiding/showing navigation
   useEffect(() => {
     const handleScroll = () => {
-      if (!ticking.current) {
-        requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY || document.documentElement.scrollTop;
-          const scrollDifference = Math.abs(currentScrollY - lastScrollY.current);
-          
-          console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'diff:', scrollDifference);
-          
-          // Only update if scroll difference is significant (more than 3px)
-          if (scrollDifference > 3) {
-            if (currentScrollY > lastScrollY.current && currentScrollY > 80) {
-              // Scrolling down and past 80px - hide header
-              console.log('Hiding header - scrollY:', currentScrollY);
-              setIsHeaderVisible(false);
-            } else if (currentScrollY < lastScrollY.current || currentScrollY <= 30) {
-              // Scrolling up or near top - show header
-              console.log('Showing header - scrollY:', currentScrollY);
-              setIsHeaderVisible(true);
-            }
-            lastScrollY.current = currentScrollY;
-          }
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop;
+      
+      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current);
+      
+      // Simple logic: hide header when scrolling down past 50px, show when scrolling up or near top
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        // Scrolling down - hide header
+        console.log('Hiding header - scrollY:', currentScrollY);
+        setIsHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
+        // Scrolling up or near top - show header
+        console.log('Showing header - scrollY:', currentScrollY);
+        setIsHeaderVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
 
-          ticking.current = false;
+    // Use throttled scroll handling
+    let ticking = false;
+    const throttledScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
         });
-        ticking.current = true;
+        ticking = true;
       }
     };
 
-    // Add event listeners to both window and document
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('scroll', throttledScroll, { passive: true });
     
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', throttledScroll);
     };
   }, []);
 
@@ -229,13 +229,12 @@ export default function HomePage() {
                     <div className="text-center text-muted-foreground py-8">
                       No posts yet. Be the first to share!
                       <div className="mt-8 space-y-4">
-                        {/* Add some dummy content to make the page scrollable for testing */}
-                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 1</div>
-                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 2</div>
-                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 3</div>
-                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 4</div>
-                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 5</div>
-                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 6</div>
+                        {/* Add content to test scrolling behavior */}
+                        {Array.from({ length: 15 }, (_, i) => (
+                          <div key={i} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600">
+                            Test Content Block {i + 1} - Scroll to test header hiding
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ) : null}
