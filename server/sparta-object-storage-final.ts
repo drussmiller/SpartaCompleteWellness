@@ -97,8 +97,10 @@ export class SpartaObjectStorageFinal {
     let fileBuffer: Buffer;
     if (Buffer.isBuffer(fileData)) {
       fileBuffer = fileData;
-    } else {
+    } else if (typeof fileData === 'string') {
       fileBuffer = fs.readFileSync(fileData);
+    } else {
+      throw new Error('Invalid file data: must be Buffer or file path string');
     }
 
     // Generate unique filename

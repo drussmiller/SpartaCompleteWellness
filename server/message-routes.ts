@@ -153,7 +153,7 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         
         // Store the file using Object Storage only
         const fileInfo = await spartaObjectStorage.storeFile(
-          req.file.buffer, // Use the buffer directly from multer
+          req.file.path, // Use the file path from disk storage multer
           req.file.originalname,
           mimeType,
           isVideo // Pass the isVideo flag to ensure proper handling
