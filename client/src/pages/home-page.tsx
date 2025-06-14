@@ -40,6 +40,7 @@ export default function HomePage() {
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
@@ -101,13 +102,15 @@ export default function HomePage() {
       
       // Simple logic: hide header when scrolling down past 50px, show when scrolling up or near top
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - hide header
-        console.log('Hiding header - scrollY:', currentScrollY);
+        // Scrolling down - hide header and bottom nav
+        console.log('Hiding header and bottom nav - scrollY:', currentScrollY);
         setIsHeaderVisible(false);
+        setIsBottomNavVisible(false);
       } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
-        // Scrolling up or near top - show header
-        console.log('Showing header - scrollY:', currentScrollY);
+        // Scrolling up or near top - show header and bottom nav
+        console.log('Showing header and bottom nav - scrollY:', currentScrollY);
         setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
       }
       
       lastScrollY.current = currentScrollY;
@@ -151,7 +154,7 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isHeaderVisible}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div className={`fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-200 ease-in-out ${
