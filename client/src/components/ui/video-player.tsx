@@ -232,23 +232,25 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/* Video player (initially hidden) */}
-      <div className={cn("w-full h-full video-wrapper", showVideo ? "block" : "hidden")}>
-        <video
-          ref={videoRef}
-          src={src}
-          preload={preload}
-          playsInline={playsInline}
-          className="w-full h-full object-contain" /* Ensure video fills container properly */
-          controls={true}
-          controlsList={controlsList}
-          disablePictureInPicture={disablePictureInPicture}
-          style={{ 
-            maxHeight: "none", 
-            width: "100%"
-          }}
-        />
-      </div>
+      {/* Video player (only rendered after thumbnail is clicked) */}
+      {showVideo && (
+        <div className="w-full h-full video-wrapper">
+          <video
+            ref={videoRef}
+            src={src}
+            preload={preload}
+            playsInline={playsInline}
+            className="w-full h-full object-contain" /* Ensure video fills container properly */
+            controls={true}
+            controlsList={controlsList}
+            disablePictureInPicture={disablePictureInPicture}
+            style={{ 
+              maxHeight: "none", 
+              width: "100%"
+            }}
+          />
+        </div>
+      )}
       
       {/*  Loading indicator - only shown when video is visible and loading */}
       {showVideo && loading && (
