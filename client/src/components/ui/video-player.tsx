@@ -75,6 +75,7 @@ export function VideoPlayer({
   const [showVideo, setShowVideo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [posterError, setPosterError] = useState(false);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -102,8 +103,24 @@ export function VideoPlayer({
   // Handle poster image load error - no fallbacks as requested by user
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
+    setPosterError(true);
     // As requested by user, no fallback images or alternatives - just fail silently
   };
+
+  // Handle thumbnail load success
+  const handleThumbnailLoad = () => {
+    setThumbnailLoaded(true);
+  };
+
+  // Preload the thumbnail image when component mounts
+  useEffect(() => {
+    if (simplifiedPoster) {
+      const img = new Image();
+      img.onload = () => setThumbnailLoaded(true);
+      img.onerror = () => setPosterError(true);
+      img.src = simplifiedPoster;
+    }
+  }, [simplifiedPoster]);
   
   // Set up video loaded event
   useEffect(() => {
@@ -186,18 +203,20 @@ export function VideoPlayer({
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px] bg-white">
-          {/* Always render img if we have a poster - no longer hiding on errors */}
-          {simplifiedPoster && (
+          {/* Always render img if we have a poster and it's loaded - no longer hiding on errors */}
+          {simplifiedPoster && thumbnailLoaded && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
               className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
               onClick={handleThumbnailClick}
               onError={handlePosterError}
+              onLoad={handleThumbnailLoad}
+              style={{ display: 'block' }} /* Force immediate display */
             />
           )}
-          {/* Show fallback only if no poster URL at all */}
-          {!simplifiedPoster && (
+          {/* Show fallback only if no poster URL at all or poster failed to load */}
+          {(!simplifiedPoster || !thumbnailLoaded) && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
               className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -220,8 +239,9 @@ export function VideoPlayer({
           {/* Play button overlay on thumbnail */}
           <div className="absolute inset-0 flex items-center justify-center bg-black/10">
             <div 
-              className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60 transition-colors"
+              className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60"
               onClick={handleThumbnailClick}
+              style={{ transition: 'none' }} /* Remove transition delay */
             >
               <Play size={40} className="text-white" fill="white" />
             </div>
