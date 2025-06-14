@@ -238,7 +238,7 @@ export function VideoPlayer({
           <video
             ref={videoRef}
             src={src}
-            preload={preload}
+            preload="none"
             playsInline={playsInline}
             className="w-full h-full object-contain" /* Ensure video fills container properly */
             controls={true}
