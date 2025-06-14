@@ -31,6 +31,18 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
+  // Handle /api/serve-file URLs by extracting the filename parameter
+  if (key.includes('/api/serve-file') && key.includes('filename=')) {
+    const urlParams = new URLSearchParams(key.split('?')[1] || '');
+    const filename = urlParams.get('filename');
+    if (filename) {
+      console.log(`Extracted filename from serve-file URL: ${filename}`);
+      const storageKey = `shared/uploads/${filename}`;
+      console.log(`Creating Object Storage URL: ${key} -> storageKey=${storageKey}`);
+      return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
+    }
+  }
+
   // Clean the key - remove leading slash and normalize path
   let cleanKey = key.replace(/^\/+/, '');
 

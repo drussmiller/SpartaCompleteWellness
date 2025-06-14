@@ -64,7 +64,7 @@ const storage = multer.diskStorage({
       const fileExtension = fileExt || '.mp4';
       cb(null, `${shortTime}${shortId}-msg${fileExtension}`);
     } else {
-      // For images, use original extension
+      // For images, preserve the original extension or default to .jpg
       const origExt = path.extname(file.originalname) || '.jpg';
       cb(null, `${shortTime}${shortId}-msg${origExt}`);
     }
