@@ -154,7 +154,7 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible}>
+    <AppLayout key={`nav-${isBottomNavVisible}`} isBottomNavVisible={isBottomNavVisible}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div className={`fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-200 ease-in-out ${
