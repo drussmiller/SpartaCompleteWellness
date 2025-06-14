@@ -64,9 +64,32 @@ const storage = multer.diskStorage({
       const fileExtension = fileExt || '.mp4';
       cb(null, `${shortTime}${shortId}-msg${fileExtension}`);
     } else {
-      // For images, preserve the original extension or default to .jpg
-      const origExt = path.extname(file.originalname) || '.jpg';
-      cb(null, `${shortTime}${shortId}-msg${origExt}`);
+      // For images, determine extension based on MIME type first, then filename
+      let extension = '.jpg'; // default
+      
+      // Map MIME types to extensions
+      const mimeToExt = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg', 
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/bmp': '.bmp',
+        'image/tiff': '.tiff'
+      };
+      
+      // Use MIME type if available and recognized
+      if (file.mimetype && mimeToExt[file.mimetype]) {
+        extension = mimeToExt[file.mimetype];
+      } else {
+        // Fall back to original filename extension if MIME type not recognized
+        const origExt = path.extname(file.originalname);
+        if (origExt) {
+          extension = origExt.toLowerCase();
+        }
+      }
+      
+      cb(null, `${shortTime}${shortId}-msg${extension}`);
     }
   }
 });
