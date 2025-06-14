@@ -40,7 +40,7 @@ export default function HomePage() {
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
@@ -66,17 +66,17 @@ export default function HomePage() {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
       const data = await response.json();
-      
+
       console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
-      
+
       // Check if post ID 491 is in the response
       const hasTargetPost = data.some(post => post.id === 491);
       console.log("Does response include post #491?", hasTargetPost);
-      
+
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
       console.log("Posts after prayer filtering:", filtered.length);
-      
+
       return filtered;
     },
     enabled: !!user,
@@ -96,49 +96,55 @@ export default function HomePage() {
   // Handle scroll for hiding/showing navigation
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-      
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'window.scrollY:', window.scrollY, 'docElement.scrollTop:', document.documentElement.scrollTop);
-      
-      // Simple logic: hide header/show bottom nav when scrolling down past 50px, show header/hide bottom nav when scrolling up or near top
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - hide header, show bottom nav
-        console.log('Hiding header, showing bottom nav - scrollY:', currentScrollY);
-        setIsHeaderVisible(false);
-        setIsBottomNavVisible(true);
-      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
-        // Scrolling up or near top - show header, hide bottom nav
-        console.log('Showing header, hiding bottom nav - scrollY:', currentScrollY);
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(false);
-      }
-      
-      lastScrollY.current = currentScrollY;
+      if (ticking.current) return;
+
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop;
+        const deltaY = currentScrollY - lastScrollY.current;
+
+        console.log('Scroll - currentY:', currentScrollY, 'deltaY:', deltaY, 'lastY:', lastScrollY.current);
+
+        // Facebook-style behavior:
+        // - Near top (0-50px): Always show header, hide bottom nav
+        // - Scrolling down past 60px: Hide header, show bottom nav  
+        // - Scrolling up with good velocity/distance: Show header, hide bottom nav
+
+        if (currentScrollY <= 50) {
+          // Near top - always show header, hide bottom nav
+          if (!isHeaderVisible || isBottomNavVisible) {
+            console.log('Near top - showing header, hiding bottom nav');
+            setIsHeaderVisible(true);
+            setIsBottomNavVisible(false);
+          }
+        } else if (deltaY > 5 && currentScrollY > 60) {
+          // Scrolling down past threshold - hide header, show bottom nav
+          if (isHeaderVisible) {
+            console.log('Scrolling down - hiding header, showing bottom nav');
+            setIsHeaderVisible(false);
+            setIsBottomNavVisible(true);
+          }
+        } else if (deltaY < -10) {
+          // Scrolling up with decent distance - show header, hide bottom nav
+          if (!isHeaderVisible) {
+            console.log('Scrolling up - showing header, hiding bottom nav');
+            setIsHeaderVisible(true);
+            setIsBottomNavVisible(false);
+          }
+        }
+
+        lastScrollY.current = currentScrollY;
+        ticking.current = false;
+      });
+
+      ticking.current = true;
     };
 
-    // Test scroll immediately to see current state
-    console.log('Setting up scroll listener - current scroll:', window.scrollY);
-    
-    // Add multiple event listeners to catch scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
-    document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Also try listening on the main content area
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      document.body.removeEventListener('scroll', handleScroll);
-      if (mainElement) {
-        mainElement.removeEventListener('scroll', handleScroll);
-      }
     };
-  }, []);
+  }, [isHeaderVisible, isBottomNavVisible]);
 
   if (error) {
     return (
@@ -178,7 +184,7 @@ export default function HomePage() {
                 <MessageSlideCard />
               </div>
             </div>
-            
+
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
