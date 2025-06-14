@@ -15,6 +15,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
+  // Debug logging for visibility
+  console.log('BottomNav render - orientation:', orientation, 'isVisible:', isVisible);
+
   // Query for unread notifications count
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["/api/notifications/unread"],
@@ -55,7 +58,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
         orientation === "vertical" && "w-full hidden"
       )}
       style={orientation === "horizontal" ? {
-        transform: isVisible ? 'translateY(0)' : 'translateY(100%)'
+        transform: isVisible ? 'translateY(0%)' : 'translateY(100%)',
+        transition: 'transform 700ms ease-in-out'
       } : undefined}>
       <div className={cn(
         // Container styles
