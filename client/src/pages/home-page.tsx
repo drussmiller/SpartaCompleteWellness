@@ -100,13 +100,15 @@ export default function HomePage() {
           const currentScrollY = window.scrollY;
           const scrollDifference = Math.abs(currentScrollY - lastScrollY.current);
           
-          // Only update if scroll difference is significant (more than 5px)
-          if (scrollDifference > 5) {
-            if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
-              // Scrolling down and past 100px - hide header
+          // Only update if scroll difference is significant (more than 3px)
+          if (scrollDifference > 3) {
+            if (currentScrollY > lastScrollY.current && currentScrollY > 80) {
+              // Scrolling down and past 80px - hide header
+              console.log('Hiding header - scrollY:', currentScrollY);
               setIsHeaderVisible(false);
-            } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
-              // Scrolling up or at top - show header
+            } else if (currentScrollY < lastScrollY.current || currentScrollY <= 30) {
+              // Scrolling up or near top - show header
+              console.log('Showing header - scrollY:', currentScrollY);
               setIsHeaderVisible(true);
             }
             lastScrollY.current = currentScrollY;
@@ -142,7 +144,7 @@ export default function HomePage() {
     <AppLayout isBottomNavVisible={isHeaderVisible}>
       <div className="flex flex-col min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
-        <div className={`fixed top-0 left-0 right-0 z-50 bg-background border-b border-border transition-transform duration-300 ease-out ${
+        <div className={`fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-200 ease-in-out ${
           isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
         }`}>
           <div className="w-full max-w-[768px] mx-auto px-4">
@@ -207,7 +209,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-32 pt-8 mb-20">
+              <main className="pt-40 mb-20">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
