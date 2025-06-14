@@ -55,7 +55,7 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
             </div>
           </header>
         )}
-        <div className={`flex-1 md:pl-20 ${title ? 'pt-16' : ''} ${isMobile ? 'pb-20' : ''}`}>
+        <div className={`flex-1 md:pl-20 ${title ? 'pt-20' : ''} ${isMobile ? 'pb-20' : ''}`}>
           {children}
         </div>
         {isMobile && <BottomNav isVisible={isBottomNavVisible} />}
