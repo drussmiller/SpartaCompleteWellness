@@ -147,7 +147,7 @@ export default function HomePage() {
 
   return (
     <AppLayout isBottomNavVisible={isHeaderVisible}>
-      <div className="min-h-screen bg-background overflow-auto">
+      <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div className={`fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-200 ease-in-out ${
           isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
@@ -214,7 +214,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20">
+              <main className="pt-40 mb-20 min-h-[200vh]">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
@@ -228,6 +228,15 @@ export default function HomePage() {
                   ) : !isLoading ? (
                     <div className="text-center text-muted-foreground py-8">
                       No posts yet. Be the first to share!
+                      <div className="mt-8 space-y-4">
+                        {/* Add some dummy content to make the page scrollable for testing */}
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 1</div>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 2</div>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 3</div>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 4</div>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 5</div>
+                        <div className="h-32 bg-gray-100 rounded flex items-center justify-center">Test Content 6</div>
+                      </div>
                     </div>
                   ) : null}
 
