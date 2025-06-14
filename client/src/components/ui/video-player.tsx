@@ -185,7 +185,7 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px] bg-gray-800">
+        <div className="relative w-full h-full min-h-[200px] bg-white">
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && (
             <img 
@@ -205,11 +205,12 @@ export function VideoPlayer({
               style={{
                 background: posterError ? 
                   "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
-                  "black"
+                  "white",
+                border: "1px solid #e5e7eb"
               }}
             >
               <div className="p-4 rounded-lg flex flex-col items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
                   <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
               </div>
