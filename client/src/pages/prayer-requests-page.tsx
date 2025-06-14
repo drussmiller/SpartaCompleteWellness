@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { useLocation } from "wouter";
@@ -22,6 +22,9 @@ export default function PrayerRequestsPage() {
   const { markAsViewed } = usePrayerRequests();
   const loadingRef = useRef<HTMLDivElement>(null);
   const [_, navigate] = useLocation();
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   // Mark prayer requests as viewed when page loads
   useEffect(() => {
@@ -30,6 +33,64 @@ export default function PrayerRequestsPage() {
       markAsViewed();
     }
   }, [user, markAsViewed]);
+
+  // Handle scroll for hiding/showing navigation
+  useEffect(() => {
+    let scrollVelocity = 0;
+    let lastScrollTime = Date.now();
+    
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      const currentTime = Date.now();
+      const timeDelta = currentTime - lastScrollTime;
+      
+      // Calculate scroll velocity (pixels per millisecond)
+      if (timeDelta > 0) {
+        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
+      }
+      
+      console.log('Prayer Requests - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
+      
+      // Hide header when scrolling down past 50px
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        // Scrolling down - hide header and bottom nav
+        console.log('Prayer Requests - Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
+        setIsHeaderVisible(false);
+        setIsBottomNavVisible(false);
+      } 
+      // Show header/nav when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
+      else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
+        // Near top OR scrolling up fast - show header and bottom nav
+        const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
+        console.log(`Prayer Requests - Showing header and bottom nav - ${reason} - scrollY:`, currentScrollY, 'setting isBottomNavVisible to true');
+        setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+      lastScrollTime = currentTime;
+    };
+
+    // Add scroll event listeners
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    document.body.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Also try listening on the main content area
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      document.body.removeEventListener('scroll', handleScroll);
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -75,10 +136,15 @@ export default function PrayerRequestsPage() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout isBottomNavVisible={isBottomNavVisible}>
       <div className="flex flex-col min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+        <div 
+          className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border transition-transform duration-700 ease-in-out"
+          style={{
+            transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'
+          }}
+        ></div>
           <div className="w-full max-w-[768px] mx-auto px-4">
             <div className="flex items-center justify-between pt-12">
               <div className="flex-1 flex justify-center">
