@@ -158,7 +158,7 @@ export default function HomePage() {
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
-          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-300 ease-in-out"
+          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-700 ease-in-out"
           style={{
             transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'
           }}
