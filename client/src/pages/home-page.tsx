@@ -116,18 +116,14 @@ export default function HomePage() {
           setIsBottomNavVisible(false);
         } else if (deltaY > 5 && currentScrollY > 60) {
           // Scrolling down past threshold - hide header, show bottom nav
-          if (isHeaderVisible) {
-            console.log('Scrolling down - hiding header, showing bottom nav');
-            setIsHeaderVisible(false);
-            setIsBottomNavVisible(true);
-          }
+          console.log('Scrolling down - hiding header, showing bottom nav');
+          setIsHeaderVisible(false);
+          setIsBottomNavVisible(true);
         } else if (deltaY < -10) {
           // Scrolling up with decent distance - show header, hide bottom nav
-          if (!isHeaderVisible) {
-            console.log('Scrolling up - showing header, hiding bottom nav');
-            setIsHeaderVisible(true);
-            setIsBottomNavVisible(false);
-          }
+          console.log('Scrolling up - showing header, hiding bottom nav');
+          setIsHeaderVisible(true);
+          setIsBottomNavVisible(false);
         }
 
         lastScrollY.current = currentScrollY;
