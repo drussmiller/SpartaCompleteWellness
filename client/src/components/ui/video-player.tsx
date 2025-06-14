@@ -75,6 +75,7 @@ export function VideoPlayer({
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
+  const [videoInitialized, setVideoInitialized] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -91,7 +92,8 @@ export function VideoPlayer({
 
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, showing video player");
+    console.log("Thumbnail clicked, initializing video player");
+    setVideoInitialized(true);
     setShowVideo(true);
     
     // Start video playback immediately after video element is rendered
@@ -251,7 +253,7 @@ export function VideoPlayer({
       )}
       
       {/* Video player (only rendered after thumbnail is clicked) */}
-      {showVideo && (
+      {videoInitialized && showVideo && (
         <div className="w-full h-full video-wrapper">
           <video
             ref={videoRef}
