@@ -78,13 +78,13 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Set thumbnailLoaded based on whether we have a poster or not
+  // Initialize thumbnailLoaded based on whether we have a poster or not
   useEffect(() => {
     if (!simplifiedPoster) {
       // If no poster, show fallback immediately
       setThumbnailLoaded(true);
     } else {
-      // If we have a poster, wait for it to load
+      // If we have a poster, reset and wait for it to load
       setThumbnailLoaded(false);
     }
   }, [simplifiedPoster]);
@@ -203,22 +203,22 @@ export function VideoPlayer({
       style={{ margin: 0, padding: 0, lineHeight: 0 }}
     >
       {/* Thumbnail image that gets clicked to start the video */}
-      {!showVideo && thumbnailLoaded && (
+      {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Always render img if we have a poster - no longer hiding on errors */}
-          {simplifiedPoster && !posterError && (
+          {/* Show poster image if available and loaded */}
+          {simplifiedPoster && !posterError && thumbnailLoaded && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
+              className="w-full h-full object-cover cursor-pointer"
               onClick={handleThumbnailClick}
               onLoad={handlePosterLoad}
               onError={handlePosterError}
-              style={{ display: 'block' }} /* Force immediate display */
+              style={{ display: 'block' }}
             />
           )}
-          {/* Show fallback only if no poster URL at all or poster failed to load */}
-          {(!simplifiedPoster || posterError) && (
+          {/* Show fallback if no poster, poster failed, or poster is still loading */}
+          {(!simplifiedPoster || posterError || (!thumbnailLoaded && simplifiedPoster)) && (
             /* Only show the gradient fallback as a visual cue for debugging - hide in production */
             <div 
               className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
