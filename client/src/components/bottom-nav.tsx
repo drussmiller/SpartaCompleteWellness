@@ -48,16 +48,14 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
     <nav 
       className={cn(
         // Base styles
-        "bg-background z-[100] shadow-lg",
+        "bg-background z-[100] shadow-lg transition-transform duration-700 ease-in-out",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
         // Desktop styles (side nav) - now we use VerticalNav component instead
-        orientation === "vertical" && "w-full hidden"
-      )}
-      style={orientation === "horizontal" ? {
-        transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
-        transition: 'transform 700ms ease-in-out'
-      } : undefined}>
+        orientation === "vertical" && "w-full hidden",
+        // Transform based on visibility
+        orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
+      )}>
       <div className={cn(
         // Container styles
         "flex items-center",
