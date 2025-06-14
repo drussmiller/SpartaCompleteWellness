@@ -111,11 +111,9 @@ export default function HomePage() {
 
         if (currentScrollY <= 50) {
           // Near top - always show header, hide bottom nav
-          if (!isHeaderVisible || isBottomNavVisible) {
-            console.log('Near top - showing header, hiding bottom nav');
-            setIsHeaderVisible(true);
-            setIsBottomNavVisible(false);
-          }
+          console.log('Near top - showing header, hiding bottom nav');
+          setIsHeaderVisible(true);
+          setIsBottomNavVisible(false);
         } else if (deltaY > 5 && currentScrollY > 60) {
           // Scrolling down past threshold - hide header, show bottom nav
           if (isHeaderVisible) {
