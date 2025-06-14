@@ -15,14 +15,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Debug logging with more detail
-  console.log('BottomNav render - isVisible:', isVisible, 'orientation:', orientation, 'typeof isVisible:', typeof isVisible, 'timestamp:', Date.now());
-  
-  // Force component to re-render when isVisible changes
-  useEffect(() => {
-    console.log('BottomNav useEffect - isVisible changed to:', isVisible, 'at', new Date().toISOString());
-  }, [isVisible]);
-
   // Query for unread notifications count
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["/api/notifications/unread"],
@@ -55,18 +47,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
   return (
     <nav 
       className={cn(
-        // Base styles with explicit transform and opacity
-        "bg-background z-[100] shadow-lg transition-all duration-300 ease-in-out",
+        // Base styles
+        "bg-background z-[100] shadow-lg transition-transform duration-300 ease-in-out",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
         // Desktop styles (side nav) - now we use VerticalNav component instead
-        orientation === "vertical" && "w-full hidden"
-      )}
-      style={{
-        transform: orientation === "horizontal" && !isVisible ? "translateY(100%)" : "translateY(0)",
-        opacity: orientation === "horizontal" && !isVisible ? 0 : 1,
-        pointerEvents: orientation === "horizontal" && !isVisible ? "none" : "auto"
-      }}>
+        orientation === "vertical" && "w-full hidden",
+        // Animation - simple CSS classes
+        orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
+      )}>
       <div className={cn(
         // Container styles
         "flex items-center",
