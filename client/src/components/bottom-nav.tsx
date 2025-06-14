@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useEffect } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -44,16 +45,17 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
   ];
 
   return (
-    <nav className={cn(
-      // Base styles
-      "bg-background z-[100] shadow-lg transition-all duration-300 ease-in-out",
-      // Mobile styles (bottom nav) - always hidden on desktop
-      orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
-      // Desktop styles (side nav) - now we use VerticalNav component instead
-      orientation === "vertical" && "w-full hidden",
-      // Visibility animation
-      orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
-    )}>
+    <nav 
+      className={cn(
+        // Base styles
+        "bg-background z-[100] shadow-lg transition-transform duration-300 ease-in-out",
+        // Mobile styles (bottom nav) - always hidden on desktop
+        orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
+        // Desktop styles (side nav) - now we use VerticalNav component instead
+        orientation === "vertical" && "w-full hidden",
+        // Animation - simple CSS classes
+        orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
+      )}>
       <div className={cn(
         // Container styles
         "flex items-center",
