@@ -39,8 +39,6 @@ export default function HomePage() {
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
@@ -66,17 +64,17 @@ export default function HomePage() {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
       const data = await response.json();
-      
+
       console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
-      
+
       // Check if post ID 491 is in the response
       const hasTargetPost = data.some(post => post.id === 491);
       console.log("Does response include post #491?", hasTargetPost);
-      
+
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
       console.log("Posts after prayer filtering:", filtered.length);
-      
+
       return filtered;
     },
     enabled: !!user,
@@ -93,53 +91,6 @@ export default function HomePage() {
     navigate('/prayer-requests');
   };
 
-  // Handle scroll for hiding/showing navigation
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-      
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current);
-      
-      // Simple logic: hide header when scrolling down past 50px, show when scrolling up or near top
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - hide header and bottom nav
-        console.log('Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
-        setIsHeaderVisible(false);
-        setIsBottomNavVisible(false);
-      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
-        // Scrolling up or near top - show header and bottom nav
-        console.log('Showing header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to true');
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
-      }
-      
-      lastScrollY.current = currentScrollY;
-    };
-
-    // Test scroll immediately to see current state
-    console.log('Setting up scroll listener - current scroll:', window.scrollY);
-    
-    // Add multiple event listeners to catch scroll events
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
-    document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Also try listening on the main content area
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      document.body.removeEventListener('scroll', handleScroll);
-      if (mainElement) {
-        mainElement.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, []);
-
   if (error) {
     return (
       <AppLayout>
@@ -154,17 +105,12 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible}>
+    <AppLayout>
       <div className="min-h-screen bg-background">
-        {/* Fixed Header - spans full width */}
-        <div 
-          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-300 ease-in-out"
-          style={{
-            transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'
-          }}
-        >
+        {/* Main Content */}
+        <div className="pt-4">
           <div className="w-full max-w-[768px] mx-auto px-4">
-            <div className="flex items-center justify-between pt-12">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex-1 flex justify-center">
                 <img
                   src="/sparta_circle_red.png"
@@ -181,9 +127,9 @@ export default function HomePage() {
                 <MessageSlideCard />
               </div>
             </div>
-            
+
             {/* Navigation Buttons */}
-            <div className="flex justify-between mt-1 mb-2 px-6">
+            <div className="flex justify-between mb-4 px-6">
               <Button 
                 variant="default" 
                 className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
@@ -225,7 +171,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20 min-h-[200vh]">
+              <main className="pt-20 mb-20 min-h-[200vh]">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
