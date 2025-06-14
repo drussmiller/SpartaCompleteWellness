@@ -73,7 +73,6 @@ export function VideoPlayer({
   );
   
   const [showVideo, setShowVideo] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [posterError, setPosterError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -81,28 +80,22 @@ export function VideoPlayer({
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, showing video player");
-    setLoading(true);
     setShowVideo(true);
     
-    // Small delay to allow the video element to be created in DOM
+    // Start video playback immediately after video element is rendered
     setTimeout(() => {
-      setLoading(false);
-      
-      // Start video playback after video element is rendered
-      setTimeout(() => {
-        if (videoRef.current) {
-          console.log("Starting video playback");
-          videoRef.current.play()
-            .then(() => {
-              console.log("Video playback started successfully");
-            })
-            .catch(error => {
-              console.error("Error playing video:", error);
-              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-            });
-        }
-      }, 50);
-    }, 100);
+      if (videoRef.current) {
+        console.log("Starting video playback");
+        videoRef.current.play()
+          .then(() => {
+            console.log("Video playback started successfully");
+          })
+          .catch(error => {
+            console.error("Error playing video:", error);
+            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+          });
+      }
+    }, 50);
   };
   
   // Handle poster image load error - no fallbacks as requested by user
@@ -119,7 +112,6 @@ export function VideoPlayer({
     
     const handleVideoLoaded = () => {
       console.log("Video data loaded");
-      setLoading(false);
       if (onLoad) onLoad();
     };
     
@@ -238,8 +230,8 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/* Video player (only rendered after thumbnail is clicked and loading starts) */}
-      {showVideo && !loading && (
+      {/* Video player (only rendered after thumbnail is clicked) */}
+      {showVideo && (
         <div className="w-full h-full video-wrapper">
           <video
             ref={videoRef}
@@ -258,12 +250,7 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/*  Loading indicator - only shown when video is visible and loading */}
-      {showVideo && loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      )}
+      
     </div>
   );
 }
