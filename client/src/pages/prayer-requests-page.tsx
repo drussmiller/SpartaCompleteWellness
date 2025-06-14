@@ -144,7 +144,7 @@ export default function PrayerRequestsPage() {
           style={{
             transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'
           }}
-        ></div>
+        >
           <div className="w-full max-w-[768px] mx-auto px-4">
             <div className="flex items-center justify-between pt-12">
               <div className="flex-1 flex justify-center">
