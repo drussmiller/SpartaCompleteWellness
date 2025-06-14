@@ -421,13 +421,8 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
         console.log(`Found sender: ${senderInfo.username} (${senderInfo.id})`);
       }
         
-      // Format the imageUrl for proper serving if it exists
+      // For Object Storage, return the path as-is for frontend URL construction
       let formattedImageUrl = msg.imageUrl;
-      if (formattedImageUrl && !formattedImageUrl.startsWith('/api/serve-file') && !formattedImageUrl.startsWith('http')) {
-        // Extract filename from the stored path
-        const filename = formattedImageUrl.split('/').pop() || formattedImageUrl;
-        formattedImageUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-      }
       
       messageList.push({
         ...msg,
@@ -438,6 +433,15 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
     }
     
     console.log(`Found ${messageList.length} messages with sender info`);
+    
+    // Debug logging to check what's being returned for images
+    messageList.forEach((msg, index) => {
+      if (msg.imageUrl) {
+        console.log(`Message ${msg.id} (index ${index}) imageUrl:`, msg.imageUrl);
+        console.log(`Message ${msg.id} is_video:`, msg.is_video);
+      }
+    });
+    
     return res.json(messageList);
   } catch (error) {
     console.error("DETAILED ERROR fetching messages:", error);

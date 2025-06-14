@@ -522,6 +522,19 @@ export function MessageSlideCard() {
                           />
                         )}
                         {/* Handle both images and videos - using Object Storage pattern like comments */}
+                        {(() => {
+                          // Debug logging for image display issues
+                          if (message.imageUrl || message.mediaUrl) {
+                            console.log(`Message ${message.id} image debug:`, {
+                              imageUrl: message.imageUrl,
+                              mediaUrl: message.mediaUrl,
+                              is_video: message.is_video,
+                              hasImageUrl: !!message.imageUrl,
+                              hasMediaUrl: !!message.mediaUrl
+                            });
+                          }
+                          return null;
+                        })()}
                         {(message.imageUrl || message.mediaUrl) && 
                          (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                          (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
