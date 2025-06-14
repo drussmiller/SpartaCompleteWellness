@@ -84,20 +84,25 @@ export function VideoPlayer({
     setLoading(true);
     setShowVideo(true);
     
-    // Start video playback after showing
+    // Small delay to allow the video element to be created in DOM
     setTimeout(() => {
-      if (videoRef.current) {
-        console.log("Starting video playback");
-        videoRef.current.play()
-          .then(() => {
-            console.log("Video playback started successfully");
-          })
-          .catch(error => {
-            console.error("Error playing video:", error);
-            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-          });
-      }
-    }, 50);
+      setLoading(false);
+      
+      // Start video playback after video element is rendered
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log("Starting video playback");
+          videoRef.current.play()
+            .then(() => {
+              console.log("Video playback started successfully");
+            })
+            .catch(error => {
+              console.error("Error playing video:", error);
+              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+            });
+        }
+      }, 50);
+    }, 100);
   };
   
   // Handle poster image load error - no fallbacks as requested by user
@@ -233,8 +238,8 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/* Video player (only rendered after thumbnail is clicked) */}
-      {showVideo && (
+      {/* Video player (only rendered after thumbnail is clicked and loading starts) */}
+      {showVideo && !loading && (
         <div className="w-full h-full video-wrapper">
           <video
             ref={videoRef}
