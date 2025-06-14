@@ -424,6 +424,8 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
       // For Object Storage, return the path as-is for frontend URL construction
       let formattedImageUrl = msg.imageUrl;
       
+      console.log(`DEBUG: Message ${msg.id} imageUrl: "${msg.imageUrl}" -> formatted: "${formattedImageUrl}"`);
+      
       messageList.push({
         ...msg,
         imageUrl: formattedImageUrl,
