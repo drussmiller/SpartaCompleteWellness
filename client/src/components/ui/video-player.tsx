@@ -187,7 +187,7 @@ export function VideoPlayer({
     >
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px] bg-white">
+        <div className="relative w-full h-full min-h-[200px]">
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && !posterError && (
             <img 
