@@ -14,6 +14,9 @@ interface AppLayoutProps {
 export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
+  
+  // Debug logging
+  console.log('AppLayout render - isBottomNavVisible:', isBottomNavVisible, 'isMobile:', isMobile);
 
   return (
     <div className="flex h-full">
@@ -30,7 +33,7 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
         <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''}`}>
           {children}
         </div>
-        {isMobile && <BottomNav isVisible={isBottomNavVisible} />}
+        {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} />}
       </div>
     </div>
   );
