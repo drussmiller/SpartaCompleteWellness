@@ -24,11 +24,12 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
       const scrollDelta = Math.abs(currentScrollY - lastScrollY);
       
       // Only trigger if scroll delta is significant (prevents minor scrolls from triggering)
-      if (scrollDelta > 5) {
+      if (scrollDelta > 10) {
         const scrollingDown = currentScrollY > lastScrollY;
         
-        setIsHeaderVisible(!scrollingDown || currentScrollY === 0);
-        setIsBottomNavVisible(!scrollingDown || currentScrollY === 0);
+        // Show header when scrolling up or at the very top
+        setIsHeaderVisible(!scrollingDown || currentScrollY < 50);
+        setIsBottomNavVisible(!scrollingDown || currentScrollY < 50);
         
         lastScrollY = currentScrollY > 0 ? currentScrollY : 0;
       }
@@ -45,16 +46,16 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
     <div className="flex h-full">
       <div className={cn("flex flex-col flex-1 min-h-screen")}>
         {title && (
-          <header className={cn("sticky top-0 z-50 border-b border-border bg-background md:pl-20", {
-            'transform translate-y-0 duration-300': isHeaderVisible,
-            'transform -translate-y-full duration-300': !isHeaderVisible,
+          <header className={cn("fixed top-0 left-0 right-0 z-50 border-b border-border bg-background transition-transform duration-300", {
+            'transform translate-y-0': isHeaderVisible,
+            'transform -translate-y-full': !isHeaderVisible,
           })}>
             <div className="container py-3">
               <h1 className="text-lg font-semibold">{title}</h1>
             </div>
           </header>
         )}
-        <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''}`}>
+        <div className={`flex-1 md:pl-20 ${title ? 'pt-16' : ''} ${isMobile ? 'pb-20' : ''}`}>
           {children}
         </div>
         {isMobile && <BottomNav isVisible={isBottomNavVisible} />}
