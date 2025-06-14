@@ -71,10 +71,15 @@ export function VideoPlayer({
   const [simplifiedPoster, setSimplifiedPoster] = useState<string | undefined>(
     createSimplifiedPosterUrl(poster)
   );
+
+  // Update thumbnailLoaded when simplifiedPoster changes
+  useEffect(() => {
+    setThumbnailLoaded(!simplifiedPoster); // If no poster, show immediately
+  }, [simplifiedPoster]);
   
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
-  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(!simplifiedPoster); // If no poster, show immediately
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
