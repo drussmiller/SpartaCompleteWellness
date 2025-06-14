@@ -205,8 +205,8 @@ export function VideoPlayer({
       {/* Thumbnail image that gets clicked to start the video */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show poster image if available and loaded */}
-          {simplifiedPoster && !posterError && thumbnailLoaded && (
+          {/* Show poster image if available and not errored */}
+          {simplifiedPoster && !posterError && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
@@ -217,9 +217,8 @@ export function VideoPlayer({
               style={{ display: 'block' }}
             />
           )}
-          {/* Show fallback if no poster, poster failed, or poster is still loading */}
-          {(!simplifiedPoster || posterError || (!thumbnailLoaded && simplifiedPoster)) && (
-            /* Only show the gradient fallback as a visual cue for debugging - hide in production */
+          {/* Show fallback if no poster or poster failed */}
+          {(!simplifiedPoster || posterError) && (
             <div 
               className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
               onClick={handleThumbnailClick}
