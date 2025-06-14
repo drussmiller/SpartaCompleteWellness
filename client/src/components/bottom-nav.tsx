@@ -58,9 +58,14 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
         orientation === "vertical" && "w-full hidden"
       )}
       style={orientation === "horizontal" ? {
-        transform: isVisible ? 'translateY(0px) !important' : 'translateY(100%) !important',
-        transition: 'transform 0.7s ease-in-out !important',
-        willChange: 'transform'
+        transform: isVisible ? 'translateY(0px)' : 'translateY(100%)',
+        transition: 'transform 0.7s ease-in-out',
+        willChange: 'transform',
+        position: 'fixed',
+        bottom: '0',
+        left: '0',
+        right: '0',
+        zIndex: '100'
       } : undefined}>
       <div className={cn(
         // Container styles
