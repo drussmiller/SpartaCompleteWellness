@@ -253,7 +253,7 @@ export function VideoPlayer({
       )}
       
       {/* Video player (only rendered after thumbnail is clicked) */}
-      {videoInitialized && showVideo && (
+      {videoInitialized && (
         <div className="w-full h-full video-wrapper">
           <video
             ref={videoRef}
