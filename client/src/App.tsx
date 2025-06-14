@@ -84,7 +84,6 @@ function MainContent() {
           <Route path="*">Not found</Route>
         </Switch>
       </div>
-      <BottomNav />
     </div>
   );
 }
