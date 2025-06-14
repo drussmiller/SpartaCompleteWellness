@@ -14,7 +14,7 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true); // New state for bottom nav
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
 
   useEffect(() => {
     let lastScrollY = window.pageYOffset;
@@ -22,10 +22,10 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
     const handleScroll = () => {
       const currentScrollY = window.pageYOffset;
 
-      setIsHeaderVisible(currentScrollY < lastScrollY || currentScrollY === 0); // Adjust header visibility
-      setIsBottomNavVisible(currentScrollY < lastScrollY || currentScrollY === 0); // Adjust bottom nav visibility
+      setIsHeaderVisible(currentScrollY < lastScrollY || currentScrollY === 0);
+      setIsBottomNavVisible(currentScrollY < lastScrollY || currentScrollY === 0);
 
-      lastScrollY = currentScrollY > 0 ? currentScrollY : 0; // For mobile or negative scrolling
+      lastScrollY = currentScrollY > 0 ? currentScrollY : 0;
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -37,69 +37,7 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
 
   return (
     <div className="flex h-full">
-      <div className={cn(
-        "flex flex-col flex-1 min-h-screen"
-      )}>
-        {title && (
-          <header className={cn("sticky top-0 z-50 border-b border-border bg-background md:pl-20", {
-            'transform translate-y-0 duration-300': isHeaderVisible,
-            'transform -translate-y-full duration-300': !isHeaderVisible,
-          })}>
-            <div className="container py-3">
-              <h1 className="text-lg font-semibold">{title}</h1>
-            </div>
-          </header>
-        )}
-        <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''}`}>
-          {children}
-        </div>
-        {isMobile && <BottomNav isVisible={isBottomNavVisible} />}
-      </div>
-    </div>
-  );
-}
-```import React from "react";
-import { VerticalNav } from "./vertical-nav";
-import { BottomNav } from "./bottom-nav";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
-
-interface AppLayoutProps {
-  children: React.ReactNode;
-  title?: string;
-  sidebarWidth?: string;
-}
-
-export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutProps) {
-  const isMobile = useIsMobile();
-  const sidebarWidthPx = `${sidebarWidth}px`;
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true); // New state for bottom nav
-
-  useEffect(() => {
-    let lastScrollY = window.pageYOffset;
-
-    const handleScroll = () => {
-      const currentScrollY = window.pageYOffset;
-
-      setIsHeaderVisible(currentScrollY < lastScrollY || currentScrollY === 0); // Adjust header visibility
-      setIsBottomNavVisible(currentScrollY < lastScrollY || currentScrollY === 0); // Adjust bottom nav visibility
-
-      lastScrollY = currentScrollY > 0 ? currentScrollY : 0; // For mobile or negative scrolling
-    };
-
-    window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  return (
-    <div className="flex h-full">
-      <div className={cn(
-        "flex flex-col flex-1 min-h-screen"
-      )}>
+      <div className={cn("flex flex-col flex-1 min-h-screen")}>
         {title && (
           <header className={cn("sticky top-0 z-50 border-b border-border bg-background md:pl-20", {
             'transform translate-y-0 duration-300': isHeaderVisible,
