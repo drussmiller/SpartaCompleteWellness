@@ -40,9 +40,18 @@ export default function HomePage() {
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
   const lastScrollY = useRef(0);
+  const lastScrollTime = useRef(Date.now());
+  const scrollVelocity = useRef(0);
   const ticking = useRef(false);
+  
+  // Scroll behavior constants
+  const HIDE_THRESHOLD = 60; // Hide header after scrolling down 60px
+  const SHOW_THRESHOLD = 100; // Show header after scrolling up 100px from hidden state
+  const MIN_VELOCITY = 0.5; // Minimum velocity to show header (pixels per ms)
+  const VELOCITY_SAMPLES = 3; // Number of recent velocity samples to average
+  const velocityHistory = useRef<number[]>([]);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -93,52 +102,73 @@ export default function HomePage() {
     navigate('/prayer-requests');
   };
 
-  // Handle scroll for hiding/showing navigation
+  // Handle scroll for hiding/showing navigation with Facebook-style behavior
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      if (ticking.current) return;
       
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'window.scrollY:', window.scrollY, 'docElement.scrollTop:', document.documentElement.scrollTop);
-      
-      // Simple logic: hide header/show bottom nav when scrolling down past 50px, show header/hide bottom nav when scrolling up or near top
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - hide header, show bottom nav
-        console.log('Hiding header, showing bottom nav - scrollY:', currentScrollY);
-        setIsHeaderVisible(false);
-        setIsBottomNavVisible(true);
-      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
-        // Scrolling up or near top - show header, hide bottom nav
-        console.log('Showing header, hiding bottom nav - scrollY:', currentScrollY);
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(false);
-      }
-      
-      lastScrollY.current = currentScrollY;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+        const currentTime = Date.now();
+        const deltaY = currentScrollY - lastScrollY.current;
+        const deltaTime = currentTime - lastScrollTime.current;
+        
+        // Calculate velocity (pixels per millisecond)
+        const velocity = deltaTime > 0 ? Math.abs(deltaY) / deltaTime : 0;
+        
+        // Update velocity history for smoothing
+        velocityHistory.current.push(velocity);
+        if (velocityHistory.current.length > VELOCITY_SAMPLES) {
+          velocityHistory.current.shift();
+        }
+        
+        // Calculate average velocity
+        const avgVelocity = velocityHistory.current.reduce((sum, v) => sum + v, 0) / velocityHistory.current.length;
+        
+        console.log('Scroll - Y:', currentScrollY, 'deltaY:', deltaY, 'velocity:', velocity.toFixed(3), 'avgVel:', avgVelocity.toFixed(3));
+        
+        // Facebook-style behavior logic
+        if (currentScrollY <= 50) {
+          // Near top - always show header, hide bottom nav
+          if (!isHeaderVisible) {
+            console.log('Near top - showing header');
+            setIsHeaderVisible(true);
+            setIsBottomNavVisible(false);
+          }
+        } else if (deltaY > 0 && currentScrollY > HIDE_THRESHOLD) {
+          // Scrolling down past threshold - hide header, show bottom nav
+          if (isHeaderVisible) {
+            console.log('Scrolling down past threshold - hiding header, showing bottom nav');
+            setIsHeaderVisible(false);
+            setIsBottomNavVisible(true);
+          }
+        } else if (deltaY < 0 && !isHeaderVisible) {
+          // Scrolling up while header is hidden
+          const scrolledUpDistance = lastScrollY.current - currentScrollY;
+          
+          // Show header if user scrolled up enough distance OR with sufficient velocity
+          if (scrolledUpDistance >= SHOW_THRESHOLD || avgVelocity >= MIN_VELOCITY) {
+            console.log('Scrolling up with sufficient distance/velocity - showing header, hiding bottom nav');
+            setIsHeaderVisible(true);
+            setIsBottomNavVisible(false);
+          }
+        }
+        
+        lastScrollY.current = currentScrollY;
+        lastScrollTime.current = currentTime;
+        ticking.current = false;
+      });
     };
 
-    // Test scroll immediately to see current state
-    console.log('Setting up scroll listener - current scroll:', window.scrollY);
+    console.log('Setting up Facebook-style scroll listener');
     
-    // Add multiple event listeners to catch scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
-    document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Also try listening on the main content area
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      document.body.removeEventListener('scroll', handleScroll);
-      if (mainElement) {
-        mainElement.removeEventListener('scroll', handleScroll);
-      }
     };
-  }, []);
+  }, [isHeaderVisible]);
 
   if (error) {
     return (
