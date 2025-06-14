@@ -98,17 +98,17 @@ export default function HomePage() {
     const handleScroll = () => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
       
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'window.scrollY:', window.scrollY, 'docElement.scrollTop:', document.documentElement.scrollTop);
+      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current);
       
       // Simple logic: hide header when scrolling down past 50px, show when scrolling up or near top
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - hide header and bottom nav
-        console.log('Hiding header and bottom nav - scrollY:', currentScrollY);
+        console.log('Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
         setIsHeaderVisible(false);
         setIsBottomNavVisible(false);
       } else if (currentScrollY < lastScrollY.current || currentScrollY <= 50) {
         // Scrolling up or near top - show header and bottom nav
-        console.log('Showing header and bottom nav - scrollY:', currentScrollY);
+        console.log('Showing header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to true');
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }

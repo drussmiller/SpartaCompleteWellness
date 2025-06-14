@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useEffect } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -14,8 +15,13 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Debug logging
-  console.log('BottomNav render - isVisible:', isVisible, 'orientation:', orientation);
+  // Debug logging with more detail
+  console.log('BottomNav render - isVisible:', isVisible, 'orientation:', orientation, 'typeof isVisible:', typeof isVisible);
+  
+  // Force component to re-render when isVisible changes
+  useEffect(() => {
+    console.log('BottomNav useEffect - isVisible changed to:', isVisible);
+  }, [isVisible]);
 
   // Query for unread notifications count
   const { data: unreadCount = 0 } = useQuery({
