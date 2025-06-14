@@ -40,7 +40,7 @@ export default function HomePage() {
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const lastScrollY = useRef(0);
   const lastScrollTime = useRef(Date.now());
   const scrollVelocity = useRef(0);
@@ -131,11 +131,9 @@ export default function HomePage() {
         // Facebook-style behavior logic
         if (currentScrollY <= 50) {
           // Near top - always show header, hide bottom nav
-          if (!isHeaderVisible) {
-            console.log('Near top - showing header');
-            setIsHeaderVisible(true);
-            setIsBottomNavVisible(false);
-          }
+          console.log('Near top - showing header, hiding bottom nav');
+          setIsHeaderVisible(true);
+          setIsBottomNavVisible(false);
         } else if (deltaY > 0 && currentScrollY > HIDE_THRESHOLD) {
           // Scrolling down past threshold - hide header, show bottom nav
           if (isHeaderVisible) {
