@@ -71,17 +71,23 @@ export function VideoPlayer({
   const [simplifiedPoster, setSimplifiedPoster] = useState<string | undefined>(
     createSimplifiedPosterUrl(poster)
   );
-
-  // Update thumbnailLoaded when simplifiedPoster changes
-  useEffect(() => {
-    setThumbnailLoaded(!simplifiedPoster); // If no poster, show immediately
-  }, [simplifiedPoster]);
   
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
-  const [thumbnailLoaded, setThumbnailLoaded] = useState(!simplifiedPoster); // If no poster, show immediately
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Set thumbnailLoaded based on whether we have a poster or not
+  useEffect(() => {
+    if (!simplifiedPoster) {
+      // If no poster, show fallback immediately
+      setThumbnailLoaded(true);
+    } else {
+      // If we have a poster, wait for it to load
+      setThumbnailLoaded(false);
+    }
+  }, [simplifiedPoster]);
 
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
