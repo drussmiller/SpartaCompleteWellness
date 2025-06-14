@@ -60,11 +60,10 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
         // Desktop styles (side nav) - now we use VerticalNav component instead
-        orientation === "vertical" && "w-full hidden"
-      )}
-      style={{
-        transform: orientation === "horizontal" && !isVisible ? "translateY(100%)" : "translateY(0)",
-      }}>
+        orientation === "vertical" && "w-full hidden",
+        // Visibility animation using CSS classes
+        orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
+      )}>
       <div className={cn(
         // Container styles
         "flex items-center",
