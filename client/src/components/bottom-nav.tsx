@@ -7,9 +7,10 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
+  isVisible?: boolean;
 }
 
-export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
+export function BottomNav({ orientation = "horizontal", isVisible = true }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
@@ -45,11 +46,13 @@ export function BottomNav({ orientation = "horizontal" }: BottomNavProps) {
   return (
     <nav className={cn(
       // Base styles
-      "bg-background z-[100] shadow-lg",
+      "bg-background z-[100] shadow-lg transition-transform duration-300 ease-in-out",
       // Mobile styles (bottom nav) - always hidden on desktop
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
       // Desktop styles (side nav) - now we use VerticalNav component instead
-      orientation === "vertical" && "w-full hidden"
+      orientation === "vertical" && "w-full hidden",
+      // Visibility animation
+      orientation === "horizontal" && (isVisible ? "transform translate-y-0" : "transform translate-y-full")
     )}>
       <div className={cn(
         // Container styles

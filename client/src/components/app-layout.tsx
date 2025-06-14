@@ -8,9 +8,10 @@ interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
   sidebarWidth?: string;
+  isBottomNavVisible?: boolean;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
@@ -29,7 +30,7 @@ export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutPr
         <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''}`}>
           {children}
         </div>
-        {isMobile && <BottomNav />}
+        {isMobile && <BottomNav isVisible={isBottomNavVisible} />}
       </div>
     </div>
   );
