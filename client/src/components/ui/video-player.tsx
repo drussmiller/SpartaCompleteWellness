@@ -74,6 +74,7 @@ export function VideoPlayer({
   
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -98,10 +99,17 @@ export function VideoPlayer({
     }, 50);
   };
   
+  // Handle poster image load success
+  const handlePosterLoad = () => {
+    console.log("Poster image loaded successfully:", simplifiedPoster);
+    setThumbnailLoaded(true);
+  };
+
   // Handle poster image load error - no fallbacks as requested by user
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
     setPosterError(true);
+    setThumbnailLoaded(true); // Still show fallback
     // As requested by user, no fallback images or alternatives - just fail silently
   };
   
@@ -140,8 +148,9 @@ export function VideoPlayer({
       if (customEvent.detail?.videoUrl === src) {
         console.log('Thumbnail regenerated for this video, refreshing poster');
         
-        // Reset poster error state
+        // Reset poster error state and thumbnail loaded state
         setPosterError(false);
+        setThumbnailLoaded(false);
         
         // Add a cache-busting timestamp to force a reload of the image
         if (simplifiedPoster) {
@@ -183,7 +192,7 @@ export function VideoPlayer({
       style={{ margin: 0, padding: 0, lineHeight: 0 }}
     >
       {/* Thumbnail image that gets clicked to start the video */}
-      {!showVideo && (
+      {!showVideo && thumbnailLoaded && (
         <div className="relative w-full h-full min-h-[200px]">
           {/* Always render img if we have a poster - no longer hiding on errors */}
           {simplifiedPoster && !posterError && (
@@ -192,6 +201,7 @@ export function VideoPlayer({
               alt="Video thumbnail" 
               className="w-full h-full object-cover cursor-pointer" /* Changed to object-cover */
               onClick={handleThumbnailClick}
+              onLoad={handlePosterLoad}
               onError={handlePosterError}
               style={{ display: 'block' }} /* Force immediate display */
             />
