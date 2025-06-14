@@ -51,7 +51,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true }: Bott
       orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden",
       // Desktop styles (side nav) - now we use VerticalNav component instead
       orientation === "vertical" && "w-full hidden",
-      // Visibility animation
+      // Visibility animation - slide down when hidden, slide up when visible
       orientation === "horizontal" && (isVisible ? "translate-y-0" : "translate-y-full")
     )}>
       <div className={cn(
