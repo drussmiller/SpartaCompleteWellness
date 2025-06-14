@@ -76,6 +76,7 @@ export function VideoPlayer({
   const [posterError, setPosterError] = useState(false);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
+  const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -93,22 +94,27 @@ export function VideoPlayer({
   // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, initializing video player");
-    setVideoInitialized(true);
-    setShowVideo(true);
+    setShouldRenderVideo(true);
     
-    // Start video playback immediately after video element is rendered
+    // Small delay to ensure video element is created before trying to play
     setTimeout(() => {
-      if (videoRef.current) {
-        console.log("Starting video playback");
-        videoRef.current.play()
-          .then(() => {
-            console.log("Video playback started successfully");
-          })
-          .catch(error => {
-            console.error("Error playing video:", error);
-            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-          });
-      }
+      setVideoInitialized(true);
+      setShowVideo(true);
+      
+      // Start video playback immediately after video element is rendered
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log("Starting video playback");
+          videoRef.current.play()
+            .then(() => {
+              console.log("Video playback started successfully");
+            })
+            .catch(error => {
+              console.error("Error playing video:", error);
+              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+            });
+        }
+      }, 100);
     }, 50);
   };
   
@@ -253,7 +259,7 @@ export function VideoPlayer({
       )}
       
       {/* Video player (only rendered after thumbnail is clicked) */}
-      {videoInitialized && (
+      {shouldRenderVideo && videoInitialized && (
         <div className="w-full h-full video-wrapper">
           <video
             ref={videoRef}
