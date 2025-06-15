@@ -84,3 +84,84 @@ video::-webkit-media-controls {
     padding-bottom: 0px !important;
   }
 }
+
+/* Modal video player styles */
+.video-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-modal-content {
+  position: relative;
+  background: black;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 90vw;
+  max-height: 90vh;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.video-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.video-modal-close:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.video-modal-video {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 80vh;
+  display: block;
+}
+
+/* Ensure modal video controls are visible */
+.video-modal-video::-webkit-media-controls-panel {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Mobile modal adjustments */
+@media (max-width: 768px) {
+  .video-modal-content {
+    max-width: 95vw;
+    max-height: 85vh;
+    margin: 16px;
+  }
+  
+  .video-modal-video {
+    max-height: 70vh;
+  }
+  
+  .video-modal-close {
+    top: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+  }
+}
