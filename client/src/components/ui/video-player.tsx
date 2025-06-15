@@ -341,7 +341,7 @@ export function VideoPlayer({
             {/* Close button */}
             <button
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 z-[10000] p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
+              className="absolute top-8 right-4 z-[10000] p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
               style={{ fontSize: '24px', lineHeight: '1' }}
             >
               ×
