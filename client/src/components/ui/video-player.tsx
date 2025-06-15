@@ -77,18 +77,28 @@ export function VideoPlayer({
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
+  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize thumbnailLoaded based on whether we have a poster or not
+  // Initialize with blank placeholder, then load thumbnail
   useEffect(() => {
-    if (!simplifiedPoster) {
-      // If no poster, show fallback immediately
-      setThumbnailLoaded(true);
-    } else {
-      // If we have a poster, reset and wait for it to load
-      setThumbnailLoaded(false);
-    }
+    // Start with blank placeholder for a brief moment
+    setShowingBlankPlaceholder(true);
+    setThumbnailLoaded(false);
+    
+    // After a brief delay, start loading the thumbnail
+    const timer = setTimeout(() => {
+      setShowingBlankPlaceholder(false);
+      
+      if (!simplifiedPoster) {
+        // If no poster, show fallback immediately
+        setThumbnailLoaded(true);
+      }
+      // If we have a poster, thumbnailLoaded will be set by onLoad event
+    }, 100); // Very brief delay to prevent video flash
+    
+    return () => clearTimeout(timer);
   }, [simplifiedPoster]);
 
   // Handle thumbnail click - Facebook style implementation
@@ -210,51 +220,79 @@ export function VideoPlayer({
       className={cn("relative", className)}
       style={{ margin: 0, padding: 0, lineHeight: 0 }}
     >
-      {/* Thumbnail image that gets clicked to start the video */}
+      {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show poster image if available and not errored */}
-          {simplifiedPoster && !posterError && (
+          {/* Show blank placeholder first */}
+          {showingBlankPlaceholder && (
+            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
+          )}
+          
+          {/* Show thumbnail after placeholder, only when loaded */}
+          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
+            <>
+              <img 
+                src={simplifiedPoster} 
+                alt="Video thumbnail" 
+                className="w-full h-full object-cover cursor-pointer"
+                onClick={handleThumbnailClick}
+                style={{ display: 'block' }}
+              />
+              {/* Play button overlay on thumbnail */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                <div 
+                  className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60"
+                  onClick={handleThumbnailClick}
+                  style={{ transition: 'none' }}
+                >
+                  <Play size={40} className="text-white" fill="white" />
+                </div>
+              </div>
+            </>
+          )}
+          
+          {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
+          {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
+            <>
+              <div 
+                className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
+                onClick={handleThumbnailClick}
+                style={{
+                  background: posterError ? 
+                    "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
+                    "white",
+                  border: "1px solid #e5e7eb"
+                }}
+              >
+                <div className="p-4 rounded-lg flex flex-col items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                </div>
+              </div>
+              {/* Play button overlay on fallback */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                <div 
+                  className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60"
+                  onClick={handleThumbnailClick}
+                  style={{ transition: 'none' }}
+                >
+                  <Play size={40} className="text-white" fill="white" />
+                </div>
+              </div>
+            </>
+          )}
+          
+          {/* Loading thumbnail (hidden image to trigger load) */}
+          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
-              className="w-full h-full object-cover cursor-pointer"
-              onClick={handleThumbnailClick}
               onLoad={handlePosterLoad}
               onError={handlePosterError}
-              style={{ display: 'block' }}
+              style={{ display: 'none' }}
             />
           )}
-          {/* Show fallback if no poster or poster failed */}
-          {(!simplifiedPoster || posterError) && (
-            <div 
-              className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
-              onClick={handleThumbnailClick}
-              style={{
-                background: posterError ? 
-                  "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
-                  "white",
-                border: "1px solid #e5e7eb"
-              }}
-            >
-              <div className="p-4 rounded-lg flex flex-col items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-              </div>
-            </div>
-          )}
-          
-          {/* Play button overlay on thumbnail */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-            <div 
-              className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60"
-              onClick={handleThumbnailClick}
-              style={{ transition: 'none' }} /* Remove transition delay */
-            >
-              <Play size={40} className="text-white" fill="white" />
-            </div>
-          </div>
         </div>
       )}
       
