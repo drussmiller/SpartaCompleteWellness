@@ -324,17 +324,17 @@ export function VideoPlayer({
       {/* Modal for video player */}
       {showModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-75"
           onClick={handleCloseModal}
         >
           <div 
-            className="relative max-w-4xl max-h-screen w-full h-full flex items-center justify-center p-4"
+            className="relative w-screen h-screen flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
+              className="absolute top-4 right-4 z-[10000] p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
               style={{ fontSize: '24px', lineHeight: '1' }}
             >
               ×
