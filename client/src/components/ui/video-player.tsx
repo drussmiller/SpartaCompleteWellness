@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, X } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
 import './video-player.css'; // Import the custom CSS
@@ -78,9 +78,7 @@ export function VideoPlayer({
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const modalVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize with blank placeholder, then load thumbnail
@@ -103,54 +101,32 @@ export function VideoPlayer({
     return () => clearTimeout(timer);
   }, [simplifiedPoster]);
 
-  // Handle thumbnail click - Open modal
+  // Handle thumbnail click - Facebook style implementation
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, opening modal video player");
-    setIsModalOpen(true);
+    console.log("Thumbnail clicked, initializing video player");
+    setShouldRenderVideo(true);
     
-    // Small delay to ensure modal video element is created before trying to play
+    // Small delay to ensure video element is created before trying to play
     setTimeout(() => {
-      if (modalVideoRef.current) {
-        console.log("Starting modal video playback");
-        modalVideoRef.current.play()
-          .then(() => {
-            console.log("Modal video playback started successfully");
-          })
-          .catch(error => {
-            console.error("Error playing modal video:", error);
-            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-          });
-      }
-    }, 100);
+      setVideoInitialized(true);
+      setShowVideo(true);
+      
+      // Start video playback immediately after video element is rendered
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log("Starting video playback");
+          videoRef.current.play()
+            .then(() => {
+              console.log("Video playback started successfully");
+            })
+            .catch(error => {
+              console.error("Error playing video:", error);
+              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+            });
+        }
+      }, 100);
+    }, 50);
   };
-
-  // Handle modal close
-  const handleModalClose = () => {
-    console.log("Closing modal video player");
-    if (modalVideoRef.current) {
-      modalVideoRef.current.pause();
-    }
-    setIsModalOpen(false);
-  };
-
-  // Handle escape key to close modal
-  useEffect(() => {
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isModalOpen) {
-        handleModalClose();
-      }
-    };
-
-    if (isModalOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'unset';
-    };
-  }, [isModalOpen]);
   
   // Handle poster image load success
   const handlePosterLoad = () => {
@@ -239,20 +215,20 @@ export function VideoPlayer({
 
 
   return (
-    <>
-      <div 
-        ref={containerRef}
-        className={cn("relative", className)}
-        style={{ margin: 0, padding: 0, lineHeight: 0 }}
-      >
-        {/* Show content based on current state */}
-        <div className="relative w-full" style={{ height: '400px' }}>
+    <div 
+      ref={containerRef}
+      className={cn("relative", className)}
+      style={{ margin: 0, padding: 0, lineHeight: 0 }}
+    >
+      {/* Show content based on current state */}
+      {!showVideo && (
+        <div className="relative w-full h-full min-h-[200px]">
           {/* Show blank placeholder first */}
           {showingBlankPlaceholder && (
-            <div className="w-full h-full bg-gray-100 border border-gray-200"></div>
+            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
           )}
           
-          {/* Show cropped thumbnail after placeholder, only when loaded */}
+          {/* Show thumbnail after placeholder, only when loaded */}
           {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
             <>
               <img 
@@ -260,13 +236,7 @@ export function VideoPlayer({
                 alt="Video thumbnail" 
                 className="w-full h-full object-cover cursor-pointer"
                 onClick={handleThumbnailClick}
-                style={{ 
-                  display: 'block',
-                  width: '600px',
-                  maxWidth: '100%',
-                  height: '400px',
-                  objectFit: 'cover'
-                }}
+                style={{ display: 'block' }}
               />
               {/* Play button overlay on thumbnail */}
               <div className="absolute inset-0 flex items-center justify-center bg-black/10">
@@ -285,14 +255,13 @@ export function VideoPlayer({
           {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
             <>
               <div 
-                className="w-full h-full flex flex-col items-center justify-center cursor-pointer"
+                className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
                 onClick={handleThumbnailClick}
                 style={{
                   background: posterError ? 
                     "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
                     "white",
-                  border: "1px solid #e5e7eb",
-                  height: '400px'
+                  border: "1px solid #e5e7eb"
                 }}
               >
                 <div className="p-4 rounded-lg flex flex-col items-center">
@@ -325,51 +294,42 @@ export function VideoPlayer({
             />
           )}
         </div>
-      </div>
-
-      {/* Modal Video Player */}
-      {isModalOpen && (
-        <div 
-          className="fixed inset-0 z-[9999] bg-black bg-opacity-75 flex items-center justify-center"
-          onClick={handleModalClose}
-        >
-          <div 
-            className="relative bg-black rounded-lg overflow-hidden shadow-2xl max-w-4xl max-h-[90vh] w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              onClick={handleModalClose}
-              className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-all"
-            >
-              <X size={24} />
-            </button>
-            
-            {/* Modal video player */}
-            <div className="w-full h-full flex items-center justify-center">
-              <video
-                ref={modalVideoRef}
-                src={src}
-                controls={true}
-                playsInline={playsInline}
-                controlsList={controlsList}
-                disablePictureInPicture={disablePictureInPicture}
-                className="max-w-full max-h-full"
-                style={{
-                  width: 'auto',
-                  height: 'auto',
-                  maxWidth: '100%',
-                  maxHeight: '80vh'
-                }}
-                onError={(e) => {
-                  console.error("Modal video error:", e);
-                  if (onError) onError(new Error("Failed to load video in modal"));
-                }}
-              />
-            </div>
-          </div>
+      )}
+      
+      {/* Video player (only rendered when ready to show) */}
+      {shouldRenderVideo && videoInitialized && showVideo && (
+        <div className="w-full h-full video-wrapper">
+          <video
+            ref={videoRef}
+            src={src}
+            preload="none"
+            playsInline={playsInline}
+            className="w-full h-full object-contain" /* Ensure video fills container properly */
+            controls={true}
+            controlsList={controlsList}
+            disablePictureInPicture={disablePictureInPicture}
+            style={{ 
+              maxHeight: "none", 
+              width: "100%",
+              height: "100%" // Inherit height from parent container
+            }}
+          />
         </div>
       )}
-    </>
+      
+      {/* Hidden video for preloading (to trigger onCanPlay event) */}
+      {shouldRenderVideo && videoInitialized && !showVideo && (
+        <video
+          ref={videoRef}
+          src={src}
+          preload="metadata"
+          playsInline={playsInline}
+          style={{ display: 'none' }}
+          onCanPlay={() => setShowVideo(true)}
+        />
+      )}
+      
+      
+    </div>
   );
 }
