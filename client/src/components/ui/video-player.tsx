@@ -342,7 +342,17 @@ export function VideoPlayer({
       {/* Modal for video player */}
       {showModal && (
         <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-75"
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999999,
+            width: '100vw',
+            height: '100vh'
+          }}
           onClick={handleCloseModal}
         >
           <div 
@@ -351,16 +361,21 @@ export function VideoPlayer({
               width: 'min(90vw, 800px)',
               height: 'min(90vh, 450px)',
               maxWidth: '90vw',
-              maxHeight: '90vh'
+              maxHeight: '90vh',
+              zIndex: 999999
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button
-              key="close-button-v3"
+              key="close-button-v4"
               onClick={handleCloseModal}
-              className="absolute top-2 right-4 z-[10000] p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
-              style={{ fontSize: '24px', lineHeight: '1' }}
+              className="absolute top-2 right-4 p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
+              style={{ 
+                fontSize: '24px', 
+                lineHeight: '1',
+                zIndex: 999999
+              }}
             >
               ×
             </button>
