@@ -108,6 +108,9 @@ export function VideoPlayer({
     setShowModal(true);
     setShouldRenderVideo(true);
     
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    
     // Small delay to ensure video element is created before trying to play
     setTimeout(() => {
       setVideoInitialized(true);
@@ -140,6 +143,8 @@ export function VideoPlayer({
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
+    // Re-enable body scroll
+    document.body.style.overflow = 'unset';
   };
   
   // Handle poster image load success
@@ -225,6 +230,14 @@ export function VideoPlayer({
       window.removeEventListener('thumbnail-regenerated', handleThumbnailRegenerated);
     };
   }, [src, simplifiedPoster]);
+
+  // Clean up body scroll on unmount
+  useEffect(() => {
+    return () => {
+      // Restore body scroll if component unmounts while modal is open
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
 
 
