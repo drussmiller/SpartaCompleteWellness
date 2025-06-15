@@ -351,7 +351,9 @@ export function VideoPlayer({
             bottom: 0,
             zIndex: 999999,
             width: '100vw',
-            height: '100vh'
+            height: '100vh',
+            margin: 0,
+            padding: 0
           }}
           onClick={handleCloseModal}
         >
