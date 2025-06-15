@@ -73,6 +73,7 @@ video::-webkit-media-controls {
 /* Video thumbnail container styles */
 .video-thumbnail-container {
   aspect-ratio: 3/2; /* 600:400 ratio */
+  width: 100%;
   max-width: 600px;
   height: auto;
 }

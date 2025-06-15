@@ -249,8 +249,9 @@ export function VideoPlayer({
                 className="w-full cursor-pointer video-thumbnail-container"
                 onClick={handleThumbnailClick}
                 style={{ 
-                  width: '600px',
-                  height: '400px',
+                  width: '100%',
+                  maxWidth: '600px',
+                  aspectRatio: '3/2',
                   overflow: 'hidden',
                   position: 'relative',
                   margin: '0 auto'
