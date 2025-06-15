@@ -271,13 +271,13 @@ export function VideoPlayer({
                 />
               </div>
               {/* Play button overlay on thumbnail */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
                 <div 
-                  className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60"
+                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
                   onClick={handleThumbnailClick}
                   style={{ transition: 'none' }}
                 >
-                  <Play size={40} className="text-white" fill="white" />
+                  <Play size={24} className="text-white" fill="white" />
                 </div>
               </div>
             </>
@@ -303,13 +303,13 @@ export function VideoPlayer({
                 </div>
               </div>
               {/* Play button overlay on fallback */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
                 <div 
-                  className="p-4 rounded-full bg-black/40 cursor-pointer hover:bg-black/60"
+                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
                   onClick={handleThumbnailClick}
                   style={{ transition: 'none' }}
                 >
-                  <Play size={40} className="text-white" fill="white" />
+                  <Play size={24} className="text-white" fill="white" />
                 </div>
               </div>
             </>
