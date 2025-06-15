@@ -310,8 +310,11 @@ export function VideoPlayer({
             disablePictureInPicture={disablePictureInPicture}
             style={{ 
               maxHeight: "none", 
-              width: "100%"
+              width: "100%",
+              opacity: showVideo ? 1 : 0,
+              transition: "opacity 0.1s ease-in"
             }}
+            onCanPlay={() => setShowVideo(true)}
           />
         </div>
       )}
