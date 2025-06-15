@@ -298,7 +298,7 @@ export function VideoPlayer({
       
       {/* Video player (only rendered after thumbnail is clicked) */}
       {shouldRenderVideo && videoInitialized && (
-        <div className="w-full h-full video-wrapper">
+        <div className="w-full h-full video-wrapper" style={{ minHeight: "315px" }}>
           <video
             ref={videoRef}
             src={src}
@@ -311,6 +311,7 @@ export function VideoPlayer({
             style={{ 
               maxHeight: "none", 
               width: "100%",
+              height: "315px", // Set explicit height to match 16:9 aspect ratio for 560px width
               opacity: showVideo ? 1 : 0,
               transition: "opacity 0.1s ease-in"
             }}
