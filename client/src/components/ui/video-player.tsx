@@ -78,6 +78,7 @@ export function VideoPlayer({
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -101,9 +102,10 @@ export function VideoPlayer({
     return () => clearTimeout(timer);
   }, [simplifiedPoster]);
 
-  // Handle thumbnail click - Facebook style implementation
+  // Handle thumbnail click - open modal with video player
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, initializing video player");
+    console.log("Thumbnail clicked, opening video modal");
+    setShowModal(true);
     setShouldRenderVideo(true);
     
     // Small delay to ensure video element is created before trying to play
@@ -126,6 +128,18 @@ export function VideoPlayer({
         }
       }, 100);
     }, 50);
+  };
+
+  // Handle modal close
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setShowVideo(false);
+    setShouldRenderVideo(false);
+    setVideoInitialized(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
   };
   
   // Handle poster image load success
@@ -231,13 +245,24 @@ export function VideoPlayer({
           {/* Show thumbnail after placeholder, only when loaded */}
           {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
             <>
-              <img 
-                src={simplifiedPoster} 
-                alt="Video thumbnail" 
-                className="w-full h-full object-cover cursor-pointer"
+              <div 
+                className="w-full cursor-pointer video-thumbnail-container"
                 onClick={handleThumbnailClick}
-                style={{ display: 'block' }}
-              />
+                style={{ 
+                  maxWidth: '600px',
+                  height: '400px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  margin: '0 auto'
+                }}
+              >
+                <img 
+                  src={simplifiedPoster} 
+                  alt="Video thumbnail" 
+                  className="w-full h-full object-cover"
+                  style={{ display: 'block' }}
+                />
+              </div>
               {/* Play button overlay on thumbnail */}
               <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                 <div 
@@ -296,37 +321,60 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/* Video player (only rendered when ready to show) */}
-      {shouldRenderVideo && videoInitialized && showVideo && (
-        <div className="w-full h-full video-wrapper">
-          <video
-            ref={videoRef}
-            src={src}
-            preload="none"
-            playsInline={playsInline}
-            className="w-full h-full object-contain" /* Ensure video fills container properly */
-            controls={true}
-            controlsList={controlsList}
-            disablePictureInPicture={disablePictureInPicture}
-            style={{ 
-              maxHeight: "none", 
-              width: "100%",
-              height: "100%" // Inherit height from parent container
-            }}
-          />
+      {/* Modal for video player */}
+      {showModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+          onClick={handleCloseModal}
+        >
+          <div 
+            className="relative max-w-4xl max-h-screen w-full h-full flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
+              style={{ fontSize: '24px', lineHeight: '1' }}
+            >
+              ×
+            </button>
+            
+            {/* Video player */}
+            {shouldRenderVideo && videoInitialized && showVideo && (
+              <div className="w-full h-full flex items-center justify-center">
+                <video
+                  ref={videoRef}
+                  src={src}
+                  preload="none"
+                  playsInline={playsInline}
+                  className="max-w-full max-h-full object-contain"
+                  controls={true}
+                  controlsList={controlsList}
+                  disablePictureInPicture={disablePictureInPicture}
+                  style={{ 
+                    width: "auto",
+                    height: "auto",
+                    maxWidth: "100%",
+                    maxHeight: "100%"
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Hidden video for preloading (to trigger onCanPlay event) */}
+            {shouldRenderVideo && videoInitialized && !showVideo && (
+              <video
+                ref={videoRef}
+                src={src}
+                preload="metadata"
+                playsInline={playsInline}
+                style={{ display: 'none' }}
+                onCanPlay={() => setShowVideo(true)}
+              />
+            )}
+          </div>
         </div>
-      )}
-      
-      {/* Hidden video for preloading (to trigger onCanPlay event) */}
-      {shouldRenderVideo && videoInitialized && !showVideo && (
-        <video
-          ref={videoRef}
-          src={src}
-          preload="metadata"
-          playsInline={playsInline}
-          style={{ display: 'none' }}
-          onCanPlay={() => setShowVideo(true)}
-        />
       )}
       
       
