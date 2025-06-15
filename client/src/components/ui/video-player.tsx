@@ -111,26 +111,24 @@ export function VideoPlayer({
     // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
     
-    // Small delay to ensure video element is created before trying to play
+    // Show video immediately with no delay
+    setVideoInitialized(true);
+    setShowVideo(true);
+    
+    // Start video playback after a brief moment
     setTimeout(() => {
-      setVideoInitialized(true);
-      setShowVideo(true);
-      
-      // Start video playback immediately after video element is rendered
-      setTimeout(() => {
-        if (videoRef.current) {
-          console.log("Starting video playback");
-          videoRef.current.play()
-            .then(() => {
-              console.log("Video playback started successfully");
-            })
-            .catch(error => {
-              console.error("Error playing video:", error);
-              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-            });
-        }
-      }, 100);
-    }, 50);
+      if (videoRef.current) {
+        console.log("Starting video playback");
+        videoRef.current.play()
+          .then(() => {
+            console.log("Video playback started successfully");
+          })
+          .catch(error => {
+            console.error("Error playing video:", error);
+            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+          });
+      }
+    }, 100);
   };
 
   // Handle modal close
@@ -348,7 +346,13 @@ export function VideoPlayer({
           onClick={handleCloseModal}
         >
           <div 
-            className="relative w-screen h-screen flex items-center justify-center p-4"
+            className="relative flex items-center justify-center p-4"
+            style={{
+              width: 'min(90vw, 800px)',
+              height: 'min(90vh, 450px)',
+              maxWidth: '90vw',
+              maxHeight: '90vh'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
@@ -362,37 +366,23 @@ export function VideoPlayer({
             
             {/* Video player */}
             {shouldRenderVideo && videoInitialized && showVideo && (
-              <div className="w-full h-full flex items-center justify-center">
-                <video
-                  ref={videoRef}
-                  src={src}
-                  preload="none"
-                  playsInline={playsInline}
-                  className="max-w-full max-h-full object-contain"
-                  controls={true}
-                  controlsList={controlsList}
-                  disablePictureInPicture={disablePictureInPicture}
-                  style={{ 
-                    width: "auto",
-                    height: "auto",
-                    maxWidth: "100%",
-                    maxHeight: "100%"
-                  }}
-                />
-              </div>
-            )}
-            
-            {/* Hidden video for preloading (to trigger onCanPlay event) */}
-            {shouldRenderVideo && videoInitialized && !showVideo && (
               <video
                 ref={videoRef}
                 src={src}
-                preload="metadata"
+                preload="none"
                 playsInline={playsInline}
-                style={{ display: 'none' }}
-                onCanPlay={() => setShowVideo(true)}
+                className="w-full h-full object-contain"
+                controls={true}
+                controlsList={controlsList}
+                disablePictureInPicture={disablePictureInPicture}
+                style={{ 
+                  width: "100%",
+                  height: "100%"
+                }}
               />
             )}
+            
+            
           </div>
         </div>
       )}
