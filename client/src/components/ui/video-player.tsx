@@ -296,8 +296,8 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/* Video player (only rendered after thumbnail is clicked) */}
-      {shouldRenderVideo && videoInitialized && (
+      {/* Video player (only rendered when ready to show) */}
+      {shouldRenderVideo && videoInitialized && showVideo && (
         <div className="w-full h-full video-wrapper">
           <video
             ref={videoRef}
@@ -311,13 +311,22 @@ export function VideoPlayer({
             style={{ 
               maxHeight: "none", 
               width: "100%",
-              height: "100%", // Inherit height from parent container
-              opacity: showVideo ? 1 : 0,
-              transition: "opacity 0.1s ease-in"
+              height: "100%" // Inherit height from parent container
             }}
-            onCanPlay={() => setShowVideo(true)}
           />
         </div>
+      )}
+      
+      {/* Hidden video for preloading (to trigger onCanPlay event) */}
+      {shouldRenderVideo && videoInitialized && !showVideo && (
+        <video
+          ref={videoRef}
+          src={src}
+          preload="metadata"
+          playsInline={playsInline}
+          style={{ display: 'none' }}
+          onCanPlay={() => setShowVideo(true)}
+        />
       )}
       
       
