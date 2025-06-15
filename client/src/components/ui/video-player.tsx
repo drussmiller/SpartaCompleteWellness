@@ -80,6 +80,7 @@ export function VideoPlayer({
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
+  const [isCalculatingDimensions, setIsCalculatingDimensions] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -105,7 +106,10 @@ export function VideoPlayer({
 
   // Handle thumbnail click - open modal with video player
   const handleThumbnailClick = () => {
+    if (isCalculatingDimensions) return; // Prevent multiple clicks
+    
     console.log("Thumbnail clicked, calculating video dimensions...");
+    setIsCalculatingDimensions(true);
     
     // Create a temporary video element to get dimensions
     const tempVideo = document.createElement('video');
@@ -165,33 +169,32 @@ export function VideoPlayer({
         height: Math.round(containerHeight)
       });
       
-      // Only show modal after dimensions are calculated
+      // Show modal immediately now that dimensions are calculated
+      setShowModal(true);
+      setShouldRenderVideo(true);
+      
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      
+      // Show video immediately since dimensions are ready
+      setVideoInitialized(true);
+      setShowVideo(true);
+      setIsCalculatingDimensions(false);
+      
+      // Start video playback after a brief moment
       setTimeout(() => {
-        setShowModal(true);
-        setShouldRenderVideo(true);
-        
-        // Prevent body scroll when modal is open
-        document.body.style.overflow = 'hidden';
-        
-        // Show video immediately since dimensions are ready
-        setVideoInitialized(true);
-        setShowVideo(true);
-        
-        // Start video playback after a brief moment
-        setTimeout(() => {
-          if (videoRef.current) {
-            console.log("Starting video playback with pre-calculated dimensions");
-            videoRef.current.play()
-              .then(() => {
-                console.log("Video playback started successfully");
-              })
-              .catch(error => {
-                console.error("Error playing video:", error);
-                if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-              });
-          }
-        }, 100);
-      }, 50); // Brief delay to ensure dimensions are set
+        if (videoRef.current) {
+          console.log("Starting video playback with pre-calculated dimensions");
+          videoRef.current.play()
+            .then(() => {
+              console.log("Video playback started successfully");
+            })
+            .catch(error => {
+              console.error("Error playing video:", error);
+              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+            });
+        }
+      }, 100);
       
       // Clean up temp video
       tempVideo.remove();
@@ -206,13 +209,12 @@ export function VideoPlayer({
         height: isMobile ? Math.round(window.innerHeight * 0.6) : 450
       });
       
-      setTimeout(() => {
-        setShowModal(true);
-        setShouldRenderVideo(true);
-        document.body.style.overflow = 'hidden';
-        setVideoInitialized(true);
-        setShowVideo(true);
-      }, 50);
+      setShowModal(true);
+      setShouldRenderVideo(true);
+      document.body.style.overflow = 'hidden';
+      setVideoInitialized(true);
+      setShowVideo(true);
+      setIsCalculatingDimensions(false);
       
       tempVideo.remove();
     };
@@ -225,6 +227,7 @@ export function VideoPlayer({
     setShouldRenderVideo(false);
     setVideoInitialized(false);
     setVideoDimensions(null);
+    setIsCalculatingDimensions(false);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
@@ -376,7 +379,11 @@ export function VideoPlayer({
                   onClick={handleThumbnailClick}
                   style={{ transition: 'none' }}
                 >
-                  <Play size={24} className="text-white" fill="white" />
+                  {isCalculatingDimensions ? (
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Play size={24} className="text-white" fill="white" />
+                  )}
                 </div>
               </div>
             </>
@@ -408,7 +415,11 @@ export function VideoPlayer({
                   onClick={handleThumbnailClick}
                   style={{ transition: 'none' }}
                 >
-                  <Play size={24} className="text-white" fill="white" />
+                  {isCalculatingDimensions ? (
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Play size={24} className="text-white" fill="white" />
+                  )}
                 </div>
               </div>
             </>
