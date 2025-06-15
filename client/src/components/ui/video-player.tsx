@@ -116,33 +116,49 @@ export function VideoPlayer({
       const videoWidth = tempVideo.videoWidth;
       const videoHeight = tempVideo.videoHeight;
       
-      // Calculate container dimensions that fit within viewport
-      const maxWidth = Math.min(window.innerWidth * 0.9, 800);
-      const maxHeight = Math.min(window.innerHeight * 0.9, 600);
+      // Mobile-specific calculations
+      const isMobile = window.innerWidth <= 768;
+      const maxWidth = isMobile ? window.innerWidth * 0.95 : Math.min(window.innerWidth * 0.9, 800);
+      const maxHeight = isMobile ? window.innerHeight * 0.8 : Math.min(window.innerHeight * 0.9, 600);
       
       let containerWidth = videoWidth;
       let containerHeight = videoHeight;
       
-      // Scale down if needed while maintaining aspect ratio
-      if (containerWidth > maxWidth || containerHeight > maxHeight) {
-        const aspectRatio = videoWidth / videoHeight;
-        
+      // Always scale to fit viewport while maintaining aspect ratio
+      const aspectRatio = videoWidth / videoHeight;
+      
+      // For mobile, prioritize width fitting first
+      if (isMobile) {
         if (containerWidth > maxWidth) {
           containerWidth = maxWidth;
           containerHeight = containerWidth / aspectRatio;
         }
         
+        // Then check if height needs adjustment
         if (containerHeight > maxHeight) {
           containerHeight = maxHeight;
           containerWidth = containerHeight * aspectRatio;
         }
+      } else {
+        // Desktop behavior - check both dimensions
+        if (containerWidth > maxWidth || containerHeight > maxHeight) {
+          if (containerWidth > maxWidth) {
+            containerWidth = maxWidth;
+            containerHeight = containerWidth / aspectRatio;
+          }
+          
+          if (containerHeight > maxHeight) {
+            containerHeight = maxHeight;
+            containerWidth = containerHeight * aspectRatio;
+          }
+        }
       }
       
-      console.log(`Video dimensions: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}`);
+      console.log(`Video dimensions: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
       
       setVideoDimensions({
-        width: containerWidth,
-        height: containerHeight
+        width: Math.round(containerWidth),
+        height: Math.round(containerHeight)
       });
       
       setShowModal(true);
@@ -414,13 +430,14 @@ export function VideoPlayer({
           onClick={handleCloseModal}
         >
           <div 
-            className="relative flex items-center justify-center p-4"
+            className="relative flex items-center justify-center"
             style={{
-              width: videoDimensions ? `${videoDimensions.width}px` : 'min(90vw, 800px)',
-              height: videoDimensions ? `${videoDimensions.height}px` : 'min(90vh, 450px)',
-              maxWidth: '90vw',
-              maxHeight: '90vh',
-              zIndex: 999999
+              width: videoDimensions ? `${videoDimensions.width}px` : 'min(95vw, 800px)',
+              height: videoDimensions ? `${videoDimensions.height}px` : 'min(80vh, 450px)',
+              maxWidth: window.innerWidth <= 768 ? '95vw' : '90vw',
+              maxHeight: window.innerWidth <= 768 ? '80vh' : '90vh',
+              zIndex: 999999,
+              padding: window.innerWidth <= 768 ? '8px' : '16px'
             }}
             onClick={(e) => e.stopPropagation()}
           >
