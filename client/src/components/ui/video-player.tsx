@@ -249,7 +249,7 @@ export function VideoPlayer({
                 className="w-full cursor-pointer video-thumbnail-container"
                 onClick={handleThumbnailClick}
                 style={{ 
-                  maxWidth: '600px',
+                  width: '600px',
                   height: '400px',
                   overflow: 'hidden',
                   position: 'relative',
@@ -260,7 +260,13 @@ export function VideoPlayer({
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
                   className="w-full h-full object-cover"
-                  style={{ display: 'block' }}
+                  style={{ 
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center'
+                  }}
                 />
               </div>
               {/* Play button overlay on thumbnail */}
