@@ -105,12 +105,15 @@ export function VideoPlayer({
 
   // Handle thumbnail click - open modal with video player
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, opening video modal");
+    console.log("Thumbnail clicked, calculating video dimensions...");
     
     // Create a temporary video element to get dimensions
     const tempVideo = document.createElement('video');
     tempVideo.src = src;
     tempVideo.preload = 'metadata';
+    
+    // Show loading state while calculating dimensions
+    console.log("Loading video metadata to determine dimensions...");
     
     tempVideo.onloadedmetadata = () => {
       const videoWidth = tempVideo.videoWidth;
@@ -154,50 +157,63 @@ export function VideoPlayer({
         }
       }
       
-      console.log(`Video dimensions: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
+      console.log(`Video dimensions calculated: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
       
+      // Set dimensions first
       setVideoDimensions({
         width: Math.round(containerWidth),
         height: Math.round(containerHeight)
       });
       
-      setShowModal(true);
-      setShouldRenderVideo(true);
-      
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-      
-      // Show video immediately with no delay
-      setVideoInitialized(true);
-      setShowVideo(true);
-      
-      // Start video playback after a brief moment
+      // Only show modal after dimensions are calculated
       setTimeout(() => {
-        if (videoRef.current) {
-          console.log("Starting video playback");
-          videoRef.current.play()
-            .then(() => {
-              console.log("Video playback started successfully");
-            })
-            .catch(error => {
-              console.error("Error playing video:", error);
-              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-            });
-        }
-      }, 100);
+        setShowModal(true);
+        setShouldRenderVideo(true);
+        
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+        
+        // Show video immediately since dimensions are ready
+        setVideoInitialized(true);
+        setShowVideo(true);
+        
+        // Start video playback after a brief moment
+        setTimeout(() => {
+          if (videoRef.current) {
+            console.log("Starting video playback with pre-calculated dimensions");
+            videoRef.current.play()
+              .then(() => {
+                console.log("Video playback started successfully");
+              })
+              .catch(error => {
+                console.error("Error playing video:", error);
+                if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+              });
+          }
+        }, 100);
+      }, 50); // Brief delay to ensure dimensions are set
       
       // Clean up temp video
       tempVideo.remove();
     };
     
     tempVideo.onerror = () => {
-      console.error("Failed to load video metadata");
+      console.error("Failed to load video metadata, using fallback dimensions");
       // Fallback to default behavior if metadata loading fails
-      setShowModal(true);
-      setShouldRenderVideo(true);
-      document.body.style.overflow = 'hidden';
-      setVideoInitialized(true);
-      setShowVideo(true);
+      const isMobile = window.innerWidth <= 768;
+      setVideoDimensions({
+        width: isMobile ? Math.round(window.innerWidth * 0.95) : 800,
+        height: isMobile ? Math.round(window.innerHeight * 0.6) : 450
+      });
+      
+      setTimeout(() => {
+        setShowModal(true);
+        setShouldRenderVideo(true);
+        document.body.style.overflow = 'hidden';
+        setVideoInitialized(true);
+        setShowVideo(true);
+      }, 50);
+      
       tempVideo.remove();
     };
   };
