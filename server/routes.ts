@@ -1562,17 +1562,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID format" });
       }
 
-      // Convert to numeric ID for database operations
-      const postId = parseInt(postIdStr);
+      let postId = parseInt(postIdStr);
+      let post = null;
 
-      // Use Drizzle's built-in query methods which handle parameter binding correctly
-      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
+      // Check if this looks like a JavaScript timestamp (> 10 digits and > year 2020)
+      if (postIdStr.length > 10 && postId > 1577836800000) {
+        logger.info(`Detected potential timestamp ID: ${postId}, attempting to find matching post`);
+        
+        // Try to find a post by this user created around this timestamp
+        const timestampDate = new Date(postId);
+        const timeBefore = new Date(timestampDate.getTime() - 30000); // 30 seconds before
+        const timeAfter = new Date(timestampDate.getTime() + 30000);  // 30 seconds after
+        
+        const candidatePosts = await db
+          .select()
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, req.user.id),
+              gte(posts.createdAt, timeBefore),
+              lte(posts.createdAt, timeAfter)
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(1);
 
-      // Get the post to check ownership
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId));
+        if (candidatePosts.length > 0) {
+          post = candidatePosts[0];
+          postId = post.id;
+          logger.info(`Found matching post by timestamp: actual ID ${postId} for timestamp ${postIdStr}`);
+        } else {
+          logger.warn(`No post found for timestamp ${postId} (${timestampDate.toISOString()})`);
+          return res.status(404).json({ message: "Post not found" });
+        }
+      } else {
+        // Use Drizzle's built-in query methods which handle parameter binding correctly
+        logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
+
+        // Get the post to check ownership
+        const [foundPost] = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postId));
+
+        post = foundPost;
+      }
 
       if (!post) {
         logger.info(`Post ${postId} not found during deletion attempt`);
@@ -3450,18 +3484,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
         // Handle authentication message
         if (data.type === 'auth') {
-          userId = parseInt(data.userId);
-          if (isNaN(userId)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
-            return;
-          }
-          
-          // Store userId on the socket for easier debugging
-          (ws as any).userId = userId;
+          try {
+            userId = parseInt(data.userId);
+            if (isNaN(userId)) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
+              return;
+            }
+            
+            // Store userId on the socket for easier debugging
+            (ws as any).userId = userId;
 
-          // Add client to the user's connections
-          if (!clients.has(userId)) {
-            clients.set(userId, new Set());
+            // Add client to the user's connections
+            if (!clients.has(userId)) {
+              clients.set(userId, new Set());
+            }
+          } catch (authError) {
+            logger.error('WebSocket authentication error:', authError instanceof Error ? authError : new Error(String(authError)));
+            try {
+              ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
+            } catch (sendErr) {
+              logger.error('Failed to send auth error message:', sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
+            }
+            return;
           }
           
           // Add to the clients map, but first check if there are too many connections
@@ -3519,12 +3563,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     });
 
     // Handle client disconnection
-    ws.on('close', () => {
+    ws.on('close', (code, reason) => {
       // Clear the ping timeout
       if (pingTimeout) {
         clearTimeout(pingTimeout);
         pingTimeout = null;
       }
+      
+      logger.info(`WebSocket client disconnected with code ${code}, reason: ${reason}, userId: ${userId || 'unauthenticated'}`);
       
       if (userId) {
         const userClients = clients.get(userId);
