@@ -1427,70 +1427,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Import the Object Storage utility
           const { spartaObjectStorage } = await import('./sparta-object-storage-final');
           
-          try {
-            // Validate file before processing
-            if (!uploadedFile.buffer || uploadedFile.buffer.length === 0) {
-              throw new Error('Invalid file buffer - file may be corrupted');
-            }
-            
-            if (!uploadedFile.originalname || uploadedFile.originalname.trim() === '') {
-              throw new Error('Invalid filename');
-            }
-            
-            // Store the file using Object Storage
-            const fileInfo = await spartaObjectStorage.storeFile(
-              uploadedFile.buffer,
-              uploadedFile.originalname,
-              uploadedFile.mimetype,
-              isVideo
-            );
-            
-            // Validate the file was stored successfully
-            if (!fileInfo || !fileInfo.filename) {
-              throw new Error('File storage failed - no filename returned');
-            }
-            
-            // Validate fileInfo response
-            if (!fileInfo || !fileInfo.filename) {
-              throw new Error('File storage returned invalid response');
-            }
-            
-            // Store the Object Storage key (not a full URL)
-            mediaUrl = `shared/uploads/${fileInfo.filename}`;
-            mediaProcessed = true;
-            
-            logger.info(`Successfully stored file for ${postData.type} post:`, {
-              originalFilename: uploadedFile.originalname,
-              storedFilename: fileInfo.filename,
-              mediaUrl: mediaUrl,
-              isVideo: isVideo,
-              fileSize: uploadedFile.size
-            });
-            
-            // Verify the file exists in Object Storage if URL is provided
-            if (fileInfo.url) {
-              logger.info(`File accessible at Object Storage URL: ${fileInfo.url}`);
-            }
-            
-            // Double-check that we have a valid mediaUrl before proceeding
-            if (!mediaUrl || mediaUrl.length < 10) {
-              throw new Error('Invalid mediaUrl generated from file storage');
-            }
-            
-          } catch (storageError) {
-            logger.error(`Storage error for ${uploadedFile.originalname}:`, {
-              error: storageError,
-              message: storageError instanceof Error ? storageError.message : String(storageError),
-              postType: postData.type,
-              fileName: uploadedFile.originalname,
-              fileSize: uploadedFile.size,
-              mimeType: uploadedFile.mimetype
-            });
-            
-            // Provide specific error message based on the error
-            const errorMessage = storageError instanceof Error ? storageError.message : 'Unknown storage error';
-            throw new Error(`Failed to upload ${isVideo ? 'video' : 'file'}: ${errorMessage}`);
-          }
+          // Store the file using Object Storage
+          const fileInfo = await spartaObjectStorage.storeFile(
+            uploadedFile.buffer,
+            uploadedFile.originalname,
+            uploadedFile.mimetype,
+            isVideo
+          );
+          
+          // Store the full Object Storage key for proper URL construction
+          mediaUrl = `shared/uploads/${fileInfo.filename}`;
+          mediaProcessed = true;
           
           if (isVideo) {
             logger.info(`Video file stored successfully: ${fileInfo}`);
@@ -1499,19 +1446,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          
-          // For memory verse posts, video upload is required
-          if (postData.type === 'memory_verse') {
-            logger.error(`Memory verse video upload failed: ${fileErr.message || 'Unknown error'}`);
-            return res.status(400).json({ 
-              message: "Failed to upload memory verse video. Please try again with a smaller video file or check your internet connection.",
-              error: fileErr.message || 'Video upload failed'
-            });
-          }
-          
-          // For other post types, continue without media
+          // Don't use any fallback image
           mediaUrl = null;
-          logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
+          logger.info(`Error with uploaded file for post type: ${postData.type}`);
         }
       } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
         // For miscellaneous posts, media is optional
@@ -1521,124 +1458,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
-      // Create the post in the database with proper transaction handling
-      let post;
-      try {
-        // Validate required fields before database insertion
-        if (!req.user?.id) {
-          throw new Error("User ID is required");
-        }
-        
-        if (!postData.type) {
-          throw new Error("Post type is required");
-        }
-        
-        // Ensure content is not empty for non-media posts
-        const finalContent = postData.content?.trim() || '';
-        if (!finalContent && !mediaUrl) {
-          throw new Error("Post must have either content or media");
-        }
-        
-        logger.info('Creating database record with validated data:', {
-          userId: req.user.id,
+      const post = await db
+        .insert(posts)
+        .values({
+          userId: req.user!.id,
           type: postData.type,
-          content: finalContent,
+          content: postData.content?.trim() || '',
           mediaUrl: mediaUrl,
           is_video: isVideo,
-          points: points
-        });
-        
-        // Create the post data object with proper field mapping
-        const postInsertData = {
-          userId: req.user.id,
-          type: postData.type,
-          content: finalContent || null,
-          mediaUrl: mediaUrl || null, // Map to the correct schema field name
-          is_video: isVideo || false,
           points: points,
-          parentId: postData.parentId || null,
-          depth: postData.depth || 0
-        };
-        
-        // Remove undefined values to prevent database errors
-        Object.keys(postInsertData).forEach(key => {
-          if (postInsertData[key] === undefined) {
-            delete postInsertData[key];
-          }
-        });
-        
-        logger.info('Final insert data:', postInsertData);
-        
-        // Direct database insertion with error handling
-        const insertResult = await db
-          .insert(posts)
-          .values(postInsertData)
-          .returning();
-        
-        if (!insertResult || insertResult.length === 0) {
-          throw new Error("Database insert returned no results - possible constraint violation");
-        }
-        
-        post = insertResult[0];
-        
-        // Verify the post was actually created with the correct data
-        if (!post.id) {
-          throw new Error("Post created but no ID returned");
-        }
-        
-        // Verify mediaUrl was saved correctly
-        if (mediaUrl && !post.mediaUrl) {
-          logger.error("MediaUrl was not saved to database", {
-            expectedMediaUrl: mediaUrl,
-            actualMediaUrl: post.mediaUrl,
-            postId: post.id
-          });
-        }
-        
-        logger.info('Successfully created post in database:', { 
-          postId: post.id, 
-          type: post.type, 
-          points: post.points, 
-          mediaUrl: post.mediaUrl,
-          is_video: post.is_video,
-          userId: post.userId,
-          content: post.content?.substring(0, 50) + (post.content && post.content.length > 50 ? '...' : '')
-        });
-        
-      } catch (dbError) {
-        logger.error("Database error creating post:", {
-          error: dbError,
-          message: dbError instanceof Error ? dbError.message : "Unknown database error",
-          stack: dbError instanceof Error ? dbError.stack : undefined,
-          postData: {
-            userId: req.user!.id,
-            type: postData.type,
-            content: postData.content?.substring(0, 100),
-            mediaUrl: mediaUrl,
-            is_video: isVideo,
-            points: points
-          }
-        });
-        
-        // If database creation fails and we uploaded media, clean up
-        if (mediaUrl) {
-          try {
-            const { spartaObjectStorage } = await import('./sparta-object-storage-final');
-            await spartaObjectStorage.deleteFile(mediaUrl);
-            logger.info(`Cleaned up uploaded file after database error: ${mediaUrl}`);
-          } catch (cleanupError) {
-            logger.error(`Failed to cleanup file after database error: ${cleanupError}`);
-          }
-        }
-        
-        // Return a proper error response with more specific error information
-        const errorMessage = dbError instanceof Error ? dbError.message : "Database error";
-        return res.status(500).json({
-          message: "Failed to create post in database",
-          error: errorMessage,
-          details: errorMessage.includes("constraint") ? "Data validation failed" : "Please try again"
-        });
-      }
+          createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+        })
+        .returning()
+        .then(posts => posts[0]);
+
+      // Log the created post for verification
+      logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
 
       // Check for achievements based on post type
       try {
@@ -1648,45 +1483,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Non-fatal error, continue without blocking post creation
       }
 
-      // Validate post was created successfully before formatting response
-      if (!post || !post.id) {
-        logger.error('Post creation succeeded but post object is invalid:', post);
-        return res.status(500).json({
-          message: "Post creation failed - invalid post data",
-          error: "Post object is missing or incomplete"
-        });
-      }
-      
-      // Format the response with complete post data including author info
-      const responsePost = {
-        id: post.id,
-        userId: post.userId,
-        type: post.type,
-        content: post.content,
-        mediaUrl: post.mediaUrl,
-        is_video: post.is_video,
-        points: post.points,
-        createdAt: post.createdAt,
-        parentId: post.parentId,
-        depth: post.depth,
-        author: {
-          id: req.user.id,
-          username: req.user.username,
-          imageUrl: req.user.imageUrl
-        }
-      };
-
-      // Final validation log
-      logger.info('Post created successfully - sending response:', { 
-        postId: post.id, 
-        type: post.type,
-        hasMediaUrl: !!post.mediaUrl,
-        mediaUrl: post.mediaUrl,
-        points: post.points,
-        userId: post.userId
-      });
-      
-      res.status(201).json(responsePost);
+      res.status(201).json(post);
     } catch (error) {
       logger.error("Error in post creation:", error);
       
@@ -1698,21 +1495,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'X-Content-Type-Options': 'nosniff'
       });
       
-      // Provide user-friendly error messages
-      let errorMessage = "Failed to create post";
-      if (error instanceof Error) {
-        if (error.message.includes("integer out of range")) {
-          errorMessage = "Post creation failed due to a data format issue. Please try again.";
-        } else if (error.message.includes("duplicate key")) {
-          errorMessage = "This post already exists. Please refresh the page.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
       res.status(500).json({
-        message: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
+        message: error instanceof Error ? error.message : "Failed to create post",
+        error: error instanceof Error ? error.stack : "Unknown error"
       });
     }
   });
@@ -1738,51 +1523,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ message: "Invalid post ID format" });
       }
 
-      let postId = parseInt(postIdStr);
-      let post = null;
+      // Convert to numeric ID for database operations
+      const postId = parseInt(postIdStr);
 
-      // Check if this looks like a JavaScript timestamp (> 10 digits and > year 2020)
-      if (postIdStr.length > 10 && postId > 1577836800000) {
-        logger.info(`Detected potential timestamp ID: ${postId}, attempting to find matching post`);
-        
-        // Try to find a post by this user created around this timestamp
-        const timestampDate = new Date(postId);
-        const timeBefore = new Date(timestampDate.getTime() - 30000); // 30 seconds before
-        const timeAfter = new Date(timestampDate.getTime() + 30000);  // 30 seconds after
-        
-        const candidatePosts = await db
-          .select()
-          .from(posts)
-          .where(
-            and(
-              eq(posts.userId, req.user.id),
-              gte(posts.createdAt, timeBefore),
-              lte(posts.createdAt, timeAfter)
-            )
-          )
-          .orderBy(desc(posts.createdAt))
-          .limit(1);
+      // Use Drizzle's built-in query methods which handle parameter binding correctly
+      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
 
-        if (candidatePosts.length > 0) {
-          post = candidatePosts[0];
-          postId = post.id;
-          logger.info(`Found matching post by timestamp: actual ID ${postId} for timestamp ${postIdStr}`);
-        } else {
-          logger.warn(`No post found for timestamp ${postId} (${timestampDate.toISOString()})`);
-          return res.status(404).json({ message: "Post not found" });
-        }
-      } else {
-        // Use Drizzle's built-in query methods which handle parameter binding correctly
-        logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
-
-        // Get the post to check ownership
-        const [foundPost] = await db
-          .select()
-          .from(posts)
-          .where(eq(posts.id, postId));
-
-        post = foundPost;
-      }
+      // Get the post to check ownership
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId));
 
       if (!post) {
         logger.info(`Post ${postId} not found during deletion attempt`);
@@ -3660,28 +3411,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
         // Handle authentication message
         if (data.type === 'auth') {
-          try {
-            userId = parseInt(data.userId);
-            if (isNaN(userId)) {
-              ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
-              return;
-            }
-            
-            // Store userId on the socket for easier debugging
-            (ws as any).userId = userId;
-
-            // Add client to the user's connections
-            if (!clients.has(userId)) {
-              clients.set(userId, new Set());
-            }
-          } catch (authError) {
-            logger.error('WebSocket authentication error:', authError instanceof Error ? authError : new Error(String(authError)));
-            try {
-              ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
-            } catch (sendErr) {
-              logger.error('Failed to send auth error message:', sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
-            }
+          userId = parseInt(data.userId);
+          if (isNaN(userId)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
             return;
+          }
+          
+          // Store userId on the socket for easier debugging
+          (ws as any).userId = userId;
+
+          // Add client to the user's connections
+          if (!clients.has(userId)) {
+            clients.set(userId, new Set());
           }
           
           // Add to the clients map, but first check if there are too many connections
@@ -3739,14 +3480,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     });
 
     // Handle client disconnection
-    ws.on('close', (code, reason) => {
+    ws.on('close', () => {
       // Clear the ping timeout
       if (pingTimeout) {
         clearTimeout(pingTimeout);
         pingTimeout = null;
       }
-      
-      logger.info(`WebSocket client disconnected with code ${code}, reason: ${reason}, userId: ${userId || 'unauthenticated'}`);
       
       if (userId) {
         const userClients = clients.get(userId);

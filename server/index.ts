@@ -407,7 +407,8 @@ app.use('/api', (req, res, next) => {
     // Enhanced port cleanup function with detailed logging
     const killPort = async (port: number): Promise<void> => {
       try {
-        console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
+        // Disabled console output
+        // console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
 
         if (process.platform === "win32") {
           const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
@@ -420,58 +421,32 @@ app.use('/api', (req, res, next) => {
         } else {
           // Unix/Linux specific commands with error handling
           try {
-            console.log(`[Port Cleanup] Attempting lsof cleanup for port ${port}...`);
+            console.log(`[Port Cleanup] Attempting lsof cleanup...`);
             const { stdout: lsofOutput } = await execAsync(`lsof -i :${port}`);
             console.log(`[Port Cleanup] Current port status:`, lsofOutput);
-            
-            // Extract PIDs and kill them
-            const lines = lsofOutput.split('\n').slice(1); // Skip header
-            for (const line of lines) {
-              if (line.trim()) {
-                const parts = line.split(/\s+/);
-                if (parts.length > 1) {
-                  const pid = parts[1];
-                  console.log(`[Port Cleanup] Killing PID ${pid}`);
-                  try {
-                    await execAsync(`kill -9 ${pid}`);
-                  } catch (killError) {
-                    console.log(`[Port Cleanup] Failed to kill PID ${pid}:`, killError);
-                  }
-                }
-              }
-            }
+            await execAsync(`lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs -r kill -9`);
           } catch (lsofError) {
-            console.log(`[Port Cleanup] lsof failed, trying fuser for port ${port}...`);
+            console.log(`[Port Cleanup] lsof failed, trying netstat...`, lsofError);
             try {
-              await execAsync(`fuser -k ${port}/tcp 2>/dev/null || true`);
-            } catch (fuserError) {
-              console.log(`[Port Cleanup] fuser also failed, trying pkill...`);
-              try {
-                await execAsync(`pkill -f ".*${port}.*" 2>/dev/null || true`);
-              } catch (pkillError) {
-                console.log(`[Port Cleanup] All cleanup methods failed`);
-              }
+              await execAsync(`netstat -ltnp | grep -w ':${port}' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9`);
+            } catch (netstatError) {
+              console.log(`[Port Cleanup] netstat failed, trying fuser...`, netstatError);
+              await execAsync(`fuser -k ${port}/tcp`);
             }
           }
         }
 
-        // Wait longer for port to be freed
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
         // Verify port is free
-        try {
-          const { stdout: verifyOutput } = await execAsync(
-            process.platform === "win32"
-              ? `netstat -ano | findstr :${port}`
-              : `lsof -i :${port} 2>/dev/null || echo "Port is free"`
-          );
-          console.log(`[Port Cleanup] Port status after cleanup:`, verifyOutput || 'Port is free');
-        } catch (verifyError) {
-          console.log(`[Port Cleanup] Port ${port} appears to be free now`);
-        }
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const { stdout: verifyOutput } = await execAsync(
+          process.platform === "win32"
+            ? `netstat -ano | findstr :${port}`
+            : `lsof -i :${port}`
+        );
+        console.log(`[Port Cleanup] Port status after cleanup:`, verifyOutput || 'Port is free');
 
       } catch (error) {
-        console.log(`[Port Cleanup] Error during cleanup for port ${port}:`, error);
+        console.log(`[Port Cleanup] No active process found on port ${port}`);
       }
     };
 
@@ -513,10 +488,9 @@ app.use('/api', (req, res, next) => {
           currentServer = null;
         }
 
-        console.log(`[Server Startup] Starting new server on port ${port}...`);
-        currentServer = server.listen(port, "0.0.0.0", () => {
-          log(`[Server Startup] Server listening on port ${port} and accessible externally`);
-          console.log(`[Server Info] Server accessible at: https://${process.env.REPL_SLUG || 'your-repl'}.${process.env.REPL_OWNER || 'username'}.repl.co`);
+        console.log('[Server Startup] Starting new server...');
+        currentServer = server.listen(5000, "0.0.0.0", () => {
+          log(`[Server Startup] Server listening on port 5000`);
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
         });

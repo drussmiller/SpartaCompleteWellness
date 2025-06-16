@@ -44,11 +44,7 @@ export class SpartaObjectStorageFinal {
         if (result && typeof result === 'object' && 'ok' in result) {
           const typedResult = result as { ok: boolean; error?: any; errorExtras?: any };
           if (typedResult.ok === false) {
-            const errorMsg = typedResult.error?.message || 
-                           typedResult.error?.toString() || 
-                           JSON.stringify(typedResult.error) || 
-                           'Unknown Object Storage error';
-            throw new Error(`Object Storage operation failed: ${errorMsg}`);
+            throw new Error(`Object Storage operation failed: ${typedResult.error?.message || 'Unknown error'}`);
           }
           // If ok is true or undefined, assume success and return the result
           return result;
@@ -59,19 +55,7 @@ export class SpartaObjectStorageFinal {
 
       } catch (error) {
         lastError = error;
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.log(`${operationName} attempt ${attempt}/${this.maxRetries} failed:`, errorMsg);
-        
-        // Log more detailed error info for debugging
-        if (error && typeof error === 'object') {
-          console.log('Error details:', {
-            name: (error as any).name,
-            code: (error as any).code,
-            status: (error as any).status,
-            statusCode: (error as any).statusCode,
-            type: typeof error
-          });
-        }
+        console.log(`${operationName} attempt ${attempt}/${this.maxRetries} failed:`, (error as Error).message);
 
         if (attempt < this.maxRetries) {
           await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
@@ -79,8 +63,7 @@ export class SpartaObjectStorageFinal {
       }
     }
 
-    const finalErrorMsg = lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`${operationName} failed after ${this.maxRetries} attempts: ${finalErrorMsg}`);
+    throw new Error(`${operationName} failed after ${this.maxRetries} attempts: ${(lastError as Error).message}`);
   }
 
   /**

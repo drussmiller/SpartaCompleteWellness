@@ -576,26 +576,17 @@ export const storage = {
         throw new Error("Missing required fields for comment");
       }
       
-      // Validate parentId to ensure it's a valid database ID
+      // Check for potentially problematic parent ID values (like JS timestamps)
       let safeParentId = data.parentId;
       
       // Handle potential integer overflow from JavaScript timestamps
-      if (safeParentId && typeof safeParentId === 'number') {
-        if (safeParentId > 2147483647) {
-          logger.error(`ParentId ${safeParentId} exceeds PostgreSQL integer limit - this looks like a timestamp, not a valid post ID`);
-          throw new Error("Invalid parent post ID - please try refreshing the page and commenting again");
-        }
-        
-        // Verify the parent post actually exists in the database
-        const parentExists = await db
-          .select({ id: posts.id })
-          .from(posts)
-          .where(eq(posts.id, safeParentId))
-          .limit(1);
-          
-        if (parentExists.length === 0) {
-          logger.error(`ParentId ${safeParentId} does not exist in database`);
-          throw new Error("Parent post not found - please refresh the page and try again");
+      if (safeParentId && typeof safeParentId === 'number' && safeParentId > 2147483647) {
+        // PostgreSQL integer type range is -2,147,483,648 to 2,147,483,647
+        // If we have a JavaScript timestamp (13 digits), convert it to a safe integer
+        const parentIdStr = String(safeParentId);
+        if (parentIdStr.length > 10) {
+          safeParentId = parseInt(parentIdStr.substring(0, 9));
+          logger.debug(`Converted large parentId ${data.parentId} to safe value ${safeParentId}`);
         }
       }
 

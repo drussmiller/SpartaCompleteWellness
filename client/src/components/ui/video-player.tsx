@@ -74,97 +74,91 @@ export function VideoPlayer({
   
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
+  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
-  const [isCalculatingDimensions, setIsCalculatingDimensions] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  
+  // Initialize with blank placeholder, then load thumbnail
+  useEffect(() => {
+    // Start with blank placeholder for a brief moment
+    setShowingBlankPlaceholder(true);
+    setThumbnailLoaded(false);
+    
+    // After a brief delay, start loading the thumbnail
+    const timer = setTimeout(() => {
+      setShowingBlankPlaceholder(false);
+      
+      if (!simplifiedPoster) {
+        // If no poster, show fallback immediately
+        setThumbnailLoaded(true);
+      }
+      // If we have a poster, thumbnailLoaded will be set by onLoad event
+    }, 100); // Very brief delay to prevent video flash
+    
+    return () => clearTimeout(timer);
+  }, [simplifiedPoster]);
 
   // Handle thumbnail click - open modal with video player
   const handleThumbnailClick = () => {
-    if (isCalculatingDimensions) return; // Prevent multiple clicks
-    
-    console.log("Thumbnail clicked, calculating video dimensions...");
-    setIsCalculatingDimensions(true);
+    console.log("Thumbnail clicked, opening video modal");
     
     // Create a temporary video element to get dimensions
     const tempVideo = document.createElement('video');
     tempVideo.src = src;
     tempVideo.preload = 'metadata';
     
-    // Show loading state while calculating dimensions
-    console.log("Loading video metadata to determine dimensions...");
-    
     tempVideo.onloadedmetadata = () => {
       const videoWidth = tempVideo.videoWidth;
       const videoHeight = tempVideo.videoHeight;
       
-      // Mobile-specific calculations
-      const isMobile = window.innerWidth <= 768;
-      const maxWidth = isMobile ? window.innerWidth * 0.95 : Math.min(window.innerWidth * 0.9, 800);
-      const maxHeight = isMobile ? window.innerHeight * 0.8 : Math.min(window.innerHeight * 0.9, 600);
+      // Calculate container dimensions that fit within viewport
+      const maxWidth = Math.min(window.innerWidth * 0.9, 800);
+      const maxHeight = Math.min(window.innerHeight * 0.9, 600);
       
       let containerWidth = videoWidth;
       let containerHeight = videoHeight;
       
-      // Always scale to fit viewport while maintaining aspect ratio
-      const aspectRatio = videoWidth / videoHeight;
-      
-      // For mobile, prioritize width fitting first
-      if (isMobile) {
+      // Scale down if needed while maintaining aspect ratio
+      if (containerWidth > maxWidth || containerHeight > maxHeight) {
+        const aspectRatio = videoWidth / videoHeight;
+        
         if (containerWidth > maxWidth) {
           containerWidth = maxWidth;
           containerHeight = containerWidth / aspectRatio;
         }
         
-        // Then check if height needs adjustment
         if (containerHeight > maxHeight) {
           containerHeight = maxHeight;
           containerWidth = containerHeight * aspectRatio;
         }
-      } else {
-        // Desktop behavior - check both dimensions
-        if (containerWidth > maxWidth || containerHeight > maxHeight) {
-          if (containerWidth > maxWidth) {
-            containerWidth = maxWidth;
-            containerHeight = containerWidth / aspectRatio;
-          }
-          
-          if (containerHeight > maxHeight) {
-            containerHeight = maxHeight;
-            containerWidth = containerHeight * aspectRatio;
-          }
-        }
       }
       
-      console.log(`Video dimensions calculated: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
+      console.log(`Video dimensions: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}`);
       
-      // Set dimensions first
       setVideoDimensions({
-        width: Math.round(containerWidth),
-        height: Math.round(containerHeight)
+        width: containerWidth,
+        height: containerHeight
       });
       
-      // Show modal immediately now that dimensions are calculated
       setShowModal(true);
       setShouldRenderVideo(true);
       
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
       
-      // Show video immediately since dimensions are ready
+      // Show video immediately with no delay
       setVideoInitialized(true);
       setShowVideo(true);
-      setIsCalculatingDimensions(false);
       
       // Start video playback after a brief moment
       setTimeout(() => {
         if (videoRef.current) {
-          console.log("Starting video playback with pre-calculated dimensions");
+          console.log("Starting video playback");
           videoRef.current.play()
             .then(() => {
               console.log("Video playback started successfully");
@@ -181,21 +175,13 @@ export function VideoPlayer({
     };
     
     tempVideo.onerror = () => {
-      console.error("Failed to load video metadata, using fallback dimensions");
+      console.error("Failed to load video metadata");
       // Fallback to default behavior if metadata loading fails
-      const isMobile = window.innerWidth <= 768;
-      setVideoDimensions({
-        width: isMobile ? Math.round(window.innerWidth * 0.95) : 800,
-        height: isMobile ? Math.round(window.innerHeight * 0.6) : 450
-      });
-      
       setShowModal(true);
       setShouldRenderVideo(true);
       document.body.style.overflow = 'hidden';
       setVideoInitialized(true);
       setShowVideo(true);
-      setIsCalculatingDimensions(false);
-      
       tempVideo.remove();
     };
   };
@@ -207,7 +193,6 @@ export function VideoPlayer({
     setShouldRenderVideo(false);
     setVideoInitialized(false);
     setVideoDimensions(null);
-    setIsCalculatingDimensions(false);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
@@ -219,12 +204,15 @@ export function VideoPlayer({
   // Handle poster image load success
   const handlePosterLoad = () => {
     console.log("Poster image loaded successfully:", simplifiedPoster);
+    setThumbnailLoaded(true);
   };
 
-  // Handle poster image load error
+  // Handle poster image load error - no fallbacks as requested by user
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
     setPosterError(true);
+    setThumbnailLoaded(true); // Still show fallback
+    // As requested by user, no fallback images or alternatives - just fail silently
   };
   
   // Set up video loaded event
@@ -316,8 +304,13 @@ export function VideoPlayer({
       {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show thumbnail if we have one */}
-          {simplifiedPoster && !posterError && (
+          {/* Show blank placeholder first */}
+          {showingBlankPlaceholder && (
+            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
+          )}
+          
+          {/* Show thumbnail after placeholder, only when loaded */}
+          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
             <>
               <div 
                 className="w-full cursor-pointer video-thumbnail-container"
@@ -335,8 +328,6 @@ export function VideoPlayer({
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
                   className="w-full h-full object-cover"
-                  onLoad={handlePosterLoad}
-                  onError={handlePosterError}
                   style={{ 
                     display: 'block',
                     width: '100%',
@@ -353,18 +344,14 @@ export function VideoPlayer({
                   onClick={handleThumbnailClick}
                   style={{ transition: 'none' }}
                 >
-                  {isCalculatingDimensions ? (
-                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <Play size={24} className="text-white" fill="white" />
-                  )}
+                  <Play size={24} className="text-white" fill="white" />
                 </div>
               </div>
             </>
           )}
           
-          {/* Show fallback if no poster or poster failed */}
-          {(!simplifiedPoster || posterError) && (
+          {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
+          {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
             <>
               <div 
                 className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -389,14 +376,21 @@ export function VideoPlayer({
                   onClick={handleThumbnailClick}
                   style={{ transition: 'none' }}
                 >
-                  {isCalculatingDimensions ? (
-                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <Play size={24} className="text-white" fill="white" />
-                  )}
+                  <Play size={24} className="text-white" fill="white" />
                 </div>
               </div>
             </>
+          )}
+          
+          {/* Loading thumbnail (hidden image to trigger load) */}
+          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
+            <img 
+              src={simplifiedPoster} 
+              alt="Video thumbnail" 
+              onLoad={handlePosterLoad}
+              onError={handlePosterError}
+              style={{ display: 'none' }}
+            />
           )}
         </div>
       )}
@@ -420,14 +414,13 @@ export function VideoPlayer({
           onClick={handleCloseModal}
         >
           <div 
-            className="relative flex items-center justify-center"
+            className="relative flex items-center justify-center p-4"
             style={{
-              width: videoDimensions ? `${videoDimensions.width}px` : 'min(95vw, 800px)',
-              height: videoDimensions ? `${videoDimensions.height}px` : 'min(80vh, 450px)',
-              maxWidth: window.innerWidth <= 768 ? '95vw' : '90vw',
-              maxHeight: window.innerWidth <= 768 ? '80vh' : '90vh',
-              zIndex: 999999,
-              padding: window.innerWidth <= 768 ? '8px' : '16px'
+              width: videoDimensions ? `${videoDimensions.width}px` : 'min(90vw, 800px)',
+              height: videoDimensions ? `${videoDimensions.height}px` : 'min(90vh, 450px)',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              zIndex: 999999
             }}
             onClick={(e) => e.stopPropagation()}
           >

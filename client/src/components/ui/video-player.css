@@ -160,20 +160,4 @@ video::-webkit-media-controls {
     height: 100vh !important;
     z-index: 999999 !important;
   }
-  
-  /* Mobile video modal container */
-  .video-modal-overlay > div {
-    max-width: 95vw !important;
-    max-height: 80vh !important;
-    padding: 8px !important;
-  }
-  
-  /* Mobile video element sizing */
-  .video-modal-overlay video {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    object-fit: contain !important;
-  }
 }
