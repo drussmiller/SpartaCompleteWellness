@@ -345,7 +345,7 @@ export function VideoPlayer({
       style={{ margin: 0, padding: 0, lineHeight: 0 }}
     >
       {/* Show content based on current state */}
-      {!showModal && (
+      {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
           {/* Show blank placeholder first */}
           {showingBlankPlaceholder && (
