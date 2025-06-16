@@ -44,7 +44,11 @@ export class SpartaObjectStorageFinal {
         if (result && typeof result === 'object' && 'ok' in result) {
           const typedResult = result as { ok: boolean; error?: any; errorExtras?: any };
           if (typedResult.ok === false) {
-            throw new Error(`Object Storage operation failed: ${typedResult.error?.message || 'Unknown error'}`);
+            const errorMsg = typedResult.error?.message || 
+                           typedResult.error?.toString() || 
+                           JSON.stringify(typedResult.error) || 
+                           'Unknown Object Storage error';
+            throw new Error(`Object Storage operation failed: ${errorMsg}`);
           }
           // If ok is true or undefined, assume success and return the result
           return result;
@@ -55,7 +59,19 @@ export class SpartaObjectStorageFinal {
 
       } catch (error) {
         lastError = error;
-        console.log(`${operationName} attempt ${attempt}/${this.maxRetries} failed:`, (error as Error).message);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.log(`${operationName} attempt ${attempt}/${this.maxRetries} failed:`, errorMsg);
+        
+        // Log more detailed error info for debugging
+        if (error && typeof error === 'object') {
+          console.log('Error details:', {
+            name: (error as any).name,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            type: typeof error
+          });
+        }
 
         if (attempt < this.maxRetries) {
           await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
@@ -63,37 +79,18 @@ export class SpartaObjectStorageFinal {
       }
     }
 
-    throw new Error(`${operationName} failed after ${this.maxRetries} attempts: ${(lastError as Error).message}`);
+    const finalErrorMsg = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new Error(`${operationName} failed after ${this.maxRetries} attempts: ${finalErrorMsg}`);
   }
 
   /**
    * Upload file to Object Storage with retries
    */
   private async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
-    try {
-          const uploadResult = await this.objectStorage.uploadFromBytes(key, buffer);
-
-          // Check if upload actually succeeded
-          if (uploadResult && typeof uploadResult === 'object' && 'ok' in uploadResult) {
-            if (uploadResult.ok === true) {
-              console.log(`Successfully uploaded ${uniqueFilename} to Object Storage with key: ${key}`);
-            } else {
-              const errorMsg = uploadResult.error || uploadResult.message || 'Unknown Object Storage error';
-              console.error(`Object Storage upload failed for ${uniqueFilename}:`, errorMsg);
-              throw new Error(`Object Storage upload failed: ${errorMsg}`);
-            }
-          } else {
-            console.log(`Upload completed for ${uniqueFilename} (legacy API format)`);
-          }
-        } catch (uploadError) {
-          console.error(`Object Storage upload error for ${uniqueFilename}:`, {
-            error: uploadError,
-            message: uploadError.message,
-            stack: uploadError.stack,
-            type: typeof uploadError
-          });
-          throw new Error(`Object Storage upload failed: ${uploadError.message || 'Upload operation failed'}`);
-        }
+    await this.retryOperation(
+      () => this.objectStorage.uploadFromBytes(key, buffer),
+      `Upload ${key}`
+    );
     console.log(`Successfully uploaded ${key} to Object Storage`);
   }
 

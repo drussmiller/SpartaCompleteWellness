@@ -1444,10 +1444,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           } catch (storageError) {
             logger.error(`Storage error for ${uploadedFile.originalname}:`, {
               error: storageError,
-              message: storageError.message,
-              postType: postData.type
+              message: storageError instanceof Error ? storageError.message : String(storageError),
+              postType: postData.type,
+              fileName: uploadedFile.originalname,
+              fileSize: uploadedFile.size,
+              mimeType: uploadedFile.mimetype
             });
-            throw storageError; // Re-throw to be caught by outer try-catch
+            
+            // Provide specific error message based on the error
+            const errorMessage = storageError instanceof Error ? storageError.message : 'Unknown storage error';
+            throw new Error(`Failed to upload ${isVideo ? 'video' : 'file'}: ${errorMessage}`);
           }
           
           if (isVideo) {
