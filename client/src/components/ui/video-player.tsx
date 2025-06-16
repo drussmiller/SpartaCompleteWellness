@@ -74,8 +74,10 @@ export function VideoPlayer({
 
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
+  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
   const [isCalculatingDimensions, setIsCalculatingDimensions] = useState(false);
@@ -83,9 +85,24 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize poster error state
+  // Initialize with blank placeholder, then load thumbnail
   useEffect(() => {
-    setPosterError(false);
+    // Start with blank placeholder for a brief moment
+    setShowingBlankPlaceholder(true);
+    setThumbnailLoaded(false);
+
+    // After a brief delay, start loading the thumbnail
+    const timer = setTimeout(() => {
+      setShowingBlankPlaceholder(false);
+
+      if (!simplifiedPoster) {
+        // If no poster, show fallback immediately
+        setThumbnailLoaded(true);
+      }
+      // If we have a poster, thumbnailLoaded will be set by onLoad event
+    }, 100); // Very brief delay to prevent video flash
+
+    return () => clearTimeout(timer);
   }, [simplifiedPoster]);
 
   // Handle thumbnail click - open modal with video player
@@ -147,23 +164,25 @@ export function VideoPlayer({
 
       console.log(`Video dimensions calculated: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
 
-      // Set dimensions and immediately show modal with correct size
+      // Set dimensions first
       setVideoDimensions({
         width: Math.round(containerWidth),
         height: Math.round(containerHeight)
       });
-      
-      setIsCalculatingDimensions(false);
+
+      // Show modal immediately now that dimensions are calculated
       setShowModal(true);
       setShouldRenderVideo(true);
 
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
 
+      // Set preparing video to true before starting
+      setIsPreparingVideo(true);
       // Show video immediately since dimensions are ready
       setVideoInitialized(true);
       setShowVideo(true);
-      setIsPreparingVideo(true);
+      setIsCalculatingDimensions(false);
 
       // Start video playback after a brief moment
       setTimeout(() => {
@@ -178,10 +197,10 @@ export function VideoPlayer({
               if (onError) onError(new Error(`Failed to play video: ${error.message}`));
             })
             .finally(() => {
-              setIsPreparingVideo(false);
+              setIsPreparingVideo(false);  //Set loading to false regardless of pass or fail
             });
         } else {
-          setIsPreparingVideo(false);
+          setIsPreparingVideo(false); // Ensure loading is also stopped in this case.
         }
       }, 100);
 
@@ -198,12 +217,12 @@ export function VideoPlayer({
         height: isMobile ? Math.round(window.innerHeight * 0.6) : 450
       });
 
-      setIsCalculatingDimensions(false);
       setShowModal(true);
       setShouldRenderVideo(true);
       document.body.style.overflow = 'hidden';
       setVideoInitialized(true);
       setShowVideo(true);
+      setIsCalculatingDimensions(false);
       setIsPreparingVideo(false);
 
       tempVideo.remove();
@@ -230,13 +249,15 @@ export function VideoPlayer({
   // Handle poster image load success
   const handlePosterLoad = () => {
     console.log("Poster image loaded successfully:", simplifiedPoster);
-    setPosterError(false);
+    setThumbnailLoaded(true);
   };
 
-  // Handle poster image load error
+  // Handle poster image load error - no fallbacks as requested by user
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
     setPosterError(true);
+    setThumbnailLoaded(true); // Still show fallback
+    // As requested by user, no fallback images or alternatives - just fail silently
   };
 
   // Set up video loaded event
@@ -274,8 +295,9 @@ export function VideoPlayer({
       if (customEvent.detail?.videoUrl === src) {
         console.log('Thumbnail regenerated for this video, refreshing poster');
 
-        // Reset poster error state
+        // Reset poster error state and thumbnail loaded state
         setPosterError(false);
+        setThumbnailLoaded(false);
 
         // Add a cache-busting timestamp to force a reload of the image
         if (simplifiedPoster) {
@@ -327,8 +349,13 @@ export function VideoPlayer({
       {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show thumbnail if we have a poster URL and no error */}
-          {simplifiedPoster && !posterError && (
+          {/* Show blank placeholder first */}
+          {showingBlankPlaceholder && (
+            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
+          )}
+
+          {/* Show thumbnail after placeholder, only when loaded */}
+          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
             <>
               <div 
                 className="w-full cursor-pointer video-thumbnail-container"
@@ -346,8 +373,6 @@ export function VideoPlayer({
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
                   className="w-full h-full object-cover"
-                  onLoad={handlePosterLoad}
-                  onError={handlePosterError}
                   style={{ 
                     display: 'block',
                     width: '100%',
@@ -374,8 +399,8 @@ export function VideoPlayer({
             </>
           )}
 
-          {/* Show fallback if no poster or poster failed to load */}
-          {(!simplifiedPoster || posterError) && (
+          {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
+          {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
             <>
               <div 
                 className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -391,9 +416,6 @@ export function VideoPlayer({
                   <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                   </svg>
-                  {posterError && (
-                    <p className="text-xs text-gray-500 text-center">Thumbnail unavailable</p>
-                  )}
                 </div>
               </div>
               {/* Play button overlay on fallback */}
@@ -411,6 +433,17 @@ export function VideoPlayer({
                 </div>
               </div>
             </>
+          )}
+
+          {/* Loading thumbnail (hidden image to trigger load) */}
+          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
+            <img 
+              src={simplifiedPoster} 
+              alt="Video thumbnail" 
+              onLoad={handlePosterLoad}
+              onError={handlePosterError}
+              style={{ display: 'none' }}
+            />
           )}
         </div>
       )}
