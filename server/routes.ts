@@ -1427,17 +1427,28 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Import the Object Storage utility
           const { spartaObjectStorage } = await import('./sparta-object-storage-final');
           
-          // Store the file using Object Storage
-          const fileInfo = await spartaObjectStorage.storeFile(
-            uploadedFile.buffer,
-            uploadedFile.originalname,
-            uploadedFile.mimetype,
-            isVideo
-          );
-          
-          // Store the full Object Storage key for proper URL construction
-          mediaUrl = `shared/uploads/${fileInfo.filename}`;
-          mediaProcessed = true;
+          try {
+            // Store the file using Object Storage
+            const fileInfo = await spartaObjectStorage.storeFile(
+              uploadedFile.buffer,
+              uploadedFile.originalname,
+              uploadedFile.mimetype,
+              isVideo
+            );
+            
+            // Store the full Object Storage key for proper URL construction
+            mediaUrl = `shared/uploads/${fileInfo.filename}`;
+            mediaProcessed = true;
+            
+            logger.info(`Successfully stored file: ${fileInfo.filename} for post type: ${postData.type}`);
+          } catch (storageError) {
+            logger.error(`Storage error for ${uploadedFile.originalname}:`, {
+              error: storageError,
+              message: storageError.message,
+              postType: postData.type
+            });
+            throw storageError; // Re-throw to be caught by outer try-catch
+          }
           
           if (isVideo) {
             logger.info(`Video file stored successfully: ${fileInfo}`);
@@ -1446,9 +1457,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          // Don't use any fallback image
+          
+          // For memory verse posts, video upload is required
+          if (postData.type === 'memory_verse') {
+            logger.error(`Memory verse video upload failed: ${fileErr.message || 'Unknown error'}`);
+            return res.status(400).json({ 
+              message: "Failed to upload memory verse video. Please try again with a smaller video file or check your internet connection.",
+              error: fileErr.message || 'Video upload failed'
+            });
+          }
+          
+          // For other post types, continue without media
           mediaUrl = null;
-          logger.info(`Error with uploaded file for post type: ${postData.type}`);
+          logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
         }
       } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
         // For miscellaneous posts, media is optional

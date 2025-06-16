@@ -70,10 +70,30 @@ export class SpartaObjectStorageFinal {
    * Upload file to Object Storage with retries
    */
   private async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
-    await this.retryOperation(
-      () => this.objectStorage.uploadFromBytes(key, buffer),
-      `Upload ${key}`
-    );
+    try {
+          const uploadResult = await this.objectStorage.uploadFromBytes(key, buffer);
+
+          // Check if upload actually succeeded
+          if (uploadResult && typeof uploadResult === 'object' && 'ok' in uploadResult) {
+            if (uploadResult.ok === true) {
+              console.log(`Successfully uploaded ${uniqueFilename} to Object Storage with key: ${key}`);
+            } else {
+              const errorMsg = uploadResult.error || uploadResult.message || 'Unknown Object Storage error';
+              console.error(`Object Storage upload failed for ${uniqueFilename}:`, errorMsg);
+              throw new Error(`Object Storage upload failed: ${errorMsg}`);
+            }
+          } else {
+            console.log(`Upload completed for ${uniqueFilename} (legacy API format)`);
+          }
+        } catch (uploadError) {
+          console.error(`Object Storage upload error for ${uniqueFilename}:`, {
+            error: uploadError,
+            message: uploadError.message,
+            stack: uploadError.stack,
+            type: typeof uploadError
+          });
+          throw new Error(`Object Storage upload failed: ${uploadError.message || 'Upload operation failed'}`);
+        }
     console.log(`Successfully uploaded ${key} to Object Storage`);
   }
 
