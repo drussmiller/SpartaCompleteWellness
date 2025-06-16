@@ -214,7 +214,7 @@ export function VideoPlayer({
       videoRef.current.currentTime = 0;
     }
     // Re-enable body scroll
-    document.body.style.overflow = 'unset';
+    document.body.style.overflow = '';
   };
   
   // Handle poster image load success
@@ -305,7 +305,7 @@ export function VideoPlayer({
   useEffect(() => {
     return () => {
       // Restore body scroll if component unmounts while modal is open
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     };
   }, []);
 
