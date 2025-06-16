@@ -1,21 +1,22 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function VideoPlayerPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [location, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const videoSrc = searchParams.get('src');
-  const posterSrc = searchParams.get('poster');
+  // Parse URL parameters manually since wouter doesn't have useSearchParams
+  const urlParams = new URLSearchParams(window.location.search);
+  const videoSrc = urlParams.get('src');
+  const posterSrc = urlParams.get('poster');
   
   useEffect(() => {
     if (!videoSrc) {
-      navigate('/');
+      setLocation('/');
       return;
     }
     
@@ -34,7 +35,8 @@ export function VideoPlayerPage() {
   }, [videoSrc, navigate]);
   
   const handleGoBack = () => {
-    navigate(-1);
+    // Go back to home page since wouter doesn't have navigate(-1)
+    setLocation('/');
   };
   
   if (!videoSrc) {

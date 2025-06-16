@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import './video-player.css'; // Import the custom CSS
 
 interface VideoPlayerProps {
@@ -79,7 +79,7 @@ export function VideoPlayer({
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
-  const navigate = useNavigate();
+  const [location, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -111,7 +111,7 @@ export function VideoPlayer({
     const videoUrl = encodeURIComponent(src);
     const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
     
-    navigate(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
+    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
   };
 
   
