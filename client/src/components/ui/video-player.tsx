@@ -79,6 +79,7 @@ export function VideoPlayer({
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -105,30 +106,100 @@ export function VideoPlayer({
   // Handle thumbnail click - open modal with video player
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, opening video modal");
-    setShowModal(true);
-    setShouldRenderVideo(true);
     
-    // Prevent body scroll when modal is open
-    document.body.style.overflow = 'hidden';
+    // Create a temporary video element to get dimensions
+    const tempVideo = document.createElement('video');
+    tempVideo.src = src;
+    tempVideo.preload = 'metadata';
     
-    // Show video immediately with no delay
-    setVideoInitialized(true);
-    setShowVideo(true);
-    
-    // Start video playback after a brief moment
-    setTimeout(() => {
-      if (videoRef.current) {
-        console.log("Starting video playback");
-        videoRef.current.play()
-          .then(() => {
-            console.log("Video playback started successfully");
-          })
-          .catch(error => {
-            console.error("Error playing video:", error);
-            if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-          });
+    tempVideo.onloadedmetadata = () => {
+      const videoWidth = tempVideo.videoWidth;
+      const videoHeight = tempVideo.videoHeight;
+      
+      // Mobile-specific calculations
+      const isMobile = window.innerWidth <= 768;
+      const maxWidth = isMobile ? window.innerWidth * 0.95 : Math.min(window.innerWidth * 0.9, 800);
+      const maxHeight = isMobile ? window.innerHeight * 0.8 : Math.min(window.innerHeight * 0.9, 600);
+      
+      let containerWidth = videoWidth;
+      let containerHeight = videoHeight;
+      
+      // Always scale to fit viewport while maintaining aspect ratio
+      const aspectRatio = videoWidth / videoHeight;
+      
+      // For mobile, prioritize width fitting first
+      if (isMobile) {
+        if (containerWidth > maxWidth) {
+          containerWidth = maxWidth;
+          containerHeight = containerWidth / aspectRatio;
+        }
+        
+        // Then check if height needs adjustment
+        if (containerHeight > maxHeight) {
+          containerHeight = maxHeight;
+          containerWidth = containerHeight * aspectRatio;
+        }
+      } else {
+        // Desktop behavior - check both dimensions
+        if (containerWidth > maxWidth || containerHeight > maxHeight) {
+          if (containerWidth > maxWidth) {
+            containerWidth = maxWidth;
+            containerHeight = containerWidth / aspectRatio;
+          }
+          
+          if (containerHeight > maxHeight) {
+            containerHeight = maxHeight;
+            containerWidth = containerHeight * aspectRatio;
+          }
+        }
       }
-    }, 100);
+      
+      console.log(`Video dimensions: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
+      
+      setVideoDimensions({
+        width: Math.round(containerWidth),
+        height: Math.round(containerHeight)
+      });
+      
+      setShowModal(true);
+      setShouldRenderVideo(true);
+      
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      
+      // Show video immediately with no delay
+      setVideoInitialized(true);
+      setShowVideo(true);
+      
+      // Start video playback after a brief moment
+      setTimeout(() => {
+        if (videoRef.current) {
+          console.log("Starting video playback");
+          videoRef.current.play()
+            .then(() => {
+              console.log("Video playback started successfully");
+            })
+            .catch(error => {
+              console.error("Error playing video:", error);
+              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
+            });
+        }
+      }, 100);
+      
+      // Clean up temp video
+      tempVideo.remove();
+    };
+    
+    tempVideo.onerror = () => {
+      console.error("Failed to load video metadata");
+      // Fallback to default behavior if metadata loading fails
+      setShowModal(true);
+      setShouldRenderVideo(true);
+      document.body.style.overflow = 'hidden';
+      setVideoInitialized(true);
+      setShowVideo(true);
+      tempVideo.remove();
+    };
   };
 
   // Handle modal close
@@ -137,6 +208,7 @@ export function VideoPlayer({
     setShowVideo(false);
     setShouldRenderVideo(false);
     setVideoInitialized(false);
+    setVideoDimensions(null);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
@@ -358,25 +430,28 @@ export function VideoPlayer({
           onClick={handleCloseModal}
         >
           <div 
-            className="relative flex items-center justify-center p-4"
+            className="relative flex items-center justify-center"
             style={{
-              width: 'min(90vw, 800px)',
-              height: 'min(90vh, 450px)',
-              maxWidth: '90vw',
-              maxHeight: '90vh',
-              zIndex: 999999
+              width: videoDimensions ? `${videoDimensions.width}px` : 'min(95vw, 800px)',
+              height: videoDimensions ? `${videoDimensions.height}px` : 'min(80vh, 450px)',
+              maxWidth: window.innerWidth <= 768 ? '95vw' : '90vw',
+              maxHeight: window.innerWidth <= 768 ? '80vh' : '90vh',
+              zIndex: 999999,
+              padding: window.innerWidth <= 768 ? '8px' : '16px'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button
-              key="close-button-v6"
+              key="close-button-v8"
               onClick={handleCloseModal}
-              className="absolute top-0 right-4 p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
+              className="absolute p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
               style={{ 
                 fontSize: '24px', 
                 lineHeight: '1',
-                zIndex: 999999
+                zIndex: 999999,
+                top: '-8px',
+                left: '-8px'
               }}
             >
               ×
