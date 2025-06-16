@@ -1494,7 +1494,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           mediaUrl: mediaUrl,
           is_video: isVideo,
           points: points,
-          createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+          createdAt: new Date() // Always use current timestamp for creation
         })
         .returning()
         .then(posts => posts[0]);
@@ -1522,9 +1522,21 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'X-Content-Type-Options': 'nosniff'
       });
       
+      // Provide user-friendly error messages
+      let errorMessage = "Failed to create post";
+      if (error instanceof Error) {
+        if (error.message.includes("integer out of range")) {
+          errorMessage = "Post creation failed due to a data format issue. Please try again.";
+        } else if (error.message.includes("duplicate key")) {
+          errorMessage = "This post already exists. Please refresh the page.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       res.status(500).json({
-        message: error instanceof Error ? error.message : "Failed to create post",
-        error: error instanceof Error ? error.stack : "Unknown error"
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
       });
     }
   });
