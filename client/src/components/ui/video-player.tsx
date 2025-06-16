@@ -164,25 +164,23 @@ export function VideoPlayer({
 
       console.log(`Video dimensions calculated: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
 
-      // Set dimensions first
+      // Set dimensions and immediately show modal with correct size
       setVideoDimensions({
         width: Math.round(containerWidth),
         height: Math.round(containerHeight)
       });
-
-      // Show modal immediately now that dimensions are calculated
+      
+      setIsCalculatingDimensions(false);
       setShowModal(true);
       setShouldRenderVideo(true);
 
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
 
-      // Set preparing video to true before starting
-      setIsPreparingVideo(true);
       // Show video immediately since dimensions are ready
       setVideoInitialized(true);
       setShowVideo(true);
-      setIsCalculatingDimensions(false);
+      setIsPreparingVideo(true);
 
       // Start video playback after a brief moment
       setTimeout(() => {
@@ -197,10 +195,10 @@ export function VideoPlayer({
               if (onError) onError(new Error(`Failed to play video: ${error.message}`));
             })
             .finally(() => {
-              setIsPreparingVideo(false);  //Set loading to false regardless of pass or fail
+              setIsPreparingVideo(false);
             });
         } else {
-          setIsPreparingVideo(false); // Ensure loading is also stopped in this case.
+          setIsPreparingVideo(false);
         }
       }, 100);
 
@@ -217,12 +215,12 @@ export function VideoPlayer({
         height: isMobile ? Math.round(window.innerHeight * 0.6) : 450
       });
 
+      setIsCalculatingDimensions(false);
       setShowModal(true);
       setShouldRenderVideo(true);
       document.body.style.overflow = 'hidden';
       setVideoInitialized(true);
       setShowVideo(true);
-      setIsCalculatingDimensions(false);
       setIsPreparingVideo(false);
 
       tempVideo.remove();
@@ -347,7 +345,7 @@ export function VideoPlayer({
       style={{ margin: 0, padding: 0, lineHeight: 0 }}
     >
       {/* Show content based on current state */}
-      {!showVideo && (
+      {!showModal && (
         <div className="relative w-full h-full min-h-[200px]">
           {/* Show blank placeholder first */}
           {showingBlankPlaceholder && (
