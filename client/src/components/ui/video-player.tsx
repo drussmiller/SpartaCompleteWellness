@@ -74,10 +74,8 @@ export function VideoPlayer({
 
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
-  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
-  const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
   const [isCalculatingDimensions, setIsCalculatingDimensions] = useState(false);
@@ -85,18 +83,9 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize thumbnail loading state
+  // Initialize poster error state
   useEffect(() => {
-    setIsLoadingThumbnail(true);
-    setThumbnailLoaded(false);
     setPosterError(false);
-
-    if (!simplifiedPoster) {
-      // If no poster, stop loading and show fallback
-      setIsLoadingThumbnail(false);
-      setThumbnailLoaded(true);
-    }
-    // If we have a poster, loading states will be set by onLoad/onError events
   }, [simplifiedPoster]);
 
   // Handle thumbnail click - open modal with video player
@@ -241,18 +230,13 @@ export function VideoPlayer({
   // Handle poster image load success
   const handlePosterLoad = () => {
     console.log("Poster image loaded successfully:", simplifiedPoster);
-    setIsLoadingThumbnail(false);
-    setThumbnailLoaded(true);
     setPosterError(false);
   };
 
-  // Handle poster image load error - no fallbacks as requested by user
+  // Handle poster image load error
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
-    setIsLoadingThumbnail(false);
     setPosterError(true);
-    setThumbnailLoaded(true); // Still show fallback
-    // As requested by user, no fallback images or alternatives - just fail silently
   };
 
   // Set up video loaded event
@@ -290,9 +274,8 @@ export function VideoPlayer({
       if (customEvent.detail?.videoUrl === src) {
         console.log('Thumbnail regenerated for this video, refreshing poster');
 
-        // Reset poster error state and thumbnail loaded state
+        // Reset poster error state
         setPosterError(false);
-        setThumbnailLoaded(false);
 
         // Add a cache-busting timestamp to force a reload of the image
         if (simplifiedPoster) {
@@ -344,18 +327,8 @@ export function VideoPlayer({
       {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Loading state */}
-          {isLoadingThumbnail && simplifiedPoster && (
-            <div className="w-full h-full min-h-[200px] flex items-center justify-center bg-gray-100 border border-gray-200">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm text-gray-600">Loading thumbnail...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Show thumbnail if loaded successfully */}
-          {!isLoadingThumbnail && thumbnailLoaded && simplifiedPoster && !posterError && (
+          {/* Show thumbnail if we have a poster URL and no error */}
+          {simplifiedPoster && !posterError && (
             <>
               <div 
                 className="w-full cursor-pointer video-thumbnail-container"
@@ -401,8 +374,8 @@ export function VideoPlayer({
             </>
           )}
 
-          {/* Show fallback if no poster, failed to load, or loading finished without thumbnail */}
-          {!isLoadingThumbnail && ((!simplifiedPoster) || posterError || (!thumbnailLoaded)) && (
+          {/* Show fallback if no poster or poster failed to load */}
+          {(!simplifiedPoster || posterError) && (
             <>
               <div 
                 className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -438,17 +411,6 @@ export function VideoPlayer({
                 </div>
               </div>
             </>
-          )}
-
-          {/* Hidden image for preloading - only if we have a poster and are loading */}
-          {isLoadingThumbnail && simplifiedPoster && (
-            <img 
-              src={simplifiedPoster}
-              alt=""
-              onLoad={handlePosterLoad}
-              onError={handlePosterError}
-              style={{ display: 'none' }}
-            />
           )}
         </div>
       )}
