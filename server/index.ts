@@ -515,7 +515,8 @@ app.use('/api', (req, res, next) => {
 
         console.log(`[Server Startup] Starting new server on port ${port}...`);
         currentServer = server.listen(port, "0.0.0.0", () => {
-          log(`[Server Startup] Server listening on port ${port}`);
+          log(`[Server Startup] Server listening on port ${port} and accessible externally`);
+          console.log(`[Server Info] Server accessible at: https://${process.env.REPL_SLUG || 'your-repl'}.${process.env.REPL_OWNER || 'username'}.repl.co`);
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
         });
