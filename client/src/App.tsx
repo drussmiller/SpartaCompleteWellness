@@ -27,7 +27,7 @@ import { DebugApi } from "./debug-api"; // Import our debug component
 import { AchievementsContainer } from "@/components/achievements/achievements-container";
 import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the prayer requests page
 import StorageTestPage from "@/pages/storage-test-page"; // Import the storage test page
-
+import { VideoPlayerPage } from "./pages/video-player-page";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -80,6 +80,7 @@ function MainContent() {
           <Route path="/prayer-requests" component={PrayerRequestsPage} />
           <Route path="/debug" component={() => <DebugApi />} />
           <Route path="/storage-test" component={StorageTestPage} />
+          <Route path="/video-player" component={() => <VideoPlayerPage />} />
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>
@@ -90,7 +91,7 @@ function MainContent() {
 
 function App() {
   console.log('App component rendering');
-  
+
   // Check for notification permission when app loads
   // This needs to be called from a user interaction (e.g., button click)
   // but we can check if it's already been granted
@@ -98,7 +99,7 @@ function App() {
     // Check if the browser supports notifications
     if ('Notification' in window) {
       console.log("Notification permission:", Notification.permission);
-      
+
       // We'll let the notification code request permission when a notification 
       // arrives rather than asking immediately on app load
       if (Notification.permission === 'granted') {
@@ -106,7 +107,7 @@ function App() {
       }
     }
   }, []);
-  
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

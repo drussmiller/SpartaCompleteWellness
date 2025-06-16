@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
+import { useNavigate } from 'react-router-dom';
 import './video-player.css'; // Import the custom CSS
 
 interface VideoPlayerProps {
@@ -78,8 +79,7 @@ export function VideoPlayer({
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
+  const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -103,119 +103,18 @@ export function VideoPlayer({
     return () => clearTimeout(timer);
   }, [simplifiedPoster]);
 
-  // Handle thumbnail click - open modal with video player
+  // Handle thumbnail click - navigate to video player page
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, opening video modal");
+    console.log("Thumbnail clicked, navigating to video player page");
     
-    // Create a temporary video element to get dimensions
-    const tempVideo = document.createElement('video');
-    tempVideo.src = src;
-    tempVideo.preload = 'metadata';
+    // Navigate to video player page with video URL as parameter
+    const videoUrl = encodeURIComponent(src);
+    const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
     
-    tempVideo.onloadedmetadata = () => {
-      const videoWidth = tempVideo.videoWidth;
-      const videoHeight = tempVideo.videoHeight;
-      
-      // Mobile-specific calculations
-      const isMobile = window.innerWidth <= 768;
-      const maxWidth = isMobile ? window.innerWidth * 0.95 : Math.min(window.innerWidth * 0.9, 800);
-      const maxHeight = isMobile ? window.innerHeight * 0.8 : Math.min(window.innerHeight * 0.9, 600);
-      
-      let containerWidth = videoWidth;
-      let containerHeight = videoHeight;
-      
-      // Always scale to fit viewport while maintaining aspect ratio
-      const aspectRatio = videoWidth / videoHeight;
-      
-      // For mobile, prioritize width fitting first
-      if (isMobile) {
-        if (containerWidth > maxWidth) {
-          containerWidth = maxWidth;
-          containerHeight = containerWidth / aspectRatio;
-        }
-        
-        // Then check if height needs adjustment
-        if (containerHeight > maxHeight) {
-          containerHeight = maxHeight;
-          containerWidth = containerHeight * aspectRatio;
-        }
-      } else {
-        // Desktop behavior - check both dimensions
-        if (containerWidth > maxWidth || containerHeight > maxHeight) {
-          if (containerWidth > maxWidth) {
-            containerWidth = maxWidth;
-            containerHeight = containerWidth / aspectRatio;
-          }
-          
-          if (containerHeight > maxHeight) {
-            containerHeight = maxHeight;
-            containerWidth = containerHeight * aspectRatio;
-          }
-        }
-      }
-      
-      console.log(`Video dimensions: ${videoWidth}x${videoHeight}, Container: ${containerWidth}x${containerHeight}, Mobile: ${isMobile}`);
-      
-      setVideoDimensions({
-        width: Math.round(containerWidth),
-        height: Math.round(containerHeight)
-      });
-      
-      setShowModal(true);
-      setShouldRenderVideo(true);
-      
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-      
-      // Show video immediately with no delay
-      setVideoInitialized(true);
-      setShowVideo(true);
-      
-      // Start video playback after a brief moment
-      setTimeout(() => {
-        if (videoRef.current) {
-          console.log("Starting video playback");
-          videoRef.current.play()
-            .then(() => {
-              console.log("Video playback started successfully");
-            })
-            .catch(error => {
-              console.error("Error playing video:", error);
-              if (onError) onError(new Error(`Failed to play video: ${error.message}`));
-            });
-        }
-      }, 100);
-      
-      // Clean up temp video
-      tempVideo.remove();
-    };
-    
-    tempVideo.onerror = () => {
-      console.error("Failed to load video metadata");
-      // Fallback to default behavior if metadata loading fails
-      setShowModal(true);
-      setShouldRenderVideo(true);
-      document.body.style.overflow = 'hidden';
-      setVideoInitialized(true);
-      setShowVideo(true);
-      tempVideo.remove();
-    };
+    navigate(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
   };
 
-  // Handle modal close
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setShowVideo(false);
-    setShouldRenderVideo(false);
-    setVideoInitialized(false);
-    setVideoDimensions(null);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-    // Re-enable body scroll
-    document.body.style.overflow = '';
-  };
+  
   
   // Handle poster image load success
   const handlePosterLoad = () => {
@@ -301,13 +200,7 @@ export function VideoPlayer({
     };
   }, [src, simplifiedPoster]);
 
-  // Clean up body scroll on unmount
-  useEffect(() => {
-    return () => {
-      // Restore body scroll if component unmounts while modal is open
-      document.body.style.overflow = '';
-    };
-  }, []);
+  
 
 
 
@@ -411,74 +304,7 @@ export function VideoPlayer({
         </div>
       )}
       
-      {/* Modal for video player */}
-      {showModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999999,
-            width: '100vw',
-            height: '100vh',
-            margin: 0,
-            padding: 0
-          }}
-          onClick={handleCloseModal}
-        >
-          <div 
-            className="relative flex items-center justify-center"
-            style={{
-              width: videoDimensions ? `${videoDimensions.width}px` : 'min(95vw, 800px)',
-              height: videoDimensions ? `${videoDimensions.height}px` : 'min(80vh, 450px)',
-              maxWidth: window.innerWidth <= 768 ? '95vw' : '90vw',
-              maxHeight: window.innerWidth <= 768 ? '80vh' : '90vh',
-              zIndex: 999999,
-              padding: window.innerWidth <= 768 ? '8px' : '16px'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              key="close-button-v8"
-              onClick={handleCloseModal}
-              className="absolute p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-75 transition-all"
-              style={{ 
-                fontSize: '24px', 
-                lineHeight: '1',
-                zIndex: 999999,
-                top: '-8px',
-                left: '-8px'
-              }}
-            >
-              ×
-            </button>
-            
-            {/* Video player */}
-            {shouldRenderVideo && videoInitialized && showVideo && (
-              <video
-                ref={videoRef}
-                src={src}
-                preload="none"
-                playsInline={playsInline}
-                className="w-full h-full object-contain"
-                controls={true}
-                controlsList={controlsList}
-                disablePictureInPicture={disablePictureInPicture}
-                style={{ 
-                  width: "100%",
-                  height: "100%"
-                }}
-              />
-            )}
-            
-            
-          </div>
-        </div>
-      )}
+      
       
       
     </div>
