@@ -1485,29 +1485,63 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
-      // Create the post in the database
+      // Create the post in the database with proper error handling
       let post;
       try {
-        const [createdPost] = await db
-          .insert(posts)
-          .values({
-            userId: req.user!.id,
-            type: postData.type,
-            content: postData.content?.trim() || '',
-            mediaUrl: mediaUrl,
-            is_video: isVideo,
-            points: points,
-            createdAt: new Date()
-          })
-          .returning();
+        logger.info('Attempting to create database record with data:', {
+          userId: req.user!.id,
+          type: postData.type,
+          content: postData.content?.trim() || '',
+          mediaUrl: mediaUrl,
+          is_video: isVideo,
+          points: points
+        });
         
-        post = createdPost;
+        // Use a transaction to ensure atomicity
+        const result = await db.transaction(async (tx) => {
+          const insertedPosts = await tx
+            .insert(posts)
+            .values({
+              userId: req.user!.id,
+              type: postData.type,
+              content: postData.content?.trim() || '',
+              mediaUrl: mediaUrl,
+              is_video: isVideo,
+              points: points,
+              createdAt: new Date()
+            })
+            .returning();
+          
+          if (!insertedPosts || insertedPosts.length === 0) {
+            throw new Error("No post was created in the database");
+          }
+          
+          return insertedPosts[0];
+        });
+        
+        post = result;
         
         // Log the created post for verification
-        logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points, mediaUrl: post.mediaUrl });
+        logger.info('Successfully created post in database:', { 
+          postId: post.id, 
+          type: post.type, 
+          points: post.points, 
+          mediaUrl: post.mediaUrl,
+          userId: post.userId
+        });
         
       } catch (dbError) {
-        logger.error("Database error creating post:", dbError);
+        logger.error("Database error creating post:", {
+          error: dbError,
+          message: dbError instanceof Error ? dbError.message : "Unknown database error",
+          stack: dbError instanceof Error ? dbError.stack : undefined,
+          postData: {
+            userId: req.user!.id,
+            type: postData.type,
+            mediaUrl: mediaUrl,
+            points: points
+          }
+        });
         
         // If database creation fails and we uploaded media, try to clean up
         if (mediaUrl) {
@@ -1520,7 +1554,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }
         
-        throw new Error("Failed to create post in database: " + (dbError instanceof Error ? dbError.message : "Unknown database error"));
+        // Return a proper error response
+        return res.status(500).json({
+          message: "Failed to create post in database",
+          error: dbError instanceof Error ? dbError.message : "Unknown database error",
+          details: "The file was uploaded successfully but the database record could not be created. Please try again."
+        });
       }
 
       // Check for achievements based on post type
