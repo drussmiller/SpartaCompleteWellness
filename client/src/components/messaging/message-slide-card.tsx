@@ -432,7 +432,7 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[99990]`}
+        } pt-12 z-[100000]`}
         style={{ 
           height: '100%',
           paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
@@ -503,7 +503,7 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col h-[calc(100vh-5rem)]">
               {/* Messages List */}
-              <ScrollArea className="flex-1 p-4 pb-52">
+              <ScrollArea className="flex-1 p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}></div>
                 <div className="space-y-4 mt-16">
                   {messages.map((message) => (
                     <div
@@ -581,7 +581,7 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-background fixed bottom-[80px] left-0 right-0 z-[999999]">
+              <div className="p-4 border-t bg-background fixed bottom-0 left-0 right-0 z-[100000]" style={{ marginBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}></div>
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm 
                   onSubmit={async (content, imageData, isVideo = false) => {
