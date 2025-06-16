@@ -1497,8 +1497,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points: points
         });
         
-        // Create the database record directly without transaction wrapper
-        const [createdPost] = await db
+        // Create the database record with explicit result handling
+        const insertResult = await db
           .insert(posts)
           .values({
             userId: req.user!.id,
@@ -1511,11 +1511,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           })
           .returning();
         
-        if (!createdPost) {
-          throw new Error("No post was returned from database insert");
+        logger.info('Database insert result:', { 
+          resultLength: insertResult.length, 
+          result: insertResult 
+        });
+        
+        if (!insertResult || insertResult.length === 0) {
+          throw new Error("Database insert failed - no result returned");
         }
         
-        post = createdPost;
+        post = insertResult[0];
         
         // Log the created post for verification
         logger.info('Successfully created post in database:', { 
