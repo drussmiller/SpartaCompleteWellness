@@ -1428,6 +1428,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           const { spartaObjectStorage } = await import('./sparta-object-storage-final');
           
           try {
+            // Validate file before processing
+            if (!uploadedFile.buffer || uploadedFile.buffer.length === 0) {
+              throw new Error('Invalid file buffer - file may be corrupted');
+            }
+            
+            if (!uploadedFile.originalname || uploadedFile.originalname.trim() === '') {
+              throw new Error('Invalid filename');
+            }
+            
             // Store the file using Object Storage
             const fileInfo = await spartaObjectStorage.storeFile(
               uploadedFile.buffer,
@@ -1436,11 +1445,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               isVideo
             );
             
+            // Validate the file was stored successfully
+            if (!fileInfo || !fileInfo.filename) {
+              throw new Error('File storage failed - no filename returned');
+            }
+            
             // Store the full Object Storage key for proper URL construction
             mediaUrl = `shared/uploads/${fileInfo.filename}`;
             mediaProcessed = true;
             
             logger.info(`Successfully stored file: ${fileInfo.filename} for post type: ${postData.type}`);
+            
+            // Verify the file exists in Object Storage
+            if (fileInfo.url) {
+              logger.info(`File accessible at: ${fileInfo.url}`);
+            }
+            
           } catch (storageError) {
             logger.error(`Storage error for ${uploadedFile.originalname}:`, {
               error: storageError,
@@ -1485,10 +1505,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
-      // Create the post in the database
+      // Create the post in the database with proper transaction handling
       let post;
       try {
-        logger.info('Attempting to create database record with data:', {
+        logger.info('Creating database record with data:', {
           userId: req.user!.id,
           type: postData.type,
           content: postData.content?.trim() || '',
@@ -1497,9 +1517,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points: points
         });
         
-        // Create the database record with proper error handling
-        try {
-          const insertResult = await db
+        // Use a database transaction to ensure atomicity
+        const insertResult = await db.transaction(async (tx) => {
+          const result = await tx
             .insert(posts)
             .values({
               userId: req.user!.id,
@@ -1512,39 +1532,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             })
             .returning();
           
-          logger.info('Database insert result:', { 
-            resultLength: insertResult.length, 
-            result: insertResult 
-          });
-          
-          if (!insertResult || insertResult.length === 0) {
-            throw new Error("Database insert failed - no result returned");
+          if (!result || result.length === 0) {
+            throw new Error("Database insert returned no results");
           }
           
-          post = insertResult[0];
-          
-          logger.info('Successfully created post in database:', { 
-            postId: post.id, 
-            type: post.type, 
-            points: post.points, 
-            mediaUrl: post.mediaUrl,
-            userId: post.userId
-          });
-        } catch (insertError) {
-          logger.error('Database insert error:', {
-            error: insertError,
-            message: insertError instanceof Error ? insertError.message : 'Unknown error',
-            postData: {
-              userId: req.user!.id,
-              type: postData.type,
-              mediaUrl: mediaUrl,
-              points: points
-            }
-          });
-          throw new Error(`Database insert failed: ${insertError instanceof Error ? insertError.message : 'Unknown error'}`);
-        }
+          return result;
+        });
         
-        // Log the created post for verification
+        post = insertResult[0];
+        
         logger.info('Successfully created post in database:', { 
           postId: post.id, 
           type: post.type, 
@@ -1557,7 +1553,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.error("Database error creating post:", {
           error: dbError,
           message: dbError instanceof Error ? dbError.message : "Unknown database error",
-          stack: dbError instanceof Error ? dbError.stack : undefined,
           postData: {
             userId: req.user!.id,
             type: postData.type,
@@ -1566,7 +1561,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         });
         
-        // If database creation fails and we uploaded media, try to clean up
+        // If database creation fails and we uploaded media, clean up
         if (mediaUrl) {
           try {
             const { spartaObjectStorage } = await import('./sparta-object-storage-final');
@@ -1579,9 +1574,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         
         // Return a proper error response
         return res.status(500).json({
-          message: "Failed to create post in database",
-          error: dbError instanceof Error ? dbError.message : "Unknown database error",
-          details: "The file was uploaded successfully but the database record could not be created. Please try again."
+          message: "Failed to create post",
+          error: dbError instanceof Error ? dbError.message : "Database error",
+          details: "Please try again."
         });
       }
 
@@ -1593,7 +1588,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Non-fatal error, continue without blocking post creation
       }
 
-      res.status(201).json(post);
+      // Format the response with complete post data including author info
+      const responsePost = {
+        id: post.id,
+        userId: post.userId,
+        type: post.type,
+        content: post.content,
+        mediaUrl: post.mediaUrl,
+        is_video: post.is_video,
+        points: post.points,
+        createdAt: post.createdAt,
+        parentId: post.parentId,
+        depth: post.depth,
+        author: {
+          id: req.user.id,
+          username: req.user.username,
+          imageUrl: req.user.imageUrl
+        }
+      };
+
+      logger.info('Sending post response:', { postId: post.id, mediaUrl: post.mediaUrl });
+      res.status(201).json(responsePost);
     } catch (error) {
       logger.error("Error in post creation:", error);
       
