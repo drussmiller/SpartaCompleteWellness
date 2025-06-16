@@ -54,6 +54,7 @@ export function MessageSlideCard() {
   const [isVideoFile, setIsVideoFile] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
@@ -109,14 +110,14 @@ export function MessageSlideCard() {
         const data = await response.json();
         console.log('Messages response:', data);
         console.log('Messages count:', data.length);
-        
+
         // Filter out messages with undefined/null image URLs to prevent display issues
         const cleanedData = data.map((message: any) => ({
           ...message,
           imageUrl: (message.imageUrl === '/uploads/undefined' || message.imageUrl === 'undefined' || !message.imageUrl) ? null : message.imageUrl,
           mediaUrl: (message.mediaUrl === '/uploads/undefined' || message.mediaUrl === 'undefined' || !message.mediaUrl) ? null : message.mediaUrl
         }));
-        
+
         if (cleanedData.length > 0) {
           console.log('First message sample (cleaned):', {
             id: cleanedData[0].id,
@@ -225,26 +226,26 @@ export function MessageSlideCard() {
           // Store the original video file
           setIsVideoFile(true); // Set video flag for video file
           console.log("Video detected with type:", blob.type);
-          
+
           // IMPORTANT: Store the original file in a state variable we can access later
           // We need to save this as a special property to reference later
           window._SPARTA_ORIGINAL_VIDEO_FILE = blob;
-          
+
           // Create a URL for the video
           const url = URL.createObjectURL(blob);
-          
+
           // For thumbnail preview only
           const video = document.createElement('video');
           video.src = url;
           video.preload = 'metadata';
           video.muted = true;
           video.playsInline = true;
-          
+
           // Generate thumbnail when metadata is loaded
           video.onloadedmetadata = () => {
             video.currentTime = 0.1;
           };
-          
+
           video.onseeked = () => {
             try {
               // Create canvas and draw video frame for PREVIEW only
@@ -258,7 +259,7 @@ export function MessageSlideCard() {
                 const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
                 setPastedImage(thumbnailUrl);
                 console.log("Generated video thumbnail for preview only");
-                
+
                 // Display toast to confirm video is attached
                 toast({
                   description: `Video attached (${(blob.size / (1024 * 1024)).toFixed(2)}MB)`,
@@ -269,7 +270,7 @@ export function MessageSlideCard() {
               console.error("Error generating thumbnail from pasted video:", error);
             }
           };
-          
+
           video.load();
         }
         break;
@@ -305,13 +306,13 @@ export function MessageSlideCard() {
               type: window._SPARTA_ORIGINAL_VIDEO_FILE.type,
               size: window._SPARTA_ORIGINAL_VIDEO_FILE.size
             });
-            
+
             // Attach the original video file directly
             formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE);
-            
+
             // Set the is_video flag explicitly 
             formData.append('is_video', 'true');
-            
+
             // Add video extension for server processing
             const ext = window._SPARTA_ORIGINAL_VIDEO_FILE.name.split('.').pop() || 'mp4';
             formData.append('video_extension', ext);
@@ -319,11 +320,11 @@ export function MessageSlideCard() {
             // Handle image case - convert base64 to blob
             const response = await fetch(pastedImage);
             const blob = await response.blob();
-            
+
             // Create a proper file from the blob
             const file = new File([blob], 'pasted-image.png', { type: blob.type });
             formData.append('image', file);
-            
+
             // Set is_video flag as false
             formData.append('is_video', 'false');
           }
@@ -362,18 +363,18 @@ export function MessageSlideCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
-      
+
       // Clean up stored states
       setMessageText("");
       setPastedImage(null);
       setIsVideoFile(false);
-      
+
       // Clear the stored video file
       if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
         console.log("Clearing stored video file after successful send");
         window._SPARTA_ORIGINAL_VIDEO_FILE = null;
       }
-      
+
       toast({
         description: "Message sent successfully",
       });
@@ -391,6 +392,23 @@ export function MessageSlideCard() {
     if ((!messageText.trim() && !pastedImage) || !selectedMember) return;
     createMessageMutation.mutate();
   };
+
+  // Close messaging overlay when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSelectedMember(null);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isOpen]);
 
   return (
     <>
@@ -572,15 +590,15 @@ export function MessageSlideCard() {
                     // directly call createMessageMutation with the provided values
                     if (!content.trim() && !imageData) return;
                     if (!selectedMember) return;
-                    
+
                     try {
                       const formData = new FormData();
-                      
+
                       // Add message content if present
                       if (content.trim()) {
                         formData.append('content', content.trim());
                       }
-                      
+
                       // Add image/video if present
                       if (imageData) {
                         // Check if we have a saved video file to use
@@ -588,60 +606,60 @@ export function MessageSlideCard() {
                           // Use the original video file we saved
                           console.log('MessageForm using original video file for upload with type:', 
                                      window._SPARTA_ORIGINAL_VIDEO_FILE.type);
-                          
+
                           // Determine appropriate extension based on MIME type
                           const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' : 
                                         window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
-                          
+
                           // Attach the video with proper extension
                           formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
-                          
+
                           // Set is_video flag
                           formData.append('is_video', 'true');
                         } else {
                           // Standard image handling
                           const response = await fetch(imageData);
                           const blob = await response.blob();
-                          
+
                           formData.append('image', blob, 'pasted-image.png');
                           formData.append('is_video', 'false');
                         }
                       }
-                      
+
                       formData.append('recipientId', selectedMember.id.toString());
-                      
+
                       // Update state variables with the content and image
                       setMessageText(content);
                       setPastedImage(imageData);
-                      
+
                       // Submit the message via fetch directly instead of using the mutation
                       const res = await fetch('/api/messages', {
                         method: 'POST',
                         body: formData,
                         credentials: 'include'
                       });
-                      
+
                       if (!res.ok) {
                         throw new Error("Failed to send message");
                       }
-                      
+
                       const data = await res.json();
-                      
+
                       // Clear the form on success
                       setMessageText("");
                       setPastedImage(null);
                       setIsVideoFile(false);
-                      
+
                       // Clear the stored video file
                       if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
                         console.log("Clearing stored video file after successful send");
                         window._SPARTA_ORIGINAL_VIDEO_FILE = null;
                       }
-                      
+
                       // Update queries to show the new message
                       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
                       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
-                      
+
                       // Show success toast
                       toast({
                         description: "Message sent successfully",

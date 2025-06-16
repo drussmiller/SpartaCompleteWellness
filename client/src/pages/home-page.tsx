@@ -174,7 +174,8 @@ export default function HomePage() {
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-700 ease-in-out"
           style={{
-            transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'
+            transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
+            pointerEvents: isHeaderVisible ? 'auto' : 'none'
           }}
         >
           <div className="w-full max-w-[768px] mx-auto px-4">
