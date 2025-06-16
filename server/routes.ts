@@ -1485,22 +1485,43 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
-      const post = await db
-        .insert(posts)
-        .values({
-          userId: req.user!.id,
-          type: postData.type,
-          content: postData.content?.trim() || '',
-          mediaUrl: mediaUrl,
-          is_video: isVideo,
-          points: points,
-          createdAt: new Date() // Always use current timestamp for creation
-        })
-        .returning()
-        .then(posts => posts[0]);
-
-      // Log the created post for verification
-      logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
+      // Create the post in the database
+      let post;
+      try {
+        const [createdPost] = await db
+          .insert(posts)
+          .values({
+            userId: req.user!.id,
+            type: postData.type,
+            content: postData.content?.trim() || '',
+            mediaUrl: mediaUrl,
+            is_video: isVideo,
+            points: points,
+            createdAt: new Date()
+          })
+          .returning();
+        
+        post = createdPost;
+        
+        // Log the created post for verification
+        logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points, mediaUrl: post.mediaUrl });
+        
+      } catch (dbError) {
+        logger.error("Database error creating post:", dbError);
+        
+        // If database creation fails and we uploaded media, try to clean up
+        if (mediaUrl) {
+          try {
+            const { spartaObjectStorage } = await import('./sparta-object-storage-final');
+            await spartaObjectStorage.deleteFile(mediaUrl);
+            logger.info(`Cleaned up uploaded file after database error: ${mediaUrl}`);
+          } catch (cleanupError) {
+            logger.error(`Failed to cleanup file after database error: ${cleanupError}`);
+          }
+        }
+        
+        throw new Error("Failed to create post in database: " + (dbError instanceof Error ? dbError.message : "Unknown database error"));
+      }
 
       // Check for achievements based on post type
       try {
