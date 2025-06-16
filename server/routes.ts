@@ -1450,15 +1450,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               throw new Error('File storage failed - no filename returned');
             }
             
-            // Store the full Object Storage key for proper URL construction
+            // Validate fileInfo response
+            if (!fileInfo || !fileInfo.filename) {
+              throw new Error('File storage returned invalid response');
+            }
+            
+            // Store the Object Storage key (not a full URL)
             mediaUrl = `shared/uploads/${fileInfo.filename}`;
             mediaProcessed = true;
             
-            logger.info(`Successfully stored file: ${fileInfo.filename} for post type: ${postData.type}`);
+            logger.info(`Successfully stored file for ${postData.type} post:`, {
+              originalFilename: uploadedFile.originalname,
+              storedFilename: fileInfo.filename,
+              mediaUrl: mediaUrl,
+              isVideo: isVideo,
+              fileSize: uploadedFile.size
+            });
             
-            // Verify the file exists in Object Storage
+            // Verify the file exists in Object Storage if URL is provided
             if (fileInfo.url) {
-              logger.info(`File accessible at: ${fileInfo.url}`);
+              logger.info(`File accessible at Object Storage URL: ${fileInfo.url}`);
+            }
+            
+            // Double-check that we have a valid mediaUrl before proceeding
+            if (!mediaUrl || mediaUrl.length < 10) {
+              throw new Error('Invalid mediaUrl generated from file storage');
             }
             
           } catch (storageError) {
@@ -1508,55 +1524,85 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Create the post in the database with proper transaction handling
       let post;
       try {
-        logger.info('Creating database record with data:', {
-          userId: req.user!.id,
+        // Validate required fields before database insertion
+        if (!req.user?.id) {
+          throw new Error("User ID is required");
+        }
+        
+        if (!postData.type) {
+          throw new Error("Post type is required");
+        }
+        
+        // Ensure content is not empty for non-media posts
+        const finalContent = postData.content?.trim() || '';
+        if (!finalContent && !mediaUrl) {
+          throw new Error("Post must have either content or media");
+        }
+        
+        logger.info('Creating database record with validated data:', {
+          userId: req.user.id,
           type: postData.type,
-          content: postData.content?.trim() || '',
+          content: finalContent,
           mediaUrl: mediaUrl,
           is_video: isVideo,
           points: points
         });
         
-        // Use a database transaction to ensure atomicity
-        const insertResult = await db.transaction(async (tx) => {
-          const result = await tx
-            .insert(posts)
-            .values({
-              userId: req.user!.id,
-              type: postData.type,
-              content: postData.content?.trim() || '',
-              mediaUrl: mediaUrl,
-              is_video: isVideo,
-              points: points,
-              createdAt: new Date()
-            })
-            .returning();
-          
-          if (!result || result.length === 0) {
-            throw new Error("Database insert returned no results");
-          }
-          
-          return result;
-        });
+        // Direct database insertion with error handling
+        const insertResult = await db
+          .insert(posts)
+          .values({
+            userId: req.user.id,
+            type: postData.type,
+            content: finalContent,
+            mediaUrl: mediaUrl, // This should be the Object Storage key
+            is_video: isVideo,
+            points: points,
+            createdAt: new Date()
+          })
+          .returning();
+        
+        if (!insertResult || insertResult.length === 0) {
+          throw new Error("Database insert returned no results - possible constraint violation");
+        }
         
         post = insertResult[0];
+        
+        // Verify the post was actually created with the correct data
+        if (!post.id) {
+          throw new Error("Post created but no ID returned");
+        }
+        
+        // Verify mediaUrl was saved correctly
+        if (mediaUrl && !post.mediaUrl) {
+          logger.error("MediaUrl was not saved to database", {
+            expectedMediaUrl: mediaUrl,
+            actualMediaUrl: post.mediaUrl,
+            postId: post.id
+          });
+        }
         
         logger.info('Successfully created post in database:', { 
           postId: post.id, 
           type: post.type, 
           points: post.points, 
           mediaUrl: post.mediaUrl,
-          userId: post.userId
+          is_video: post.is_video,
+          userId: post.userId,
+          content: post.content?.substring(0, 50) + (post.content && post.content.length > 50 ? '...' : '')
         });
         
       } catch (dbError) {
         logger.error("Database error creating post:", {
           error: dbError,
           message: dbError instanceof Error ? dbError.message : "Unknown database error",
+          stack: dbError instanceof Error ? dbError.stack : undefined,
           postData: {
             userId: req.user!.id,
             type: postData.type,
+            content: postData.content?.substring(0, 100),
             mediaUrl: mediaUrl,
+            is_video: isVideo,
             points: points
           }
         });
@@ -1572,11 +1618,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }
         
-        // Return a proper error response
+        // Return a proper error response with more specific error information
+        const errorMessage = dbError instanceof Error ? dbError.message : "Database error";
         return res.status(500).json({
-          message: "Failed to create post",
-          error: dbError instanceof Error ? dbError.message : "Database error",
-          details: "Please try again."
+          message: "Failed to create post in database",
+          error: errorMessage,
+          details: errorMessage.includes("constraint") ? "Data validation failed" : "Please try again"
         });
       }
 
@@ -1588,6 +1635,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Non-fatal error, continue without blocking post creation
       }
 
+      // Validate post was created successfully before formatting response
+      if (!post || !post.id) {
+        logger.error('Post creation succeeded but post object is invalid:', post);
+        return res.status(500).json({
+          message: "Post creation failed - invalid post data",
+          error: "Post object is missing or incomplete"
+        });
+      }
+      
       // Format the response with complete post data including author info
       const responsePost = {
         id: post.id,
@@ -1607,7 +1663,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       };
 
-      logger.info('Sending post response:', { postId: post.id, mediaUrl: post.mediaUrl });
+      // Final validation log
+      logger.info('Post created successfully - sending response:', { 
+        postId: post.id, 
+        type: post.type,
+        hasMediaUrl: !!post.mediaUrl,
+        mediaUrl: post.mediaUrl,
+        points: post.points,
+        userId: post.userId
+      });
+      
       res.status(201).json(responsePost);
     } catch (error) {
       logger.error("Error in post creation:", error);
