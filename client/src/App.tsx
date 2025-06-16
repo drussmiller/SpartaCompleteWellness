@@ -28,6 +28,7 @@ import { AchievementsContainer } from "@/components/achievements/achievements-co
 import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the prayer requests page
 import StorageTestPage from "@/pages/storage-test-page"; // Import the storage test page
 import { VideoPlayerPage } from "./pages/video-player-page";
+import CommentsPage from "@/pages/comments-page";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -81,6 +82,9 @@ function MainContent() {
           <Route path="/debug" component={() => <DebugApi />} />
           <Route path="/storage-test" component={StorageTestPage} />
           <Route path="/video-player" component={() => <VideoPlayerPage />} />
+          <Route path="/comments/:postId">
+            <CommentsPage />
+          </Route>
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>
