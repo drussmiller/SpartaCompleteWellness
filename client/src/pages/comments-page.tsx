@@ -150,14 +150,22 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-[calc(100vh-8rem)]">
-          <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-            <PostView post={originalPost} />
-            <div className="border-t border-gray-200 pt-6">
-              <CommentList comments={comments} postId={parseInt(postId)} />
+      <div className="flex-1 bg-white">
+        <ScrollArea className="h-[calc(100vh-6rem)]">
+          <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
+            <div className="bg-white">
+              <PostView post={originalPost} />
             </div>
-            <div className="border-t border-gray-200 pt-6">
+            
+            {comments.length > 0 && (
+              <div className="border-t border-gray-200 pt-6 bg-white">
+                <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+                <CommentList comments={comments} postId={parseInt(postId)} />
+              </div>
+            )}
+            
+            <div className="border-t border-gray-200 pt-6 bg-white">
+              <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
               <CommentForm
                 onSubmit={async (content) => {
                   await createCommentMutation.mutateAsync({
