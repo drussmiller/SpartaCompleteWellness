@@ -150,27 +150,26 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="h-full w-full bg-white" style={{ backgroundColor: 'white', minHeight: '100vh' }}>
-        <div className="h-full w-full bg-white">
-          <ScrollArea className="h-[calc(100vh-4rem)] w-full bg-white">
-            <div className="w-full max-w-none px-4 pb-48 space-y-6 bg-white">
-              <PostView post={originalPost} />
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-[calc(100vh-8rem)]">
+          <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+            <PostView post={originalPost} />
+            <div className="border-t border-gray-200 pt-6">
               <CommentList comments={comments} postId={parseInt(postId)} />
-              {/* Only show comment form when not replying */}
-              {!comments.some(comment => comment.id === comments.find(c => c.replies?.some(r => r.id === comment.id))?.id) && (
-                <CommentForm
-                  onSubmit={async (content) => {
-                    await createCommentMutation.mutateAsync({
-                      content: content,
-                      postId: parseInt(postId)
-                    });
-                  }}
-                  isSubmitting={createCommentMutation.isPending}
-                />
-              )}
             </div>
-          </ScrollArea>
-        </div>
+            <div className="border-t border-gray-200 pt-6">
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync({
+                    content: content,
+                    postId: parseInt(postId)
+                  });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+              />
+            </div>
+          </div>
+        </ScrollArea>
       </div>
     </AppLayout>
   );

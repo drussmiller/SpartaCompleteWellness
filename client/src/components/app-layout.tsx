@@ -30,9 +30,9 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
             </div>
           </header>
         )}
-        <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''}`}>
+        <main className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''} min-h-0`}>
           {children}
-        </div>
+        </main>
         {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} />}
       </div>
     </div>
