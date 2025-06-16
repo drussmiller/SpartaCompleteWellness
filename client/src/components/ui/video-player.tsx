@@ -74,35 +74,15 @@ export function VideoPlayer({
   
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
-  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
-  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
   const [isCalculatingDimensions, setIsCalculatingDimensions] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize with blank placeholder, then load thumbnail
-  useEffect(() => {
-    // Start with blank placeholder for a brief moment
-    setShowingBlankPlaceholder(true);
-    setThumbnailLoaded(false);
-    
-    // After a brief delay, start loading the thumbnail
-    const timer = setTimeout(() => {
-      setShowingBlankPlaceholder(false);
-      
-      if (!simplifiedPoster) {
-        // If no poster, show fallback immediately
-        setThumbnailLoaded(true);
-      }
-      // If we have a poster, thumbnailLoaded will be set by onLoad event
-    }, 100); // Very brief delay to prevent video flash
-    
-    return () => clearTimeout(timer);
-  }, [simplifiedPoster]);
+  
 
   // Handle thumbnail click - open modal with video player
   const handleThumbnailClick = () => {
@@ -239,15 +219,12 @@ export function VideoPlayer({
   // Handle poster image load success
   const handlePosterLoad = () => {
     console.log("Poster image loaded successfully:", simplifiedPoster);
-    setThumbnailLoaded(true);
   };
 
-  // Handle poster image load error - no fallbacks as requested by user
+  // Handle poster image load error
   const handlePosterError = () => {
     console.warn("Poster image failed to load:", simplifiedPoster);
     setPosterError(true);
-    setThumbnailLoaded(true); // Still show fallback
-    // As requested by user, no fallback images or alternatives - just fail silently
   };
   
   // Set up video loaded event
@@ -339,13 +316,8 @@ export function VideoPlayer({
       {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show blank placeholder first */}
-          {showingBlankPlaceholder && (
-            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
-          )}
-          
-          {/* Show thumbnail after placeholder, only when loaded */}
-          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
+          {/* Show thumbnail if we have one */}
+          {simplifiedPoster && !posterError && (
             <>
               <div 
                 className="w-full cursor-pointer video-thumbnail-container"
@@ -363,6 +335,8 @@ export function VideoPlayer({
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
                   className="w-full h-full object-cover"
+                  onLoad={handlePosterLoad}
+                  onError={handlePosterError}
                   style={{ 
                     display: 'block',
                     width: '100%',
@@ -389,8 +363,8 @@ export function VideoPlayer({
             </>
           )}
           
-          {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
-          {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
+          {/* Show fallback if no poster or poster failed */}
+          {(!simplifiedPoster || posterError) && (
             <>
               <div 
                 className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -423,17 +397,6 @@ export function VideoPlayer({
                 </div>
               </div>
             </>
-          )}
-          
-          {/* Loading thumbnail (hidden image to trigger load) */}
-          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
-            <img 
-              src={simplifiedPoster} 
-              alt="Video thumbnail" 
-              onLoad={handlePosterLoad}
-              onError={handlePosterError}
-              style={{ display: 'none' }}
-            />
           )}
         </div>
       )}
