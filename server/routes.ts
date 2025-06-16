@@ -1485,7 +1485,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
-      // Create the post in the database with proper error handling
+      // Create the post in the database
       let post;
       try {
         logger.info('Attempting to create database record with data:', {
@@ -1497,29 +1497,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points: points
         });
         
-        // Use a transaction to ensure atomicity
-        const result = await db.transaction(async (tx) => {
-          const insertedPosts = await tx
-            .insert(posts)
-            .values({
-              userId: req.user!.id,
-              type: postData.type,
-              content: postData.content?.trim() || '',
-              mediaUrl: mediaUrl,
-              is_video: isVideo,
-              points: points,
-              createdAt: new Date()
-            })
-            .returning();
-          
-          if (!insertedPosts || insertedPosts.length === 0) {
-            throw new Error("No post was created in the database");
-          }
-          
-          return insertedPosts[0];
-        });
+        // Create the database record directly without transaction wrapper
+        const [createdPost] = await db
+          .insert(posts)
+          .values({
+            userId: req.user!.id,
+            type: postData.type,
+            content: postData.content?.trim() || '',
+            mediaUrl: mediaUrl,
+            is_video: isVideo,
+            points: points,
+            createdAt: new Date()
+          })
+          .returning();
         
-        post = result;
+        if (!createdPost) {
+          throw new Error("No post was returned from database insert");
+        }
+        
+        post = createdPost;
         
         // Log the created post for verification
         logger.info('Successfully created post in database:', { 
