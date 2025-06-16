@@ -32,7 +32,7 @@ export function VideoPlayerPage() {
           setIsLoading(false);
         });
     }
-  }, [videoSrc, navigate]);
+  }, [videoSrc, setLocation]);
   
   const handleGoBack = () => {
     // Go back to home page since wouter doesn't have navigate(-1)
