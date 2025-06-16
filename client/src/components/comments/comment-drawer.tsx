@@ -170,16 +170,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           },
           credentials: 'include' // This is crucial for sending the session cookie
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Comments fetch error (${response.status}):`, errorText);
           throw new Error(`Failed to fetch comments: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log("Comments data retrieved:", data);
-        
+
         // Make sure each comment has is_video property if it has mediaUrl
         if (Array.isArray(data)) {
           // Process video detection more thoroughly for comments
@@ -219,7 +219,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           console.error("Comments response is not an array:", data);
           setComments([]);
         }
-        
+
         // We're done loading
         setAreCommentsLoading(false);
       } catch (error) {
@@ -238,16 +238,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       if (!content.trim()) {
         throw new Error("Comment content cannot be empty");
       }
-      
+
       console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file });
-      
+
       // Use FormData to handle both text and file uploads
       const formData = new FormData();
       formData.append('type', 'comment');
       formData.append('content', content.trim());
       formData.append('parentId', postId.toString());
       formData.append('points', '1');
-      
+
       // Append file if provided
       if (file) {
         console.log("Appending file to comment:", file.name, file.type);
@@ -280,7 +280,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
     onSuccess: (newComment) => {
       console.log('Comment created successfully:', newComment);
-      
+
       // 1. Update local comments state immediately
       if (isOpen && postId) {
         setAreCommentsLoading(true);
@@ -341,28 +341,28 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
             increment: true
           }
         }));
-        
+
         console.log(`Dispatched commentCountUpdate event for post ${postId}`);
-        
+
         // Define the list of queries to invalidate immediately
         const queryKeysToInvalidate = [
           // Comments list query - used in the drawer itself
           [`/api/posts/comments/${postId}`],
-          
+
           // Post details query - used when viewing post details
           [`/api/posts/${postId}`],
-          
+
           // All posts queries that might show this post
           ['/api/posts', 'team-posts'],
           ['/api/posts/prayer-requests']
         ];
-        
+
         // Invalidate each query individually
         queryKeysToInvalidate.forEach(queryKey => {
           console.log(`Invalidating query: ${queryKey.join('/')}`);
           queryClient.invalidateQueries({ queryKey, exact: false });
         });
-        
+
         // Schedule a delayed full invalidation for consistency
         setTimeout(() => {
           // Also invalidate all posts-related queries using a more general approach
@@ -373,10 +373,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
               return queryKeyString.includes('/api/posts');
             },
           });
-          
+
           console.log(`Delayed full cache invalidation completed for post ${postId}`);
         }, 500);  // 500ms delay to ensure the UI is updated first
-        
+
         console.log(`All comment-related queries invalidated for post ${postId}`);
       }
 

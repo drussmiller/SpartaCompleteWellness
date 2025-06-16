@@ -14,7 +14,7 @@ interface AppLayoutProps {
 export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
-  
+
   // Debug logging
   console.log('AppLayout render - isBottomNavVisible:', isBottomNavVisible, 'isMobile:', isMobile);
 
