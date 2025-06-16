@@ -1548,18 +1548,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points: points
         });
         
+        // Create the post data object with proper field mapping
+        const postInsertData = {
+          userId: req.user.id,
+          type: postData.type,
+          content: finalContent || null,
+          mediaUrl: mediaUrl || null, // Map to the correct schema field name
+          is_video: isVideo || false,
+          points: points,
+          parentId: postData.parentId || null,
+          depth: postData.depth || 0
+        };
+        
+        // Remove undefined values to prevent database errors
+        Object.keys(postInsertData).forEach(key => {
+          if (postInsertData[key] === undefined) {
+            delete postInsertData[key];
+          }
+        });
+        
+        logger.info('Final insert data:', postInsertData);
+        
         // Direct database insertion with error handling
         const insertResult = await db
           .insert(posts)
-          .values({
-            userId: req.user.id,
-            type: postData.type,
-            content: finalContent,
-            mediaUrl: mediaUrl, // This should be the Object Storage key
-            is_video: isVideo,
-            points: points,
-            createdAt: new Date()
-          })
+          .values(postInsertData)
           .returning();
         
         if (!insertResult || insertResult.length === 0) {
