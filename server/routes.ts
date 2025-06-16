@@ -1497,30 +1497,52 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points: points
         });
         
-        // Create the database record with explicit result handling
-        const insertResult = await db
-          .insert(posts)
-          .values({
-            userId: req.user!.id,
-            type: postData.type,
-            content: postData.content?.trim() || '',
-            mediaUrl: mediaUrl,
-            is_video: isVideo,
-            points: points,
-            createdAt: new Date()
-          })
-          .returning();
-        
-        logger.info('Database insert result:', { 
-          resultLength: insertResult.length, 
-          result: insertResult 
-        });
-        
-        if (!insertResult || insertResult.length === 0) {
-          throw new Error("Database insert failed - no result returned");
+        // Create the database record with proper error handling
+        try {
+          const insertResult = await db
+            .insert(posts)
+            .values({
+              userId: req.user!.id,
+              type: postData.type,
+              content: postData.content?.trim() || '',
+              mediaUrl: mediaUrl,
+              is_video: isVideo,
+              points: points,
+              createdAt: new Date()
+            })
+            .returning();
+          
+          logger.info('Database insert result:', { 
+            resultLength: insertResult.length, 
+            result: insertResult 
+          });
+          
+          if (!insertResult || insertResult.length === 0) {
+            throw new Error("Database insert failed - no result returned");
+          }
+          
+          post = insertResult[0];
+          
+          logger.info('Successfully created post in database:', { 
+            postId: post.id, 
+            type: post.type, 
+            points: post.points, 
+            mediaUrl: post.mediaUrl,
+            userId: post.userId
+          });
+        } catch (insertError) {
+          logger.error('Database insert error:', {
+            error: insertError,
+            message: insertError instanceof Error ? insertError.message : 'Unknown error',
+            postData: {
+              userId: req.user!.id,
+              type: postData.type,
+              mediaUrl: mediaUrl,
+              points: points
+            }
+          });
+          throw new Error(`Database insert failed: ${insertError instanceof Error ? insertError.message : 'Unknown error'}`);
         }
-        
-        post = insertResult[0];
         
         // Log the created post for verification
         logger.info('Successfully created post in database:', { 
