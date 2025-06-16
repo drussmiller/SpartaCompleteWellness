@@ -150,9 +150,9 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="h-full w-full overflow-hidden bg-background">
-        <ScrollArea className="h-[calc(100vh-4rem)] w-full bg-background">
-          <div className="w-full max-w-none px-4 pb-48 space-y-6 bg-background">
+      <div className="h-full w-full overflow-hidden bg-white">
+        <ScrollArea className="h-[calc(100vh-4rem)] w-full bg-white">
+          <div className="w-full max-w-none px-4 pb-48 space-y-6 bg-white"></div>
             <PostView post={originalPost} />
             <CommentList comments={comments} postId={parseInt(postId)} />
             {/* Only show comment form when not replying */}
