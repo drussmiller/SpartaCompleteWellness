@@ -58,13 +58,12 @@ export function MessageSlideCard() {
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+    queryKey: ["/api/users", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
         throw new Error("No team assigned");
       }
       try {
-        console.log('Fetching users with user team ID:', user.teamId);
         const response = await apiRequest("GET", "/api/users");
 
         if (!response.ok) {
@@ -72,14 +71,12 @@ export function MessageSlideCard() {
         }
 
         const users = await response.json();
-        console.log('All users:', users);
 
         // Filter users to only show team members (excluding current user)
         const filteredUsers = users.filter((member: User) => {
           return member.teamId === user.teamId && member.id !== user.id;
         });
 
-        console.log('Filtered team members:', filteredUsers);
         return filteredUsers;
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -87,7 +84,9 @@ export function MessageSlideCard() {
       }
     },
     enabled: isOpen && !!user?.teamId,
-    retry: 2
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000 // 10 minutes
   });
 
   // Query for messages with selected member
@@ -96,20 +95,16 @@ export function MessageSlideCard() {
     queryFn: async () => {
       if (!selectedMember) return [];
       try {
-        console.log('Fetching messages for recipient:', selectedMember.id);
         const response = await apiRequest(
           "GET",
           `/api/messages/${selectedMember.id}`
         );
 
         if (!response.ok) {
-          console.error('Response not OK:', response.status, response.statusText);
           throw new Error(`Failed to fetch messages: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        console.log('Messages response:', data);
-        console.log('Messages count:', data.length);
 
         // Filter out messages with undefined/null image URLs to prevent display issues
         const cleanedData = data.map((message: any) => ({
@@ -118,18 +113,6 @@ export function MessageSlideCard() {
           mediaUrl: (message.mediaUrl === '/uploads/undefined' || message.mediaUrl === 'undefined' || !message.mediaUrl) ? null : message.mediaUrl
         }));
 
-        if (cleanedData.length > 0) {
-          console.log('First message sample (cleaned):', {
-            id: cleanedData[0].id,
-            content: cleanedData[0].content,
-            senderId: cleanedData[0].senderId,
-            recipientId: cleanedData[0].recipientId,
-            hasImage: !!cleanedData[0].imageUrl || !!cleanedData[0].mediaUrl,
-            is_video: cleanedData[0].is_video,
-            createdAt: cleanedData[0].createdAt,
-            sender: cleanedData[0].sender
-          });
-        }
         return cleanedData;
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -138,8 +121,8 @@ export function MessageSlideCard() {
     },
     enabled: !!selectedMember,
     retry: 2,
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache data
+    staleTime: 30000, // 30 seconds
+    gcTime: 5 * 60 * 1000 // 5 minutes
   });
 
   // Query for unread message count
@@ -156,7 +139,8 @@ export function MessageSlideCard() {
         return 0;
       }
     },
-    refetchInterval: 30000 // Refetch every 30 seconds
+    refetchInterval: 60000, // Refetch every 60 seconds instead of 30
+    staleTime: 30000 // 30 seconds
   });
 
   useEffect(() => {
@@ -177,7 +161,8 @@ export function MessageSlideCard() {
       }
     },
     enabled: isOpen,
-    refetchInterval: 30000
+    refetchInterval: 60000, // Refetch every 60 seconds instead of 30
+    staleTime: 30000 // 30 seconds
   });
 
   // Mark messages as read when selecting a member
@@ -538,20 +523,7 @@ export function MessageSlideCard() {
                             }}
                           />
                         )}
-                        {/* Handle both images and videos - using Object Storage pattern like comments */}
-                        {(() => {
-                          // Debug logging for image display issues
-                          if (message.imageUrl || message.mediaUrl) {
-                            console.log(`Message ${message.id} image debug:`, {
-                              imageUrl: message.imageUrl,
-                              mediaUrl: message.mediaUrl,
-                              is_video: message.is_video,
-                              hasImageUrl: !!message.imageUrl,
-                              hasMediaUrl: !!message.mediaUrl
-                            });
-                          }
-                          return null;
-                        })()}
+                        
                         {(message.imageUrl || message.mediaUrl) && 
                          (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                          (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
