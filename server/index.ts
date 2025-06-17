@@ -15,7 +15,7 @@ const execAsync = promisify(exec);
 const app = express();
 
 // Define initial port and server vars
-let port: number = 5000;
+let port: number = 5001;
 
 // Declare scheduleDailyScoreCheck function
 let scheduleDailyScoreCheck: () => void;
@@ -271,8 +271,8 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // Try alternative ports if 5000 is busy
-    const ports = [5000, 5001, 5002, 5003];
+    // Try alternative ports if 5001 is busy
+    const ports = [5001, 5002, 5003, 5000];
     // Initial port already declared at the top of file
 
     // Handle port selection
