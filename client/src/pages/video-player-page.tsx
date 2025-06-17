@@ -67,9 +67,9 @@ export function VideoPlayerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative pt-4">
+    <div className="min-h-screen bg-black relative">
       {/* Header with back button */}
-      <div className="absolute top-8 left-4 z-10">
+      <div className="absolute top-16 left-4 z-10"></div>
         <Button
           onClick={handleGoBack}
           variant="ghost"
