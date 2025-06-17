@@ -74,7 +74,7 @@ export function VideoPlayerPage() {
           onClick={handleGoBack}
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-white/20 !h-12 !w-12"
+          className="text-white hover:bg-white/20 !h-10 !w-10"
         >
           <ChevronLeft className="!h-8 !w-8" />
         </Button>
