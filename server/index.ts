@@ -456,8 +456,16 @@ app.use('/api', (req, res, next) => {
       try {
         console.log(`[Server Startup] Attempt ${6-retries} of 5`);
 
-        // First kill any existing process on the port
+        // First kill any existing process on the selected port
         await killPort(port);
+        
+        // Also try to kill common ports that might be in use
+        try {
+          await killPort(5000);
+          await killPort(5001);
+        } catch (err) {
+          // Ignore errors, these are just cleanup attempts
+        }
 
         // Add delay after killing port
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -488,9 +496,9 @@ app.use('/api', (req, res, next) => {
           currentServer = null;
         }
 
-        console.log('[Server Startup] Starting new server...');
-        currentServer = server.listen(5000, "0.0.0.0", () => {
-          log(`[Server Startup] Server listening on port 5000`);
+        console.log(`[Server Startup] Starting new server on port ${port}...`);
+        currentServer = server.listen(port, "0.0.0.0", () => {
+          log(`[Server Startup] Server listening on port ${port}`);
           // Schedule daily checks after server is ready
           scheduleDailyScoreCheck();
         });
@@ -531,7 +539,14 @@ app.use('/api', (req, res, next) => {
     process.on('SIGINT', gracefulShutdown);
 
     // Start server with enhanced cleanup and retry mechanism
-    await cleanupAndStartServer();
+    const finalServer = await cleanupAndStartServer();
+    
+    // Update the global port variable to reflect the actual listening port
+    const address = finalServer.address();
+    if (address && typeof address === 'object') {
+      port = address.port;
+      logger.info(`Server successfully started on port ${port}`);
+    }
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
