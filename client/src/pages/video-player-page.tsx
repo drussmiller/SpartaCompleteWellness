@@ -8,6 +8,7 @@ export function VideoPlayerPage() {
   const [videoSrc, setVideoSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
   useEffect(() => {
     // Extract video source from URL parameters
@@ -24,18 +25,20 @@ export function VideoPlayerPage() {
       // Preload the video to check if it's valid
       const video = document.createElement('video');
       video.src = decodedSrc;
-      video.preload = 'metadata';
+      video.preload = 'auto'; // Changed to auto for better loading
       video.onloadedmetadata = () => {
         console.log('Video metadata loaded successfully');
         setIsLoading(false);
       };
-      video.oncanplay = () => {
-        console.log('Video can start playing');
+      video.oncanplaythrough = () => {
+        console.log('Video ready to play through');
         setVideoReady(true);
+        setShouldAutoPlay(true);
       };
       video.onerror = (e) => {
         console.error('Failed to load video:', decodedSrc, e);
         setIsLoading(false);
+        setVideoReady(true); // Show video even on error
       };
       video.load();
     } else {
@@ -91,29 +94,31 @@ export function VideoPlayerPage() {
         {!videoReady && (
           <div className="flex items-center justify-center text-white">
             <Loader2 className="h-8 w-8 animate-spin mr-3" />
-            <span>Preparing video...</span>
+            <span>Loading video...</span>
           </div>
         )}
-        <video
-          src={videoSrc}
-          controls={videoReady}
-          autoPlay={videoReady}
-          preload="metadata"
-          className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
-            videoReady ? 'opacity-100' : 'opacity-0 absolute'
-          }`}
-          onLoadedMetadata={() => {
-            console.log('Video metadata loaded');
-          }}
-          onCanPlay={() => {
-            console.log('Video can play - showing player');
-            setVideoReady(true);
-          }}
-          onError={(e) => {
-            console.error('Video playback error:', e);
-            setVideoReady(true); // Show even if there's an error
-          }}
-        />
+        {videoReady && (
+          <video
+            src={videoSrc}
+            controls
+            autoPlay={shouldAutoPlay}
+            preload="auto"
+            playsInline
+            className="max-w-full max-h-full object-contain"
+            onLoadedMetadata={() => {
+              console.log('Video metadata loaded in player');
+            }}
+            onCanPlay={() => {
+              console.log('Video can play in player');
+            }}
+            onPlay={() => {
+              console.log('Video started playing');
+            }}
+            onError={(e) => {
+              console.error('Video playback error:', e);
+            }}
+          />
+        )}
       </div>
     </div>
   );
