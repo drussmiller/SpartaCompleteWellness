@@ -105,33 +105,28 @@ scheduleDailyScoreCheck = () => {
       // Use relative URL to avoid port binding issues
       const baseUrl = `http://localhost:${port}`;
 
-      // Run checks for each hour to ensure notifications go out for all users
-      // based on their preferred notification times
-      for (let hour = 0; hour < 24; hour++) {
-        logger.info(`Running check for hour ${hour}`);
+      // Only run check for current hour during startup to reduce load
+      const currentHour = now.getHours();
+      logger.info(`Running check for current hour ${currentHour}`);
 
-        const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            currentHour: hour,
-            // Use current minute for testing
-            currentMinute: now.getMinutes()
-          })
-        });
+      const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentHour: currentHour,
+          currentMinute: now.getMinutes()
+        })
+      });
 
-        if (!response.ok) {
-          logger.error(`Failed to run daily score check for hour ${hour}: ${response.statusText}`);
-          continue; // Try next hour
-        }
-
-        const result = await response.json();
-        logger.info(`Daily score check completed for hour ${hour}:`, result);
+      if (!response.ok) {
+        logger.error(`Failed to run daily score check for hour ${currentHour}: ${response.statusText}`);
+        return;
       }
 
-      logger.info('Completed daily checks for all hours');
+      const result = await response.json();
+      logger.info(`Daily score check completed for hour ${currentHour}:`, result);
     } catch (error) {
       logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
       // Schedule a retry in 5 minutes if there's an error
@@ -151,7 +146,7 @@ scheduleDailyScoreCheck = () => {
       // Schedule subsequent checks every 24 hours
       setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
     }, timeUntilCheck);
-  }, 10 * 1000); // Reduced to 10 seconds to check sooner
+  }, 30 * 1000); // Increased to 30 seconds to allow server to fully start
 
   // Also run a check every hour to catch notifications throughout the day
   const runHourlyCheck = async () => {
@@ -182,11 +177,11 @@ scheduleDailyScoreCheck = () => {
     }
   };
 
-  // Start the hourly check after 60 seconds, then run every hour
+  // Start the hourly check after 2 minutes, then run every hour
   setTimeout(() => {
     runHourlyCheck();
     setInterval(runHourlyCheck, 60 * 60 * 1000); // Every hour
-  }, 60 * 1000);
+  }, 120 * 1000);
 
   // Log the schedule
   logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes and immediate check in 10 seconds`);
