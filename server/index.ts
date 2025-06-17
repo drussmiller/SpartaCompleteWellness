@@ -463,6 +463,7 @@ app.use('/api', (req, res, next) => {
         try {
           await killPort(5000);
           await killPort(5001);
+          await killPort(5002);
         } catch (err) {
           // Ignore errors, these are just cleanup attempts
         }
