@@ -86,106 +86,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Define the scheduleDailyScoreCheck function
+// Define the scheduleDailyScoreCheck function (disabled automatic scheduling to prevent server overload)
 scheduleDailyScoreCheck = () => {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 1, 0, 0); // 00:01 AM tomorrow
-
-  const timeUntilCheck = tomorrow.getTime() - now.getTime();
-
-  logger.info('Scheduling next daily score check for:', { timestamp: tomorrow.toISOString() });
-
-  // Run an immediate check if it hasn't been run today
-  const runDailyCheck = async () => {
-    try {
-      logger.info('Running daily score check');
-
-      // Use relative URL to avoid port binding issues
-      const baseUrl = `http://localhost:${port}`;
-
-      // Only run check for current hour during startup to reduce load
-      const currentHour = now.getHours();
-      logger.info(`Running check for current hour ${currentHour}`);
-
-      const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          currentHour: currentHour,
-          currentMinute: now.getMinutes()
-        })
-      });
-
-      if (!response.ok) {
-        logger.error(`Failed to run daily score check for hour ${currentHour}: ${response.statusText}`);
-        return;
-      }
-
-      const result = await response.json();
-      logger.info(`Daily score check completed for hour ${currentHour}:`, result);
-    } catch (error) {
-      logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
-      // Schedule a retry in 5 minutes if there's an error
-      setTimeout(runDailyCheck, 5 * 60 * 1000);
-    }
-  };
-
-  // Run an immediate check during startup for debugging purposes
-  // This helps us verify the notification system quickly
-  setTimeout(() => {
-    logger.info('Running immediate daily score check for debugging...');
-    runDailyCheck();
-
-    // Schedule next check for tomorrow
-    setTimeout(() => {
-      runDailyCheck();
-      // Schedule subsequent checks every 24 hours
-      setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
-    }, timeUntilCheck);
-  }, 30 * 1000); // Increased to 30 seconds to allow server to fully start
-
-  // Also run a check every hour to catch notifications throughout the day
-  const runHourlyCheck = async () => {
-    try {
-      const currentHour = new Date().getHours();
-      logger.info(`Running hourly check for hour ${currentHour}`);
-
-      const baseUrl = `http://localhost:${port}`;
-      const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          currentHour,
-          currentMinute: new Date().getMinutes()
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to run hourly check: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      logger.info(`Hourly check completed for hour ${currentHour}:`, result);
-    } catch (error) {
-      logger.error('Error running hourly check:', error instanceof Error ? error : new Error(String(error)));
-    }
-  };
-
-  // Start the hourly check after 2 minutes, then run every hour
-  setTimeout(() => {
-    runHourlyCheck();
-    setInterval(runHourlyCheck, 60 * 60 * 1000); // Every hour
-  }, 120 * 1000);
-
-  // Log the schedule
-  logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes and immediate check in 10 seconds`);
-  logger.info('Hourly checks will also run to ensure notifications go out at the correct times');
+  logger.info('Daily score check scheduling is disabled to prevent server overload');
+  logger.info('Use the admin panel or API endpoints to manually trigger daily score checks');
 };
 
 // Ensure API requests respond with JSON
@@ -495,8 +399,8 @@ app.use('/api', (req, res, next) => {
         console.log(`[Server Startup] Starting new server on port ${port}...`);
         currentServer = server.listen(port, "0.0.0.0", () => {
           log(`[Server Startup] Server listening on port ${port}`);
-          // Schedule daily checks after server is ready
-          scheduleDailyScoreCheck();
+          // Daily checks are disabled to prevent server overload
+          // Use admin panel to manually trigger checks when needed
         });
 
         return currentServer;
