@@ -81,7 +81,7 @@ export function VideoPlayerPage() {
       </div>
 
       {/* Video container */}
-      <div className="w-full h-screen flex items-center justify-center">
+      <div className="w-full h-screen flex items-center justify-center pt-20">
         <video
           src={videoSrc}
           controls
