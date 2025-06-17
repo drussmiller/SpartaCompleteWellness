@@ -500,7 +500,7 @@ export function CreatePostDialog({
                     <FormControl>
                       <select
                         {...field}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 h-10"
                         onChange={(e) => {
                           field.onChange(e);
                           // Reset selected media type when changing post type
