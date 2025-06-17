@@ -7,6 +7,7 @@ export function VideoPlayerPage() {
   const [location, setLocation] = useLocation();
   const [videoSrc, setVideoSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
     // Extract video source from URL parameters
@@ -23,9 +24,14 @@ export function VideoPlayerPage() {
       // Preload the video to check if it's valid
       const video = document.createElement('video');
       video.src = decodedSrc;
+      video.preload = 'metadata';
       video.onloadedmetadata = () => {
         console.log('Video metadata loaded successfully');
         setIsLoading(false);
+      };
+      video.oncanplay = () => {
+        console.log('Video can start playing');
+        setVideoReady(true);
       };
       video.onerror = (e) => {
         console.error('Failed to load video:', decodedSrc, e);
@@ -82,16 +88,30 @@ export function VideoPlayerPage() {
 
       {/* Video container */}
       <div className="w-full h-screen flex items-center justify-center pt-20">
+        {!videoReady && (
+          <div className="flex items-center justify-center text-white">
+            <Loader2 className="h-8 w-8 animate-spin mr-3" />
+            <span>Preparing video...</span>
+          </div>
+        )}
         <video
           src={videoSrc}
-          controls
-          autoPlay
-          className="max-w-full max-h-full object-contain"
+          controls={videoReady}
+          autoPlay={videoReady}
+          preload="metadata"
+          className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
+            videoReady ? 'opacity-100' : 'opacity-0 absolute'
+          }`}
+          onLoadedMetadata={() => {
+            console.log('Video metadata loaded');
+          }}
+          onCanPlay={() => {
+            console.log('Video can play - showing player');
+            setVideoReady(true);
+          }}
           onError={(e) => {
             console.error('Video playback error:', e);
-          }}
-          onLoadedData={() => {
-            console.log('Video data loaded and ready to play');
+            setVideoReady(true); // Show even if there's an error
           }}
         />
       </div>
