@@ -415,17 +415,19 @@ export function MessageSlideCard() {
 
       {/* Full screen slide-out panel */}
       <div
-        className={`fixed inset-0 bg-background transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000]`}
         style={{ 
-          height: '100%',
+          height: '100vh',
+          width: '100vw',
+          backgroundColor: '#ffffff',
           paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
         }}
       >
-        <Card className="h-full rounded-none">
+        <Card className="h-full w-full rounded-none bg-white border-none shadow-none">
           {/* Header */}
-          <div className="flex items-center p-4 border-b">
+          <div className="flex items-center p-4 border-b bg-white border-gray-200">
             <Button
               variant="ghost"
               size="icon"
@@ -436,11 +438,11 @@ export function MessageSlideCard() {
                   setIsOpen(false);
                 }
               }}
-              className="mr-2 scale-125"
+              className="mr-2 scale-125 bg-transparent hover:bg-gray-100"
             >
-              <ChevronLeft className="h-8 w-8 scale-125" />
+              <ChevronLeft className="h-8 w-8 scale-125 text-black" />
             </Button>
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-black">
               {selectedMember ? selectedMember.username : "Messages"}
             </h2>
           </div>
@@ -448,21 +450,21 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea className="h-[calc(100vh-5rem)] p-4 pb-16">
-              <div className="space-y-2">
+            <ScrollArea className="h-[calc(100vh-5rem)] bg-white">
+              <div className="space-y-2 p-4 pb-16 bg-white">
                 {teamError ? (
-                  <div className="text-center text-muted-foreground py-8">
+                  <div className="text-center text-gray-500 py-8 bg-white">
                     {teamError instanceof Error ? teamError.message : "Failed to load team members"}
                   </div>
                 ) : teamMembers.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
+                  <div className="text-center text-gray-500 py-8 bg-white">
                     No team members available
                   </div>
                 ) : (
                   teamMembers.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center gap-3 p-2 hover:bg-accent rounded-lg cursor-pointer"
+                      className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg cursor-pointer bg-white border border-gray-100"
                       onClick={() => setSelectedMember(member)}
                     >
                       <Avatar>
@@ -470,12 +472,12 @@ export function MessageSlideCard() {
                           src={member.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${member.username}`}
                           alt={member.username}
                         />
-                        <AvatarFallback>
+                        <AvatarFallback className="bg-gray-200 text-black">
                           {member.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'}>
+                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-black`}>
                           {member.username}
                         </p>
                       </div>
@@ -486,10 +488,10 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col h-[calc(100vh-5rem)]">
+            <div className="flex flex-col h-[calc(100vh-5rem)] bg-white">
               {/* Messages List */}
-              <ScrollArea className="flex-1 p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-                <div className="space-y-4 mt-16">
+              <ScrollArea className="flex-1 bg-white" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+                <div className="space-y-4 mt-16 p-4 bg-white min-h-full">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -553,7 +555,7 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-background fixed bottom-0 left-0 right-0 z-[100000]" style={{ marginBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+              <div className="p-4 border-t bg-white border-gray-200 fixed bottom-0 left-0 right-0 z-[100000]" style={{ marginBottom: 'calc(5rem + env(safe-area-inset-bottom))', backgroundColor: '#ffffff' }}>
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm 
                   onSubmit={async (content, imageData, isVideo = false) => {
