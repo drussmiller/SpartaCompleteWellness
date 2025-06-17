@@ -76,7 +76,7 @@ export function VideoPlayerPage() {
           size="icon"
           className="text-white hover:bg-white/20"
         >
-          <ChevronLeft className="h-8 w-8" />
+          <ChevronLeft className="h-10 w-10" />
         </Button>
       </div>
 
