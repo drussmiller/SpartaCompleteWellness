@@ -15,10 +15,10 @@ function extractCleanFilename(input: string): string | null {
 
   // Remove any query parameters first
   const withoutQuery = input.split('?')[0];
-  
+
   // Split by slashes and find the last part that looks like a filename
   const parts = withoutQuery.split('/');
-  
+
   // Look for a part that has a file extension or looks like our filename pattern
   for (let i = parts.length - 1; i >= 0; i--) {
     const part = parts[i];
@@ -29,62 +29,67 @@ function extractCleanFilename(input: string): string | null {
       return part;
     }
   }
-  
+
   return null;
 }
 
 /**
  * Creates a simple, clean media URL
  */
-export function createMediaUrl(mediaUrl: string | null): string {
-  if (!mediaUrl) return '';
+export function createMediaUrl(url: string | null): string {
+  if (!url) return '';
 
-  console.log('createMediaUrl called with:', mediaUrl);
+  console.log('createMediaUrl called with:', url);
 
-  // Handle base64 data URLs directly
-  if (mediaUrl.startsWith('data:')) {
+  // If it's already a complete URL (starts with http), return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    console.log('Already a complete URL, returning as-is');
+    return url;
+  }
+
+  // If it's a base64 data URL, return as-is
+  if (url.startsWith('data:')) {
     console.log('Base64 data URL, returning as-is');
-    return mediaUrl;
+    return url;
   }
 
-  // Handle full HTTP URLs directly
-  if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
-    console.log('Full HTTP URL, returning as-is');
-    return mediaUrl;
+  // If it starts with /api/, return as-is (it's already a proper API route)
+  if (url.startsWith('/api/')) {
+    console.log('Already an API route, returning as-is');
+    return url;
   }
 
-  // If it's already a serve-file URL, return as-is
-  if (mediaUrl.startsWith('/api/serve-file')) {
-    console.log('Already a serve-file URL, returning as-is');
-    return mediaUrl;
+  // Extract filename from various URL formats
+  let filename: string;
+
+  if (url.startsWith('shared/uploads/')) {
+    // Extract filename from Object Storage path
+    filename = url.split('/').pop() || '';
+    console.log('Extracted filename from Object Storage path:', filename);
+  } else if (url.startsWith('/uploads/')) {
+    // Legacy format - extract filename
+    filename = url.split('/').pop() || '';
+    console.log('Extracted filename from legacy uploads path:', filename);
+  } else if (url.includes('/')) {
+    // Any other path format - get the last part
+    filename = url.split('/').pop() || '';
+    console.log('Extracted filename from path:', filename);
+  } else {
+    // Assume it's already just a filename
+    filename = url;
+    console.log('Using as filename directly:', filename);
   }
 
-  // If it's already a direct download URL, return as-is
-  if (mediaUrl.startsWith('/api/object-storage/direct-download')) {
-    console.log('Already a direct download URL, returning as-is');
-    return mediaUrl;
-  }
+  // Clean the filename
+  const cleanFilename = filename.replace(/^\/+/, '');
+  console.log('Cleaned filename:', cleanFilename);
 
-  // Extract just the filename from the end of the path
-  let filename = mediaUrl;
-  
-  // Remove leading slashes and path components
-  if (filename.includes('/')) {
-    filename = filename.split('/').pop() || filename;
-  }
-  
-  // Remove query parameters
-  if (filename.includes('?')) {
-    filename = filename.split('?')[0];
-  }
+  // Use Object Storage URL for better compatibility
+  const storageKey = `shared/uploads/${cleanFilename}`;
+  const mediaUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
+  console.log('Created Object Storage media URL:', mediaUrl);
 
-  console.log('Cleaned filename:', filename);
-
-  // Use the /api/serve-file route that works correctly
-  const result = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-  
-  console.log('Created clean media URL:', result);
-  return result;
+  return mediaUrl;
 }
 
 /**
@@ -102,12 +107,12 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
 
   // Extract just the filename from the end of the path
   let filename = mediaUrl;
-  
+
   // Remove leading slashes and path components
   if (filename.includes('/')) {
     filename = filename.split('/').pop() || filename;
   }
-  
+
   // Remove query parameters
   if (filename.includes('?')) {
     filename = filename.split('?')[0];
