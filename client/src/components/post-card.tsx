@@ -95,8 +95,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
-  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
-  const [thumbnailError, setThumbnailError] = useState(false);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -166,17 +164,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
-    const handleThumbnailClick = () => {
-    // Navigate to video player page
-    const videoUrl = encodeURIComponent(imageUrl || '');
-    window.location.href = `/video-player?src=${videoUrl}`;
-  };
-
-  const handleFailedPosterLoad = async (mediaUrl: string) => {
-        console.log('handleFailedPosterLoad called with:', mediaUrl);
-    // No longer auto-generating thumbnails - rely on upload process
-  }
-
   // DISABLED: Auto-generation of thumbnails to prevent multiple thumbnail creation
   // Thumbnails are now created during upload with simplified naming
   // useEffect(() => {
@@ -201,61 +188,19 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
-    return createMediaUrl(post.mediaUrl);
+    console.log('PostCard getImageUrl called with:', post.mediaUrl);
+    const result = createMediaUrl(post.mediaUrl);
+    console.log('PostCard getImageUrl result:', result);
+    return result;
   }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
-    
-    // For video files, create thumbnail URL by replacing extension with .jpg
-    if (post.mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
-      let filename = post.mediaUrl;
-      
-      // Extract filename from URL if needed
-      if (filename.includes('filename=')) {
-        const urlParams = new URLSearchParams(filename.split('?')[1]);
-        filename = urlParams.get('filename') || filename;
-      } else if (filename.includes('/')) {
-        filename = filename.split('/').pop() || filename;
-      }
-      
-      // Remove query parameters
-      if (filename.includes('?')) {
-        filename = filename.split('?')[0];
-      }
-      
-      // Replace video extension with .jpg
-      const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
-      const thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
-      
-      console.log(`Generated thumbnail URL for ${filename}: ${thumbnailUrl}`);
-      return thumbnailUrl;
-    }
-
-    // For non-video files, use the existing thumbnail logic
-    return createThumbnailUrl(post.mediaUrl);
+    console.log('getThumbnailUrl called with:', post.mediaUrl);
+    const result = createThumbnailUrl(post.mediaUrl);
+    console.log('Thumbnail URL result:', result);
+    return result;
   }, [post.mediaUrl]);
-
-    const { Play } = useMemo(() => {
-        return {
-            Play: (props: any) => (
-                <svg
-                    {...props}
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-            )
-        };
-    }, []);
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -321,57 +266,92 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="relative mt-2 w-screen -mx-4">
           <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
-              <div className="relative w-full video-container" data-post-id={post.id}>
-                {/* Thumbnail overlay for videos */}
-        {post.is_video && (
-          <div 
-            className="relative cursor-pointer"
-            onClick={handleThumbnailClick}
-          >
-            {thumbnailUrl && !thumbnailError ? (
-              <img
-                src={thumbnailUrl}
-                alt="Video thumbnail"
-                className="w-full h-48 object-cover rounded-lg"
-                onLoad={() => {
-                  console.log('Thumbnail loaded successfully:', thumbnailUrl);
-                  setThumbnailLoaded(true);
-                }}
-                onError={(e) => {
-                  console.error('Thumbnail failed to load:', thumbnailUrl);
-                  setThumbnailError(true);
-                  // Try to generate thumbnail when poster fails
-                  handleFailedPosterLoad(post.mediaUrl || '').catch(err => {
-                    console.error('Failed to generate thumbnail:', err);
-                  });
-                }}
-              />
-            ) : (
-              // Fallback placeholder when thumbnail is missing or failed
-              <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="bg-gray-400 rounded-full p-4 mx-auto mb-2">
-                    <Play className="h-8 w-8 text-white fill-current" />
-                  </div>
-                  <p className="text-gray-600 text-sm">Video</p>
-                  {thumbnailError ? (
-                    <p className="text-xs text-gray-500 mt-1">Thumbnail unavailable</p>
-                  ) : (
-                    <p className="text-xs text-gray-500 mt-1">Loading thumbnail...</p>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Play button overlay - only show when thumbnail is loaded */}
-            {thumbnailLoaded && !thumbnailError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
-                <div className="bg-white bg-opacity-90 rounded-full p-3">
-                  <Play className="h-6 w-6 text-black fill-current" />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              <div className="w-full video-container" data-post-id={post.id}>
+                {/* Import and use VideoPlayer instead of standard video element */}
+                <VideoPlayer 
+                  key={`video-${post.id}-${triggerReload}`} 
+                  src={imageUrl}
+                  poster={getVideoPoster(post.mediaUrl)}
+                  className="w-full video-player-container"
+                  preload="metadata"
+                  playsInline
+                  controlsList="nodownload"
+                  onLoad={() => {
+                    console.log("Video loaded successfully for post", post.id);
+                  }}
+                  onError={(error: Error) => {
+                    console.error(`Error loading video for post ${post.id}:`, error);
+
+                    // Try with different formats as fallback - first try directly with .jpg extension
+                    const mediaUrl = post.mediaUrl || '';
+                    if (mediaUrl.toLowerCase().endsWith('.mov')) {
+                      const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
+                      console.log(`Trying alternative thumbnail for video ${post.id}:`, baseName);
+
+                      // Try to manually preload the correct thumbnail using image tag approach
+                      const img = new Image();
+                      img.onload = () => {
+                        console.log('Alternative thumbnail loaded successfully');
+                        // Reload the component to use the now-cached image
+                        setTriggerReload(prev => prev + 1);
+                      };
+                      img.onerror = () => {
+                        console.error('Alternative thumbnail failed to load');
+                        // No longer hiding containers - let images display even if some fail
+                      };
+
+                      // Try direct formats without using the utility functions
+                      // For memory verse videos, the thumbnails are uploaded with specific naming patterns
+                      // Extract the actual filename from the serve-file URL
+                      const urlMatch = mediaUrl.match(/filename=([^&]+)/);
+                      const actualFileName = urlMatch ? urlMatch[1] : baseName.split('/').pop() || '';
+                      
+                      console.log('Extracted filename for thumbnail search:', actualFileName);
+                      
+                      // Extract the base video name (e.g., "IMG_7923.MOV" from "1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV")
+                      const baseVideoName = actualFileName.split('-').slice(2).join('-'); // Gets "IMG_7923.MOV"
+                      
+                      console.log('Base video name for matching:', baseVideoName);
+                      
+                      // New simplified thumbnail naming: same name as video but with .jpg extension
+                      // For video: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV
+                      // Thumbnail: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.jpg
+                      const baseFileName = actualFileName.replace(/\.[^/.]+$/, '');
+                      const simplifiedThumbnailUrl = `/api/serve-file?filename=${baseFileName}.jpg`;
+                      
+                      const thumbnailPatterns = [
+                        simplifiedThumbnailUrl,
+                        // Fallback patterns for older thumbnails that might still exist
+                        `/api/serve-file?filename=1748529997124-43ad0541-8902-4ab6-a24a-27dd42cdb918-IMG-7923.MOV.poster.jpg`,
+                        `/api/serve-file?filename=1748529997484-408ee8f6-edb6-45f0-9150-8b31423599c7-thumb-IMG-7923.MOV`,
+                        `/api/serve-file?filename=1748529997847-d77d98d7-6baa-4ad5-b11c-d4e13335eea5-IMG-7923.jpg`
+                      ];
+                      
+                      // Try each pattern until one works
+                      let patternIndex = 0;
+                      const tryNextPattern = () => {
+                        if (patternIndex < thumbnailPatterns.length) {
+                          img.src = thumbnailPatterns[patternIndex];
+                          patternIndex++;
+                        }
+                      };
+                      
+                      img.onerror = () => {
+                        console.log(`Thumbnail pattern ${patternIndex} failed:`, img.src);
+                        tryNextPattern();
+                      };
+                      
+                      // Start with the first pattern
+                      tryNextPattern();
+                    } else {
+                      // For non-MOV files or if we can't extract baseName, just hide
+                      const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
+                      if (container) {
+                        container.style.display = 'none';
+                      }
+                    }
+                  }}
+                />
               </div>
             ) : (
               <img
