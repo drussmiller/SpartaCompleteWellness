@@ -111,9 +111,7 @@ export function VideoPlayerPage() {
             src={videoSrc}
             controls
             preload="auto"
-            playsInline
-            webkit-playsinline="true"
-            controlsList="nodownload nofullscreen noremoteplayback"
+            controlsList="nodownload noremoteplayback"
             disablePictureInPicture
             disableRemotePlayback
             width={videoDimensions.width}
@@ -127,23 +125,8 @@ export function VideoPlayerPage() {
               objectFit: 'contain'
             }}
             x-webkit-airplay="deny"
-            x5-playsinline="true"
-            x5-video-player-type="h5"
-            x5-video-player-fullscreen="false"
             onError={(e) => {
               console.error('Video playback error:', e);
-            }}
-            onLoadStart={() => {
-              // Prevent fullscreen on mobile
-              const video = videoRef.current;
-              if (video) {
-                video.setAttribute('webkit-playsinline', 'true');
-                video.setAttribute('playsinline', 'true');
-                // Additional prevention for fullscreen
-                video.removeAttribute('allowfullscreen');
-                video.removeAttribute('webkitallowfullscreen');
-                video.removeAttribute('mozallowfullscreen');
-              }
             }}
             onCanPlay={() => {
               // Auto-play when the video can start playing
@@ -156,36 +139,25 @@ export function VideoPlayerPage() {
               }
             }}
             onLoadedMetadata={() => {
-              // Additional fullscreen prevention when metadata loads
+              // Handle fullscreen events - close player when exiting fullscreen
               const video = videoRef.current;
               if (video) {
-                // Override any fullscreen event listeners
-                video.addEventListener('webkitbeginfullscreen', (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return false;
+                // When fullscreen ends, close the video player
+                video.addEventListener('webkitendfullscreen', () => {
+                  console.log('Exiting fullscreen - closing video player');
+                  handleGoBack();
                 }, { capture: true });
                 
-                video.addEventListener('fullscreenchange', (e) => {
-                  if (document.fullscreenElement === video) {
-                    document.exitFullscreen();
+                video.addEventListener('fullscreenchange', () => {
+                  if (!document.fullscreenElement) {
+                    console.log('Exiting fullscreen - closing video player');
+                    handleGoBack();
                   }
-                }, { capture: true });
-
-                // Additional prevention for webkit fullscreen
-                video.addEventListener('webkitendfullscreen', (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
                 }, { capture: true });
               }
             }}
             onPlay={() => {
               console.log('Video started playing');
-              // Prevent fullscreen on play
-              const video = videoRef.current;
-              if (video && document.fullscreenElement === video) {
-                document.exitFullscreen();
-              }
             }}
           />
         )}
