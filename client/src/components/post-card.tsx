@@ -226,7 +226,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       
       // Replace video extension with .jpg
       const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
-      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
+      const thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
+      
+      console.log(`Generated thumbnail URL for ${filename}: ${thumbnailUrl}`);
+      return thumbnailUrl;
     }
 
     // For non-video files, use the existing thumbnail logic
@@ -330,7 +333,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 src={thumbnailUrl}
                 alt="Video thumbnail"
                 className="w-full h-48 object-cover rounded-lg"
-                onLoad={() => setThumbnailLoaded(true)}
+                onLoad={() => {
+                  console.log('Thumbnail loaded successfully:', thumbnailUrl);
+                  setThumbnailLoaded(true);
+                }}
                 onError={(e) => {
                   console.error('Thumbnail failed to load:', thumbnailUrl);
                   setThumbnailError(true);
@@ -348,18 +354,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     <Play className="h-8 w-8 text-white fill-current" />
                   </div>
                   <p className="text-gray-600 text-sm">Video</p>
-                  {thumbnailError && (
+                  {thumbnailError ? (
                     <p className="text-xs text-gray-500 mt-1">Thumbnail unavailable</p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-1">Loading thumbnail...</p>
                   )}
                 </div>
               </div>
             )}
-            {/* Play button overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
-              <div className="bg-white bg-opacity-90 rounded-full p-3">
-                <Play className="h-6 w-6 text-black fill-current" />
+            {/* Play button overlay - only show when thumbnail is loaded */}
+            {thumbnailLoaded && !thumbnailError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
+                <div className="bg-white bg-opacity-90 rounded-full p-3">
+                  <Play className="h-6 w-6 text-black fill-current" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
               </div>
