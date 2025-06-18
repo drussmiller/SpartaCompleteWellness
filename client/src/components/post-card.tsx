@@ -201,50 +201,36 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
-    console.log('PostCard getImageUrl called with:', post.mediaUrl);
-    const result = createMediaUrl(post.mediaUrl);
-    console.log('PostCard getImageUrl result:', result);
-    return result;
+    return createMediaUrl(post.mediaUrl);
   }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
-    console.log('PostCard thumbnailUrl - original mediaUrl:', post.mediaUrl);
-
-    // For MOV files, explicitly look for JPG thumbnail
-    if (post.mediaUrl.toLowerCase().endsWith('.mov')) {
+    
+    // For video files, create thumbnail URL by replacing extension with .jpg
+    if (post.mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
       let filename = post.mediaUrl;
-      console.log('PostCard thumbnailUrl - processing MOV file, initial filename:', filename);
-
-      // Extract just the filename from the end of the path or URL
+      
+      // Extract filename from URL if needed
       if (filename.includes('filename=')) {
-        // Handle URLs like /api/serve-file?filename=...
         const urlParams = new URLSearchParams(filename.split('?')[1]);
         filename = urlParams.get('filename') || filename;
-        console.log('PostCard thumbnailUrl - extracted from URL param:', filename);
       } else if (filename.includes('/')) {
         filename = filename.split('/').pop() || filename;
-        console.log('PostCard thumbnailUrl - extracted filename from path:', filename);
       }
-
-      // Remove any remaining query parameters
+      
+      // Remove query parameters
       if (filename.includes('?')) {
         filename = filename.split('?')[0];
-        console.log('PostCard thumbnailUrl - removed query params:', filename);
       }
-
-      // Convert MOV extension to JPG for thumbnail
-      const jpgFilename = filename.replace(/\.MOV$/i, '.jpg').replace(/\.mov$/i, '.jpg');
-      console.log('PostCard thumbnailUrl - converted to JPG filename:', jpgFilename);
-
-      const result = `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
-      console.log('PostCard thumbnailUrl - final JPG thumbnail URL:', result);
-      return result;
+      
+      // Replace video extension with .jpg
+      const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
+      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
     }
 
-    const result = createThumbnailUrl(post.mediaUrl);
-    console.log('PostCard thumbnailUrl - non-MOV result:', result);
-    return result;
+    // For non-video files, use the existing thumbnail logic
+    return createThumbnailUrl(post.mediaUrl);
   }, [post.mediaUrl]);
 
     const { Play } = useMemo(() => {

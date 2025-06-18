@@ -4720,48 +4720,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           console.log(`[serve-file] File not found in Object Storage for ${storageKey}:`, result);
           logger.error(`File not found in Object Storage for ${storageKey}:`, result);
           
-          // For video thumbnail requests (.jpg files), try to find existing thumbnail or use placeholder
-          if (filename.toLowerCase().endsWith('.jpg')) {
-            console.log(`[serve-file] Thumbnail request for ${filename} - checking alternatives`);
-            
-            // Try alternative storage keys for thumbnails
-            const alternativeKeys = [
-              `shared/uploads/thumbnails/${filename}`,
-              `uploads/thumbnails/${filename}`,
-              `thumbnails/${filename}`
-            ];
-            
-            for (const altKey of alternativeKeys) {
-              try {
-                console.log(`[serve-file] Trying alternative key: ${altKey}`);
-                const altResult = await objectStorage.downloadAsBytes(altKey);
-                
-                if (altResult && typeof altResult === 'object' && 'value' in altResult && altResult.value) {
-                  let altFileBuffer: Buffer;
-                  if (Buffer.isBuffer(altResult.value)) {
-                    altFileBuffer = altResult.value;
-                  } else if (Array.isArray(altResult.value)) {
-                    altFileBuffer = Buffer.from(altResult.value);
-                  } else if (typeof altResult.value === 'string') {
-                    altFileBuffer = Buffer.from(altResult.value, 'base64');
-                  } else {
-                    continue;
-                  }
-                  
-                  console.log(`[serve-file] Found thumbnail at alternative key: ${altKey}`);
-                  res.setHeader('Content-Type', 'image/jpeg');
-                  res.setHeader('Cache-Control', 'public, max-age=86400');
-                  return res.send(altFileBuffer);
-                }
-              } catch (altError) {
-                console.log(`[serve-file] Alternative key ${altKey} not found: ${altError.message}`);
-                continue;
-              }
-            }
-            
-            console.log(`[serve-file] No thumbnail found for ${filename} - returning 404`);
-          }
-          
           return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
       } else {
