@@ -8,7 +8,7 @@ export function VideoPlayerPage() {
   const [videoSrc, setVideoSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+  
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
 
   useEffect(() => {
@@ -38,7 +38,6 @@ export function VideoPlayerPage() {
         console.log('Video fully loaded and ready to play');
         setIsLoading(false);
         setVideoReady(true);
-        setShouldAutoPlay(true);
       };
       
       video.onerror = (e) => {
@@ -108,10 +107,10 @@ export function VideoPlayerPage() {
           <video
             src={videoSrc}
             controls
-            autoPlay={shouldAutoPlay}
-            muted={shouldAutoPlay} // Required for autoplay
             preload="auto"
             playsInline
+            controlsList="nodownload nofullscreen"
+            disablePictureInPicture
             width={videoDimensions.width}
             height={videoDimensions.height}
             className="max-w-full max-h-full object-contain"
@@ -126,6 +125,14 @@ export function VideoPlayerPage() {
             }}
             onError={(e) => {
               console.error('Video playback error:', e);
+            }}
+            onLoadStart={() => {
+              // Prevent fullscreen on mobile
+              const video = document.querySelector('video');
+              if (video) {
+                video.setAttribute('webkit-playsinline', 'true');
+                video.setAttribute('playsinline', 'true');
+              }
             }}
           />
         )}
