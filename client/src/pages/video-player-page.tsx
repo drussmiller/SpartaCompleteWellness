@@ -9,6 +9,7 @@ export function VideoPlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+  const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
 
   useEffect(() => {
     // Extract video source from URL parameters
@@ -22,24 +23,30 @@ export function VideoPlayerPage() {
       console.log('Video player page - decoded src:', decodedSrc);
       setVideoSrc(decodedSrc);
 
-      // Preload the video to check if it's valid
+      // Preload the video completely before showing anything
       const video = document.createElement('video');
       video.src = decodedSrc;
-      video.preload = 'auto'; // Changed to auto for better loading
+      video.preload = 'auto';
+      video.muted = true; // Required for autoplay on mobile
+      
       video.onloadedmetadata = () => {
-        console.log('Video metadata loaded successfully');
-        setIsLoading(false);
+        console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+        setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
       };
+      
       video.oncanplaythrough = () => {
-        console.log('Video ready to play through');
+        console.log('Video fully loaded and ready to play');
+        setIsLoading(false);
         setVideoReady(true);
         setShouldAutoPlay(true);
       };
+      
       video.onerror = (e) => {
         console.error('Failed to load video:', decodedSrc, e);
         setIsLoading(false);
-        setVideoReady(true); // Show video even on error
+        setVideoReady(false); // Don't show video on error
       };
+      
       video.load();
     } else {
       console.log('No video source found in URL parameters');
@@ -91,25 +98,28 @@ export function VideoPlayerPage() {
 
       {/* Video container */}
       <div className="w-full h-screen flex items-center justify-center pt-20">
-        {!videoReady && (
+        {isLoading && (
           <div className="flex items-center justify-center text-white">
             <Loader2 className="h-8 w-8 animate-spin mr-3" />
             <span>Loading video...</span>
           </div>
         )}
-        {videoReady && (
+        {!isLoading && videoReady && videoDimensions && (
           <video
             src={videoSrc}
             controls
             autoPlay={shouldAutoPlay}
+            muted={shouldAutoPlay} // Required for autoplay
             preload="auto"
             playsInline
+            width={videoDimensions.width}
+            height={videoDimensions.height}
             className="max-w-full max-h-full object-contain"
-            onLoadedMetadata={() => {
-              console.log('Video metadata loaded in player');
-            }}
-            onCanPlay={() => {
-              console.log('Video can play in player');
+            style={{
+              width: 'auto',
+              height: 'auto',
+              maxWidth: '100%',
+              maxHeight: '100%'
             }}
             onPlay={() => {
               console.log('Video started playing');
@@ -118,6 +128,11 @@ export function VideoPlayerPage() {
               console.error('Video playback error:', e);
             }}
           />
+        )}
+        {!isLoading && !videoReady && (
+          <div className="flex items-center justify-center text-white">
+            <span>Unable to load video</span>
+          </div>
         )}
       </div>
     </div>
