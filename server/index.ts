@@ -177,57 +177,87 @@ app.use('/api', (req, res, next) => {
           try {
             console.log(`Trying to download ${key} directly...`);
             const result = await objectStorage.downloadAsBytes(key);
+            console.log(`[serve-file] Object Storage result:`, {
+              type: typeof result,
+              hasOk: result && typeof result === 'object' && 'ok' in result,
+              hasValue: result && typeof result === 'object' && 'value' in result,
+              ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
+            });
 
-            // Parse the result based on its format
+            // Handle the Object Storage response format
+            let fileBuffer: Buffer;
+
             if (Buffer.isBuffer(result)) {
-              console.log(`Success! Downloaded ${key} as direct Buffer`);
               fileBuffer = result;
-              usedKey = key;
-              break;
-            } else if (typeof result === 'object' && result !== null && 'ok' in result) {
-              if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
-                console.log(`Success! Downloaded ${key} as Buffer in result object`);
-                fileBuffer = result.value;
-                usedKey = key;
-                break;
+            } else if (result && typeof result === 'object') {
+              // Handle the actual Replit Object Storage response format
+              // Check for 'value' property which contains the actual file data
+              if ('value' in result && result.value) {
+                if (Buffer.isBuffer(result.value)) {
+                  fileBuffer = result.value;
+                } else if (typeof result.value === 'string') {
+                  fileBuffer = Buffer.from(result.value, 'base64');
+                } else if (Array.isArray(result.value)) {
+                  // Handle array of bytes
+                  fileBuffer = Buffer.from(result.value);
+                } else {
+                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
+                  continue; // Try next key
+                }
+              } else if ('ok' in result && result.ok === true && result.value) {
+                // Legacy format check
+                if (Buffer.isBuffer(result.value)) {
+                  fileBuffer = result.value;
+                } else if (typeof result.value === 'string') {
+                  fileBuffer = Buffer.from(result.value, 'base64');
+                } else if (Array.isArray(result.value)) {
+                  fileBuffer = Buffer.from(result.value);
+                } else {
+                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
+                  continue; // Try next key
+                }
               } else {
-                console.log(`Download attempt for ${key} returned non-buffer or failure: ${JSON.stringify(result)}`);
+                console.log(`[serve-file] File not found in Object Storage for ${usedKey}:`, result);
+                continue; // Try next key
               }
+            } else {
+              console.error(`[serve-file] Invalid response format from Object Storage for ${usedKey}:`, typeof result);
+              continue; // Try next key
+            }
+
+            // If we found and downloaded a file, serve it
+            if (fileBuffer && fileBuffer.length > 0) {
+              // Determine content type based on file extension
+              const fileExtension = path.extname(filePath).toLowerCase();
+              let contentType = 'application/octet-stream'; // default
+
+              if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+                contentType = 'image/jpeg';
+              } else if (fileExtension === '.png') {
+                contentType = 'image/png';
+              } else if (fileExtension === '.gif') {
+                contentType = 'image/gif';
+              } else if (fileExtension === '.mp4') {
+                contentType = 'video/mp4';
+              } else if (fileExtension === '.mov') {
+                contentType = 'video/quicktime';
+              } else if (fileExtension === '.svg') {
+                contentType = 'image/svg+xml';
+              } else if (fileExtension === '.webp') {
+                contentType = 'image/webp';
+              }
+
+              console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
+
+              // Set headers and send the file
+              res.setHeader('Content-Type', contentType);
+              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+              return res.send(fileBuffer);
             }
           } catch (error) {
             console.log(`Failed to download ${key}: ${error.message}`);
             // Continue to next key
           }
-        }
-
-        // If we found and downloaded a file, serve it
-        if (fileBuffer && fileBuffer.length > 0) {
-          // Determine content type based on file extension
-          const fileExtension = path.extname(filePath).toLowerCase();
-          let contentType = 'application/octet-stream'; // default
-
-          if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
-            contentType = 'image/jpeg';
-          } else if (fileExtension === '.png') {
-            contentType = 'image/png';
-          } else if (fileExtension === '.gif') {
-            contentType = 'image/gif';
-          } else if (fileExtension === '.mp4') {
-            contentType = 'video/mp4';
-          } else if (fileExtension === '.mov') {
-            contentType = 'video/quicktime';
-          } else if (fileExtension === '.svg') {
-            contentType = 'image/svg+xml';
-          } else if (fileExtension === '.webp') {
-            contentType = 'image/webp';
-          }
-
-          console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
-
-          // Set headers and send the file
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
-          return res.send(fileBuffer);
         }
 
         // No longer check filesystem as requested - Object Storage only
@@ -357,7 +387,7 @@ app.use('/api', (req, res, next) => {
 
         // First kill any existing process on the selected port
         await killPort(port);
-        
+
         // Also try to kill common ports that might be in use
         try {
           await killPort(5000);
@@ -440,7 +470,7 @@ app.use('/api', (req, res, next) => {
 
     // Start server with enhanced cleanup and retry mechanism
     const finalServer = await cleanupAndStartServer();
-    
+
     // Update the global port variable to reflect the actual listening port
     const address = finalServer.address();
     if (address && typeof address === 'object') {
