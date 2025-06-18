@@ -24,6 +24,44 @@ export function VideoPlayerPage() {
       console.log('Video player page - decoded src:', decodedSrc);
       setVideoSrc(decodedSrc);
 
+      // Generate thumbnail for the video if it doesn't exist
+      const generateThumbnailIfNeeded = async () => {
+        try {
+          // Extract filename from the video URL
+          let filename = '';
+          if (decodedSrc.includes('filename=')) {
+            const urlParams = new URLSearchParams(decodedSrc.split('?')[1]);
+            filename = urlParams.get('filename') || '';
+          } else {
+            filename = decodedSrc.split('/').pop() || '';
+          }
+
+          if (filename) {
+            console.log('Checking thumbnail for video:', filename);
+            
+            // Try to request thumbnail generation
+            const response = await fetch('/api/generate-thumbnail', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ videoUrl: decodedSrc })
+            });
+
+            if (response.ok) {
+              console.log('Thumbnail generation requested successfully');
+            } else {
+              console.warn('Thumbnail generation failed:', response.status);
+            }
+          }
+        } catch (error) {
+          console.error('Error requesting thumbnail generation:', error);
+        }
+      };
+
+      // Start thumbnail generation in the background
+      generateThumbnailIfNeeded();
+
       // Preload the video completely before showing anything
       const video = document.createElement('video');
       video.src = decodedSrc;

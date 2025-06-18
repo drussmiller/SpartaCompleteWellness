@@ -3256,6 +3256,131 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add thumbnail generation endpoint
+  router.post("/api/generate-thumbnail", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const { videoUrl } = req.body;
+      
+      if (!videoUrl) {
+        return res.status(400).json({ message: "Video URL is required" });
+      }
+
+      console.log('Thumbnail generation requested for:', videoUrl);
+      
+      // Extract filename from the video URL
+      let filename = '';
+      if (videoUrl.includes('filename=')) {
+        const urlParams = new URLSearchParams(videoUrl.split('?')[1]);
+        filename = urlParams.get('filename') || '';
+      } else {
+        filename = videoUrl.split('/').pop() || '';
+      }
+
+      if (!filename) {
+        return res.status(400).json({ message: "Could not extract filename from video URL" });
+      }
+
+      try {
+        // Import the MOV frame extractor
+        const { createAllMovThumbnailVariants } = await import('./mov-frame-extractor');
+        
+        // Create a temporary path for the video (we'll stream it from Object Storage)
+        const { Client } = await import('@replit/object-storage');
+        const objectStorage = new Client();
+        
+        // Download the video file temporarily to extract thumbnail
+        const videoKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
+        const videoResult = await objectStorage.downloadAsBytes(videoKey);
+        
+        if (!videoResult || (typeof videoResult === 'object' && 'ok' in videoResult && !videoResult.ok)) {
+          return res.status(404).json({ message: "Video file not found in storage" });
+        }
+
+        // Get the video buffer
+        let videoBuffer: Buffer;
+        if (Buffer.isBuffer(videoResult)) {
+          videoBuffer = videoResult;
+        } else if (videoResult && typeof videoResult === 'object' && 'value' in videoResult) {
+          if (Buffer.isBuffer(videoResult.value)) {
+            videoBuffer = videoResult.value;
+          } else if (Array.isArray(videoResult.value) && Buffer.isBuffer(videoResult.value[0])) {
+            videoBuffer = videoResult.value[0];
+          } else {
+            return res.status(500).json({ message: "Invalid video data format" });
+          }
+        } else {
+          return res.status(500).json({ message: "Could not retrieve video data" });
+        }
+
+        // Write video to temporary file for thumbnail extraction
+        const fs = await import('fs');
+        const path = await import('path');
+        const tempDir = path.join(process.cwd(), 'temp');
+        
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const tempVideoPath = path.join(tempDir, filename);
+        fs.writeFileSync(tempVideoPath, videoBuffer);
+        
+        try {
+          // Generate thumbnail
+          const thumbnailBasename = filename.replace(/\.[^/.]+$/, '');
+          const thumbnailPath = path.join(tempDir, `${thumbnailBasename}.jpg`);
+          
+          await createAllMovThumbnailVariants(tempVideoPath, thumbnailPath);
+          
+          // Upload thumbnail to Object Storage
+          if (fs.existsSync(thumbnailPath)) {
+            const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+            const thumbnailKey = `shared/uploads/${thumbnailBasename}.jpg`;
+            
+            const uploadResult = await objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
+            
+            if (uploadResult.ok) {
+              console.log('Successfully uploaded thumbnail:', thumbnailKey);
+              
+              // Clean up temporary files
+              fs.unlinkSync(tempVideoPath);
+              fs.unlinkSync(thumbnailPath);
+              
+              res.json({ 
+                success: true, 
+                thumbnailUrl: `/api/serve-file?filename=${thumbnailBasename}.jpg`,
+                message: 'Thumbnail generated successfully'
+              });
+            } else {
+              throw new Error('Failed to upload thumbnail to Object Storage');
+            }
+          } else {
+            throw new Error('Thumbnail file was not created');
+          }
+        } catch (extractError) {
+          // Clean up temp video file
+          if (fs.existsSync(tempVideoPath)) {
+            fs.unlinkSync(tempVideoPath);
+          }
+          throw extractError;
+        }
+      } catch (error) {
+        logger.error('Error generating thumbnail:', error);
+        return res.status(500).json({ 
+          message: "Failed to generate thumbnail",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      logger.error('Error in thumbnail generation endpoint:', error);
+      res.status(500).json({
+        message: "Failed to process thumbnail request",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add this endpoint before the app.use(router) line
   // Get current user data
   router.get("/api/users/me", authenticate, async (req, res) => {
