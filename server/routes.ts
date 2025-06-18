@@ -4725,78 +4725,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           console.log(`[serve-file] File not found in Object Storage for ${storageKey}:`, result);
           logger.error(`File not found in Object Storage for ${storageKey}:`, result);
           
-          // For thumbnail requests (.jpg files), try to generate the thumbnail
-          if (filename.toLowerCase().endsWith('.jpg') && filename.includes('1750097964520-IMG_7923')) {
-            console.log(`[serve-file] Attempting to generate missing thumbnail for ${filename}`);
-            try {
-              // Extract the original MOV filename
-              const movFilename = filename.replace(/\.jpg$/i, '.MOV');
-              const movKey = `shared/uploads/${movFilename}`;
-              
-              console.log(`[serve-file] Looking for original MOV file at: ${movKey}`);
-              
-              // Check if original MOV file exists
-              const movResult = await objectStorage.downloadAsBytes(movKey);
-              if (movResult && typeof movResult === 'object' && 'ok' in movResult && movResult.ok) {
-                console.log(`[serve-file] Found original MOV file, generating thumbnail...`);
+          // For video thumbnail requests (.jpg files), try to find existing thumbnail or use placeholder
+          if (filename.toLowerCase().endsWith('.jpg')) {
+            console.log(`[serve-file] Thumbnail request for ${filename} - checking alternatives`);
+            
+            // Try alternative storage keys for thumbnails
+            const alternativeKeys = [
+              `shared/uploads/thumbnails/${filename}`,
+              `uploads/thumbnails/${filename}`,
+              `thumbnails/${filename}`
+            ];
+            
+            for (const altKey of alternativeKeys) {
+              try {
+                console.log(`[serve-file] Trying alternative key: ${altKey}`);
+                const altResult = await objectStorage.downloadAsBytes(altKey);
                 
-                // Generate thumbnail using the createMovThumbnail function
-                const { createMovThumbnail } = await import('./mov-frame-extractor-new');
-                const fs = await import('fs');
-                const path = await import('path');
-                
-                // Create temp directory
-                const tempDir = path.join(process.cwd(), 'temp');
-                if (!fs.existsSync(tempDir)) {
-                  fs.mkdirSync(tempDir, { recursive: true });
-                }
-                
-                // Save MOV file temporarily
-                const tempMovPath = path.join(tempDir, movFilename);
-                let movBuffer: Buffer;
-                if (Buffer.isBuffer(movResult.value)) {
-                  movBuffer = movResult.value;
-                } else if (Array.isArray(movResult.value)) {
-                  movBuffer = Buffer.from(movResult.value);
-                } else {
-                  throw new Error('Invalid MOV data format');
-                }
-                
-                fs.writeFileSync(tempMovPath, movBuffer);
-                
-                // Generate thumbnail
-                const thumbnailFilename = await createMovThumbnail(tempMovPath);
-                
-                // Clean up temp MOV file
-                fs.unlinkSync(tempMovPath);
-                
-                if (thumbnailFilename) {
-                  console.log(`[serve-file] Thumbnail generated successfully: ${thumbnailFilename}`);
-                  
-                  // Try to serve the newly generated thumbnail
-                  const newThumbnailKey = `shared/uploads/${thumbnailFilename}`;
-                  const newResult = await objectStorage.downloadAsBytes(newThumbnailKey);
-                  
-                  if (newResult && typeof newResult === 'object' && 'ok' in newResult && newResult.ok && newResult.value) {
-                    let newFileBuffer: Buffer;
-                    if (Buffer.isBuffer(newResult.value)) {
-                      newFileBuffer = newResult.value;
-                    } else if (Array.isArray(newResult.value)) {
-                      newFileBuffer = Buffer.from(newResult.value);
-                    } else {
-                      throw new Error('Invalid thumbnail data format');
-                    }
-                    
-                    res.setHeader('Content-Type', 'image/jpeg');
-                    res.setHeader('Cache-Control', 'public, max-age=86400');
-                    console.log(`[serve-file] Successfully served generated thumbnail: ${newThumbnailKey}`);
-                    return res.send(newFileBuffer);
+                if (altResult && typeof altResult === 'object' && 'value' in altResult && altResult.value) {
+                  let altFileBuffer: Buffer;
+                  if (Buffer.isBuffer(altResult.value)) {
+                    altFileBuffer = altResult.value;
+                  } else if (Array.isArray(altResult.value)) {
+                    altFileBuffer = Buffer.from(altResult.value);
+                  } else if (typeof altResult.value === 'string') {
+                    altFileBuffer = Buffer.from(altResult.value, 'base64');
+                  } else {
+                    continue;
                   }
+                  
+                  console.log(`[serve-file] Found thumbnail at alternative key: ${altKey}`);
+                  res.setHeader('Content-Type', 'image/jpeg');
+                  res.setHeader('Cache-Control', 'public, max-age=86400');
+                  return res.send(altFileBuffer);
                 }
+              } catch (altError) {
+                console.log(`[serve-file] Alternative key ${altKey} not found: ${altError.message}`);
+                continue;
               }
-            } catch (thumbnailError) {
-              console.error(`[serve-file] Error generating thumbnail: ${thumbnailError}`);
             }
+            
+            console.log(`[serve-file] No thumbnail found for ${filename} - returning 404`);
           }
           
           return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
