@@ -543,7 +543,16 @@ export function MessageSlideCard() {
                               onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
                               onError={(e) => {
                                 console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                e.currentTarget.style.display = 'none';
+                                // Try fallback to serve-file route
+                                const originalUrl = message.imageUrl || message.mediaUrl || '';
+                                const filename = originalUrl.split('/').pop() || '';
+                                const fallbackUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+                                console.log("Trying fallback URL:", fallbackUrl);
+                                if (e.currentTarget.src !== fallbackUrl) {
+                                  e.currentTarget.src = fallbackUrl;
+                                } else {
+                                  e.currentTarget.style.display = 'none';
+                                }
                               }}
                             />
                           )

@@ -84,7 +84,7 @@ export function createMediaUrl(url: string | null): string {
   const cleanFilename = filename.replace(/^\/+/, '');
   console.log('Cleaned filename:', cleanFilename);
 
-  // Use Object Storage URL for better compatibility
+  // Try Object Storage first, but provide fallback for development
   const storageKey = `shared/uploads/${cleanFilename}`;
   const mediaUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
   console.log('Created Object Storage media URL:', mediaUrl);
