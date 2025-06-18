@@ -95,6 +95,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState(false);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -164,6 +166,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
+    const handleThumbnailClick = () => {
+    // Navigate to video player page
+    const videoUrl = encodeURIComponent(imageUrl || '');
+    window.location.href = `/video-player?src=${videoUrl}`;
+  };
+
+  const handleFailedPosterLoad = async (mediaUrl: string) => {
+        console.log('handleFailedPosterLoad called with:', mediaUrl);
+    // No longer auto-generating thumbnails - rely on upload process
+  }
+
   // DISABLED: Auto-generation of thumbnails to prevent multiple thumbnail creation
   // Thumbnails are now created during upload with simplified naming
   // useEffect(() => {
@@ -197,12 +210,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
     console.log('PostCard thumbnailUrl - original mediaUrl:', post.mediaUrl);
-    
+
     // For MOV files, explicitly look for JPG thumbnail
     if (post.mediaUrl.toLowerCase().endsWith('.mov')) {
       let filename = post.mediaUrl;
       console.log('PostCard thumbnailUrl - processing MOV file, initial filename:', filename);
-      
+
       // Extract just the filename from the end of the path or URL
       if (filename.includes('filename=')) {
         // Handle URLs like /api/serve-file?filename=...
@@ -213,26 +226,47 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         filename = filename.split('/').pop() || filename;
         console.log('PostCard thumbnailUrl - extracted filename from path:', filename);
       }
-      
+
       // Remove any remaining query parameters
       if (filename.includes('?')) {
         filename = filename.split('?')[0];
         console.log('PostCard thumbnailUrl - removed query params:', filename);
       }
-      
+
       // Convert MOV extension to JPG for thumbnail
       const jpgFilename = filename.replace(/\.MOV$/i, '.jpg').replace(/\.mov$/i, '.jpg');
       console.log('PostCard thumbnailUrl - converted to JPG filename:', jpgFilename);
-      
+
       const result = `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
       console.log('PostCard thumbnailUrl - final JPG thumbnail URL:', result);
       return result;
     }
-    
+
     const result = createThumbnailUrl(post.mediaUrl);
     console.log('PostCard thumbnailUrl - non-MOV result:', result);
     return result;
   }, [post.mediaUrl]);
+
+    const { Play } = useMemo(() => {
+        return {
+            Play: (props: any) => (
+                <svg
+                    {...props}
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+            )
+        };
+    }, []);
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -299,68 +333,49 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
               <div className="relative w-full video-container" data-post-id={post.id}>
-                {/* Show thumbnail with play button for videos */}
-                <div 
-                  className="w-full cursor-pointer video-thumbnail-container"
-                  onClick={() => {
-                    // Navigate to video player page
-                    const videoUrl = encodeURIComponent(imageUrl || '');
-                    window.location.href = `/video-player?src=${videoUrl}`;
-                  }}
-                  style={{ 
-                    width: '100%',
-                    aspectRatio: '16/9',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    backgroundColor: '#f3f4f6'
-                  }}
-                >
-                  <img 
-                    src={thumbnailUrl} 
-                    alt="Video thumbnail" 
-                    className="w-full h-full object-cover"
-                    style={{ 
-                      display: 'block',
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      objectPosition: 'center'
-                    }}
-                    onError={(e) => {
-                      console.warn('Thumbnail failed to load:', thumbnailUrl);
-                      // Show a gray placeholder if thumbnail fails
-                      const target = e.target as HTMLImageElement;
-                      target.style.backgroundColor = '#e5e7eb';
-                      target.style.display = 'flex';
-                      target.style.alignItems = 'center';
-                      target.style.justifyContent = 'center';
-                      target.alt = 'Video thumbnail not available';
-                    }}
-                  />
-                  {/* Play button overlay in bottom left corner */}
-                  <div className="absolute bottom-3 left-3">
-                    <div 
-                      className="p-2 rounded-full bg-black/60 cursor-pointer hover:bg-black/80 transition-colors"
-                      style={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '48px',
-                        height: '48px'
-                      }}
-                    >
-                      <svg 
-                        width="20" 
-                        height="20" 
-                        viewBox="0 0 24 24" 
-                        fill="white"
-                        style={{ marginLeft: '2px' }}
-                      >
-                        <polygon points="5,3 19,12 5,21" />
-                      </svg>
-                    </div>
+                {/* Thumbnail overlay for videos */}
+        {post.is_video && (
+          <div 
+            className="relative cursor-pointer"
+            onClick={handleThumbnailClick}
+          >
+            {thumbnailUrl && !thumbnailError ? (
+              <img
+                src={thumbnailUrl}
+                alt="Video thumbnail"
+                className="w-full h-48 object-cover rounded-lg"
+                onLoad={() => setThumbnailLoaded(true)}
+                onError={(e) => {
+                  console.error('Thumbnail failed to load:', thumbnailUrl);
+                  setThumbnailError(true);
+                  // Try to generate thumbnail when poster fails
+                  handleFailedPosterLoad(post.mediaUrl || '').catch(err => {
+                    console.error('Failed to generate thumbnail:', err);
+                  });
+                }}
+              />
+            ) : (
+              // Fallback placeholder when thumbnail is missing or failed
+              <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <div className="bg-gray-400 rounded-full p-4 mx-auto mb-2">
+                    <Play className="h-8 w-8 text-white fill-current" />
                   </div>
+                  <p className="text-gray-600 text-sm">Video</p>
+                  {thumbnailError && (
+                    <p className="text-xs text-gray-500 mt-1">Thumbnail unavailable</p>
+                  )}
                 </div>
+              </div>
+            )}
+            {/* Play button overlay */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
+              <div className="bg-white bg-opacity-90 rounded-full p-3">
+                <Play className="h-6 w-6 text-black fill-current" />
+              </div>
+            </div>
+          </div>
+        )}
               </div>
             ) : (
               <img
