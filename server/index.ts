@@ -301,33 +301,12 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // Use fixed port 5000
+    // Simple server startup on port 5000
     port = 5000;
-
-    // Simplified server startup - just start on port 5000
-    const startServer = async (): Promise<HttpServer> => {
-      console.log(`[Server Startup] Starting server on port 5000...`);
-      
-      return new Promise((resolve, reject) => {
-        const serverInstance = server.listen(5000, "0.0.0.0", () => {
-          log(`[Server Startup] Server listening on port 5000`);
-          resolve(serverInstance);
-        });
-        
-        serverInstance.on('error', (error: any) => {
-          if (error.code === 'EADDRINUSE') {
-            console.log('[Server Startup] Port 5000 in use, the workflow will handle this');
-            reject(error);
-          } else {
-            reject(error);
-          }
-        });
-      });
-    };
-
-
-
-    await startServer();
+    console.log(`[Server Startup] Starting server on port ${port}...`);
+    server.listen(port, "0.0.0.0", () => {
+      log(`[Server Startup] Server listening on port ${port}`);
+    });
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
