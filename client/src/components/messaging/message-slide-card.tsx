@@ -545,10 +545,25 @@ export function MessageSlideCard() {
                                 console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
                                 // Try fallback to serve-file route
                                 const originalUrl = message.imageUrl || message.mediaUrl || '';
-                                const filename = originalUrl.split('/').pop() || '';
+                                
+                                // Extract filename from Object Storage URL format
+                                let filename = '';
+                                if (originalUrl.includes('storageKey=')) {
+                                  // Extract from Object Storage URL format
+                                  const urlParams = new URLSearchParams(originalUrl.split('?')[1] || '');
+                                  const storageKey = urlParams.get('storageKey') || '';
+                                  filename = storageKey.replace('shared/uploads/', '');
+                                } else if (originalUrl.includes('/')) {
+                                  // Extract from path format
+                                  filename = originalUrl.split('/').pop() || '';
+                                } else {
+                                  filename = originalUrl;
+                                }
+                                
                                 const fallbackUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-                                console.log("Trying fallback URL:", fallbackUrl);
-                                if (e.currentTarget.src !== fallbackUrl) {
+                                console.log("Trying fallback URL:", fallbackUrl, "extracted filename:", filename);
+                                
+                                if (e.currentTarget.src !== fallbackUrl && filename) {
                                   e.currentTarget.src = fallbackUrl;
                                 } else {
                                   e.currentTarget.style.display = 'none';
