@@ -301,182 +301,33 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // Try alternative ports if 5000 is busy
-    const ports = [5000, 5001, 5002, 5003];
-    // Initial port already declared at the top of file
+    // Use fixed port 5000
+    port = 5000;
 
-    // Handle port selection
-    const findAvailablePort = async () => {
-      for (const p of ports) {
-        try {
-          await new Promise((resolve, reject) => {
-            const testServer = createServer();
-            testServer.once('error', reject);
-            testServer.once('listening', () => {
-              testServer.close(() => resolve(true));
-            });
-            testServer.listen(p, '0.0.0.0');
-          });
-          return p;
-        } catch (err) {
-          logger.warn(`Port ${p} is busy, trying next port...`);
-          continue;
-        }
-      }
-      throw new Error('No available ports found');
-    };
-
-    // Find an available port before starting
-    port = await findAvailablePort();
-    logger.info(`Selected port ${port}`);
-
-    // Disable console logging
-    logger.setConsoleOutputEnabled(false);
-
-    // Enhanced port cleanup function with detailed logging
-    const killPort = async (port: number): Promise<void> => {
-      try {
-        // Disabled console output
-        // console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
-
-        if (process.platform === "win32") {
-          const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
-          console.log(`[Port Cleanup] Windows netstat output:`, stdout);
-          const pidMatch = stdout.match(/\s+(\d+)\s*$/m);
-          if (pidMatch && pidMatch[1]) {
-            console.log(`[Port Cleanup] Found PID ${pidMatch[1]}, attempting to kill...`);
-            await execAsync(`taskkill /F /PID ${pidMatch[1]}`);
-          }
-        } else {
-          // Unix/Linux specific commands with error handling
-          try {
-            console.log(`[Port Cleanup] Attempting lsof cleanup...`);
-            const { stdout: lsofOutput } = await execAsync(`lsof -i :${port}`);
-            console.log(`[Port Cleanup] Current port status:`, lsofOutput);
-            await execAsync(`lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs -r kill -9`);
-          } catch (lsofError) {
-            console.log(`[Port Cleanup] lsof failed, trying netstat...`, lsofError);
-            try {
-              await execAsync(`netstat -ltnp | grep -w ':${port}' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9`);
-            } catch (netstatError) {
-              console.log(`[Port Cleanup] netstat failed, trying fuser...`, netstatError);
-              await execAsync(`fuser -k ${port}/tcp`);
-            }
-          }
-        }
-
-        // Verify port is free
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const { stdout: verifyOutput } = await execAsync(
-          process.platform === "win32"
-            ? `netstat -ano | findstr :${port}`
-            : `lsof -i :${port}`
-        );
-        console.log(`[Port Cleanup] Port status after cleanup:`, verifyOutput || 'Port is free');
-
-      } catch (error) {
-        console.log(`[Port Cleanup] No active process found on port ${port}`);
-      }
-    };
-
-    // Enhanced server cleanup and startup mechanism
-    let currentServer: HttpServer | null = null;
-    const cleanupAndStartServer = async (retries = 5, delay = 3000): Promise<HttpServer> => {
-      try {
-        console.log(`[Server Startup] Attempt ${6-retries} of 5`);
-
-        // First kill any existing process on the selected port
-        await killPort(port);
-
-        // Also try to kill common ports that might be in use
-        try {
-          await killPort(5000);
-          await killPort(5001);
-          await killPort(5002);
-        } catch (err) {
-          // Ignore errors, these are just cleanup attempts
-        }
-
-        // Add delay after killing port
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Close existing server if any
-        if (currentServer) {
-          console.log('[Server Startup] Closing existing server...');
-          try {
-            await new Promise<void>((resolve, reject) => {
-              currentServer?.close((err) => {
-                if (err) {
-                  console.error('[Server Startup] Error closing server:', err);
-                  reject(err);
-                } else {
-                  console.log('[Server Startup] Existing server closed');
-                  resolve();
-                }
-              });
-              // Force close after 5 seconds
-              setTimeout(() => {
-                console.log('[Server Startup] Force closing server after timeout');
-                resolve();
-              }, 5000);
-            });
-          } catch (err) {
-            console.error('[Server Startup] Failed to close server gracefully:', err);
-          }
-          currentServer = null;
-        }
-
-        console.log(`[Server Startup] Starting new server on port ${port}...`);
-        currentServer = server.listen(port, "0.0.0.0", () => {
-          log(`[Server Startup] Server listening on port ${port}`);
-          // Daily checks are disabled to prevent server overload
-          // Use admin panel to manually trigger checks when needed
+    // Simplified server startup - just start on port 5000
+    const startServer = async (): Promise<HttpServer> => {
+      console.log(`[Server Startup] Starting server on port 5000...`);
+      
+      return new Promise((resolve, reject) => {
+        const serverInstance = server.listen(5000, "0.0.0.0", () => {
+          log(`[Server Startup] Server listening on port 5000`);
+          resolve(serverInstance);
         });
-
-        return currentServer;
-      } catch (error) {
-        console.error('[Server Error] Error during startup:', error);
-        if (retries > 0) {
-          console.log(`[Server Startup] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return cleanupAndStartServer(retries - 1, delay * 2);
-        }
-        throw error;
-      }
-    };
-
-    // Handle graceful shutdown
-    const gracefulShutdown = () => {
-      console.log('[Server Shutdown] Received shutdown signal. Closing HTTP server...');
-      if (currentServer) {
-        currentServer.close(() => {
-          console.log('[Server Shutdown] HTTP server closed');
-          process.exit(0);
+        
+        serverInstance.on('error', (error: any) => {
+          if (error.code === 'EADDRINUSE') {
+            console.log('[Server Startup] Port 5000 in use, the workflow will handle this');
+            reject(error);
+          } else {
+            reject(error);
+          }
         });
-
-        // Force close after 5s
-        setTimeout(() => {
-          console.error('[Server Shutdown] Could not close connections in time, forcefully shutting down');
-          process.exit(1);
-        }, 5000);
-      } else {
-        process.exit(0);
-      }
+      });
     };
 
-    // Handle various shutdown signals
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
 
-    // Start server with enhanced cleanup and retry mechanism
-    const finalServer = await cleanupAndStartServer();
 
-    // Update the global port variable to reflect the actual listening port
-    const address = finalServer.address();
-    if (address && typeof address === 'object') {
-      port = address.port;
-      logger.info(`Server successfully started on port ${port}`);
-    }
+    await startServer();
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
