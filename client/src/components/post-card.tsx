@@ -197,6 +197,28 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
     console.log('getThumbnailUrl called with:', post.mediaUrl);
+    
+    // For MOV files, explicitly look for JPG thumbnail
+    if (post.mediaUrl.toLowerCase().endsWith('.mov')) {
+      let filename = post.mediaUrl;
+      
+      // Extract just the filename from the end of the path
+      if (filename.includes('/')) {
+        filename = filename.split('/').pop() || filename;
+      }
+      
+      // Remove query parameters
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+      
+      // Convert MOV extension to JPG for thumbnail
+      const jpgFilename = filename.replace(/\.mov$/i, '.jpg');
+      const result = `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
+      console.log('MOV thumbnail URL result:', result);
+      return result;
+    }
+    
     const result = createThumbnailUrl(post.mediaUrl);
     console.log('Thumbnail URL result:', result);
     return result;
