@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2 } from "lucide-react";
@@ -8,8 +8,9 @@ export function VideoPlayerPage() {
   const [videoSrc, setVideoSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
-  
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     // Extract video source from URL parameters
@@ -38,16 +39,7 @@ export function VideoPlayerPage() {
         console.log('Video fully loaded and ready to play');
         setIsLoading(false);
         setVideoReady(true);
-        
-        // Auto-play the video once it's ready
-        setTimeout(() => {
-          const videoElement = document.querySelector('video');
-          if (videoElement) {
-            videoElement.play().catch(e => {
-              console.log('Auto-play failed, user interaction required:', e);
-            });
-          }
-        }, 100);
+        setShouldAutoPlay(true);
       };
       
       video.onerror = (e) => {
@@ -115,6 +107,7 @@ export function VideoPlayerPage() {
         )}
         {!isLoading && videoReady && videoDimensions && (
           <video
+            ref={videoRef}
             src={videoSrc}
             controls
             preload="auto"
@@ -138,10 +131,20 @@ export function VideoPlayerPage() {
             }}
             onLoadStart={() => {
               // Prevent fullscreen on mobile
-              const video = document.querySelector('video');
+              const video = videoRef.current;
               if (video) {
                 video.setAttribute('webkit-playsinline', 'true');
                 video.setAttribute('playsinline', 'true');
+              }
+            }}
+            onCanPlay={() => {
+              // Auto-play when the video can start playing
+              if (shouldAutoPlay && videoRef.current) {
+                console.log('Attempting auto-play...');
+                videoRef.current.play().catch(e => {
+                  console.log('Auto-play failed, user interaction required:', e);
+                });
+                setShouldAutoPlay(false); // Only try once
               }
             }}
           />
