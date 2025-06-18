@@ -38,6 +38,16 @@ export function VideoPlayerPage() {
         console.log('Video fully loaded and ready to play');
         setIsLoading(false);
         setVideoReady(true);
+        
+        // Auto-play the video once it's ready
+        setTimeout(() => {
+          const videoElement = document.querySelector('video');
+          if (videoElement) {
+            videoElement.play().catch(e => {
+              console.log('Auto-play failed, user interaction required:', e);
+            });
+          }
+        }, 100);
       };
       
       video.onerror = (e) => {
