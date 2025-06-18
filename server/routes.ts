@@ -4681,45 +4681,46 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         resultKeys: result && typeof result === 'object' ? Object.keys(result) : undefined
       });
       
-      // Handle the Object Storage response format based on test results
+      // Handle the Object Storage response format - simplified and more robust
       let fileBuffer: Buffer;
       
       if (Buffer.isBuffer(result)) {
         fileBuffer = result;
+        console.log(`[serve-file] Direct Buffer response, size: ${fileBuffer.length} bytes`);
       } else if (result && typeof result === 'object') {
-        // Handle both old and new Object Storage response formats
-        if ('value' in result && result.value) {
-          // New format: { value: Buffer }
+        // Check for value property first (most common case)
+        if (result.value !== undefined) {
           if (Buffer.isBuffer(result.value)) {
             fileBuffer = result.value;
-          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
-            fileBuffer = result.value[0];
-          } else if (typeof result.value === 'string') {
-            fileBuffer = Buffer.from(result.value, 'base64');
+            console.log(`[serve-file] Object with Buffer value, size: ${fileBuffer.length} bytes`);
           } else if (Array.isArray(result.value)) {
             fileBuffer = Buffer.from(result.value);
-          } else {
-            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
-            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
-          }
-        } else if ('ok' in result && result.ok === true && result.value) {
-          // Legacy format: { ok: true, value: Buffer }
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
-            fileBuffer = result.value[0];
+            console.log(`[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`);
           } else if (typeof result.value === 'string') {
             fileBuffer = Buffer.from(result.value, 'base64');
-          } else if (Array.isArray(result.value)) {
-            fileBuffer = Buffer.from(result.value);
+            console.log(`[serve-file] Object with string value converted from base64, size: ${fileBuffer.length} bytes`);
           } else {
-            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
+            logger.error(`Unexpected value type from Object Storage for ${storageKey}:`, typeof result.value);
             return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
           }
-        } else {
-          console.log(`[serve-file] File not found in Object Storage for ${storageKey}:`, result);
-          logger.error(`File not found in Object Storage for ${storageKey}:`, result);
+        } else if ('ok' in result) {
+          // Handle legacy ok/error format
+          if (result.ok === false || !result.value) {
+            console.log(`[serve-file] Object Storage returned error for ${storageKey}:`, result.error || 'File not found');
+            return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+          }
           
+          // If ok is true, try to extract the value
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
+          } else {
+            fileBuffer = Buffer.from(result.value, 'base64');
+          }
+          console.log(`[serve-file] Legacy ok format, Buffer size: ${fileBuffer.length} bytes`);
+        } else {
+          logger.error(`Unknown Object Storage response format for ${storageKey}:`, Object.keys(result));
           return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
       } else {
