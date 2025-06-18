@@ -4679,7 +4679,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       console.log(`[serve-file] Object Storage result:`, {
         type: typeof result,
         hasOk: result && typeof result === 'object' && 'ok' in result,
-        ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
+        hasValue: result && typeof result === 'object' && 'value' in result,
+        ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined,
+        valueType: result && typeof result === 'object' && 'value' in result ? typeof result.value : undefined,
+        isBuffer: Buffer.isBuffer(result),
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : undefined
       });
       
       // Handle the Object Storage response format based on test results
@@ -4687,12 +4691,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       if (Buffer.isBuffer(result)) {
         fileBuffer = result;
-      } else if (result && typeof result === 'object' && 'ok' in result) {
-        if (result.ok === true && result.value) {
+      } else if (result && typeof result === 'object') {
+        // Handle both old and new Object Storage response formats
+        if ('value' in result && result.value) {
+          // New format: { value: Buffer }
           if (Buffer.isBuffer(result.value)) {
             fileBuffer = result.value;
           } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
             fileBuffer = result.value[0];
+          } else if (typeof result.value === 'string') {
+            fileBuffer = Buffer.from(result.value, 'base64');
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
+          } else {
+            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
+            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+          }
+        } else if ('ok' in result && result.ok === true && result.value) {
+          // Legacy format: { ok: true, value: Buffer }
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
+            fileBuffer = result.value[0];
+          } else if (typeof result.value === 'string') {
+            fileBuffer = Buffer.from(result.value, 'base64');
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
           } else {
             logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
             return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
