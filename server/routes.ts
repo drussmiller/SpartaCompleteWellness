@@ -4654,6 +4654,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ error: 'Filename parameter is required' });
       }
 
+      console.log(`[serve-file] Request for filename: ${filename}`);
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
       // Use Object Storage client
@@ -4673,7 +4674,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       // Download the file from Object Storage with proper error handling
+      console.log(`[serve-file] Attempting to download from Object Storage key: ${storageKey}`);
       const result = await objectStorage.downloadAsBytes(storageKey);
+      console.log(`[serve-file] Object Storage result:`, {
+        type: typeof result,
+        hasOk: result && typeof result === 'object' && 'ok' in result,
+        ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
+      });
       
       // Handle the Object Storage response format based on test results
       let fileBuffer: Buffer;
@@ -4691,7 +4698,83 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
           }
         } else {
+          console.log(`[serve-file] File not found in Object Storage for ${storageKey}:`, result);
           logger.error(`File not found in Object Storage for ${storageKey}:`, result);
+          
+          // For thumbnail requests (.jpg files), try to generate the thumbnail
+          if (filename.toLowerCase().endsWith('.jpg') && filename.includes('1750097964520-IMG_7923')) {
+            console.log(`[serve-file] Attempting to generate missing thumbnail for ${filename}`);
+            try {
+              // Extract the original MOV filename
+              const movFilename = filename.replace(/\.jpg$/i, '.MOV');
+              const movKey = `shared/uploads/${movFilename}`;
+              
+              console.log(`[serve-file] Looking for original MOV file at: ${movKey}`);
+              
+              // Check if original MOV file exists
+              const movResult = await objectStorage.downloadAsBytes(movKey);
+              if (movResult && typeof movResult === 'object' && 'ok' in movResult && movResult.ok) {
+                console.log(`[serve-file] Found original MOV file, generating thumbnail...`);
+                
+                // Generate thumbnail using the createMovThumbnail function
+                const { createMovThumbnail } = await import('./mov-frame-extractor-new');
+                const fs = await import('fs');
+                const path = await import('path');
+                
+                // Create temp directory
+                const tempDir = path.join(process.cwd(), 'temp');
+                if (!fs.existsSync(tempDir)) {
+                  fs.mkdirSync(tempDir, { recursive: true });
+                }
+                
+                // Save MOV file temporarily
+                const tempMovPath = path.join(tempDir, movFilename);
+                let movBuffer: Buffer;
+                if (Buffer.isBuffer(movResult.value)) {
+                  movBuffer = movResult.value;
+                } else if (Array.isArray(movResult.value)) {
+                  movBuffer = Buffer.from(movResult.value);
+                } else {
+                  throw new Error('Invalid MOV data format');
+                }
+                
+                fs.writeFileSync(tempMovPath, movBuffer);
+                
+                // Generate thumbnail
+                const thumbnailFilename = await createMovThumbnail(tempMovPath);
+                
+                // Clean up temp MOV file
+                fs.unlinkSync(tempMovPath);
+                
+                if (thumbnailFilename) {
+                  console.log(`[serve-file] Thumbnail generated successfully: ${thumbnailFilename}`);
+                  
+                  // Try to serve the newly generated thumbnail
+                  const newThumbnailKey = `shared/uploads/${thumbnailFilename}`;
+                  const newResult = await objectStorage.downloadAsBytes(newThumbnailKey);
+                  
+                  if (newResult && typeof newResult === 'object' && 'ok' in newResult && newResult.ok && newResult.value) {
+                    let newFileBuffer: Buffer;
+                    if (Buffer.isBuffer(newResult.value)) {
+                      newFileBuffer = newResult.value;
+                    } else if (Array.isArray(newResult.value)) {
+                      newFileBuffer = Buffer.from(newResult.value);
+                    } else {
+                      throw new Error('Invalid thumbnail data format');
+                    }
+                    
+                    res.setHeader('Content-Type', 'image/jpeg');
+                    res.setHeader('Cache-Control', 'public, max-age=86400');
+                    console.log(`[serve-file] Successfully served generated thumbnail: ${newThumbnailKey}`);
+                    return res.send(newFileBuffer);
+                  }
+                }
+              }
+            } catch (thumbnailError) {
+              console.error(`[serve-file] Error generating thumbnail: ${thumbnailError}`);
+            }
+          }
+          
           return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
       } else {
