@@ -112,8 +112,10 @@ export function VideoPlayerPage() {
             controls
             preload="auto"
             playsInline
-            controlsList="nodownload nofullscreen"
+            webkit-playsinline="true"
+            controlsList="nodownload nofullscreen noremoteplayback"
             disablePictureInPicture
+            disableRemotePlayback
             width={videoDimensions.width}
             height={videoDimensions.height}
             className="max-w-full max-h-full object-contain"
@@ -135,6 +137,10 @@ export function VideoPlayerPage() {
               if (video) {
                 video.setAttribute('webkit-playsinline', 'true');
                 video.setAttribute('playsinline', 'true');
+                // Additional prevention for fullscreen
+                video.removeAttribute('allowfullscreen');
+                video.removeAttribute('webkitallowfullscreen');
+                video.removeAttribute('mozallowfullscreen');
               }
             }}
             onCanPlay={() => {
@@ -145,6 +151,24 @@ export function VideoPlayerPage() {
                   console.log('Auto-play failed, user interaction required:', e);
                 });
                 setShouldAutoPlay(false); // Only try once
+              }
+            }}
+            onLoadedMetadata={() => {
+              // Additional fullscreen prevention when metadata loads
+              const video = videoRef.current;
+              if (video) {
+                // Override any fullscreen event listeners
+                video.addEventListener('webkitbeginfullscreen', (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return false;
+                }, { capture: true });
+                
+                video.addEventListener('fullscreenchange', (e) => {
+                  if (document.fullscreenElement === video) {
+                    document.exitFullscreen();
+                  }
+                }, { capture: true });
               }
             }}
           />
