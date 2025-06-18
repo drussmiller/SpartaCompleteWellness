@@ -123,11 +123,13 @@ export function VideoPlayerPage() {
               width: 'auto',
               height: 'auto',
               maxWidth: '100%',
-              maxHeight: '100%'
+              maxHeight: '100%',
+              objectFit: 'contain'
             }}
-            onPlay={() => {
-              console.log('Video started playing');
-            }}
+            x-webkit-airplay="deny"
+            x5-playsinline="true"
+            x5-video-player-type="h5"
+            x5-video-player-fullscreen="false"
             onError={(e) => {
               console.error('Video playback error:', e);
             }}
@@ -169,6 +171,20 @@ export function VideoPlayerPage() {
                     document.exitFullscreen();
                   }
                 }, { capture: true });
+
+                // Additional prevention for webkit fullscreen
+                video.addEventListener('webkitendfullscreen', (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }, { capture: true });
+              }
+            }}
+            onPlay={() => {
+              console.log('Video started playing');
+              // Prevent fullscreen on play
+              const video = videoRef.current;
+              if (video && document.fullscreenElement === video) {
+                document.exitFullscreen();
               }
             }}
           />
