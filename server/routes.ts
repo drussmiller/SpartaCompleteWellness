@@ -4535,82 +4535,131 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const { Client } = await import('@replit/object-storage');
       const objectStorage = new Client();
       
+      // Check if this is a thumbnail request
+      const isThumbnail = req.query.thumbnail === 'true';
+      
       // Construct the proper Object Storage key
-      // Always use shared/uploads prefix for consistency
-      const storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
+      let storageKey;
+      if (isThumbnail) {
+        storageKey = `shared/uploads/thumbnails/${filename}`;
+      } else {
+        // For regular files, add the shared/uploads prefix if not already present
+        storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
+      }
 
       logger.info(`Object Storage lookup for key: ${storageKey}`);
 
-      // Download the file from Object Storage with proper error handling
+      // Download the file from Object Storage with comprehensive error handling
       try {
-        const downloadResult = await objectStorage.downloadAsBytes(storageKey);
+        const result = await objectStorage.downloadAsBytes(storageKey);
         
-        logger.info(`Object Storage download attempt for: ${storageKey}`);
+        logger.info(`Object Storage response type: ${typeof result}, hasOk: ${result && typeof result === 'object' && 'ok' in result}`);
         
-        // Handle the Replit Object Storage response format correctly
+        // Handle the Object Storage response format properly
         let fileBuffer: Buffer | null = null;
         
-        // Check if the result has the expected format: { ok: boolean, value?: Buffer }
-        if (downloadResult && typeof downloadResult === 'object' && 'ok' in downloadResult) {
-          if (downloadResult.ok === true && downloadResult.value) {
-            if (Buffer.isBuffer(downloadResult.value)) {
-              fileBuffer = downloadResult.value;
-              logger.info(`Successfully extracted buffer from Object Storage, size: ${fileBuffer.length} bytes`);
-            } else if (downloadResult.value instanceof Uint8Array) {
-              fileBuffer = Buffer.from(downloadResult.value);
-              logger.info(`Converted Uint8Array to Buffer, size: ${fileBuffer.length} bytes`);
+        if (Buffer.isBuffer(result)) {
+          fileBuffer = result;
+          logger.info(`Direct buffer response, size: ${fileBuffer.length}`);
+        } else if (result && typeof result === 'object') {
+          if ('ok' in result) {
+            logger.info(`Result object with ok field: ${result.ok}`);
+            if (result.ok === true && result.value) {
+              if (Buffer.isBuffer(result.value)) {
+                fileBuffer = result.value;
+                logger.info(`Buffer from result.value, size: ${fileBuffer.length}`);
+              } else if (Array.isArray(result.value)) {
+                if (result.value.length > 0 && Buffer.isBuffer(result.value[0])) {
+                  fileBuffer = result.value[0];
+                  logger.info(`Buffer from result.value[0], size: ${fileBuffer.length}`);
+                } else {
+                  // Handle array of bytes
+                  try {
+                    fileBuffer = Buffer.from(result.value);
+                    logger.info(`Created buffer from byte array, size: ${fileBuffer.length}`);
+                  } catch (bufferError) {
+                    logger.error(`Failed to create buffer from array:`, bufferError);
+                  }
+                }
+              } else if (typeof result.value === 'string') {
+                // Handle base64 string
+                try {
+                  fileBuffer = Buffer.from(result.value, 'base64');
+                  logger.info(`Created buffer from base64 string, size: ${fileBuffer.length}`);
+                } catch (bufferError) {
+                  logger.error(`Failed to create buffer from base64:`, bufferError);
+                }
+              } else {
+                logger.error(`Unexpected value type: ${typeof result.value}`);
+              }
             } else {
-              logger.error(`Unexpected value type in Object Storage response: ${typeof downloadResult.value}`);
+              logger.error(`Object Storage download failed for ${storageKey}:`, result);
             }
           } else {
-            logger.error(`Object Storage download failed for ${storageKey}:`, downloadResult);
-            return res.status(404).json({ 
-              error: 'File not found in Object Storage',
-              message: `Download failed for ${storageKey}` 
-            });
+            // Handle case where result is an object but not the expected format
+            logger.info(`Unexpected object format, attempting direct buffer conversion`);
+            try {
+              fileBuffer = Buffer.from(result as any);
+            } catch (bufferError) {
+              logger.error(`Failed to convert object to buffer:`, bufferError);
+            }
           }
-        } else if (Buffer.isBuffer(downloadResult)) {
-          // Direct buffer response (fallback)
-          fileBuffer = downloadResult;
-          logger.info(`Direct buffer response, size: ${fileBuffer.length} bytes`);
         } else {
-          logger.error(`Unexpected Object Storage response format:`, typeof downloadResult);
-          return res.status(500).json({ 
-            error: 'Invalid Object Storage response',
-            message: `Unexpected response format for ${storageKey}` 
-          });
+          logger.error(`Unexpected result type: ${typeof result}`);
         }
 
-        if (!fileBuffer || fileBuffer.length === 0) {
-          logger.error(`Empty or invalid file buffer for ${storageKey}`);
+        if (!fileBuffer) {
+          logger.error(`Failed to extract file buffer from Object Storage response for ${storageKey}`);
           return res.status(404).json({ 
-            error: 'File not found or empty', 
-            message: `No valid data for ${storageKey}` 
+            error: 'File not found', 
+            message: `Could not extract file data for ${storageKey}` 
           });
         }
 
-        // Determine content type based on file extension
+        // Set appropriate content type
         const ext = filename.toLowerCase().split('.').pop();
-        const contentType = getContentType(ext || '');
+        let contentType = 'application/octet-stream';
         
-        // Set appropriate headers for file serving
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Length', fileBuffer.length.toString());
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-        
-        // Enable range requests for video files
-        if (contentType.startsWith('video/')) {
-          res.setHeader('Accept-Ranges', 'bytes');
+        switch (ext) {
+          case 'jpg':
+          case 'jpeg':
+            contentType = 'image/jpeg';
+            break;
+          case 'png':
+            contentType = 'image/png';
+            break;
+          case 'gif':
+            contentType = 'image/gif';
+            break;
+          case 'webp':
+            contentType = 'image/webp';
+            break;
+          case 'svg':
+            contentType = 'image/svg+xml';
+            break;
+          case 'mp4':
+            contentType = 'video/mp4';
+            break;
+          case 'mov':
+            contentType = 'video/quicktime';
+            break;
+          case 'webm':
+            contentType = 'video/webm';
+            break;
         }
         
-        logger.info(`Successfully serving file: ${storageKey}, size: ${fileBuffer.length} bytes, type: ${contentType}`);
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        res.setHeader('Accept-Ranges', 'bytes'); // Enable range requests for videos
+        
+        logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes, type: ${contentType}`);
         return res.send(fileBuffer);
         
       } catch (storageError) {
         logger.error(`Object Storage error for ${storageKey}:`, storageError);
         return res.status(404).json({ 
           error: 'File not found in Object Storage',
-          message: `Could not retrieve ${storageKey}: ${storageError instanceof Error ? storageError.message : 'Unknown error'}` 
+          message: `Could not retrieve ${storageKey}` 
         });
       }
       
@@ -4622,35 +4671,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-
-  // Helper function to determine content type
-  function getContentType(ext: string): string {
-    switch (ext.toLowerCase()) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'webp':
-        return 'image/webp';
-      case 'svg':
-        return 'image/svg+xml';
-      case 'mp4':
-        return 'video/mp4';
-      case 'mov':
-        return 'video/quicktime';
-      case 'webm':
-        return 'video/webm';
-      case 'avi':
-        return 'video/x-msvideo';
-      case 'mkv':
-        return 'video/x-matroska';
-      default:
-        return 'application/octet-stream';
-    }
-  }
 
   return httpServer;
 };
