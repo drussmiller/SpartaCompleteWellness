@@ -111,10 +111,17 @@ export function VideoPlayer({
     // Ensure we pass the correct video URL for playback
     let videoUrl = src;
     
+    // If src contains shared/uploads path, extract just the filename
+    if (videoUrl.includes('shared/uploads/')) {
+      const filename = videoUrl.split('shared/uploads/').pop() || videoUrl.split('/').pop() || videoUrl;
+      videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+    }
     // If src is already a proper API URL, use it as-is
-    // If it's a raw path, convert it to the serve-file format
-    if (!videoUrl.startsWith('/api/') && !videoUrl.startsWith('http')) {
-      // Extract filename and create proper serve-file URL
+    else if (videoUrl.startsWith('/api/') || videoUrl.startsWith('http')) {
+      // Keep as-is
+    }
+    // If it's a raw filename, convert it to the serve-file format
+    else {
       const filename = videoUrl.split('/').pop() || videoUrl;
       videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
     }
