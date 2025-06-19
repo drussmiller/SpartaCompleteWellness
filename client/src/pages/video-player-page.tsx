@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2 } from "lucide-react";
+import { createMediaUrl } from "@/lib/media-utils";
 
 export function VideoPlayerPage() {
   const [location, setLocation] = useLocation();
@@ -22,11 +23,15 @@ export function VideoPlayerPage() {
     if (src) {
       const decodedSrc = decodeURIComponent(src);
       console.log('Video player page - decoded src:', decodedSrc);
-      setVideoSrc(decodedSrc);
+      
+      // Process the URL through createMediaUrl to handle Object Storage properly
+      const processedSrc = createMediaUrl(decodedSrc);
+      console.log('Video player page - processed src:', processedSrc);
+      setVideoSrc(processedSrc);
 
       // Preload the video completely before showing anything
       const video = document.createElement('video');
-      video.src = decodedSrc;
+      video.src = processedSrc;
       video.preload = 'auto';
       video.muted = true; // Required for autoplay on mobile
       
@@ -43,7 +48,7 @@ export function VideoPlayerPage() {
       };
       
       video.onerror = (e) => {
-        console.error('Failed to load video:', decodedSrc, e);
+        console.error('Failed to load video:', processedSrc, e);
         setIsLoading(false);
         setVideoReady(false); // Don't show video on error
       };
