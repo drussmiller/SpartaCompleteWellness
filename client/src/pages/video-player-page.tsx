@@ -49,6 +49,13 @@ export function VideoPlayerPage() {
       
       video.onerror = (e) => {
         console.error('Failed to load video:', processedSrc, e);
+        console.error('Original src:', decodedSrc);
+        console.error('Video error details:', {
+          error: e,
+          videoError: video.error,
+          networkState: video.networkState,
+          readyState: video.readyState
+        });
         setIsLoading(false);
         setVideoReady(false); // Don't show video on error
       };
@@ -195,8 +202,14 @@ export function VideoPlayerPage() {
           />
         )}
         {!isLoading && !videoReady && (
-          <div className="flex items-center justify-center text-white">
-            <span>Unable to load video</span>
+          <div className="flex flex-col items-center justify-center text-white text-center p-4">
+            <h2 className="text-xl mb-4">Unable to load video</h2>
+            <p className="text-gray-300 mb-4">The video file could not be loaded or found.</p>
+            <p className="text-sm text-gray-400 mb-4">Video URL: {videoSrc}</p>
+            <Button onClick={handleGoBack} variant="outline">
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
           </div>
         )}
       </div>

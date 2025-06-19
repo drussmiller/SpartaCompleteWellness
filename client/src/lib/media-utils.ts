@@ -90,6 +90,8 @@ export function createMediaUrl(url: string | null): string {
     const filename = url.split('/').pop() || '';
     const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
     console.log('Created serve-file media URL for Object Storage file:', serveFileUrl);
+    console.log('Original Object Storage path:', url);
+    console.log('Extracted filename:', filename);
     return serveFileUrl;
   }
 
