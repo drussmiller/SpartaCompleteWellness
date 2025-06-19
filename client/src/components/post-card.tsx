@@ -196,9 +196,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) return null;
-    console.log('getThumbnailUrl called with:', post.mediaUrl);
+    console.log('PostCard - Creating thumbnail for post', post.id, 'with mediaUrl:', post.mediaUrl);
     const result = createThumbnailUrl(post.mediaUrl);
-    console.log('Thumbnail URL result:', result);
+    console.log('PostCard - Thumbnail URL result for post', post.id, ':', result);
     return result;
   }, [post.mediaUrl]);
 
@@ -280,8 +280,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         aspectRatio: '3/2',
                         maxHeight: '400px'
                       }}
+                      onLoad={() => {
+                        console.log('✅ Thumbnail loaded successfully for post', post.id, 'URL:', thumbnailUrl);
+                      }}
                       onError={(e) => {
-                        console.log('Thumbnail load error for video post', post.id);
+                        console.log('❌ Thumbnail load error for post', post.id, 'URL:', thumbnailUrl);
+                        console.log('❌ Thumbnail error details:', e.currentTarget.src);
                         // Show fallback if thumbnail fails
                         e.currentTarget.style.display = 'none';
                       }}

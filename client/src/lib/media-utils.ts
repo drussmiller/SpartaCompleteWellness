@@ -116,20 +116,29 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
     return '';
   }
 
-  // Extract just the filename from the end of the path
-  let filename = mediaUrl;
-
-  // Remove leading slashes and path components
-  if (filename.includes('/')) {
-    filename = filename.split('/').pop() || filename;
+  // Extract filename from various URL formats
+  let filename = '';
+  
+  if (mediaUrl.startsWith('shared/uploads/')) {
+    // Extract filename from Object Storage path
+    filename = mediaUrl.split('/').pop() || '';
+    console.log('Extracted filename from Object Storage path:', filename);
+  } else if (mediaUrl.includes('filename=')) {
+    // Extract from serve-file URL
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1]);
+    filename = urlParams.get('filename') || '';
+    console.log('Extracted filename from serve-file URL:', filename);
+  } else if (mediaUrl.includes('/')) {
+    // Any other path format - get the last part
+    filename = mediaUrl.split('/').pop() || '';
+    console.log('Extracted filename from path:', filename);
+  } else {
+    // Assume it's already just a filename
+    filename = mediaUrl;
+    console.log('Using as filename directly:', filename);
   }
 
-  // Remove query parameters
-  if (filename.includes('?')) {
-    filename = filename.split('?')[0];
-  }
-
-  console.log('Creating thumbnail for filename:', filename);
+  console.log('Creating thumbnail for extracted filename:', filename);
 
   // For video files (.mov, .mp4, etc.), use simplified thumbnail naming
   if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
