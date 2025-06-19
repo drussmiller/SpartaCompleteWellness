@@ -546,36 +546,7 @@ export function MessageSlideCard() {
                                   e.currentTarget.style.opacity = '1';
                                 }}
                                 onError={(e) => {
-                                const originalUrl = message.imageUrl || message.mediaUrl || '';
-                                console.log("Message image failed to load:", originalUrl);
-                                
-                                // Try Object Storage direct download as fallback
-                                if (originalUrl && !e.currentTarget.src.includes('/api/object-storage/direct-download')) {
-                                  console.log("Trying Object Storage fallback for:", originalUrl);
-                                  
-                                  // Extract filename from various URL formats
-                                  let filename = '';
-                                  if (originalUrl.includes('filename=')) {
-                                    const urlParams = new URLSearchParams(originalUrl.split('?')[1]);
-                                    filename = urlParams.get('filename') || '';
-                                  } else if (originalUrl.startsWith('shared/uploads/')) {
-                                    filename = originalUrl.split('/').pop() || '';
-                                  } else {
-                                    filename = originalUrl.split('/').pop() || '';
-                                  }
-                                  
-                                  if (filename) {
-                                    const storageKey = `shared/uploads/${filename}`;
-                                    const fallbackUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
-                                    console.log("Trying fallback URL:", fallbackUrl);
-                                    e.currentTarget.src = fallbackUrl;
-                                    return;
-                                  }
-                                }
-                                
-                                // If all attempts fail, hide the image
-                                console.log("All image loading attempts failed");
-                                e.currentTarget.style.display = 'none';
+                                console.log("Message image failed to load:", message.imageUrl || message.mediaUrl);
                               }}
                               />
                             </div>
