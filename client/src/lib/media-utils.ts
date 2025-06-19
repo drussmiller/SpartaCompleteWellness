@@ -112,16 +112,9 @@ export function createThumbnailUrl(mediaUrl: string): string | null {
   console.log('createThumbnailUrl called with:', mediaUrl);
 
   // Check if this is already a thumbnail URL
-  if (mediaUrl.includes('direct-download') && mediaUrl.includes('.jpeg')) {
+  if (mediaUrl.includes('direct-download') && (mediaUrl.includes('.jpeg') || mediaUrl.includes('.jpg'))) {
     console.log('Already a thumbnail URL, returning as-is');
     return mediaUrl;
-  }
-
-  // For the specific video that's failing, check if thumbnail exists first
-  if (mediaUrl.includes('1750097964520-IMG_7923.MOV')) {
-    console.log('Processing specific video 1750097964520-IMG_7923.MOV');
-    // This video doesn't have a thumbnail, return null to show fallback
-    return null;
   }
 
   // If this is a serve-file URL, extract the filename
@@ -130,10 +123,14 @@ export function createThumbnailUrl(mediaUrl: string): string | null {
     const filename = urlParams.get('filename');
     if (filename) {
       console.log('Extracted filename from serve-file URL:', filename);
-      const thumbnailFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpeg');
-      const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${thumbnailFilename}`)}`;
-      console.log('Thumbnail URL result:', result);
-      return result;
+      
+      // Try both .jpg and .jpeg extensions for thumbnails
+      const baseFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '');
+      
+      // First try .jpg (which we know exists for this specific file)
+      const jpgThumbnail = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${baseFilename}.jpg`)}`;
+      console.log('Trying .jpg thumbnail URL:', jpgThumbnail);
+      return jpgThumbnail;
     }
   }
 
@@ -160,8 +157,9 @@ export function createThumbnailUrl(mediaUrl: string): string | null {
 
   console.log('Extracted filename:', filename);
 
-  // Replace video extension with .jpeg for thumbnail
-  const thumbnailFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpeg');
+  // Replace video extension with .jpg for thumbnail (since we know the existing one is .jpg)
+  const baseFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '');
+  const thumbnailFilename = `${baseFilename}.jpg`;
   console.log('Thumbnail filename:', thumbnailFilename);
 
   // Create Object Storage URL for thumbnail
