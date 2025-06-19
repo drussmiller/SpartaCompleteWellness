@@ -86,7 +86,7 @@ export function createMediaUrl(url: string | null): string {
 
   // Check if we're in development mode and this looks like an Object Storage file
   if (url.startsWith('shared/uploads/')) {
-    // For Object Storage files, always use direct download to avoid processing issues
+    // Use Object Storage direct download for ALL Object Storage files
     const directUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(url)}`;
     console.log('📁 Processing Object Storage file:', url);
     console.log('📁 Direct download URL:', directUrl);
