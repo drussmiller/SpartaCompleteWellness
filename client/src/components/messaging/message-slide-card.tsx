@@ -546,53 +546,20 @@ export function MessageSlideCard() {
                                   e.currentTarget.style.opacity = '1';
                                 }}
                                 onError={(e) => {
-                                const originalUrl = message.imageUrl || message.mediaUrl || '';
-                                const currentSrc = e.currentTarget.src;
-                                
-                                // Prevent infinite loops by tracking attempted URLs
-                                const attemptedUrls = e.currentTarget.dataset.attemptedUrls || '';
-                                const attemptedList = attemptedUrls.split(',').filter(Boolean);
-                                
-                                console.error("Error loading message image:", originalUrl);
-                                console.error("Failed URL:", currentSrc);
-                                console.log("Already attempted:", attemptedList);
-                                
-                                // Mark this URL as attempted
-                                attemptedList.push(currentSrc);
-                                e.currentTarget.dataset.attemptedUrls = attemptedList.join(',');
-                                
-                                // Stop trying after 3 attempts to prevent blinking
-                                if (attemptedList.length >= 3) {
-                                  console.log("Maximum fallback attempts reached, hiding image");
-                                  e.currentTarget.style.display = 'none';
-                                  return;
-                                }
-                                
-                                // Try fallbacks only if we haven't tried them yet
-                                if (currentSrc.includes('/api/serve-file') && originalUrl.startsWith('shared/uploads/')) {
-                                  const fallbackUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(originalUrl)}`;
-                                  if (!attemptedList.includes(fallbackUrl)) {
-                                    console.log("Trying Object Storage fallback:", fallbackUrl);
-                                    e.currentTarget.src = fallbackUrl;
-                                    return;
-                                  }
-                                }
-                                
-                                if (currentSrc.includes('/api/object-storage/direct-download')) {
-                                  const filename = originalUrl.split('/').pop();
-                                  if (filename) {
-                                    const directUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-                                    if (!attemptedList.includes(directUrl)) {
-                                      console.log("Trying direct filename fallback:", directUrl);
-                                      e.currentTarget.src = directUrl;
-                                      return;
-                                    }
-                                  }
-                                }
-                                
-                                // All fallbacks exhausted, hide the image
-                                console.log("All image fallbacks failed, hiding image");
+                                // Immediately hide the image to prevent blinking
                                 e.currentTarget.style.display = 'none';
+                                
+                                const originalUrl = message.imageUrl || message.mediaUrl || '';
+                                console.log("Message image failed to load:", originalUrl);
+                                
+                                // Show a placeholder text instead of the broken image
+                                const container = e.currentTarget.parentElement;
+                                if (container && !container.querySelector('.image-placeholder')) {
+                                  const placeholder = document.createElement('div');
+                                  placeholder.className = 'image-placeholder text-xs text-gray-500 p-2 bg-gray-100 rounded';
+                                  placeholder.textContent = 'Image not available in development';
+                                  container.appendChild(placeholder);
+                                }
                               }}
                               />
                             </div>
