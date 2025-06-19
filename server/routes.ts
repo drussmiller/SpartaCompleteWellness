@@ -4547,6 +4547,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
       }
 
+      logger.info(`Attempting to serve from storage key: ${storageKey}`);
+
       // Download the file from Object Storage with proper error handling
       const result = await objectStorage.downloadAsBytes(storageKey);
       

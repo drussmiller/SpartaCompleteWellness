@@ -281,25 +281,27 @@ export function VideoPlayer({
                 onClick={handleThumbnailClick}
                 style={{
                   background: posterError ? 
-                    "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
-                    "white",
-                  border: "1px solid #e5e7eb"
+                    "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))" : 
+                    "linear-gradient(135deg, rgba(248, 250, 252, 1), rgba(241, 245, 249, 1))",
+                  border: "1px solid #e2e8f0"
                 }}
               >
-                <div className="p-4 rounded-lg flex flex-col items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
+                <div className="p-6 rounded-lg flex flex-col items-center text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                   </svg>
+                  <p className="text-sm text-slate-600 font-medium">Video Ready</p>
+                  <p className="text-xs text-slate-500 mt-1">Click to play</p>
                 </div>
               </div>
               {/* Play button overlay on fallback */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
+              <div className="absolute inset-0 flex items-end justify-start bg-black/5">
                 <div 
-                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
+                  className="p-3 m-4 rounded-full bg-black/70 cursor-pointer hover:bg-black/90 shadow-lg"
                   onClick={handleThumbnailClick}
-                  style={{ transition: 'none' }}
+                  style={{ transition: 'background-color 0.2s ease' }}
                 >
-                  <Play size={24} className="text-white" fill="white" />
+                  <Play size={20} className="text-white" fill="white" />
                 </div>
               </div>
             </>
