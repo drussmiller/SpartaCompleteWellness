@@ -4535,17 +4535,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const { Client } = await import('@replit/object-storage');
       const objectStorage = new Client();
       
-      // Check if this is a thumbnail request
-      const isThumbnail = req.query.thumbnail === 'true';
-      
       // Construct the proper Object Storage key
-      let storageKey;
-      if (isThumbnail) {
-        storageKey = `shared/uploads/thumbnails/${filename}`;
-      } else {
-        // For regular files, add the shared/uploads prefix if not already present
-        storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
-      }
+      // Always use shared/uploads prefix for consistency
+      const storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
 
       logger.info(`Object Storage lookup for key: ${storageKey}`);
 
