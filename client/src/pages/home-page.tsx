@@ -69,9 +69,21 @@ export default function HomePage() {
       
       console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
       
-      // Check if post ID 491 is in the response
-      const hasTargetPost = data.some(post => post.id === 491);
-      console.log("Does response include post #491?", hasTargetPost);
+      // Check for video posts specifically
+      const videoPosts = data.filter(post => 
+        post.image_url && post.image_url.toLowerCase().includes('.mov')
+      );
+      console.log("Video posts found:", videoPosts.length, videoPosts.map(p => ({
+        id: p.id,
+        type: p.type,
+        imageUrl: p.image_url
+      })));
+      
+      // Check if the specific video post exists
+      const targetVideoPost = data.find(post => 
+        post.image_url && post.image_url.includes('1750097964520-IMG_7923.MOV')
+      );
+      console.log("Target video post found:", !!targetVideoPost, targetVideoPost?.id);
       
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
