@@ -525,10 +525,9 @@ export function MessageSlideCard() {
                             }}
                           />
                         )}
-                        
-                        {(message.imageUrl || message.mediaUrl) && 
-                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
-                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
+
+                        {((message.imageUrl && message.imageUrl !== '/uploads/undefined' && message.imageUrl !== 'undefined') || 
+                          (message.mediaUrl && message.mediaUrl !== '/uploads/undefined' && message.mediaUrl !== 'undefined')) && (
                           message.is_video ? (
                             <VideoPlayer
                               src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
@@ -660,3 +659,4 @@ export function MessageSlideCard() {
     </>
   );
 }
+```The image display logic in the MessageSlideCard component has been simplified to correctly handle image and video URLs, ensuring proper rendering and error handling.
