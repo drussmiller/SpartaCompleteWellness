@@ -106,12 +106,26 @@ export function VideoPlayer({
   // Handle thumbnail click - navigate to video player page
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, navigating to video player page");
+    console.log("Original video src:", src);
+
+    // Ensure we pass the correct video URL for playback
+    let videoUrl = src;
+    
+    // If src is already a proper API URL, use it as-is
+    // If it's a raw path, convert it to the serve-file format
+    if (!videoUrl.startsWith('/api/') && !videoUrl.startsWith('http')) {
+      // Extract filename and create proper serve-file URL
+      const filename = videoUrl.split('/').pop() || videoUrl;
+      videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+    }
+
+    console.log("Video URL for player:", videoUrl);
 
     // Navigate to video player page with video URL as parameter
-    const videoUrl = encodeURIComponent(src);
+    const encodedVideoUrl = encodeURIComponent(videoUrl);
     const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
 
-    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
+    setLocation(`/video-player?src=${encodedVideoUrl}&poster=${posterUrl}`);
   };
 
 

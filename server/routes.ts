@@ -4574,7 +4574,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
       }
 
-      // Set appropriate content type
+      // Set appropriate content type and headers
       const ext = filename.toLowerCase().split('.').pop();
       let contentType = 'application/octet-stream';
       
@@ -4604,10 +4604,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         case 'webm':
           contentType = 'video/webm';
           break;
+        case 'avi':
+          contentType = 'video/x-msvideo';
+          break;
       }
       
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      // For video files, set additional headers to support streaming
+      if (contentType.startsWith('video/')) {
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', fileBuffer.length);
+        // Allow videos to be cached but for shorter time
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache images for 24 hours
+      }
       
       logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
       return res.send(fileBuffer);
