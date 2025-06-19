@@ -111,19 +111,30 @@ export function VideoPlayer({
     // Ensure we pass the correct video URL for playback
     let videoUrl = src;
     
-    // If src contains shared/uploads path, extract just the filename
+    // Clean up the URL and ensure it's in the right format
     if (videoUrl.includes('shared/uploads/')) {
-      const filename = videoUrl.split('shared/uploads/').pop() || videoUrl.split('/').pop() || videoUrl;
-      videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-    }
-    // If src is already a proper API URL, use it as-is
-    else if (videoUrl.startsWith('/api/') || videoUrl.startsWith('http')) {
-      // Keep as-is
-    }
-    // If it's a raw filename, convert it to the serve-file format
-    else {
+      // Extract filename from full path
+      const pathParts = videoUrl.split('shared/uploads/');
+      const filename = pathParts[1] || pathParts[0].split('/').pop() || videoUrl;
+      // Remove any query parameters from filename
+      const cleanFilename = filename.split('?')[0];
+      videoUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
+    } else if (videoUrl.startsWith('/api/serve-file')) {
+      // Already in correct format
+      videoUrl = videoUrl;
+    } else if (videoUrl.includes('filename=')) {
+      // Extract filename parameter and reconstruct
+      const urlParts = videoUrl.split('?');
+      const params = new URLSearchParams(urlParts[1] || '');
+      const filename = params.get('filename');
+      if (filename) {
+        videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+      }
+    } else {
+      // Treat as raw filename
       const filename = videoUrl.split('/').pop() || videoUrl;
-      videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+      const cleanFilename = filename.split('?')[0]; // Remove any query params
+      videoUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
     }
 
     console.log("Video URL for player:", videoUrl);

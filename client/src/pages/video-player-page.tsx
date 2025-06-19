@@ -21,52 +21,100 @@ export function VideoPlayerPage() {
     console.log('Video player page - extracted src from URL:', src);
 
     if (src) {
-      const decodedSrc = decodeURIComponent(src);
+      let decodedSrc = decodeURIComponent(src);
       console.log('Video player page - decoded src:', decodedSrc);
 
-      // Process the URL through createMediaUrl to handle Object Storage properly
-      const processedSrc = createMediaUrl(decodedSrc);
-      console.log('Video player page - processed src:', processedSrc);
-      setVideoSrc(processedSrc);
+      // Handle different URL formats and ensure proper video serving
+      let finalVideoSrc: string;
+      
+      if (decodedSrc.startsWith('/api/serve-file')) {
+        // Already a proper serve-file URL
+        finalVideoSrc = decodedSrc;
+      } else if (decodedSrc.includes('shared/uploads/')) {
+        // Extract filename from path
+        const filename = decodedSrc.split('shared/uploads/').pop() || decodedSrc.split('/').pop() || decodedSrc;
+        finalVideoSrc = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+      } else if (decodedSrc.includes('filename=')) {
+        // Already has filename parameter, ensure it's properly formatted
+        const urlParts = decodedSrc.split('?');
+        const params = new URLSearchParams(urlParts[1] || '');
+        const filename = params.get('filename');
+        if (filename) {
+          finalVideoSrc = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+        } else {
+          finalVideoSrc = decodedSrc;
+        }
+      } else {
+        // Treat as filename directly
+        const filename = decodedSrc.split('/').pop() || decodedSrc;
+        finalVideoSrc = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+      }
 
-      // Preload the video completely before showing anything
-      const video = document.createElement('video');
-      video.src = processedSrc;
-      video.preload = 'auto';
-      video.muted = true; // Required for autoplay on mobile
+      console.log('Video player page - final video src:', finalVideoSrc);
+      setVideoSrc(finalVideoSrc);
 
-      video.onloadedmetadata = () => {
-        console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
-        setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+      // Test video accessibility first
+      const testVideo = () => {
+        fetch(finalVideoSrc, { method: 'HEAD' })
+          .then(response => {
+            console.log('Video HEAD request response:', response.status, response.headers.get('content-type'));
+            if (response.ok) {
+              // Video is accessible, proceed with loading
+              const video = document.createElement('video');
+              video.src = finalVideoSrc;
+              video.preload = 'metadata';
+              video.muted = true;
+
+              video.onloadedmetadata = () => {
+                console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+                setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+                setVideoReady(true);
+                setIsLoading(false);
+                setShouldAutoPlay(true);
+              };
+
+              video.oncanplay = () => {
+                console.log('Video can start playing');
+                if (!videoReady) {
+                  setVideoReady(true);
+                  setIsLoading(false);
+                }
+              };
+
+              video.onerror = (e) => {
+                console.error('Video load error:', e);
+                console.error('Video error details:', {
+                  error: e,
+                  videoError: video.error,
+                  networkState: video.networkState,
+                  readyState: video.readyState,
+                  src: finalVideoSrc
+                });
+                setIsLoading(false);
+                setVideoReady(false);
+              };
+
+              video.load();
+            } else {
+              console.error('Video not accessible:', response.status, response.statusText);
+              setIsLoading(false);
+              setVideoReady(false);
+            }
+          })
+          .catch(error => {
+            console.error('Error testing video accessibility:', error);
+            setIsLoading(false);
+            setVideoReady(false);
+          });
       };
 
-      video.oncanplaythrough = () => {
-        console.log('Video fully loaded and ready to play');
-        setIsLoading(false);
-        setVideoReady(true);
-        setShouldAutoPlay(true);
-      };
-
-      video.onerror = (e) => {
-        console.error('Failed to load video:', processedSrc, e);
-        console.error('Original src:', decodedSrc);
-        console.error('Video error details:', {
-          error: e,
-          videoError: video.error,
-          networkState: video.networkState,
-          readyState: video.readyState
-        });
-
-        setIsLoading(false);
-        setVideoReady(false);
-      };
-
-      video.load();
+      // Test video with a small delay to ensure server is ready
+      setTimeout(testVideo, 100);
     } else {
       console.log('No video source found in URL parameters');
       setIsLoading(false);
     }
-  }, []);
+  }, [videoReady]);
 
   const handleGoBack = () => {
     // Go back to home page since wouter doesn't have navigate(-1)
