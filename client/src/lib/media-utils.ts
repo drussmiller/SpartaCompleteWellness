@@ -86,11 +86,21 @@ export function createMediaUrl(url: string | null): string {
 
   // Check if we're in development mode and this looks like an Object Storage file
   if (url.startsWith('shared/uploads/')) {
-    // All Object Storage files should use direct download for consistency
-    const directUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(url)}`;
-    console.log('📁 Processing Object Storage file:', url);
-    console.log('📁 Using direct download URL:', directUrl);
-    return directUrl;
+    const filename = url.split('/').pop() || '';
+    
+    // For video files, use Object Storage direct download
+    if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi|mkv)$/)) {
+      const directUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(url)}`;
+      console.log('🎥 Processing video file from Object Storage:', filename);
+      console.log('🎥 Using direct download URL:', directUrl);
+      return directUrl;
+    }
+    
+    // For images, use serve-file endpoint with just the filename
+    const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+    console.log('🖼️ Processing image file from Object Storage:', filename);
+    console.log('🖼️ Using serve-file URL:', serveFileUrl);
+    return serveFileUrl;
   }
 
   // For development environment, prioritize local serve-file route
