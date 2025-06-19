@@ -1,4 +1,3 @@
-
 /**
  * Simple Media URL Utilities
  * 
@@ -87,8 +86,9 @@ export function createMediaUrl(url: string | null): string {
 
   // Check if we're in development mode and this looks like an Object Storage file
   if (url.startsWith('shared/uploads/')) {
-    // For Object Storage files in development, try both serve-file and Object Storage
-    const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
+    // For Object Storage files in development, use serve-file endpoint
+    const filename = url.split('/').pop() || '';
+    const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
     console.log('Created serve-file media URL for Object Storage file:', serveFileUrl);
     return serveFileUrl;
   }
