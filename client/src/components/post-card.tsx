@@ -292,12 +292,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       onClick={() => {
                         // Navigate to video player page when thumbnail is clicked
                         const videoUrl = imageUrl;
+                        console.log('Thumbnail clicked, navigating to video player with URL:', videoUrl);
                         window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
                       }}
                     />
                     {/* Play button overlay - positioned at bottom left */}
                     <div className="absolute bottom-3 left-3">
-                      <div className="w-12 h-12 bg-black bg-opacity-70 rounded-full flex items-center justify-center hover:bg-opacity-90 transition-all">
+                      <div 
+                        className="w-12 h-12 bg-black bg-opacity-70 rounded-full flex items-center justify-center hover:bg-opacity-90 transition-all cursor-pointer"
+                        onClick={() => {
+                          const videoUrl = imageUrl;
+                          console.log('Play button clicked, navigating to video player with URL:', videoUrl);
+                          window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                        }}
+                      >
                         <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z"/>
                         </svg>
@@ -310,6 +318,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     className="w-full h-40 flex flex-col items-center justify-center cursor-pointer bg-gray-100"
                     onClick={() => {
                       const videoUrl = imageUrl;
+                      console.log('Fallback play button clicked, navigating to video player with URL:', videoUrl);
                       window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
                     }}
                   >
