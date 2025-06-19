@@ -1,3 +1,4 @@
+
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
@@ -97,7 +98,7 @@ class Logger {
         };
       }
     }
-
+    
     const logEntry = {
       message,
       ...metadata,
@@ -135,7 +136,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'INFO',
     });
-
+    
     // Only log to console if explicitly enabled
     if (this.consoleOutputEnabled) {
       const skipConsoleOutput = 
@@ -148,7 +149,7 @@ class Logger {
           message.includes('GET /api/posts/counts') ||
           message.includes('Deserializing user')
         ));
-
+        
       if (!skipConsoleOutput) {
         console.log(entry);
       }
@@ -167,7 +168,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'ERROR',
     }, error);
-
+    
     // Only critical errors to console
     if (this.consoleOutputEnabled) {
       console.error(entry);
@@ -188,7 +189,7 @@ class Logger {
         timestamp: new Date().toISOString(),
         level: 'DEBUG',
       });
-
+      
       // Debug logs only to file, not console
       this.logBuffer.push(entry);
       if (!this.bufferTimeout) {
@@ -203,7 +204,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'WARN',
     });
-
+    
     if (this.consoleOutputEnabled) {
       console.warn(entry);
     }

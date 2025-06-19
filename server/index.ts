@@ -65,20 +65,16 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-    if (capturedJsonResponse) {
-      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-    }
-
-    // Show detailed logs for debugging
-    console.log(`[${new Date().toISOString()}] ${logLine}`);
-    
-    // Also log to file with original filtering
     if (path.includes('/api/posts/comments/') || 
         path.includes('/api/posts/counts') || 
         req.path === '/api/posts') {
       return;
+    }
+
+    const duration = Date.now() - start;
+    let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (capturedJsonResponse) {
+      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
 
     if (logLine.length > 80) {
