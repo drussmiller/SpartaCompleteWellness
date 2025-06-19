@@ -535,41 +535,67 @@ export function MessageSlideCard() {
                               onError={(error) => console.error("Error loading message video:", message.imageUrl || message.mediaUrl, error)}
                             />
                           ) : (
-                            <img
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              alt="Message image"
-                              className="max-w-full rounded mt-2"
-                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
-                              onError={(e) => {
-                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                console.error("Failed URL:", e.currentTarget.src);
-                                
+                            <div className="relative mt-2">
+                              <img
+                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                alt="Message image"
+                                className="max-w-full rounded transition-opacity duration-200"
+                                style={{ opacity: 1 }}
+                                onLoad={(e) => {
+                                  console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl);
+                                  e.currentTarget.style.opacity = '1';
+                                }}
+                                onError={(e) => {
                                 const originalUrl = message.imageUrl || message.mediaUrl || '';
                                 const currentSrc = e.currentTarget.src;
                                 
-                                // If serve-file failed, try multiple fallback strategies
+                                // Prevent infinite loops by tracking attempted URLs
+                                const attemptedUrls = e.currentTarget.dataset.attemptedUrls || '';
+                                const attemptedList = attemptedUrls.split(',').filter(Boolean);
+                                
+                                console.error("Error loading message image:", originalUrl);
+                                console.error("Failed URL:", currentSrc);
+                                console.log("Already attempted:", attemptedList);
+                                
+                                // Mark this URL as attempted
+                                attemptedList.push(currentSrc);
+                                e.currentTarget.dataset.attemptedUrls = attemptedList.join(',');
+                                
+                                // Stop trying after 3 attempts to prevent blinking
+                                if (attemptedList.length >= 3) {
+                                  console.log("Maximum fallback attempts reached, hiding image");
+                                  e.currentTarget.style.display = 'none';
+                                  return;
+                                }
+                                
+                                // Try fallbacks only if we haven't tried them yet
                                 if (currentSrc.includes('/api/serve-file') && originalUrl.startsWith('shared/uploads/')) {
-                                  // First try Object Storage direct download
                                   const fallbackUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(originalUrl)}`;
-                                  console.log("Trying Object Storage fallback:", fallbackUrl);
-                                  e.currentTarget.src = fallbackUrl;
-                                } else if (currentSrc.includes('/api/object-storage/direct-download')) {
-                                  // If Object Storage also failed, try the filename directly
+                                  if (!attemptedList.includes(fallbackUrl)) {
+                                    console.log("Trying Object Storage fallback:", fallbackUrl);
+                                    e.currentTarget.src = fallbackUrl;
+                                    return;
+                                  }
+                                }
+                                
+                                if (currentSrc.includes('/api/object-storage/direct-download')) {
                                   const filename = originalUrl.split('/').pop();
                                   if (filename) {
                                     const directUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-                                    console.log("Trying direct filename fallback:", directUrl);
-                                    e.currentTarget.src = directUrl;
-                                  } else {
-                                    e.currentTarget.style.display = 'none';
+                                    if (!attemptedList.includes(directUrl)) {
+                                      console.log("Trying direct filename fallback:", directUrl);
+                                      e.currentTarget.src = directUrl;
+                                      return;
+                                    }
                                   }
-                                } else {
-                                  // All fallbacks failed, hide the image
-                                  console.log("All image fallbacks failed, hiding image");
-                                  e.currentTarget.style.display = 'none';
                                 }
+                                
+                                // All fallbacks exhausted, hide the image
+                                console.log("All image fallbacks failed, hiding image");
+                                e.currentTarget.style.display = 'none';
                               }}
-                            />
+                              />
+                            </div>
                           )
                         )}
                       </div>
