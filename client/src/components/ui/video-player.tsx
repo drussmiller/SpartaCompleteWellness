@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
@@ -110,7 +110,7 @@ export function VideoPlayer({
 
     // Ensure we pass the correct video URL for playback
     let videoUrl = src;
-
+    
     // Clean up the URL and ensure it's in the right format
     if (videoUrl.includes('shared/uploads/')) {
       // Extract filename from full path
@@ -185,20 +185,6 @@ export function VideoPlayer({
       video.removeEventListener('error', handleError);
     };
   }, [onLoad, onError]);
-
-  // Handle video load errors more gracefully
-  const handleVideoError = useCallback((e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error('Video failed to load:', src, e);
-    console.log('Video error details:', {
-      src,
-      readyState: e.currentTarget.readyState,
-      networkState: e.currentTarget.networkState,
-      error: e.currentTarget.error
-    });
-    if (onError) {
-      onError(new Error('Video failed to load'));
-    }
-  }, [onError, src]);
 
   // Listen for thumbnail regeneration events
   useEffect(() => {
