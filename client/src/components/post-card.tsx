@@ -199,11 +199,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       console.log('PostCard - No mediaUrl for post', post.id);
       return null;
     }
-    console.log('PostCard - Creating thumbnail for post', post.id, 'with mediaUrl:', post.mediaUrl);
-    const result = createThumbnailUrl(post.mediaUrl);
-    console.log('PostCard - Thumbnail URL result for post', post.id, ':', result);
-    console.log('PostCard - shouldShowAsVideo for post', post.id, ':', shouldShowAsVideo);
-    return result;
+    
+    // For video posts, the thumbnail is already generated with .jpg extension
+    // Just use the media URL directly but change extension to .jpg
+    if (shouldShowAsVideo && post.mediaUrl.toLowerCase().endsWith('.mov')) {
+      const baseFilename = post.mediaUrl.replace(/\.mov$/i, '');
+      const thumbnailMediaUrl = `${baseFilename}.jpg`;
+      console.log('PostCard - Using existing thumbnail for post', post.id, ':', thumbnailMediaUrl);
+      const result = createMediaUrl(thumbnailMediaUrl);
+      console.log('PostCard - Final thumbnail URL for post', post.id, ':', result);
+      return result;
+    }
+    
+    // For non-video content, use the original media URL
+    return createMediaUrl(post.mediaUrl);
   }, [post.mediaUrl, shouldShowAsVideo]);
 
   return (
