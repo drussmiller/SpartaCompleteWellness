@@ -4547,70 +4547,121 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
       }
 
-      // Download the file from Object Storage with proper error handling
-      const result = await objectStorage.downloadAsBytes(storageKey);
-      
-      // Handle the Object Storage response format based on test results
-      let fileBuffer: Buffer;
-      
-      if (Buffer.isBuffer(result)) {
-        fileBuffer = result;
-      } else if (result && typeof result === 'object' && 'ok' in result) {
-        if (result.ok === true && result.value) {
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value) && Buffer.isBuffer(result.value[0])) {
-            fileBuffer = result.value[0];
+      logger.info(`Object Storage lookup for key: ${storageKey}`);
+
+      // Download the file from Object Storage with comprehensive error handling
+      try {
+        const result = await objectStorage.downloadAsBytes(storageKey);
+        
+        logger.info(`Object Storage response type: ${typeof result}, hasOk: ${result && typeof result === 'object' && 'ok' in result}`);
+        
+        // Handle the Object Storage response format properly
+        let fileBuffer: Buffer | null = null;
+        
+        if (Buffer.isBuffer(result)) {
+          fileBuffer = result;
+          logger.info(`Direct buffer response, size: ${fileBuffer.length}`);
+        } else if (result && typeof result === 'object') {
+          if ('ok' in result) {
+            logger.info(`Result object with ok field: ${result.ok}`);
+            if (result.ok === true && result.value) {
+              if (Buffer.isBuffer(result.value)) {
+                fileBuffer = result.value;
+                logger.info(`Buffer from result.value, size: ${fileBuffer.length}`);
+              } else if (Array.isArray(result.value)) {
+                if (result.value.length > 0 && Buffer.isBuffer(result.value[0])) {
+                  fileBuffer = result.value[0];
+                  logger.info(`Buffer from result.value[0], size: ${fileBuffer.length}`);
+                } else {
+                  // Handle array of bytes
+                  try {
+                    fileBuffer = Buffer.from(result.value);
+                    logger.info(`Created buffer from byte array, size: ${fileBuffer.length}`);
+                  } catch (bufferError) {
+                    logger.error(`Failed to create buffer from array:`, bufferError);
+                  }
+                }
+              } else if (typeof result.value === 'string') {
+                // Handle base64 string
+                try {
+                  fileBuffer = Buffer.from(result.value, 'base64');
+                  logger.info(`Created buffer from base64 string, size: ${fileBuffer.length}`);
+                } catch (bufferError) {
+                  logger.error(`Failed to create buffer from base64:`, bufferError);
+                }
+              } else {
+                logger.error(`Unexpected value type: ${typeof result.value}`);
+              }
+            } else {
+              logger.error(`Object Storage download failed for ${storageKey}:`, result);
+            }
           } else {
-            logger.error(`Unexpected data format from Object Storage for ${storageKey}:`, typeof result.value);
-            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+            // Handle case where result is an object but not the expected format
+            logger.info(`Unexpected object format, attempting direct buffer conversion`);
+            try {
+              fileBuffer = Buffer.from(result as any);
+            } catch (bufferError) {
+              logger.error(`Failed to convert object to buffer:`, bufferError);
+            }
           }
         } else {
-          logger.error(`File not found in Object Storage for ${storageKey}:`, result);
-          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+          logger.error(`Unexpected result type: ${typeof result}`);
         }
-      } else {
-        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
-        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
-      }
 
-      // Set appropriate content type
-      const ext = filename.toLowerCase().split('.').pop();
-      let contentType = 'application/octet-stream';
-      
-      switch (ext) {
-        case 'jpg':
-        case 'jpeg':
-          contentType = 'image/jpeg';
-          break;
-        case 'png':
-          contentType = 'image/png';
-          break;
-        case 'gif':
-          contentType = 'image/gif';
-          break;
-        case 'webp':
-          contentType = 'image/webp';
-          break;
-        case 'svg':
-          contentType = 'image/svg+xml';
-          break;
-        case 'mp4':
-          contentType = 'video/mp4';
-          break;
-        case 'mov':
-          contentType = 'video/quicktime';
-          break;
-        case 'webm':
-          contentType = 'video/webm';
-          break;
+        if (!fileBuffer) {
+          logger.error(`Failed to extract file buffer from Object Storage response for ${storageKey}`);
+          return res.status(404).json({ 
+            error: 'File not found', 
+            message: `Could not extract file data for ${storageKey}` 
+          });
+        }
+
+        // Set appropriate content type
+        const ext = filename.toLowerCase().split('.').pop();
+        let contentType = 'application/octet-stream';
+        
+        switch (ext) {
+          case 'jpg':
+          case 'jpeg':
+            contentType = 'image/jpeg';
+            break;
+          case 'png':
+            contentType = 'image/png';
+            break;
+          case 'gif':
+            contentType = 'image/gif';
+            break;
+          case 'webp':
+            contentType = 'image/webp';
+            break;
+          case 'svg':
+            contentType = 'image/svg+xml';
+            break;
+          case 'mp4':
+            contentType = 'video/mp4';
+            break;
+          case 'mov':
+            contentType = 'video/quicktime';
+            break;
+          case 'webm':
+            contentType = 'video/webm';
+            break;
+        }
+        
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        res.setHeader('Accept-Ranges', 'bytes'); // Enable range requests for videos
+        
+        logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes, type: ${contentType}`);
+        return res.send(fileBuffer);
+        
+      } catch (storageError) {
+        logger.error(`Object Storage error for ${storageKey}:`, storageError);
+        return res.status(404).json({ 
+          error: 'File not found in Object Storage',
+          message: `Could not retrieve ${storageKey}` 
+        });
       }
-      
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-      
-      logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
-      return res.send(fileBuffer);
       
     } catch (error) {
       logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
