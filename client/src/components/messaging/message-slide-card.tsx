@@ -659,4 +659,3 @@ export function MessageSlideCard() {
     </>
   );
 }
-```The image display logic in the MessageSlideCard component has been simplified to correctly handle image and video URLs, ensuring proper rendering and error handling.
