@@ -23,7 +23,7 @@ export function VideoPlayerPage() {
     if (src) {
       const decodedSrc = decodeURIComponent(src);
       console.log('Video player page - decoded src:', decodedSrc);
-      
+
       // Process the URL through createMediaUrl to handle Object Storage properly
       const processedSrc = createMediaUrl(decodedSrc);
       console.log('Video player page - processed src:', processedSrc);
@@ -34,19 +34,19 @@ export function VideoPlayerPage() {
       video.src = processedSrc;
       video.preload = 'auto';
       video.muted = true; // Required for autoplay on mobile
-      
+
       video.onloadedmetadata = () => {
         console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
         setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
       };
-      
+
       video.oncanplaythrough = () => {
         console.log('Video fully loaded and ready to play');
         setIsLoading(false);
         setVideoReady(true);
         setShouldAutoPlay(true);
       };
-      
+
       video.onerror = (e) => {
         console.error('Failed to load video:', processedSrc, e);
         console.error('Original src:', decodedSrc);
@@ -56,11 +56,11 @@ export function VideoPlayerPage() {
           networkState: video.networkState,
           readyState: video.readyState
         });
-        
+
         setIsLoading(false);
         setVideoReady(false);
       };
-      
+
       video.load();
     } else {
       console.log('No video source found in URL parameters');
@@ -178,7 +178,7 @@ export function VideoPlayerPage() {
                   e.stopPropagation();
                   return false;
                 }, { capture: true });
-                
+
                 video.addEventListener('fullscreenchange', (e) => {
                   if (document.fullscreenElement === video) {
                     document.exitFullscreen();
