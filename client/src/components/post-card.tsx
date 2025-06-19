@@ -199,7 +199,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       console.log('PostCard - No mediaUrl for post', post.id);
       return null;
     }
-    
+
     // For video posts, the thumbnail is already generated with .jpg extension
     // Just use the media URL directly but change extension to .jpg
     if (shouldShowAsVideo && post.mediaUrl.toLowerCase().endsWith('.mov')) {
@@ -210,10 +210,44 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       console.log('PostCard - Final thumbnail URL for post', post.id, ':', result);
       return result;
     }
-    
+
     // For non-video content, use the original media URL
     return createMediaUrl(post.mediaUrl);
   }, [post.mediaUrl, shouldShowAsVideo]);
+
+  // For videos, create the thumbnail URL by replacing the extension
+  const displayImageUrl = useMemo(() => {
+    if (post.image_url && post.is_video) {
+      console.log('Video post detected, original URL:', post.image_url);
+
+      // If the URL already contains storageKey parameter, extract it
+      if (post.image_url.includes('storageKey=')) {
+        const match = post.image_url.match(/storageKey=([^&]+)/);
+        if (match) {
+          const originalKey = decodeURIComponent(match[1]);
+          console.log('Extracted original key:', originalKey);
+
+          // Create thumbnail key by replacing extension with .jpg
+          const thumbnailKey = originalKey.replace(/\.[^/.]+$/, '.jpg');
+          const thumbnailUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(thumbnailKey)}`;
+          console.log('Created thumbnail URL:', thumbnailUrl);
+          return thumbnailUrl;
+        }
+      }
+
+      // Fallback: if it's a direct path, extract filename and create thumbnail URL
+      const filename = post.image_url.split('/').pop() || '';
+      if (filename) {
+        const baseName = filename.replace(/\.[^/.]+$/, '');
+        const thumbnailKey = `shared/uploads/${baseName}.jpg`;
+        const thumbnailUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(thumbnailKey)}`;
+        console.log('Fallback thumbnail URL:', thumbnailUrl);
+        return thumbnailUrl;
+      }
+    }
+
+    return post.image_url ? createDirectDownloadUrl(post.image_url) : null;
+  }, [post.image_url, post.is_video]);
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -302,7 +336,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         console.log('❌ Failed URL:', thumbnailUrl);
                         console.log('❌ Error details:', e.currentTarget.src);
                         console.log('❌ Network status:', e.type);
-                        
+
                         // Try to access the URL directly to see what error we get
                         fetch(thumbnailUrl, { method: 'HEAD' })
                           .then(response => {
