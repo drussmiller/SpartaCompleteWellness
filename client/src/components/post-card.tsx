@@ -300,7 +300,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     <div className="absolute bottom-3 left-3">
                       <div 
                         className="w-12 h-12 bg-black bg-opacity-70 rounded-full flex items-center justify-center hover:bg-opacity-90 transition-all cursor-pointer"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           const videoUrl = imageUrl;
                           console.log('Play button clicked, navigating to video player with URL:', videoUrl);
                           window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
@@ -316,7 +317,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   // Fallback when no thumbnail is available
                   <div 
                     className="w-full h-40 flex flex-col items-center justify-center cursor-pointer bg-gray-100"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const videoUrl = imageUrl;
                       console.log('Fallback play button clicked, navigating to video player with URL:', videoUrl);
                       window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
