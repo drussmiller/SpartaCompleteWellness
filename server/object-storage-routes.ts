@@ -103,6 +103,34 @@ objectStorageRouter.get('/direct-download', async (req: Request, res: Response) 
           }
         } else {
           logger.error(`Object Storage download failed for ${storageKey}:`, result);
+          
+          // Try alternative key patterns if the first attempt fails
+          const alternativeKeys = [
+            `uploads/${cleanKey.replace('shared/uploads/', '')}`,
+            `shared/${cleanKey.replace('shared/uploads/', '')}`,
+            cleanKey.replace('shared/uploads/', '')
+          ];
+          
+          for (const altKey of alternativeKeys) {
+            try {
+              console.log(`[Object Storage] Trying alternative key: ${altKey}`);
+              const altResult = await objectStorage.downloadAsBytes(altKey);
+              
+              if (altResult && typeof altResult === 'object' && 'ok' in altResult && altResult.ok === true) {
+                if (Buffer.isBuffer(altResult.value)) {
+                  fileBuffer = altResult.value;
+                  console.log(`[Object Storage] Successfully found file at alternative key: ${altKey}`);
+                  const filename = finalKey.split('/').pop() || '';
+                  res.setHeader('Content-Type', getContentType(filename));
+                  res.setHeader('Cache-Control', 'public, max-age=31536000');
+                  return res.send(fileBuffer);
+                }
+              }
+            } catch (altError) {
+              console.log(`[Object Storage] Alternative key ${altKey} also failed:`, altError);
+            }
+          }
+          
           return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
       } else {

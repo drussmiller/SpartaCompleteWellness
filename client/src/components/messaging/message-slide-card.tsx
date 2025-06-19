@@ -547,13 +547,25 @@ export function MessageSlideCard() {
                                 const originalUrl = message.imageUrl || message.mediaUrl || '';
                                 const currentSrc = e.currentTarget.src;
                                 
-                                // If serve-file failed and this is an Object Storage file, try Object Storage direct download
+                                // If serve-file failed, try multiple fallback strategies
                                 if (currentSrc.includes('/api/serve-file') && originalUrl.startsWith('shared/uploads/')) {
+                                  // First try Object Storage direct download
                                   const fallbackUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(originalUrl)}`;
                                   console.log("Trying Object Storage fallback:", fallbackUrl);
                                   e.currentTarget.src = fallbackUrl;
+                                } else if (currentSrc.includes('/api/object-storage/direct-download')) {
+                                  // If Object Storage also failed, try the filename directly
+                                  const filename = originalUrl.split('/').pop();
+                                  if (filename) {
+                                    const directUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+                                    console.log("Trying direct filename fallback:", directUrl);
+                                    e.currentTarget.src = directUrl;
+                                  } else {
+                                    e.currentTarget.style.display = 'none';
+                                  }
                                 } else {
-                                  // Hide the broken image
+                                  // All fallbacks failed, hide the image
+                                  console.log("All image fallbacks failed, hiding image");
                                   e.currentTarget.style.display = 'none';
                                 }
                               }}
