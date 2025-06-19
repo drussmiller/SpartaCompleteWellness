@@ -116,23 +116,26 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
     return '';
   }
 
-  // Extract just the filename from the end of the path
-  let filename = mediaUrl;
-
-  // Remove leading slashes and path components
-  if (filename.includes('/')) {
-    filename = filename.split('/').pop() || filename;
+  // Extract the filename from the mediaUrl
+  let filename = '';
+  
+  if (mediaUrl.includes('filename=')) {
+    // Extract from serve-file URL
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1]);
+    filename = urlParams.get('filename') || '';
+  } else if (mediaUrl.includes('/')) {
+    // Extract from path
+    filename = mediaUrl.split('/').pop() || '';
+  } else {
+    // Assume it's already a filename
+    filename = mediaUrl;
   }
 
-  // Remove query parameters
-  if (filename.includes('?')) {
-    filename = filename.split('?')[0];
-  }
-
-  console.log('Creating thumbnail for filename:', filename);
+  console.log('Extracted filename for thumbnail:', filename);
 
   // For video files (.mov, .mp4, etc.), use simplified thumbnail naming
   if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+    // Replace video extension with .jpg for thumbnail
     const baseName = filename.substring(0, filename.lastIndexOf('.'));
     const thumbnailFilename = `${baseName}.jpg`;
     const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
@@ -140,10 +143,7 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
     return result;
   }
 
-  // For images, try thumbnail with .poster.jpg suffix
-  const fileBase = filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
-  const thumbnailFilename = `${fileBase}.poster.jpg`;
-  const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
-  console.log('Created image thumbnail URL:', result);
-  return result;
+  // For images, return empty string (no thumbnails for images)
+  console.log('No thumbnail for image file:', filename);
+  return '';
 }
