@@ -136,20 +136,17 @@ class Logger {
       level: 'INFO',
     });
 
-    // Only log to console if explicitly enabled
+    // Only show Object Storage related logs in console
     if (this.consoleOutputEnabled) {
-      const skipConsoleOutput = 
-        (metadata.route && (
-          metadata.route.includes('/api/posts/counts') || 
-          metadata.route.includes('/api/posts')
-        )) ||
+      const isObjectStorageRelated = 
+        (metadata.route && metadata.route.includes('/api/object-storage')) ||
         (message && (
-          message.includes('Post count') || 
-          message.includes('GET /api/posts/counts') ||
-          message.includes('Deserializing user')
+          message.includes('Object Storage') ||
+          message.includes('shared/uploads') ||
+          message.includes('direct-download')
         ));
 
-      if (!skipConsoleOutput) {
+      if (isObjectStorageRelated) {
         console.log(entry);
       }
     }

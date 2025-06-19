@@ -71,8 +71,15 @@ app.use((req, res, next) => {
       logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
 
-    // Show detailed logs for debugging
-    console.log(`[${new Date().toISOString()}] ${logLine}`);
+    // Only show Object Storage related logs in console
+    const isObjectStorageRelated = path.includes('/api/object-storage') || 
+                                   path.includes('/shared/uploads') || 
+                                   path.includes('/uploads') ||
+                                   logLine.includes('Object Storage');
+    
+    if (isObjectStorageRelated) {
+      console.log(`[${new Date().toISOString()}] ${logLine}`);
+    }
     
     // Also log to file with original filtering
     if (path.includes('/api/posts/comments/') || 
