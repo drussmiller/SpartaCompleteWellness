@@ -542,7 +542,20 @@ export function MessageSlideCard() {
                               onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
                               onError={(e) => {
                                 console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                e.currentTarget.style.display = 'none';
+                                console.error("Failed URL:", e.currentTarget.src);
+                                
+                                const originalUrl = message.imageUrl || message.mediaUrl || '';
+                                const currentSrc = e.currentTarget.src;
+                                
+                                // If serve-file failed and this is an Object Storage file, try Object Storage direct download
+                                if (currentSrc.includes('/api/serve-file') && originalUrl.startsWith('shared/uploads/')) {
+                                  const fallbackUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(originalUrl)}`;
+                                  console.log("Trying Object Storage fallback:", fallbackUrl);
+                                  e.currentTarget.src = fallbackUrl;
+                                } else {
+                                  // Hide the broken image
+                                  e.currentTarget.style.display = 'none';
+                                }
                               }}
                             />
                           )

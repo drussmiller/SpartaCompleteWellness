@@ -85,6 +85,14 @@ export function createMediaUrl(url: string | null): string {
   const cleanFilename = filename.replace(/^\/+/, '');
   console.log('Cleaned filename:', cleanFilename);
 
+  // Check if we're in development mode and this looks like an Object Storage file
+  if (url.startsWith('shared/uploads/')) {
+    // For Object Storage files in development, try both serve-file and Object Storage
+    const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
+    console.log('Created serve-file media URL for Object Storage file:', serveFileUrl);
+    return serveFileUrl;
+  }
+
   // For development environment, prioritize local serve-file route
   // This ensures compatibility with existing images stored locally
   const mediaUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
