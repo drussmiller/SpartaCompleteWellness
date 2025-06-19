@@ -1,3 +1,4 @@
+
 /**
  * Simple Media URL Utilities
  * 
@@ -34,7 +35,7 @@ function extractCleanFilename(input: string): string | null {
 }
 
 /**
- * Creates a simple, clean media URL
+ * Creates a simple, clean media URL with fallback priority
  */
 export function createMediaUrl(url: string | null): string {
   if (!url) return '';
@@ -84,10 +85,10 @@ export function createMediaUrl(url: string | null): string {
   const cleanFilename = filename.replace(/^\/+/, '');
   console.log('Cleaned filename:', cleanFilename);
 
-  // Try Object Storage first, but provide fallback for development
-  const storageKey = `shared/uploads/${cleanFilename}`;
-  const mediaUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
-  console.log('Created Object Storage media URL:', mediaUrl);
+  // For development environment, prioritize local serve-file route
+  // This ensures compatibility with existing images stored locally
+  const mediaUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
+  console.log('Created serve-file media URL:', mediaUrl);
 
   return mediaUrl;
 }
