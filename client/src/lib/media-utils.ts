@@ -86,10 +86,19 @@ export function createMediaUrl(url: string | null): string {
 
   // Check if we're in development mode and this looks like an Object Storage file
   if (url.startsWith('shared/uploads/')) {
-    // For Object Storage files in development, use serve-file endpoint
+    // For Object Storage files in development, use serve-file endpoint with just the filename
     const filename = url.split('/').pop() || '';
     const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
     console.log('Created serve-file media URL for Object Storage file:', serveFileUrl);
+    console.log('Original Object Storage path:', url);
+    console.log('Extracted filename:', filename);
+    
+    // Special logging for video files
+    if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+      console.log('🎥 Processing video file from Object Storage:', filename);
+      console.log('🎥 Video serve-file URL:', serveFileUrl);
+    }
+    
     return serveFileUrl;
   }
 
