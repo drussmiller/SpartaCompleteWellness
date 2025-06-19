@@ -92,6 +92,13 @@ export function createMediaUrl(url: string | null): string {
     console.log('Created serve-file media URL for Object Storage file:', serveFileUrl);
     console.log('Original Object Storage path:', url);
     console.log('Extracted filename:', filename);
+    
+    // Special logging for video files
+    if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+      console.log('🎥 Processing video file for Object Storage:', filename);
+      console.log('🎥 Video serve URL:', serveFileUrl);
+    }
+    
     return serveFileUrl;
   }
 

@@ -56,8 +56,44 @@ export function VideoPlayerPage() {
           networkState: video.networkState,
           readyState: video.readyState
         });
-        setIsLoading(false);
-        setVideoReady(false); // Don't show video on error
+        
+        // If this is an Object Storage file, try direct access
+        if (decodedSrc.startsWith('shared/uploads/')) {
+          console.log('🎥 Video load failed, trying Object Storage direct download...');
+          const filename = decodedSrc.split('/').pop();
+          const directUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(decodedSrc)}`;
+          console.log('🎥 Trying direct Object Storage URL:', directUrl);
+          
+          // Try the direct Object Storage route
+          const fallbackVideo = document.createElement('video');
+          fallbackVideo.src = directUrl;
+          fallbackVideo.preload = 'auto';
+          fallbackVideo.muted = true;
+          
+          fallbackVideo.onloadedmetadata = () => {
+            console.log('🎥 Direct Object Storage access successful!');
+            setVideoDimensions({ width: fallbackVideo.videoWidth, height: fallbackVideo.videoHeight });
+          };
+          
+          fallbackVideo.oncanplaythrough = () => {
+            console.log('🎥 Direct Object Storage video ready to play');
+            setVideoSrc(directUrl);
+            setIsLoading(false);
+            setVideoReady(true);
+            setShouldAutoPlay(true);
+          };
+          
+          fallbackVideo.onerror = (fallbackError) => {
+            console.error('🎥 Direct Object Storage access also failed:', fallbackError);
+            setIsLoading(false);
+            setVideoReady(false);
+          };
+          
+          fallbackVideo.load();
+        } else {
+          setIsLoading(false);
+          setVideoReady(false);
+        }
       };
       
       video.load();
