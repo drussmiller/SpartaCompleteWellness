@@ -195,12 +195,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
-    if (!post.mediaUrl) return null;
+    if (!post.mediaUrl) {
+      console.log('PostCard - No mediaUrl for post', post.id);
+      return null;
+    }
     console.log('PostCard - Creating thumbnail for post', post.id, 'with mediaUrl:', post.mediaUrl);
     const result = createThumbnailUrl(post.mediaUrl);
     console.log('PostCard - Thumbnail URL result for post', post.id, ':', result);
+    console.log('PostCard - shouldShowAsVideo for post', post.id, ':', shouldShowAsVideo);
     return result;
-  }, [post.mediaUrl]);
+  }, [post.mediaUrl, shouldShowAsVideo]);
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -286,8 +290,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       onError={(e) => {
                         console.log('❌ Thumbnail load error for post', post.id, 'URL:', thumbnailUrl);
                         console.log('❌ Thumbnail error details:', e.currentTarget.src);
-                        // Show fallback if thumbnail fails
-                        e.currentTarget.style.display = 'none';
+                        console.log('❌ Error event:', e);
+                        // Don't hide the image, let it show the broken image icon for debugging
+                        // e.currentTarget.style.display = 'none';
                       }}
                       onClick={() => {
                         // Navigate to video player page when thumbnail is clicked
@@ -311,6 +316,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                           <path d="M8 5v14l11-7z"/>
                         </svg>
                       </div>
+                    </div>
+                    {/* Debug info overlay */}
+                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs p-1 rounded">
+                      Post {post.id} - Thumbnail: {thumbnailUrl ? 'YES' : 'NO'}
                     </div>
                   </div>
                 ) : (

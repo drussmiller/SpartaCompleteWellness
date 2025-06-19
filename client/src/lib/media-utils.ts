@@ -124,12 +124,12 @@ export function createThumbnailUrl(mediaUrl: string): string | null {
     if (filename) {
       console.log('Extracted filename from serve-file URL:', filename);
       
-      // Try both .jpg and .jpeg extensions for thumbnails
+      // Create thumbnail filename - use .jpg extension (not .jpeg)
       const baseFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '');
       
-      // First try .jpg (which we know exists for this specific file)
+      // Use .jpg extension for thumbnails (this is what our thumbnail generation creates)
       const jpgThumbnail = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${baseFilename}.jpg`)}`;
-      console.log('Trying .jpg thumbnail URL:', jpgThumbnail);
+      console.log('Created .jpg thumbnail URL:', jpgThumbnail);
       return jpgThumbnail;
     }
   }
@@ -157,13 +157,13 @@ export function createThumbnailUrl(mediaUrl: string): string | null {
 
   console.log('Extracted filename:', filename);
 
-  // Replace video extension with .jpg for thumbnail (since we know the existing one is .jpg)
+  // Replace video extension with .jpg for thumbnail
   const baseFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '');
   const thumbnailFilename = `${baseFilename}.jpg`;
-  console.log('Thumbnail filename:', thumbnailFilename);
+  console.log('Generated thumbnail filename:', thumbnailFilename);
 
   // Create Object Storage URL for thumbnail
   const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${thumbnailFilename}`)}`;
-  console.log('Thumbnail URL result:', result);
+  console.log('Final thumbnail URL:', result);
   return result;
 }
