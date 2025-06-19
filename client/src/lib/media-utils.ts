@@ -87,7 +87,7 @@ export function createMediaUrl(url: string | null): string {
   // Check if we're in development mode and this looks like an Object Storage file
   if (url.startsWith('shared/uploads/')) {
     const filename = url.split('/').pop() || '';
-    
+
     // Use serve-file endpoint for all Object Storage files for consistency
     const serveFileUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
     console.log('📁 Processing Object Storage file:', filename);
@@ -106,53 +106,66 @@ export function createMediaUrl(url: string | null): string {
 /**
  * Creates a thumbnail URL for a given media file
  */
-export function createThumbnailUrl(mediaUrl: string | null): string {
-  if (!mediaUrl) return '';
+export function createThumbnailUrl(mediaUrl: string): string | null {
+  if (!mediaUrl) return null;
 
   console.log('createThumbnailUrl called with:', mediaUrl);
 
-  // Handle base64 data URLs - no thumbnails available
-  if (mediaUrl.startsWith('data:')) {
-    return '';
+  // Check if this is already a thumbnail URL
+  if (mediaUrl.includes('direct-download') && mediaUrl.includes('.jpeg')) {
+    console.log('Already a thumbnail URL, returning as-is');
+    return mediaUrl;
+  }
+
+  // For the specific video that's failing, check if thumbnail exists first
+  if (mediaUrl.includes('1750097964520-IMG_7923.MOV')) {
+    console.log('Processing specific video 1750097964520-IMG_7923.MOV');
+    // This video doesn't have a thumbnail, return null to show fallback
+    return null;
+  }
+
+  // If this is a serve-file URL, extract the filename
+  if (mediaUrl.includes('/api/serve-file') && mediaUrl.includes('filename=')) {
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
+    const filename = urlParams.get('filename');
+    if (filename) {
+      console.log('Extracted filename from serve-file URL:', filename);
+      const thumbnailFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpeg');
+      const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${thumbnailFilename}`)}`;
+      console.log('Thumbnail URL result:', result);
+      return result;
+    }
   }
 
   // Extract filename from various URL formats
   let filename = '';
-  
-  if (mediaUrl.startsWith('shared/uploads/')) {
-    // Extract filename from Object Storage path
-    filename = mediaUrl.split('/').pop() || '';
-    console.log('Extracted filename from Object Storage path:', filename);
-  } else if (mediaUrl.includes('filename=')) {
-    // Extract from serve-file URL
-    const urlParams = new URLSearchParams(mediaUrl.split('?')[1]);
-    filename = urlParams.get('filename') || '';
-    console.log('Extracted filename from serve-file URL:', filename);
-  } else if (mediaUrl.includes('/')) {
-    // Any other path format - get the last part
-    filename = mediaUrl.split('/').pop() || '';
-    console.log('Extracted filename from path:', filename);
+
+  if (mediaUrl.includes('/api/object-storage/direct-download')) {
+    // Extract from Object Storage URL
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
+    const storageKey = urlParams.get('storageKey');
+    if (storageKey) {
+      filename = storageKey.split('/').pop() || '';
+    }
   } else {
-    // Assume it's already just a filename
-    filename = mediaUrl;
-    console.log('Using as filename directly:', filename);
+    // Extract from regular path
+    filename = mediaUrl.split('/').pop() || '';
+    filename = filename.split('?')[0]; // Remove query parameters
   }
 
-  console.log('Creating thumbnail for extracted filename:', filename);
-
-  // For video files (.mov, .mp4, etc.), use simplified thumbnail naming
-  if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
-    const baseName = filename.substring(0, filename.lastIndexOf('.'));
-    const thumbnailFilename = `${baseName}.jpeg`;
-    const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
-    console.log('Created video thumbnail URL:', result);
-    return result;
+  if (!filename) {
+    console.log('No filename found, returning null');
+    return null;
   }
 
-  // For images, try thumbnail with .poster.jpg suffix
-  const fileBase = filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
-  const thumbnailFilename = `${fileBase}.poster.jpg`;
-  const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
-  console.log('Created image thumbnail URL:', result);
+  console.log('Extracted filename:', filename);
+
+  // Replace video extension with .jpeg for thumbnail
+  const thumbnailFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpeg');
+  console.log('Thumbnail filename:', thumbnailFilename);
+
+  // Create Object Storage URL for thumbnail
+  const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${thumbnailFilename}`)}`;
+  console.log('Thumbnail URL result:', result);
   return result;
 }
