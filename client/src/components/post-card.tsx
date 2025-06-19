@@ -267,91 +267,57 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
               <div className="w-full video-container" data-post-id={post.id}>
-                {/* Import and use VideoPlayer instead of standard video element */}
-                <VideoPlayer 
-                  key={`video-${post.id}-${triggerReload}`} 
-                  src={imageUrl}
-                  poster={getVideoPoster(post.mediaUrl)}
-                  className="w-full video-player-container"
-                  preload="metadata"
-                  playsInline
-                  controlsList="nodownload"
-                  onLoad={() => {
-                    console.log("Video loaded successfully for post", post.id);
-                  }}
-                  onError={(error: Error) => {
-                    console.error(`Error loading video for post ${post.id}:`, error);
-
-                    // Try with different formats as fallback - first try directly with .jpg extension
-                    const mediaUrl = post.mediaUrl || '';
-                    if (mediaUrl.toLowerCase().endsWith('.mov')) {
-                      const baseName = mediaUrl.substring(0, mediaUrl.lastIndexOf('.'));
-                      console.log(`Trying alternative thumbnail for video ${post.id}:`, baseName);
-
-                      // Try to manually preload the correct thumbnail using image tag approach
-                      const img = new Image();
-                      img.onload = () => {
-                        console.log('Alternative thumbnail loaded successfully');
-                        // Reload the component to use the now-cached image
-                        setTriggerReload(prev => prev + 1);
-                      };
-                      img.onerror = () => {
-                        console.error('Alternative thumbnail failed to load');
-                        // No longer hiding containers - let images display even if some fail
-                      };
-
-                      // Try direct formats without using the utility functions
-                      // For memory verse videos, the thumbnails are uploaded with specific naming patterns
-                      // Extract the actual filename from the serve-file URL
-                      const urlMatch = mediaUrl.match(/filename=([^&]+)/);
-                      const actualFileName = urlMatch ? urlMatch[1] : baseName.split('/').pop() || '';
-                      
-                      console.log('Extracted filename for thumbnail search:', actualFileName);
-                      
-                      // Extract the base video name (e.g., "IMG_7923.MOV" from "1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV")
-                      const baseVideoName = actualFileName.split('-').slice(2).join('-'); // Gets "IMG_7923.MOV"
-                      
-                      console.log('Base video name for matching:', baseVideoName);
-                      
-                      // New simplified thumbnail naming: same name as video but with .jpg extension
-                      // For video: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.MOV
-                      // Thumbnail: 1748529996330-74550d7d-aedd-4921-b370-c9551b06754d-IMG_7923.jpg
-                      const baseFileName = actualFileName.replace(/\.[^/.]+$/, '');
-                      const simplifiedThumbnailUrl = `/api/serve-file?filename=${baseFileName}.jpg`;
-                      
-                      const thumbnailPatterns = [
-                        simplifiedThumbnailUrl,
-                        // Fallback patterns for older thumbnails that might still exist
-                        `/api/serve-file?filename=1748529997124-43ad0541-8902-4ab6-a24a-27dd42cdb918-IMG-7923.MOV.poster.jpg`,
-                        `/api/serve-file?filename=1748529997484-408ee8f6-edb6-45f0-9150-8b31423599c7-thumb-IMG-7923.MOV`,
-                        `/api/serve-file?filename=1748529997847-d77d98d7-6baa-4ad5-b11c-d4e13335eea5-IMG-7923.jpg`
-                      ];
-                      
-                      // Try each pattern until one works
-                      let patternIndex = 0;
-                      const tryNextPattern = () => {
-                        if (patternIndex < thumbnailPatterns.length) {
-                          img.src = thumbnailPatterns[patternIndex];
-                          patternIndex++;
-                        }
-                      };
-                      
-                      img.onerror = () => {
-                        console.log(`Thumbnail pattern ${patternIndex} failed:`, img.src);
-                        tryNextPattern();
-                      };
-                      
-                      // Start with the first pattern
-                      tryNextPattern();
-                    } else {
-                      // For non-MOV files or if we can't extract baseName, just hide
-                      const container = document.querySelector(`[data-post-id="${post.id}"] .video-container`) as HTMLElement;
-                      if (container) {
-                        container.style.display = 'none';
-                      }
-                    }
-                  }}
-                />
+                {/* Show thumbnail with play button overlay instead of video player */}
+                {thumbnailUrl ? (
+                  <div className="relative w-full cursor-pointer">
+                    <img
+                      src={thumbnailUrl}
+                      alt="Video thumbnail"
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                      style={{ 
+                        aspectRatio: '3/2',
+                        maxHeight: '400px'
+                      }}
+                      onError={(e) => {
+                        console.log('Thumbnail load error for video post', post.id);
+                        // Show fallback if thumbnail fails
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      onClick={() => {
+                        // Navigate to video player page when thumbnail is clicked
+                        const videoUrl = imageUrl;
+                        window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                      }}
+                    />
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                      <div className="w-16 h-16 bg-black bg-opacity-60 rounded-full flex items-center justify-center hover:bg-opacity-80 transition-all">
+                        <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Fallback when no thumbnail is available
+                  <div 
+                    className="w-full h-40 flex flex-col items-center justify-center cursor-pointer bg-gray-100"
+                    onClick={() => {
+                      const videoUrl = imageUrl;
+                      window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                    }}
+                  >
+                    <div className="w-16 h-16 bg-black bg-opacity-60 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">Video Ready</p>
+                    <p className="text-xs text-gray-500">Click to play</p>
+                  </div>
+                )}
               </div>
             ) : (
               <img
