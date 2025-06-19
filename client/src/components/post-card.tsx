@@ -295,10 +295,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
                       }}
                     />
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
-                      <div className="w-16 h-16 bg-black bg-opacity-60 rounded-full flex items-center justify-center hover:bg-opacity-80 transition-all">
-                        <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    {/* Play button overlay - positioned at bottom left */}
+                    <div className="absolute bottom-3 left-3">
+                      <div className="w-12 h-12 bg-black bg-opacity-70 rounded-full flex items-center justify-center hover:bg-opacity-90 transition-all">
+                        <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z"/>
                         </svg>
                       </div>
@@ -313,8 +313,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
                     }}
                   >
-                    <div className="w-16 h-16 bg-black bg-opacity-60 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 bg-black bg-opacity-70 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z"/>
                       </svg>
                     </div>

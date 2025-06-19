@@ -143,7 +143,7 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
   // For video files (.mov, .mp4, etc.), use simplified thumbnail naming
   if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
     const baseName = filename.substring(0, filename.lastIndexOf('.'));
-    const thumbnailFilename = `${baseName}.jpg`;
+    const thumbnailFilename = `${baseName}.jpeg`;
     const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
     console.log('Created video thumbnail URL:', result);
     return result;
