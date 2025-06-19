@@ -285,14 +285,23 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         maxHeight: '400px'
                       }}
                       onLoad={() => {
-                        console.log('✅ Thumbnail loaded successfully for post', post.id, 'URL:', thumbnailUrl);
+                        console.log('✅ THUMBNAIL LOADED successfully for post', post.id);
+                        console.log('✅ Loaded URL:', thumbnailUrl);
                       }}
                       onError={(e) => {
-                        console.log('❌ Thumbnail load error for post', post.id, 'URL:', thumbnailUrl);
-                        console.log('❌ Thumbnail error details:', e.currentTarget.src);
-                        console.log('❌ Error event:', e);
-                        // Don't hide the image, let it show the broken image icon for debugging
-                        // e.currentTarget.style.display = 'none';
+                        console.log('❌ THUMBNAIL FAILED to load for post', post.id);
+                        console.log('❌ Failed URL:', thumbnailUrl);
+                        console.log('❌ Error details:', e.currentTarget.src);
+                        console.log('❌ Network status:', e.type);
+                        
+                        // Try to access the URL directly to see what error we get
+                        fetch(thumbnailUrl, { method: 'HEAD' })
+                          .then(response => {
+                            console.log('❌ HEAD request response:', response.status, response.statusText);
+                          })
+                          .catch(fetchError => {
+                            console.log('❌ HEAD request failed:', fetchError);
+                          });
                       }}
                       onClick={() => {
                         // Navigate to video player page when thumbnail is clicked

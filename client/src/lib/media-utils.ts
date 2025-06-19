@@ -163,7 +163,14 @@ export function createThumbnailUrl(mediaUrl: string): string | null {
   console.log('Generated thumbnail filename:', thumbnailFilename);
 
   // Create Object Storage URL for thumbnail
-  const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${thumbnailFilename}`)}`;
-  console.log('Final thumbnail URL:', result);
+  const storageKey = `shared/uploads/${thumbnailFilename}`;
+  const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
+  console.log('📸 THUMBNAIL GENERATION DEBUG:');
+  console.log('📸 Original mediaUrl:', mediaUrl);
+  console.log('📸 Extracted filename:', filename);
+  console.log('📸 Base filename (no extension):', baseFilename);
+  console.log('📸 Thumbnail filename:', thumbnailFilename);
+  console.log('📸 Storage key:', storageKey);
+  console.log('📸 Final thumbnail URL:', result);
   return result;
 }
