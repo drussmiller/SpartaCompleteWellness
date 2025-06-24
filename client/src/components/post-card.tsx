@@ -227,7 +227,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     return createMediaUrl(post.mediaUrl);
   }, [post.mediaUrl, shouldShowAsVideo]);
 
-  
+
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -377,22 +377,25 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               imageUrl && (
-                <img
-                  src={imageUrl}
-                  alt={`${post.type} post content`}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-contain cursor-pointer"
-                  onLoad={() => {
-                    console.log('✅ IMAGE LOADED successfully for post', post.id);
-                    console.log('✅ Loaded URL:', imageUrl);
-                  }}
-                  onError={(e) => {
-                    console.log('❌ IMAGE FAILED to load for post', post.id);
-                    console.log('❌ Failed URL:', imageUrl);
-                    console.log('❌ Error details:', e.currentTarget.src);
-                  }}
-                />
+                <div>
+                  <div style={{ fontSize: '10px', color: 'red', marginBottom: '5px' }}>
+                    DEBUG: Post {post.id} - Attempting to load: {imageUrl}
+                  </div>
+                  <img
+                    src={imageUrl}
+                    alt="Post content"
+                    className="w-full h-full object-contain cursor-pointer"
+                    onLoad={() => {
+                      console.log('✅ IMAGE LOADED successfully for post', post.id);
+                      console.log('✅ Loaded URL:', imageUrl);
+                    }}
+                    onError={(e) => {
+                      console.log('❌ IMAGE FAILED to load for post', post.id);
+                      console.log('❌ Failed URL:', imageUrl);
+                      console.log('❌ Error details:', e.currentTarget.src);
+                    }}
+                  />
+                </div>
               )
             )}
           </div>
