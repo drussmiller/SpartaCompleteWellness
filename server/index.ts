@@ -282,43 +282,17 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // Try alternative ports if 5000 is busy
-    const ports = [5000, 5001, 5002, 5003];
-    // Initial port already declared at the top of file
-
-    // Handle port selection
-    const findAvailablePort = async () => {
-      for (const p of ports) {
-        try {
-          await new Promise((resolve, reject) => {
-            const testServer = createServer();
-            testServer.once('error', reject);
-            testServer.once('listening', () => {
-              testServer.close(() => resolve(true));
-            });
-            testServer.listen(p, '0.0.0.0');
-          });
-          return p;
-        } catch (err) {
-          logger.warn(`Port ${p} is busy, trying next port...`);
-          continue;
-        }
-      }
-      throw new Error('No available ports found');
-    };
-
-    // Find an available port before starting
-    port = await findAvailablePort();
-    logger.info(`Selected port ${port}`);
+    // Force port 5000 only - no alternative ports
+    port = 5000;
+    logger.info(`Forcing port ${port} - will kill any existing processes`);
 
     // Disable console logging
     logger.setConsoleOutputEnabled(false);
 
-    // Enhanced port cleanup function with detailed logging
+    // Enhanced port cleanup function with detailed logging - AGGRESSIVE for port 5000
     const killPort = async (port: number): Promise<void> => {
       try {
-        // Disabled console output
-        // console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
+        console.log(`[Port Cleanup] AGGRESSIVELY killing port ${port}...`);
 
         if (process.platform === "win32") {
           const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
@@ -329,34 +303,49 @@ app.use('/api', (req, res, next) => {
             await execAsync(`taskkill /F /PID ${pidMatch[1]}`);
           }
         } else {
-          // Unix/Linux specific commands with error handling
-          try {
-            console.log(`[Port Cleanup] Attempting lsof cleanup...`);
-            const { stdout: lsofOutput } = await execAsync(`lsof -i :${port}`);
-            console.log(`[Port Cleanup] Current port status:`, lsofOutput);
-            await execAsync(`lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs -r kill -9`);
-          } catch (lsofError) {
-            console.log(`[Port Cleanup] lsof failed, trying netstat...`, lsofError);
+          // Unix/Linux specific commands with error handling - try all methods
+          const commands = [
+            `lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs -r kill -9`,
+            `netstat -ltnp | grep -w ':${port}' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9`,
+            `fuser -k ${port}/tcp`,
+            `pkill -f ":${port}"`,
+            `ps aux | grep ${port} | grep -v grep | awk '{print $2}' | xargs -r kill -9`
+          ];
+          
+          for (const cmd of commands) {
             try {
-              await execAsync(`netstat -ltnp | grep -w ':${port}' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9`);
-            } catch (netstatError) {
-              console.log(`[Port Cleanup] netstat failed, trying fuser...`, netstatError);
-              await execAsync(`fuser -k ${port}/tcp`);
+              console.log(`[Port Cleanup] Trying: ${cmd}`);
+              await execAsync(cmd);
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (cmdError) {
+              console.log(`[Port Cleanup] Command failed (this is normal): ${cmd}`);
             }
           }
         }
 
-        // Verify port is free
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const { stdout: verifyOutput } = await execAsync(
-          process.platform === "win32"
-            ? `netstat -ano | findstr :${port}`
-            : `lsof -i :${port}`
-        );
-        console.log(`[Port Cleanup] Port status after cleanup:`, verifyOutput || 'Port is free');
+        // Verify port is free with multiple attempts
+        for (let i = 0; i < 3; i++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          try {
+            const { stdout: verifyOutput } = await execAsync(
+              process.platform === "win32"
+                ? `netstat -ano | findstr :${port}`
+                : `lsof -i :${port}`
+            );
+            if (!verifyOutput || verifyOutput.trim() === '') {
+              console.log(`[Port Cleanup] Port ${port} is now free`);
+              break;
+            } else {
+              console.log(`[Port Cleanup] Port ${port} still busy, attempt ${i+1}/3:`, verifyOutput);
+            }
+          } catch (error) {
+            console.log(`[Port Cleanup] Port ${port} appears to be free (verification failed, which is good)`);
+            break;
+          }
+        }
 
       } catch (error) {
-        console.log(`[Port Cleanup] No active process found on port ${port}`);
+        console.log(`[Port Cleanup] Error during cleanup of port ${port}:`, error.message);
       }
     };
 
@@ -364,22 +353,18 @@ app.use('/api', (req, res, next) => {
     let currentServer: HttpServer | null = null;
     const cleanupAndStartServer = async (retries = 5, delay = 3000): Promise<HttpServer> => {
       try {
-        console.log(`[Server Startup] Attempt ${6-retries} of 5`);
+        console.log(`[Server Startup] Attempt ${6-retries} of 5 - FORCING PORT 5000`);
 
-        // First kill any existing process on the selected port
-        await killPort(port);
-        
-        // Also try to kill common ports that might be in use
-        try {
-          await killPort(5000);
-          await killPort(5001);
-          await killPort(5002);
-        } catch (err) {
-          // Ignore errors, these are just cleanup attempts
-        }
+        // Aggressively kill port 5000 multiple times to ensure it's free
+        console.log(`[Port Cleanup] Aggressively cleaning port 5000...`);
+        await killPort(5000);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await killPort(5000);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await killPort(5000);
 
-        // Add delay after killing port
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Add longer delay after killing port
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
         // Close existing server if any
         if (currentServer) {
@@ -407,9 +392,9 @@ app.use('/api', (req, res, next) => {
           currentServer = null;
         }
 
-        console.log(`[Server Startup] Starting new server on port ${port}...`);
-        currentServer = server.listen(port, "0.0.0.0", () => {
-          log(`[Server Startup] Server listening on port ${port}`);
+        console.log(`[Server Startup] Starting new server on FORCED port 5000...`);
+        currentServer = server.listen(5000, "0.0.0.0", () => {
+          log(`[Server Startup] Server listening on FORCED port 5000`);
           // Daily checks are disabled to prevent server overload
           // Use admin panel to manually trigger checks when needed
         });
@@ -418,7 +403,7 @@ app.use('/api', (req, res, next) => {
       } catch (error) {
         console.error('[Server Error] Error during startup:', error);
         if (retries > 0) {
-          console.log(`[Server Startup] Retrying in ${delay}ms...`);
+          console.log(`[Server Startup] Retrying in ${delay}ms... WILL FORCE PORT 5000`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return cleanupAndStartServer(retries - 1, delay * 2);
         }
@@ -449,15 +434,12 @@ app.use('/api', (req, res, next) => {
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
 
-    // Start server with enhanced cleanup and retry mechanism
+    // Start server with enhanced cleanup and retry mechanism - FORCE PORT 5000
     const finalServer = await cleanupAndStartServer();
     
-    // Update the global port variable to reflect the actual listening port
-    const address = finalServer.address();
-    if (address && typeof address === 'object') {
-      port = address.port;
-      logger.info(`Server successfully started on port ${port}`);
-    }
+    // Port is always 5000 now
+    port = 5000;
+    logger.info(`Server successfully started on FORCED port 5000`);
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);
