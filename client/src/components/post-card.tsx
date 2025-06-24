@@ -97,6 +97,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
 
+  // Debug post data
+  console.log(`🖼️ PostCard ${post.id} render:`, {
+    type: post.type,
+    mediaUrl: post.mediaUrl,
+    is_video: post.is_video,
+    hasContent: !!post.content
+  });
+
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
@@ -188,12 +196,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
-    if (!post.mediaUrl) return null;
-    console.log('PostCard getImageUrl called with:', post.mediaUrl);
+    if (!post.mediaUrl) {
+      console.log(`PostCard ${post.id}: No mediaUrl found`);
+      return null;
+    }
+    console.log(`PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
     const result = createMediaUrl(post.mediaUrl);
-    console.log('PostCard getImageUrl result:', result);
+    console.log(`PostCard ${post.id}: Generated imageUrl:`, result);
     return result;
-  }, [post.mediaUrl]);
+  }, [post.mediaUrl, post.id]);
 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) {
@@ -365,22 +376,31 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 )}
               </div>
             ) : (
-              <img
-                src={imageUrl}
-                alt={`${post.type} post content`}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-contain cursor-pointer"
-                onLoad={() => {
-                  console.log('✅ IMAGE LOADED successfully for post', post.id);
-                  console.log('✅ Loaded URL:', imageUrl);
-                }}
-                onError={(e) => {
-                  console.log('❌ IMAGE FAILED to load for post', post.id);
-                  console.log('❌ Failed URL:', imageUrl);
-                  console.log('❌ Error details:', e.currentTarget.src);
-                }}
-              />
+              imageUrl && (
+                <img
+                  src={imageUrl}
+                  alt={`${post.type} post content`}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-contain cursor-pointer"
+                  onLoad={() => {
+                    console.log('✅ IMAGE LOADED successfully for post', post.id);
+                    console.log('✅ Loaded URL:', imageUrl);
+                  }}
+                  onError={(e) => {
+                    console.log('❌ IMAGE FAILED to load for post', post.id);
+                    console.log('❌ Failed URL:', imageUrl);
+                    console.log('❌ Error details:', e.currentTarget.src);
+                    
+                    // Try alternative URL format as fallback
+                    const fallbackUrl = post.mediaUrl ? `/api/serve-file?filename=${encodeURIComponent(post.mediaUrl.split('/').pop() || '')}` : null;
+                    if (fallbackUrl && fallbackUrl !== imageUrl) {
+                      console.log('🔄 Trying fallback URL:', fallbackUrl);
+                      e.currentTarget.src = fallbackUrl;
+                    }
+                  }}
+                />
+              )
             )}
           </div>
         </div>
