@@ -33,6 +33,7 @@ const mobileScrollStyles = {
 } as const;
 
 export default function HomePage() {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
