@@ -104,6 +104,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     is_video: post.is_video,
     hasContent: !!post.content
   });
+  
+  // Log every render
+  console.log(`🔄 PostCard ${post.id} RENDERING NOW`);
+  
+  // Force logging to appear
+  if (typeof window !== 'undefined') {
+    window.console.log(`🔄 FORCED LOG - PostCard ${post.id} rendering`);
+  }
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -196,13 +204,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
+    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Starting imageUrl calculation`);
     if (!post.mediaUrl) {
-      console.log(`PostCard ${post.id}: No mediaUrl found`);
+      console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: No mediaUrl found`);
+      window.console.log(`🎯 FORCED - PostCard ${post.id}: No mediaUrl found`);
       return null;
     }
-    console.log(`PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
+    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
+    window.console.log(`🎯 FORCED - PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
     const result = createMediaUrl(post.mediaUrl);
-    console.log(`PostCard ${post.id}: Generated imageUrl:`, result);
+    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Generated imageUrl:`, result);
+    window.console.log(`🎯 FORCED - PostCard ${post.id}: Generated imageUrl:`, result);
     return result;
   }, [post.mediaUrl, post.id]);
 
@@ -291,6 +303,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       {post.mediaUrl && (
         <div className="relative mt-2 w-screen -mx-4">
+          {(() => {
+            console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to render media`);
+            window.console.log(`📺 FORCED - PostCard ${post.id}: About to render media`);
+            console.log(`📺 MEDIA RENDER - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo);
+            console.log(`📺 MEDIA RENDER - PostCard ${post.id}: imageUrl:`, imageUrl);
+            window.console.log(`📺 FORCED - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo, 'imageUrl:', imageUrl);
+            return null;
+          })()}
           <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
               <div className="w-full video-container" data-post-id={post.id}>
