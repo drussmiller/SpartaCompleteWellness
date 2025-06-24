@@ -391,13 +391,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     console.log('❌ IMAGE FAILED to load for post', post.id);
                     console.log('❌ Failed URL:', imageUrl);
                     console.log('❌ Error details:', e.currentTarget.src);
-                    
-                    // Try alternative URL format as fallback
-                    const fallbackUrl = post.mediaUrl ? `/api/serve-file?filename=${encodeURIComponent(post.mediaUrl.split('/').pop() || '')}` : null;
-                    if (fallbackUrl && fallbackUrl !== imageUrl) {
-                      console.log('🔄 Trying fallback URL:', fallbackUrl);
-                      e.currentTarget.src = fallbackUrl;
-                    }
                   }}
                 />
               )
