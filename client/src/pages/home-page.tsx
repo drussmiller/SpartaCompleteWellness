@@ -305,14 +305,29 @@ export default function HomePage() {
                     return null;
                   })()}
                   {posts?.length > 0 ? (
-                    posts.map((post: Post, index: number) => (
-                      <div key={post.id}>
-                        <ErrorBoundary>
-                          <PostCard post={post} />
-                        </ErrorBoundary>
-                        {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
-                      </div>
-                    ))
+                    posts.map((post: Post, index: number) => {
+                      console.log(`🏗️ RENDERING PostCard for post ${post.id}`);
+                      window.console.log(`🏗️ FORCED - Rendering PostCard for post ${post.id}`);
+                      
+                      try {
+                        return (
+                          <div key={post.id}>
+                            <ErrorBoundary>
+                              <PostCard post={post} />
+                            </ErrorBoundary>
+                            {index < posts.length - 1 && <div className="h-[6px] bg-border my-2 -mx-4" />}
+                          </div>
+                        );
+                      } catch (error) {
+                        console.error(`🚨 ERROR rendering PostCard ${post.id}:`, error);
+                        window.console.error(`🚨 FORCED ERROR - PostCard ${post.id}:`, error);
+                        return (
+                          <div key={post.id} className="p-4 bg-red-100 text-red-800 rounded">
+                            Error rendering post {post.id}: {error instanceof Error ? error.message : 'Unknown error'}
+                          </div>
+                        );
+                      }
+                    })
                   ) : !isLoading ? (
                     <div className="text-center text-muted-foreground py-8">
                       No posts yet. Be the first to share!
