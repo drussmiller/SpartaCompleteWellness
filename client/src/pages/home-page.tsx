@@ -66,9 +66,9 @@ export default function HomePage() {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
       const data = await response.json();
-      
+
       console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
-      
+
       // Check for video posts specifically
       const videoPosts = data.filter(post => 
         post.image_url && post.image_url.toLowerCase().includes('.mov')
@@ -78,17 +78,17 @@ export default function HomePage() {
         type: p.type,
         imageUrl: p.image_url
       })));
-      
+
       // Check if the specific video post exists
       const targetVideoPost = data.find(post => 
         post.image_url && post.image_url.includes('1750097964520-IMG_7923.MOV')
       );
       console.log("Target video post found:", !!targetVideoPost, targetVideoPost?.id);
-      
+
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
       console.log("Posts after prayer filtering:", filtered.length);
-      
+
       return filtered;
     },
     enabled: !!user,
@@ -109,19 +109,19 @@ export default function HomePage() {
   useEffect(() => {
     let scrollVelocity = 0;
     let lastScrollTime = Date.now();
-    
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
       const currentTime = Date.now();
       const timeDelta = currentTime - lastScrollTime;
-      
+
       // Calculate scroll velocity (pixels per millisecond)
       if (timeDelta > 0) {
         scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
       }
-      
+
       console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
-      
+
       // Hide header when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - hide header and bottom nav
@@ -137,25 +137,25 @@ export default function HomePage() {
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
-      
+
       lastScrollY.current = currentScrollY;
       lastScrollTime = currentTime;
     };
 
     // Test scroll immediately to see current state
     console.log('Setting up scroll listener - current scroll:', window.scrollY);
-    
+
     // Add multiple event listeners to catch scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('scroll', handleScroll, { passive: true });
     document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
+
     // Also try listening on the main content area
     const mainElement = document.querySelector('main');
     if (mainElement) {
       mainElement.addEventListener('scroll', handleScroll, { passive: true });
     }
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
@@ -208,7 +208,7 @@ export default function HomePage() {
                 <MessageSlideCard />
               </div>
             </div>
-            
+
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
