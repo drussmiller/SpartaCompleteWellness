@@ -24,6 +24,7 @@ import { useCommentCount } from "@/hooks/use-comment-count";
 import { CommentDrawer } from "@/components/comments/comment-drawer";
 import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/image-utils";
 import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
+import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
 
@@ -215,39 +216,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     return createMediaUrl(post.mediaUrl);
   }, [post.mediaUrl, shouldShowAsVideo]);
 
-  // For videos, create the thumbnail URL by replacing the extension
-  const displayImageUrl = useMemo(() => {
-    if (post.image_url && post.is_video) {
-      console.log('Video post detected, original URL:', post.image_url);
-
-      // If the URL already contains storageKey parameter, extract it
-      if (post.image_url.includes('storageKey=')) {
-        const match = post.image_url.match(/storageKey=([^&]+)/);
-        if (match) {
-          const originalKey = decodeURIComponent(match[1]);
-          console.log('Extracted original key:', originalKey);
-
-          // Create thumbnail key by replacing extension with .jpg
-          const thumbnailKey = originalKey.replace(/\.[^/.]+$/, '.jpg');
-          const thumbnailUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(thumbnailKey)}`;
-          console.log('Created thumbnail URL:', thumbnailUrl);
-          return thumbnailUrl;
-        }
-      }
-
-      // Fallback: if it's a direct path, extract filename and create thumbnail URL
-      const filename = post.image_url.split('/').pop() || '';
-      if (filename) {
-        const baseName = filename.replace(/\.[^/.]+$/, '');
-        const thumbnailKey = `shared/uploads/${baseName}.jpg`;
-        const thumbnailUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(thumbnailKey)}`;
-        console.log('Fallback thumbnail URL:', thumbnailUrl);
-        return thumbnailUrl;
-      }
-    }
-
-    return post.image_url ? createDirectDownloadUrl(post.image_url) : null;
-  }, [post.image_url, post.is_video]);
+  
 
   return (
     <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
@@ -402,9 +371,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
+                onLoad={() => {
+                  console.log('✅ IMAGE LOADED successfully for post', post.id);
+                  console.log('✅ Loaded URL:', imageUrl);
+                }}
                 onError={(e) => {
-                  // No longer hiding images - let them display even if some fail to load
-                  console.log('Image load error, but not hiding container');
+                  console.log('❌ IMAGE FAILED to load for post', post.id);
+                  console.log('❌ Failed URL:', imageUrl);
+                  console.log('❌ Error details:', e.currentTarget.src);
                 }}
               />
             )}
