@@ -4,6 +4,8 @@
  * This module provides clean, simple media URL handling without recursive patterns.
  */
 
+import { createDirectDownloadUrl } from './object-storage-utils';
+
 /**
  * Extracts a clean filename from any URL or path
  */
