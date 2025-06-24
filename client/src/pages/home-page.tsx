@@ -33,7 +33,6 @@ const mobileScrollStyles = {
 } as const;
 
 export default function HomePage() {
-  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
@@ -56,18 +55,44 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
-  const { data: posts = [], isLoading, error } = useQuery({
-    queryKey: ["/api/posts", "team-posts"],
-    queryFn: async () => {
-      // Make sure to exclude prayer posts from Team page
-      console.log("Fetching posts...");
-      const response = await apiRequest("GET", `/api/posts?page=1&limit=50&exclude=prayer`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch posts: ${response.status}`);
-      }
-      const data = await response.json();
+  // Force immediate logging
+  console.log('🏠 HOMEPAGE RENDER - Starting HomePage component');
+  window.console.log('🏠 FORCED - HomePage component is rendering');
 
-      console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
+  // Get posts with React Query
+  const {
+    data: posts = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['posts'],
+    queryFn: async () => {
+      console.log('🔍 POSTS FETCH - Starting posts fetch request');
+      window.console.log('🔍 FORCED - Starting posts fetch request');
+
+      const response = await apiRequest("GET", `/api/posts?page=1&limit=50&exclude=prayer`);
+
+      console.log('🔍 POSTS FETCH - Response received:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
+      });
+      window.console.log('🔍 FORCED - Posts fetch response:', response.status, response.statusText);
+
+      if (!response.ok) {
+        console.error('🔍 POSTS FETCH - Failed:', response.status, response.statusText);
+        window.console.error('🔍 FORCED - Posts fetch failed:', response.status);
+        throw new Error('Failed to fetch posts');
+      }
+
+      const data = await response.json();
+      console.log('🔍 POSTS FETCH - Data received:', {
+        isArray: Array.isArray(data),
+        length: Array.isArray(data) ? data.length : 'not array',
+        firstPost: Array.isArray(data) && data.length > 0 ? data[0] : 'no posts'
+      });
+      window.console.log('🔍 FORCED - Posts data:', Array.isArray(data) ? `${data.length} posts` : 'not array');
 
       // Check for video posts specifically
       const videoPosts = data.filter(post => 
@@ -94,6 +119,23 @@ export default function HomePage() {
     enabled: !!user,
     refetchOnWindowFocus: false, // Prevent refetch on window focus
     staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
+  });
+
+    // Log current state for debugging
+  console.log('🏠 HOMEPAGE STATE:', {
+    postsCount: posts.length,
+    isLoading,
+    hasError: !!error,
+    currentUser: user?.id,
+    postsData: posts
+  });
+
+  // Force logging to appear
+  window.console.log('🏠 FORCED - HomePage state:', {
+    posts: posts.length,
+    loading: isLoading,
+    error: !!error,
+    user: user?.id
   });
 
   // Import usePrayerRequests hook to mark prayer requests as viewed
@@ -254,6 +296,13 @@ export default function HomePage() {
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
               <main className="pt-40 mb-20 min-h-[200vh]">
                 <div className="space-y-2">
+                  {(() => {
+                    console.log('🎨 POSTS RENDER - About to render posts section');
+                    console.log('🎨 POSTS RENDER - Posts array:', posts);
+                    console.log('🎨 POSTS RENDER - Posts length:', posts.length);
+                    window.console.log('🎨 FORCED - Rendering posts section, count:', posts.length);
+                    return null;
+                  })()}
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
                       <div key={post.id}>
