@@ -90,12 +90,33 @@ function convertUrlsToLinks(text: string): string {
 }
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
+  // Add immediate logging before ANY processing
+  console.log(`🚀 ENTRY - PostCard ${post?.id || 'UNKNOWN'} function entry`);
+  
   try {
     console.log(`🚀 BASIC - PostCard ${post.id} component start`);
     
+    // Check for post data integrity
+    if (!post) {
+      console.error(`🚨 PostCard: No post data provided`);
+      throw new Error('No post data provided');
+    }
+    if (!post.id) {
+      console.error(`🚨 PostCard: Post missing ID:`, post);
+      throw new Error('Post missing ID');
+    }
+    
+    console.log(`🚀 HOOKS - About to initialize hooks for PostCard ${post.id}`);
+    
     const { user: currentUser } = useAuth();
+    console.log(`🚀 HOOKS - useAuth completed for PostCard ${post.id}`);
+    
     const { toast } = useToast();
+    console.log(`🚀 HOOKS - useToast completed for PostCard ${post.id}`);
+    
     const queryClient = useQueryClient();
+    console.log(`🚀 HOOKS - useQueryClient completed for PostCard ${post.id}`);
+    
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [triggerReload, setTriggerReload] = useState(0);
