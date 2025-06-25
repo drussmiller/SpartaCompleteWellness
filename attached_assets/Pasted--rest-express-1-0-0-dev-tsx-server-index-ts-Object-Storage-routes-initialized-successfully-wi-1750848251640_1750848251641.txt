@@ -1,0 +1,249 @@
+> rest-express@1.0.0 dev
+> tsx server/index.ts
+
+Object Storage routes initialized successfully with bucket ID
+Object Storage Final client initialized - OBJECT STORAGE ONLY mode
+Environment: development
+[Startup] Beginning server initialization...
+[Startup] Verifying database connection...
+New database client connected
+[Startup] Database connection verified 735 ms
+[Startup] Registering routes...
+[Startup] Routes registered 742 ms
+[Startup] Setting up shared files path handler for cross-environment compatibility
+[Startup] Setting up Object Storage-only uploads handler
+[Startup] Setting up Vite...
+[Startup] Vite setup complete 783 ms
+Running database migrations...
+Running migrations...
+New database client connected
+Added achievement_notifications_enabled column to users table
+Added notification_time column to users table
+Created achievement_types table if not exists
+Created user_achievements table if not exists
+Migrations completed successfully
+Migrations complete.
+[Server Startup] Attempt 1 of 5 - FORCING PORT 5000
+[Port Cleanup] Aggressively cleaning port 5000...
+[Port Cleanup] AGGRESSIVELY killing port 5000...
+[Port Cleanup] Trying: lsof -i :5000 | grep LISTEN | awk '{print $2}' | xargs -r kill -9
+[Port Cleanup] Trying: netstat -ltnp | grep -w ':5000' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9
+[Port Cleanup] Trying: fuser -k 5000/tcp
+[Port Cleanup] Command failed (this is normal): fuser -k 5000/tcp
+[Port Cleanup] Trying: pkill -f ":5000"
+[Port Cleanup] Command failed (this is normal): pkill -f ":5000"
+[Port Cleanup] Trying: ps aux | grep 5000 | grep -v grep | awk '{print $2}' | xargs -r kill -9
+[Port Cleanup] Port 5000 appears to be free (verification failed, which is good)
+[Port Cleanup] AGGRESSIVELY killing port 5000...
+[Port Cleanup] Trying: lsof -i :5000 | grep LISTEN | awk '{print $2}' | xargs -r kill -9
+[Port Cleanup] Trying: netstat -ltnp | grep -w ':5000' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9
+[Port Cleanup] Trying: fuser -k 5000/tcp
+[Port Cleanup] Command failed (this is normal): fuser -k 5000/tcp
+[Port Cleanup] Trying: pkill -f ":5000"
+[Port Cleanup] Command failed (this is normal): pkill -f ":5000"
+[Port Cleanup] Trying: ps aux | grep 5000 | grep -v grep | awk '{print $2}' | xargs -r kill -9
+[Port Cleanup] Port 5000 appears to be free (verification failed, which is good)
+[Port Cleanup] AGGRESSIVELY killing port 5000...
+[Port Cleanup] Trying: lsof -i :5000 | grep LISTEN | awk '{print $2}' | xargs -r kill -9
+[Port Cleanup] Trying: netstat -ltnp | grep -w ':5000' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9
+[Port Cleanup] Trying: fuser -k 5000/tcp
+[Port Cleanup] Command failed (this is normal): fuser -k 5000/tcp
+[Port Cleanup] Trying: pkill -f ":5000"
+[Port Cleanup] Command failed (this is normal): pkill -f ":5000"
+[Port Cleanup] Trying: ps aux | grep 5000 | grep -v grep | awk '{print $2}' | xargs -r kill -9
+[Port Cleanup] Port 5000 appears to be free (verification failed, which is good)
+[Server Startup] Starting new server on FORCED port 5000...
+10:39:02 AM [express] [Server Startup] Server listening on FORCED port 5000
+10:39:05 AM [express] GET / 200 in 573ms
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+10:39:10 AM [express] GET /src/main.tsx 200 in 2714ms
+10:39:11 AM [express] GET /@vite/client 200 in 4250ms
+New database client connected
+10:39:12 AM [express] GET /src/index.css 200 in 185ms
+10:39:12 AM [express] GET /@fs/home/runner/workspace/node_modules/vite/dist/client/env.mjs 200 in 131…
+10:39:12 AM [express] GET /src/App.tsx 200 in 91ms
+10:39:12 AM [express] GET /@react-refresh 304 in 214ms
+10:39:13 AM [express] GET /src/lib/queryClient.ts 304 in 147ms
+10:39:13 AM [express] GET /src/hooks/use-auth.tsx 304 in 151ms
+10:39:13 AM [express] GET /src/components/error-boundary.tsx 304 in 151ms
+10:39:13 AM [express] GET /src/hooks/use-achievements.tsx 304 in 149ms
+10:39:13 AM [express] GET /src/components/ui/toaster.tsx 304 in 146ms
+10:39:13 AM [express] GET /src/pages/auth-page.tsx 304 in 142ms
+10:39:13 AM [express] GET /src/pages/home-page.tsx 304 in 153ms
+10:39:13 AM [express] GET /src/pages/activity-page.tsx 304 in 149ms
+10:39:13 AM [express] GET /src/pages/help-page.tsx 304 in 148ms
+10:39:13 AM [express] GET /src/pages/activity-management.tsx 304 in 150ms
+10:39:13 AM [express] GET /src/pages/notifications-page.tsx 304 in 149ms
+10:39:13 AM [express] GET /src/pages/admin-page.tsx 304 in 144ms
+10:39:14 AM [express] GET /src/pages/menu-page.tsx 304 in 145ms
+10:39:14 AM [express] GET /src/pages/leaderboard-page.tsx 304 in 145ms
+10:39:14 AM [express] GET /src/components/vertical-nav.tsx 304 in 147ms
+10:39:14 AM [express] GET /src/pages/notification-settings-page.tsx 304 in 147ms
+10:39:14 AM [express] GET /src/debug-api.tsx 304 in 143ms
+10:39:14 AM [express] GET /src/components/achievements/achievements-container.tsx 304 in 142ms
+10:39:14 AM [express] GET /src/pages/prayer-requests-page.tsx 304 in 148ms
+10:39:14 AM [express] GET /src/pages/storage-test-page.tsx 304 in 144ms
+10:39:14 AM [express] GET /src/pages/comments-page.tsx 304 in 144ms
+10:39:14 AM [express] GET /src/pages/video-player-page.tsx 304 in 154ms
+10:39:14 AM [express] GET /src/hooks/use-toast.ts 304 in 141ms
+10:39:14 AM [express] GET /src/components/ui/toast.tsx 304 in 140ms
+10:39:14 AM [express] GET /src/components/ui/card.tsx 304 in 140ms
+10:39:14 AM [express] GET /src/components/ui/button.tsx 304 in 145ms
+10:39:14 AM [express] GET /src/components/ui/input.tsx 304 in 147ms
+10:39:15 AM [express] GET /src/components/ui/form.tsx 304 in 146ms
+10:39:15 AM [express] GET /@fs/home/runner/workspace/shared/schema.ts 304 in 141ms
+10:39:15 AM [express] GET /src/components/ui/tabs.tsx 304 in 138ms
+10:39:15 AM [express] GET /src/components/post-card.tsx 200 in 137ms
+10:39:15 AM [express] GET /src/components/create-post-dialog.tsx 304 in 145ms
+10:39:15 AM [express] GET /src/hooks/use-post-limits.ts 304 in 145ms
+10:39:15 AM [express] GET /src/components/app-layout.tsx 304 in 145ms
+10:39:15 AM [express] GET /src/hooks/use-mobile.tsx 304 in 128ms
+10:39:15 AM [express] GET /src/components/messaging/message-slide-card.tsx 304 in 127ms
+10:39:15 AM [express] GET /src/hooks/use-prayer-requests.tsx 304 in 128ms
+10:39:15 AM [express] GET /src/components/bottom-nav.tsx 304 in 144ms
+10:39:15 AM [express] GET /src/components/ui/collapsible.tsx 304 in 147ms
+10:39:15 AM [express] GET /src/components/ui/youtube-player.tsx 304 in 150ms
+10:39:15 AM [express] GET /src/components/ui/activity-content.css 304 in 126ms
+10:39:16 AM [express] GET /src/components/ui/duplicate-video-detector.tsx 304 in 123ms
+10:39:16 AM [express] GET /src/components/ui/fix-duplicate-video.css 304 in 121ms
+10:39:16 AM [express] GET /src/components/ui/dialog.tsx 304 in 144ms
+10:39:16 AM [express] GET /src/components/ui/scroll-area.tsx 304 in 147ms
+10:39:16 AM [express] GET /src/components/ui/label.tsx 304 in 164ms
+10:39:16 AM [express] GET /src/components/rich-text-editor.tsx 304 in 122ms
+10:39:16 AM [express] GET /src/components/achievements/achievement-demo.tsx 304 in 127ms
+10:39:16 AM [express] GET /src/components/ui/sheet.tsx 304 in 124ms
+10:39:16 AM [express] GET /src/components/ui/avatar.tsx 304 in 144ms
+10:39:16 AM [express] GET /src/pages/profile-page.tsx 304 in 151ms
+10:39:16 AM [express] GET /src/pages/support-sparta-page.tsx 304 in 143ms
+10:39:16 AM [express] GET /src/components/notification-settings.tsx 304 in 112ms
+10:39:16 AM [express] GET /src/lib/utils.ts 304 in 145ms
+10:39:17 AM [express] GET /src/hooks/use-notifications.tsx 304 in 143ms
+10:39:17 AM [express] GET /src/components/ui/tooltip.tsx 304 in 114ms
+10:39:17 AM [express] GET /src/components/achievements/achievement-badge.tsx 304 in 145ms
+10:39:17 AM [express] GET /src/components/test-file-upload.tsx 304 in 146ms
+10:39:17 AM [express] GET /src/components/comments/post-view.tsx 304 in 103ms
+10:39:17 AM [express] GET /src/components/comments/comment-list.tsx 304 in 144ms
+10:39:17 AM [express] GET /src/components/comments/comment-form.tsx 304 in 144ms
+10:39:17 AM [express] GET /src/components/ui/alert-dialog.tsx 304 in 129ms
+10:39:17 AM [express] GET /src/components/reaction-button.tsx 304 in 144ms
+10:39:17 AM [express] GET /src/components/reaction-summary.tsx 304 in 144ms
+10:39:17 AM [express] GET /src/hooks/use-comment-count.tsx 304 in 99ms
+10:39:17 AM [express] GET /src/components/comments/comment-drawer.tsx 304 in 146ms
+10:39:17 AM [express] GET /src/lib/media-utils.ts 304 in 145ms
+10:39:18 AM [express] GET /src/components/ui/textarea.tsx 304 in 132ms
+10:39:18 AM [express] GET /src/components/ui/popover.tsx 304 in 147ms
+10:39:18 AM [express] GET /src/components/ui/calendar.tsx 304 in 145ms
+10:39:18 AM [express] GET /src/lib/url-utils.ts 304 in 147ms
+10:39:18 AM [express] GET /src/components/messaging/message-form.tsx 304 in 135ms
+10:39:18 AM [express] GET /src/components/ui/video-player.tsx 304 in 144ms
+10:39:18 AM [express] GET /src/components/ui/switch.tsx 304 in 135ms
+10:39:18 AM [express] GET /src/components/change-password-form.tsx 304 in 136ms
+10:39:18 AM [express] GET /src/components/ui/badge.tsx 304 in 138ms
+10:39:18 AM [express] GET /src/lib/image-utils.ts 304 in 135ms
+New database client connected
+10:39:18 AM [express] GET /src/components/comments/comment-actions-drawer.tsx 304 in 146ms
+10:39:18 AM [express] GET /src/components/ui/dropdown-menu.tsx 304 in 145ms
+10:39:18 AM [express] GET /src/lib/memory-verse-utils.ts 304 in 117ms
+10:39:18 AM [express] GET /src/lib/object-storage-utils.ts 304 in 92ms
+10:39:18 AM [express] GET /src/components/ui/video-player.css 304 in 82ms
+GET /api/user - Session: qxhQBsSyiKVjdH5IuM42YopCrAsbf0iF
+GET /api/user - Is Authenticated: true
+Authenticated user: 419
+WebSocket client connected at 2025-06-25T10:39:19.710Z
+Sent connection confirmation message to client
+10:39:19 AM [express] GET /api/prayer-requests/unread 200 in 147ms
+Found 0 unread messages for user 419
+10:39:20 AM [express] GET /api/notifications 304 in 313ms :: [{"id":883,"userId":419,"title":"Daily R…
+WebSocket client connected at 2025-06-25T10:39:20.193Z
+Sent connection confirmation message to client
+New database client connected
+10:39:20 AM [express] GET /api/messages/unread/count 304 in 535ms :: {"unreadCount":0}
+New database client connected
+10:39:20 AM [express] GET /api/users/me 304 in 352ms :: {"id":419,"username":"rmiller","preferredName…
+10:39:20 AM [express] GET /sparta_circle_red.png 304 in 127ms
+WebSocket client connected at 2025-06-25T10:39:20.781Z
+Sent connection confirmation message to client
+10:39:20 AM [express] GET /api/achievements/unviewed 304 in 304ms :: []
+10:39:20 AM [express] GET /api/prayer-requests/unread 200 in 145ms
+10:39:21 AM [express] GET /api/notifications/unread 304 in 288ms :: {"unreadCount":0}
+10:39:21 AM [express] GET /api/posts/688/reactions 200 in 261ms :: []
+10:39:21 AM [express] GET /api/posts/points/weekly 200 in 107ms
+10:39:21 AM [express] GET /api/posts/685/reactions 200 in 275ms :: []
+10:39:21 AM [express] GET /api/posts/664/reactions 200 in 284ms :: []
+10:39:21 AM [express] GET /api/posts/501/reactions 200 in 244ms :: [{"id":121,"userId":419,"postId":5…
+10:39:22 AM [express] GET /api/posts/479/reactions 200 in 248ms :: []
+10:39:22 AM [express] GET /api/posts/394/reactions 200 in 288ms :: []
+10:39:22 AM [express] GET /api/posts/306/reactions 200 in 282ms :: []
+10:39:22 AM [express] GET /api/posts/16/reactions 200 in 245ms :: []
+10:39:23 AM [express] GET /api/posts/points/weekly 200 in 143ms
+New database client connected
+New database client connected
+New database client connected
+New database client connected
+10:39:51 AM [express] GET /api/notifications/unread 304 in 157ms :: {"unreadCount":0}
+New database client connected
+WebSocket client connected at 2025-06-25T10:39:56.109Z
+Sent connection confirmation message to client
+New database client connected
+New database client connected
+New database client connected
+New database client connected
+New database client connected
+10:40:20 AM [express] GET /api/notifications 304 in 154ms :: [{"id":883,"userId":419,"title":"Daily R…
+Found 0 unread messages for user 419
+10:40:20 AM [express] GET /api/messages/unread/count 304 in 147ms :: {"unreadCount":0}
+10:40:21 AM [express] GET /api/notifications/unread 304 in 151ms :: {"unreadCount":0}
+New database client connected
+WebSocket client connected at 2025-06-25T10:40:31.855Z
+Sent connection confirmation message to client
+New database client connected
+New database client connected
+New database client connected
+New database client connected
+New database client connected
+10:40:52 AM [express] GET /api/notifications/unread 304 in 149ms :: {"unreadCount":0}
+New database client connected
+New database client connected
+WebSocket client connected at 2025-06-25T10:41:08.000Z
+Sent connection confirmation message to client
+New database client connected
+New database client connected
+10:41:21 AM [express] GET /api/notifications 304 in 202ms :: [{"id":883,"userId":419,"title":"Daily R…
+New database client connected
+Found 0 unread messages for user 419
+10:41:21 AM [express] GET /api/messages/unread/count 304 in 203ms :: {"unreadCount":0}
+10:41:22 AM [express] GET /api/notifications/unread 304 in 152ms :: {"unreadCount":0}
+New database client connected
+New database client connected
+New database client connected
+WebSocket client connected at 2025-06-25T10:41:43.948Z
+Sent connection confirmation message to client
+New database client connected
+New database client connected
+10:41:53 AM [express] GET /api/notifications/unread 304 in 146ms :: {"unreadCount":0}
+New database client connected
+New database client connected
+New database client connected
+New database client connected
+WebSocket client connected at 2025-06-25T10:42:19.700Z
+Sent connection confirmation message to client
+New database client connected
+Found 0 unread messages for user 419
+10:42:21 AM [express] GET /api/messages/unread/count 304 in 150ms :: {"unreadCount":0}
+10:42:21 AM [express] GET /api/notifications 304 in 147ms :: [{"id":883,"userId":419,"title":"Daily R…
+10:42:23 AM [express] GET /api/notifications/unread 304 in 150ms :: {"unreadCount":0}
+New database client connected
+New database client connected
+New database client connected
+10:42:42 AM [vite] hmr update /src/components/post-card.tsx, /src/index.css?v=RgZKb--L1-ChGkJhmNBmq
+New database client connected
+New database client connected
+10:42:54 AM [express] GET /api/notifications/unread 304 in 145ms :: {"unreadCount":0}
+WebSocket client connected at 2025-06-25T10:42:55.471Z
+Sent connection confirmation message to client
+New database client connected
+New database client connected
+New database client connected
+New database client connected
