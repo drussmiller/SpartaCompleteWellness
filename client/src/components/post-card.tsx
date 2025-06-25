@@ -93,19 +93,31 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   // Add immediate logging before ANY processing
   console.log(`🚀 ENTRY - PostCard ${post?.id || 'UNKNOWN'} function entry`);
   
+  // Check for post data integrity first
+  if (!post) {
+    console.error(`🚨 PostCard: No post data provided`);
+    return (
+      <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2 border-red-500 border-2">
+        <div className="p-4 text-red-600">
+          <h3>Error: No post data provided</h3>
+        </div>
+      </div>
+    );
+  }
+  if (!post.id) {
+    console.error(`🚨 PostCard: Post missing ID:`, post);
+    return (
+      <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2 border-red-500 border-2">
+        <div className="p-4 text-red-600">
+          <h3>Error: Post missing ID</h3>
+        </div>
+      </div>
+    );
+  }
+  
+  console.log(`🚀 BASIC - PostCard ${post.id} component start`);
+  
   try {
-    console.log(`🚀 BASIC - PostCard ${post.id} component start`);
-    
-    // Check for post data integrity
-    if (!post) {
-      console.error(`🚨 PostCard: No post data provided`);
-      throw new Error('No post data provided');
-    }
-    if (!post.id) {
-      console.error(`🚨 PostCard: Post missing ID:`, post);
-      throw new Error('Post missing ID');
-    }
-    
     console.log(`🚀 HOOKS - About to initialize hooks for PostCard ${post.id}`);
     
     const { user: currentUser } = useAuth();
