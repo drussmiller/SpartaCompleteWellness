@@ -201,6 +201,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Starting imageUrl calculation`);
+    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Post type:`, post.type);
+    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo);
+    
     if (!post.mediaUrl) {
       console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: No mediaUrl found`);
       return null;
@@ -211,6 +214,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     
     // Test if the URL is accessible
     if (result) {
+      console.log(`🔍 URL TEST - PostCard ${post.id}: Testing URL accessibility:`, result);
       fetch(result, { method: 'HEAD' })
         .then(response => {
           console.log(`🔍 URL CHECK - PostCard ${post.id}: Status ${response.status} for ${result}`);
@@ -221,7 +225,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }
     
     return result;
-  }, [post.mediaUrl, post.id]);
+  }, [post.mediaUrl, post.id, shouldShowAsVideo]);
 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) {
@@ -308,6 +312,14 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       {post.mediaUrl && (
         <div className="relative mt-2 w-screen -mx-4">
+          {(() => {
+            console.log(`📺 MEDIA SECTION - PostCard ${post.id}: About to render media`);
+            console.log(`📺 MEDIA SECTION - PostCard ${post.id}: mediaUrl:`, post.mediaUrl);
+            console.log(`📺 MEDIA SECTION - PostCard ${post.id}: imageUrl:`, imageUrl);
+            console.log(`📺 MEDIA SECTION - PostCard ${post.id}: thumbnailUrl:`, thumbnailUrl);
+            console.log(`📺 MEDIA SECTION - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo);
+            return null;
+          })()}
           <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
               <div className="w-full video-container" data-post-id={post.id}>
@@ -390,33 +402,45 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 )}
               </div>
             ) : (
-              imageUrl && (
-                <img
-                  src={imageUrl}
-                  alt="Post content"
-                  className="w-full h-full object-contain cursor-pointer"
-                  onLoad={(e) => {
-                    console.log('✅ IMAGE LOADED successfully for post', post.id);
-                    console.log('✅ Loaded URL:', imageUrl);
-                    console.log('✅ Actual src:', e.currentTarget.src);
-                  }}
-                  onError={(e) => {
-                    console.error('❌ IMAGE FAILED to load for post', post.id);
-                    console.error('❌ Failed URL:', imageUrl);
-                    console.error('❌ Error details:', e.currentTarget.src);
-                    console.error('❌ Image element:', e.currentTarget);
-                    
-                    // Try to get more details about the error
-                    fetch(imageUrl, { method: 'HEAD' })
-                      .then(response => {
-                        console.error(`❌ HEAD response for failed image: ${response.status} ${response.statusText}`);
-                      })
-                      .catch(fetchError => {
-                        console.error('❌ HEAD request also failed:', fetchError);
-                      });
-                  }}
-                />
-              )
+              (() => {
+                console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: About to render non-video image`);
+                console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: imageUrl exists:`, !!imageUrl);
+                console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: imageUrl value:`, imageUrl);
+                
+                if (!imageUrl) {
+                  console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: No imageUrl, not rendering image`);
+                  return <div className="w-full h-40 bg-gray-200 flex items-center justify-center">No image URL</div>;
+                }
+                
+                console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: Rendering img element with src:`, imageUrl);
+                return (
+                  <img
+                    src={imageUrl}
+                    alt="Post content"
+                    className="w-full h-full object-contain cursor-pointer"
+                    onLoad={(e) => {
+                      console.log('✅ IMAGE LOADED successfully for post', post.id);
+                      console.log('✅ Loaded URL:', imageUrl);
+                      console.log('✅ Actual src:', e.currentTarget.src);
+                    }}
+                    onError={(e) => {
+                      console.error('❌ IMAGE FAILED to load for post', post.id);
+                      console.error('❌ Failed URL:', imageUrl);
+                      console.error('❌ Error details:', e.currentTarget.src);
+                      console.error('❌ Image element:', e.currentTarget);
+                      
+                      // Try to get more details about the error
+                      fetch(imageUrl, { method: 'HEAD' })
+                        .then(response => {
+                          console.error(`❌ HEAD response for failed image: ${response.status} ${response.statusText}`);
+                        })
+                        .catch(fetchError => {
+                          console.error('❌ HEAD request also failed:', fetchError);
+                        });
+                    }}
+                  />
+                );
+              })()
             )}
           </div>
         </div>
