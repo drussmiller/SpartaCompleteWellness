@@ -203,14 +203,23 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Starting imageUrl calculation`);
     if (!post.mediaUrl) {
       console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: No mediaUrl found`);
-      window.console.log(`🎯 FORCED - PostCard ${post.id}: No mediaUrl found`);
       return null;
     }
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
-    window.console.log(`🎯 FORCED - PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
     const result = createMediaUrl(post.mediaUrl);
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Generated imageUrl:`, result);
-    window.console.log(`🎯 FORCED - PostCard ${post.id}: Generated imageUrl:`, result);
+    
+    // Test if the URL is accessible
+    if (result) {
+      fetch(result, { method: 'HEAD' })
+        .then(response => {
+          console.log(`🔍 URL CHECK - PostCard ${post.id}: Status ${response.status} for ${result}`);
+        })
+        .catch(error => {
+          console.error(`🔍 URL CHECK - PostCard ${post.id}: Failed to fetch ${result}:`, error);
+        });
+    }
+    
     return result;
   }, [post.mediaUrl, post.id]);
 
@@ -389,11 +398,22 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   onLoad={() => {
                     console.log('✅ IMAGE LOADED successfully for post', post.id);
                     console.log('✅ Loaded URL:', imageUrl);
+                    console.log('✅ Actual src:', e.currentTarget.src);
                   }}
                   onError={(e) => {
-                    console.log('❌ IMAGE FAILED to load for post', post.id);
-                    console.log('❌ Failed URL:', imageUrl);
-                    console.log('❌ Error details:', e.currentTarget.src);
+                    console.error('❌ IMAGE FAILED to load for post', post.id);
+                    console.error('❌ Failed URL:', imageUrl);
+                    console.error('❌ Error details:', e.currentTarget.src);
+                    console.error('❌ Image element:', e.currentTarget);
+                    
+                    // Try to get more details about the error
+                    fetch(imageUrl, { method: 'HEAD' })
+                      .then(response => {
+                        console.error(`❌ HEAD response for failed image: ${response.status} ${response.statusText}`);
+                      })
+                      .catch(fetchError => {
+                        console.error('❌ HEAD request also failed:', fetchError);
+                      });
                   }}
                 />
               )
