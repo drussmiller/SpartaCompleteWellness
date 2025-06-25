@@ -105,13 +105,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     hasContent: !!post.content
   });
   
-  // Log every render
-  console.log(`🔄 PostCard ${post.id} RENDERING NOW`);
-  
-  // Force logging to appear
-  if (typeof window !== 'undefined') {
-    window.console.log(`🔄 FORCED LOG - PostCard ${post.id} rendering`);
-  }
+  // Debug media rendering preparation
+  console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to prepare media rendering`);
+  console.log(`📺 MEDIA RENDER - PostCard ${post.id}: mediaUrl exists:`, !!post.mediaUrl);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -303,15 +299,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       {post.mediaUrl && (
         <div className="relative mt-2 w-screen -mx-4">
-          {(() => {
-            console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to render media`);
-            window.console.log(`📺 FORCED - PostCard ${post.id}: About to render media`);
-            console.log(`📺 MEDIA RENDER - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo);
-            console.log(`📺 MEDIA RENDER - PostCard ${post.id}: imageUrl:`, imageUrl);
-            window.console.log(`📺 FORCED - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo, 'imageUrl:', imageUrl);
-            return null;
-          })()}
-          <div className="w-full bg-gray-50">
+          <div className="w-full bg-gray-50"></div>
             {shouldShowAsVideo ? (
               <div className="w-full video-container" data-post-id={post.id}>
                 {/* Show thumbnail with play button overlay instead of video player */}
@@ -369,10 +357,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         </svg>
                       </div>
                     </div>
-                    {/* Debug info overlay */}
-                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs p-1 rounded">
-                      Post {post.id} - Thumbnail: {thumbnailUrl ? 'YES' : 'NO'}
-                    </div>
+                    
                   </div>
                 ) : (
                   // Fallback when no thumbnail is available
@@ -397,25 +382,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               imageUrl && (
-                <div>
-                  <div style={{ fontSize: '10px', color: 'red', marginBottom: '5px' }}>
-                    DEBUG: Post {post.id} - Attempting to load: {imageUrl}
-                  </div>
-                  <img
-                    src={imageUrl}
-                    alt="Post content"
-                    className="w-full h-full object-contain cursor-pointer"
-                    onLoad={() => {
-                      console.log('✅ IMAGE LOADED successfully for post', post.id);
-                      console.log('✅ Loaded URL:', imageUrl);
-                    }}
-                    onError={(e) => {
-                      console.log('❌ IMAGE FAILED to load for post', post.id);
-                      console.log('❌ Failed URL:', imageUrl);
-                      console.log('❌ Error details:', e.currentTarget.src);
-                    }}
-                  />
-                </div>
+                <img
+                  src={imageUrl}
+                  alt="Post content"
+                  className="w-full h-full object-contain cursor-pointer"
+                  onLoad={() => {
+                    console.log('✅ IMAGE LOADED successfully for post', post.id);
+                    console.log('✅ Loaded URL:', imageUrl);
+                  }}
+                  onError={(e) => {
+                    console.log('❌ IMAGE FAILED to load for post', post.id);
+                    console.log('❌ Failed URL:', imageUrl);
+                    console.log('❌ Error details:', e.currentTarget.src);
+                  }}
+                />
               )
             )}
           </div>
