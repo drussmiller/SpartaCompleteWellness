@@ -395,7 +395,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   src={imageUrl}
                   alt="Post content"
                   className="w-full h-full object-contain cursor-pointer"
-                  onLoad={() => {
+                  onLoad={(e) => {
                     console.log('✅ IMAGE LOADED successfully for post', post.id);
                     console.log('✅ Loaded URL:', imageUrl);
                     console.log('✅ Actual src:', e.currentTarget.src);
