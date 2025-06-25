@@ -90,24 +90,29 @@ function convertUrlsToLinks(text: string): string {
 }
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
-  const { user: currentUser } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [triggerReload, setTriggerReload] = useState(0);
+  try {
+    console.log(`🚀 BASIC - PostCard ${post.id} component start`);
+    
+    const { user: currentUser } = useAuth();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [triggerReload, setTriggerReload] = useState(0);
 
-  // Debug post data
-  console.log(`🖼️ PostCard ${post.id} render:`, {
-    type: post.type,
-    mediaUrl: post.mediaUrl,
-    is_video: post.is_video,
-    hasContent: !!post.content
-  });
-  
-  // Debug media rendering preparation
-  console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to prepare media rendering`);
-  console.log(`📺 MEDIA RENDER - PostCard ${post.id}: mediaUrl exists:`, !!post.mediaUrl);
+    console.log(`🚀 BASIC - PostCard ${post.id} hooks initialized`);
+
+    // Debug post data
+    console.log(`🖼️ PostCard ${post.id} render:`, {
+      type: post.type,
+      mediaUrl: post.mediaUrl,
+      is_video: post.is_video,
+      hasContent: !!post.content
+    });
+    
+    // Debug media rendering preparation
+    console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to prepare media rendering`);
+    console.log(`📺 MEDIA RENDER - PostCard ${post.id}: mediaUrl exists:`, !!post.mediaUrl);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -479,4 +484,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       />
     </div>
   );
+  } catch (error) {
+    console.error(`🚨 CRITICAL ERROR in PostCard ${post.id}:`, error);
+    console.error(`🚨 Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+    return (
+      <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2 border-red-500 border-2">
+        <div className="p-4 text-red-600">
+          <h3>Error rendering post {post.id}</h3>
+          <p className="text-sm">{error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    );
+  }
 });
