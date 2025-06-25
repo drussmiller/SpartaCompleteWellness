@@ -1,3 +1,7 @@
+// Add immediate module-level logging to debug loading issues
+console.log('🔥 POSTCARD MODULE - Starting module load/import');
+window.console.log('🔥 FORCED MODULE - PostCard module is loading');
+
 import React, { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -27,6 +31,9 @@ import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
+
+console.log('🔥 POSTCARD MODULE - All imports completed successfully');
+window.console.log('🔥 FORCED MODULE - PostCard imports completed');
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -92,7 +99,7 @@ function convertUrlsToLinks(text: string): string {
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
   // Add immediate logging before ANY processing
   console.log(`🚀 ENTRY - PostCard ${post?.id || 'UNKNOWN'} function entry`);
-  
+
   // Check for post data integrity first
   if (!post) {
     console.error(`🚨 PostCard: No post data provided`);
@@ -114,21 +121,21 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       </div>
     );
   }
-  
+
   console.log(`🚀 BASIC - PostCard ${post.id} component start`);
-  
+
   try {
     console.log(`🚀 HOOKS - About to initialize hooks for PostCard ${post.id}`);
-    
+
     const { user: currentUser } = useAuth();
     console.log(`🚀 HOOKS - useAuth completed for PostCard ${post.id}`);
-    
+
     const { toast } = useToast();
     console.log(`🚀 HOOKS - useToast completed for PostCard ${post.id}`);
-    
+
     const queryClient = useQueryClient();
     console.log(`🚀 HOOKS - useQueryClient completed for PostCard ${post.id}`);
-    
+
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [triggerReload, setTriggerReload] = useState(0);
@@ -142,7 +149,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       is_video: post.is_video,
       hasContent: !!post.content
     });
-    
+
     // Debug media rendering preparation
     console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to prepare media rendering`);
     console.log(`📺 MEDIA RENDER - PostCard ${post.id}: mediaUrl exists:`, !!post.mediaUrl);
@@ -241,7 +248,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Starting imageUrl calculation`);
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Post type:`, post.type);
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo);
-    
+
     if (!post.mediaUrl) {
       console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: No mediaUrl found`);
       return null;
@@ -249,7 +256,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
     const result = createMediaUrl(post.mediaUrl);
     console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Generated imageUrl:`, result);
-    
+
     // Test if the URL is accessible
     if (result) {
       console.log(`🔍 URL TEST - PostCard ${post.id}: Testing URL accessibility:`, result);
@@ -261,7 +268,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           console.error(`🔍 URL CHECK - PostCard ${post.id}: Failed to fetch ${result}:`, error);
         });
     }
-    
+
     return result;
   }, [post.mediaUrl, post.id, shouldShowAsVideo]);
 
@@ -416,7 +423,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         </svg>
                       </div>
                     </div>
-                    
+
                   </div>
                 ) : (
                   // Fallback when no thumbnail is available
@@ -444,12 +451,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: About to render non-video image`);
                 console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: imageUrl exists:`, !!imageUrl);
                 console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: imageUrl value:`, imageUrl);
-                
+
                 if (!imageUrl) {
                   console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: No imageUrl, not rendering image`);
                   return <div className="w-full h-40 bg-gray-200 flex items-center justify-center">No image URL</div>;
                 }
-                
+
                 console.log(`🖼️ IMAGE RENDER - PostCard ${post.id}: Rendering img element with src:`, imageUrl);
                 return (
                   <img
@@ -466,7 +473,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       console.error('❌ Failed URL:', imageUrl);
                       console.error('❌ Error details:', e.currentTarget.src);
                       console.error('❌ Image element:', e.currentTarget);
-                      
+
                       // Try to get more details about the error
                       fetch(imageUrl, { method: 'HEAD' })
                         .then(response => {
