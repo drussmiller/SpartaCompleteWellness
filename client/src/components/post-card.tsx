@@ -1,7 +1,3 @@
-// Add immediate module-level logging to debug loading issues
-console.log('🔥 POSTCARD MODULE - Starting module load/import');
-window.console.log('🔥 FORCED MODULE - PostCard module is loading');
-
 import React, { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,9 +27,6 @@ import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
-
-console.log('🔥 POSTCARD MODULE - All imports completed successfully');
-window.console.log('🔥 FORCED MODULE - PostCard imports completed');
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -97,12 +90,9 @@ function convertUrlsToLinks(text: string): string {
 }
 
 export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
-  // Add immediate logging before ANY processing
-  console.log(`🚀 ENTRY - PostCard ${post?.id || 'UNKNOWN'} function entry`);
-
   // Check for post data integrity first
   if (!post) {
-    console.error(`🚨 PostCard: No post data provided`);
+    console.error("PostCard: No post data provided");
     return (
       <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2 border-red-500 border-2">
         <div className="p-4 text-red-600">
@@ -112,7 +102,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     );
   }
   if (!post.id) {
-    console.error(`🚨 PostCard: Post missing ID:`, post);
+    console.error("PostCard: Post missing ID:", post);
     return (
       <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2 border-red-500 border-2">
         <div className="p-4 text-red-600">
@@ -122,37 +112,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     );
   }
 
-  console.log(`🚀 BASIC - PostCard ${post.id} component start`);
+  // Initialize hooks (must be at top level, not in try block)
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [triggerReload, setTriggerReload] = useState(0);
 
   try {
-    console.log(`🚀 HOOKS - About to initialize hooks for PostCard ${post.id}`);
-
-    const { user: currentUser } = useAuth();
-    console.log(`🚀 HOOKS - useAuth completed for PostCard ${post.id}`);
-
-    const { toast } = useToast();
-    console.log(`🚀 HOOKS - useToast completed for PostCard ${post.id}`);
-
-    const queryClient = useQueryClient();
-    console.log(`🚀 HOOKS - useQueryClient completed for PostCard ${post.id}`);
-
-    const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [triggerReload, setTriggerReload] = useState(0);
-
-    console.log(`🚀 BASIC - PostCard ${post.id} hooks initialized`);
-
-    // Debug post data
-    console.log(`🖼️ PostCard ${post.id} render:`, {
-      type: post.type,
-      mediaUrl: post.mediaUrl,
-      is_video: post.is_video,
-      hasContent: !!post.content
-    });
-
-    // Debug media rendering preparation
-    console.log(`📺 MEDIA RENDER - PostCard ${post.id}: About to prepare media rendering`);
-    console.log(`📺 MEDIA RENDER - PostCard ${post.id}: mediaUrl exists:`, !!post.mediaUrl);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -235,58 +203,24 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   //   }
   // }, [post.id, post.type, post.mediaUrl, post.is_video]);
 
-  // Handle video thumbnails with clean media utilities
-  const getThumbnailUrl = (imageUrl: string) => {
-    console.log('getThumbnailUrl called with:', imageUrl);
-    const result = createThumbnailUrl(imageUrl);
-    console.log('Thumbnail URL result:', result);
-    return result;
-  };
-
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
-    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Starting imageUrl calculation`);
-    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Post type:`, post.type);
-    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: shouldShowAsVideo:`, shouldShowAsVideo);
-
     if (!post.mediaUrl) {
-      console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: No mediaUrl found`);
       return null;
     }
-    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Processing mediaUrl:`, post.mediaUrl);
-    const result = createMediaUrl(post.mediaUrl);
-    console.log(`🎯 IMAGEURL MEMO - PostCard ${post.id}: Generated imageUrl:`, result);
-
-    // Test if the URL is accessible
-    if (result) {
-      console.log(`🔍 URL TEST - PostCard ${post.id}: Testing URL accessibility:`, result);
-      fetch(result, { method: 'HEAD' })
-        .then(response => {
-          console.log(`🔍 URL CHECK - PostCard ${post.id}: Status ${response.status} for ${result}`);
-        })
-        .catch(error => {
-          console.error(`🔍 URL CHECK - PostCard ${post.id}: Failed to fetch ${result}:`, error);
-        });
-    }
-
-    return result;
-  }, [post.mediaUrl, post.id, shouldShowAsVideo]);
+    return createMediaUrl(post.mediaUrl);
+  }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
     if (!post.mediaUrl) {
-      console.log('PostCard - No mediaUrl for post', post.id);
       return null;
     }
 
     // For video posts, the thumbnail is already generated with .jpg extension
-    // Just use the media URL directly but change extension to .jpg
     if (shouldShowAsVideo && post.mediaUrl.toLowerCase().endsWith('.mov')) {
       const baseFilename = post.mediaUrl.replace(/\.mov$/i, '');
       const thumbnailMediaUrl = `${baseFilename}.jpg`;
-      console.log('PostCard - Using existing thumbnail for post', post.id, ':', thumbnailMediaUrl);
-      const result = createMediaUrl(thumbnailMediaUrl);
-      console.log('PostCard - Final thumbnail URL for post', post.id, ':', result);
-      return result;
+      return createMediaUrl(thumbnailMediaUrl);
     }
 
     // For non-video content, use the original media URL
@@ -403,8 +337,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                       onClick={() => {
                         // Navigate to video player page when thumbnail is clicked
                         const videoUrl = imageUrl;
-                        console.log('Thumbnail clicked, navigating to video player with URL:', videoUrl);
-                        window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                        if (videoUrl) {
+                          console.log('Thumbnail clicked, navigating to video player with URL:', videoUrl);
+                          window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                        }
                       }}
                     />
                     {/* Play button overlay - positioned at bottom left */}
@@ -414,8 +350,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                         onClick={(e) => {
                           e.stopPropagation();
                           const videoUrl = imageUrl;
-                          console.log('Play button clicked, navigating to video player with URL:', videoUrl);
-                          window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                          if (videoUrl) {
+                            window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                          }
                         }}
                       >
                         <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
@@ -432,8 +369,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     onClick={(e) => {
                       e.stopPropagation();
                       const videoUrl = imageUrl;
-                      console.log('Fallback play button clicked, navigating to video player with URL:', videoUrl);
-                      window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                      if (videoUrl) {
+                        window.location.href = `/video-player?src=${encodeURIComponent(videoUrl)}`;
+                      }
                     }}
                   >
                     <div className="w-12 h-12 bg-black bg-opacity-70 rounded-full flex items-center justify-center">
