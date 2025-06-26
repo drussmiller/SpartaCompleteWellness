@@ -209,10 +209,15 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
 
   // Memoize media URLs to prevent re-computation on every render
   const imageUrl = useMemo(() => {
+    console.log('🔧 IMAGE URL MEMO - Starting for post:', post.id, 'MediaUrl:', post.mediaUrl);
     if (!post.mediaUrl) {
+      console.log('🔧 IMAGE URL MEMO - No mediaUrl, returning null for post:', post.id);
       return null;
     }
-    return createMediaUrl(post.mediaUrl);
+    console.log('🔧 IMAGE URL MEMO - Calling createMediaUrl for post:', post.id);
+    const url = createMediaUrl(post.mediaUrl);
+    console.log('🔗 IMAGE URL CREATED - Post:', post.id, 'MediaUrl:', post.mediaUrl, 'Generated URL:', url);
+    return url;
   }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
@@ -373,10 +378,10 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
                   alt="Post content"
                   className="w-full h-full object-contain cursor-pointer"
                   onLoad={() => {
-                    // Image loaded successfully
+                    console.log('✅ IMAGE LOADED - Post:', post.id, 'URL:', imageUrl);
                   }}
                   onError={() => {
-                    console.error('Failed to load image for post', post.id);
+                    console.error('❌ IMAGE LOAD FAILED - Post:', post.id, 'URL:', imageUrl, 'MediaUrl:', post.mediaUrl);
                   }}
                 />
               ) : (
