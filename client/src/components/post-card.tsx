@@ -89,7 +89,11 @@ function convertUrlsToLinks(text: string): string {
   });
 }
 
-export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
+export function PostCard({ post }: { post: Post & { author: User } }) {
+  console.log("🔄 PostCard ENTRY - Component function called for post:", post?.id);
+  console.log("📱 PostCard MEDIA DEBUG - Post mediaUrl:", post?.mediaUrl);
+  console.log("📱 PostCard MEDIA DEBUG - Post type:", post?.type);
+  
   // Check for post data integrity first
   if (!post) {
     console.error("PostCard: No post data provided");
@@ -112,6 +116,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     );
   }
 
+  console.log("🔄 PostCard HOOKS - About to initialize hooks for post:", post.id);
+
   // Initialize hooks (must be at top level, not in try block)
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -119,8 +125,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
-
-  try {
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -418,15 +422,4 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       />
     </div>
   );
-  } catch (error) {
-    console.error('Error rendering PostCard:', error);
-    return (
-      <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2 border-red-500 border-2">
-        <div className="p-4 text-red-600">
-          <h3>Error rendering post {post.id}</h3>
-          <p className="text-sm">{error instanceof Error ? error.message : 'Unknown error'}</p>
-        </div>
-      </div>
-    );
-  }
-});
+}
