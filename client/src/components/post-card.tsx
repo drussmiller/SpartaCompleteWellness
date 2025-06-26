@@ -116,8 +116,6 @@ export function PostCard({ post }: { post: Post & { author: User } }) {
     );
   }
 
-  console.log("🔄 PostCard HOOKS - About to initialize hooks for post:", post.id);
-
   // Initialize hooks (must be at top level, not in try block)
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
