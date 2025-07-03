@@ -144,6 +144,7 @@ The application follows a monorepo structure with clear separation between clien
 Changelog:
 - July 03, 2025. Initial setup
 - July 03, 2025. Fixed broken image display issue - Object Storage was returning image data in array format that wasn't being handled correctly. Enhanced serve-file endpoint to properly extract Buffer data, added CORS headers, and implemented cache-busting for browser compatibility.
+- July 03, 2025. Fixed memory verse video thumbnail rendering in development environment - Added missing `ne` function import for API filtering, updated video display conditions to include memory verse posts alongside is_video flag, resolved React Query caching issues that prevented posts from appearing in dev environment while working correctly in deployment.
 ```
 
 ## User Preferences
