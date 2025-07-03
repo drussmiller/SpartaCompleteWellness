@@ -8,7 +8,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
+import { createMediaUrl } from "@/lib/media-utils";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -50,7 +50,7 @@ export function PostView({ post }: PostViewProps) {
           {post.mediaUrl && post.is_video && (
             <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
               <VideoPlayer
-                src={createDirectDownloadUrl(post.mediaUrl)}
+                src={createMediaUrl(post.mediaUrl)}
                 poster={getThumbnailUrl(post.mediaUrl, 'medium')}
                 className="w-full video-player-container rounded-md"
                 preload="metadata"

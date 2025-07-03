@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { createDirectDownloadUrl } from "@/lib/object-storage-utils";
+import { createMediaUrl } from "@/lib/media-utils";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import {
   AlertDialog,
@@ -407,7 +407,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 {comment.mediaUrl && comment.is_video && (
                   <div className="mt-2">
                     <VideoPlayer
-                      src={createDirectDownloadUrl(comment.mediaUrl)}
+                      src={createMediaUrl(comment.mediaUrl)}
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                     />

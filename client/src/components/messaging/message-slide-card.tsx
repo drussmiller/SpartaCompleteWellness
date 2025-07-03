@@ -378,7 +378,7 @@ export function MessageSlideCard() {
     createMessageMutation.mutate();
   };
 
-  // Close messaging overlay when clicking outside
+  // Close messaging overlay when clicking outside and prevent body scroll
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
@@ -388,8 +388,17 @@ export function MessageSlideCard() {
     }
 
     if (isOpen) {
+      // Prevent body scrolling when message overlay is open
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
       document.addEventListener('mousedown', handleClickOutside);
+      
       return () => {
+        // Restore body scrolling when overlay is closed
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
@@ -417,12 +426,14 @@ export function MessageSlideCard() {
       <div
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000]`}
+        } pt-12 z-[100000] overflow-hidden`}
         style={{ 
           height: '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
-          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))'
+          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
+          touchAction: 'pan-y',
+          overscrollBehavior: 'contain'
         }}
       >
         <Card className="h-full w-full rounded-none bg-white border-none shadow-none">
@@ -450,7 +461,13 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea className="h-[calc(100vh-5rem)] bg-white">
+            <ScrollArea 
+              className="h-[calc(100vh-5rem)] bg-white"
+              style={{ 
+                touchAction: 'pan-y',
+                overscrollBehavior: 'contain'
+              }}
+            >
               <div className="space-y-2 p-4 pb-16 bg-white">
                 {teamError ? (
                   <div className="text-center text-gray-500 py-8 bg-white">
@@ -490,7 +507,14 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col h-[calc(100vh-5rem)] bg-white">
               {/* Messages List */}
-              <ScrollArea className="flex-1 bg-white" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+              <ScrollArea 
+                className="flex-1 bg-white" 
+                style={{ 
+                  paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))',
+                  touchAction: 'pan-y',
+                  overscrollBehavior: 'contain'
+                }}
+              >
                 <div className="space-y-4 mt-16 p-4 bg-white min-h-full">
                   {messages.map((message) => (
                     <div
