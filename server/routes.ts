@@ -4782,6 +4782,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+      res.setHeader('Content-Length', fileBuffer.length);
       
       logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
       return res.send(fileBuffer);

@@ -1,0 +1,151 @@
+# Team Fitness Tracker - Replit Architecture Guide
+
+## Overview
+
+This is a full-stack fitness tracking application built with modern web technologies. The application allows users to create posts, share media (images and videos), track fitness activities, send messages, and manage team-based fitness goals. The system is designed to run on Replit with cloud-based file storage and PostgreSQL database.
+
+## System Architecture
+
+The application follows a monorepo structure with clear separation between client, server, and shared components:
+
+### Frontend Architecture
+- **Framework**: React with TypeScript
+- **Build Tool**: Vite for fast development and optimized builds
+- **UI Components**: Radix UI primitives with custom styling
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React Query (@tanstack/react-query) for server state
+- **Routing**: Client-side routing for SPA functionality
+
+### Backend Architecture
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js for HTTP server
+- **Authentication**: Passport.js with local strategy and session-based auth
+- **Database ORM**: Drizzle ORM for type-safe database operations
+- **Real-time**: WebSocket support for live notifications and updates
+- **File Processing**: Sharp for image manipulation, custom video thumbnail extraction
+
+### Database Design
+- **Primary Database**: PostgreSQL (Neon serverless)
+- **ORM**: Drizzle with migrations support
+- **Schema Location**: `shared/schema.ts` for type sharing between client/server
+- **Connection Pooling**: Neon serverless with connection management
+
+## Key Components
+
+### Authentication System
+- Session-based authentication using Passport.js
+- Password hashing with scrypt and salt
+- User session management with express-session
+- Protected routes and middleware for authentication
+
+### File Storage System
+- **Primary Storage**: Replit Object Storage for media files
+- **File Types**: Images (JPEG, PNG) and videos (MOV, MP4)
+- **Thumbnail Generation**: Automatic thumbnail creation for images and videos
+- **Path Strategy**: Uses `shared/uploads/` prefix for cross-environment compatibility
+- **Fallback**: Local file system as backup (disabled to save space)
+
+### Media Processing
+- **Image Processing**: Sharp library for resizing and thumbnail generation
+- **Video Processing**: Custom MOV frame extractor for video thumbnails
+- **File Validation**: MIME type checking and file extension validation
+- **Error Handling**: SVG placeholder generation for failed thumbnail extraction
+
+### Real-time Features
+- WebSocket integration for live notifications
+- Connection status monitoring
+- Automatic reconnection with exponential backoff
+- User presence and activity tracking
+
+### Post Management
+- Create posts with text, images, or videos
+- Post types: general, memory_verse, workout tracking
+- Media upload with automatic thumbnail generation
+- Reaction system (likes, comments)
+- Post deletion with cascade file cleanup
+
+### Messaging System
+- Private messaging between users
+- File attachment support in messages
+- Image paste functionality with proper MIME type handling
+- Message history and pagination
+
+## Data Flow
+
+### File Upload Process
+1. Client uploads file via multipart form data
+2. Server validates file type and size
+3. File stored in Replit Object Storage with unique filename
+4. Thumbnail generated (for images/videos) and stored separately
+5. Database record created with file reference
+6. Response sent to client with file URL
+
+### Authentication Flow
+1. User submits credentials via login form
+2. Passport.js validates against database
+3. Session created and stored
+4. Subsequent requests authenticated via session middleware
+5. Protected routes check authentication status
+
+### Post Creation Flow
+1. Client submits post data (text + optional media)
+2. Media files processed and stored in Object Storage
+3. Database transaction creates post record
+4. Thumbnails generated for media files
+5. WebSocket notification sent to relevant users
+6. Client receives confirmation and updates UI
+
+## External Dependencies
+
+### Core Dependencies
+- **@neondatabase/serverless**: PostgreSQL database connection
+- **@replit/object-storage**: Cloud file storage
+- **drizzle-orm**: Database ORM and migrations
+- **passport**: Authentication framework
+- **sharp**: Image processing library
+- **@tanstack/react-query**: Client-side data fetching
+
+### UI Dependencies
+- **@radix-ui/***: Accessible UI component primitives
+- **tailwindcss**: Utility-first CSS framework
+- **@tiptap/***: Rich text editor components
+
+### Development Dependencies
+- **vite**: Build tool and development server
+- **typescript**: Type checking and compilation
+- **tsx**: TypeScript execution for server
+
+## Deployment Strategy
+
+### Production Build
+- Client built with Vite to `dist/public/`
+- Server compiled with esbuild to `dist/index.js`
+- Single Node.js process serves both static files and API
+
+### Environment Configuration
+- Environment variables for database connection
+- Replit-specific configurations for Object Storage
+- Session secrets and authentication keys
+- Development vs production mode handling
+
+### Database Management
+- Drizzle migrations for schema changes
+- Connection pooling for performance
+- Error handling and reconnection logic
+
+### File Storage
+- Object Storage as primary storage solution
+- Environment-agnostic file paths with `shared/` prefix
+- Automatic cleanup of orphaned files
+- Thumbnail generation and caching
+
+## Changelog
+```
+Changelog:
+- July 03, 2025. Initial setup
+```
+
+## User Preferences
+```
+Preferred communication style: Simple, everyday language.
+```

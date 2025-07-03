@@ -80,8 +80,9 @@ export function createMediaUrl(mediaUrl: string | null): string {
 
   console.log('Cleaned filename:', filename);
 
-  // Use the /api/serve-file route that works correctly
-  const result = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+  // Use the /api/serve-file route that works correctly with cache-buster
+  const cacheBuster = Date.now();
+  const result = `/api/serve-file?filename=${encodeURIComponent(filename)}&_cb=${cacheBuster}`;
   
   console.log('Created clean media URL:', result);
   return result;
