@@ -143,6 +143,7 @@ The application follows a monorepo structure with clear separation between clien
 ```
 Changelog:
 - July 03, 2025. Initial setup
+- July 03, 2025. Fixed broken image display issue - Object Storage was returning image data in array format that wasn't being handled correctly. Enhanced serve-file endpoint to properly extract Buffer data, added CORS headers, and implemented cache-busting for browser compatibility.
 ```
 
 ## User Preferences
