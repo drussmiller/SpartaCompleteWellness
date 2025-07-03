@@ -69,9 +69,13 @@ export default function HomePage() {
       
       console.log("Posts received from API:", data.length, "posts", data.map(p => p.id).join(", "));
       
-      // Check if post ID 491 is in the response
-      const hasTargetPost = data.some(post => post.id === 491);
-      console.log("Does response include post #491?", hasTargetPost);
+      // Check if post ID 689 (memory verse) is in the response
+      const hasMemoryVersePost = data.some(post => post.id === 689);
+      console.log("Does response include memory verse post #689?", hasMemoryVersePost);
+      
+      // Log memory verse posts specifically
+      const memoryVersePosts = data.filter(post => post.type === 'memory_verse');
+      console.log("Memory verse posts found:", memoryVersePosts.length, memoryVersePosts.map(p => `${p.id}:${p.type}`));
       
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
@@ -81,7 +85,8 @@ export default function HomePage() {
     },
     enabled: !!user,
     refetchOnWindowFocus: false, // Prevent refetch on window focus
-    staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
+    staleTime: 0, // Always consider data stale to force fresh fetches
+    cacheTime: 0, // Don't cache for debugging
   });
 
   // Import usePrayerRequests hook to mark prayer requests as viewed

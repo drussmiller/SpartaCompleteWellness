@@ -104,7 +104,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   // Check if this post should be displayed as a video
   const shouldShowAsVideo = useMemo(() => {
-    if (post.type === 'memory_verse') return true;
+    if (post.type === 'memory_verse') {
+      console.log(`Memory verse post ${post.id} - shouldShowAsVideo: true`);
+      return true;
+    }
 
     // For miscellaneous posts, check more aggressively for video markers
     if (post.type === 'miscellaneous' && post.mediaUrl) {
@@ -209,6 +212,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     
     // For video files, create thumbnail URL by replacing extension with .jpg
     if (post.mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+      console.log(`Processing video thumbnail for post ${post.id}, mediaUrl: ${post.mediaUrl}`);
       let filename = post.mediaUrl;
       
       // Extract filename from URL if needed
@@ -323,7 +327,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             {shouldShowAsVideo ? (
               <div className="relative w-full video-container" data-post-id={post.id}>
                 {/* Thumbnail overlay for videos */}
-        {post.is_video && (
+        {(post.is_video || post.type === 'memory_verse') && (console.log(`Rendering video thumbnail for post ${post.id}, is_video: ${post.is_video}, type: ${post.type}`), true) && (
           <div 
             className="relative cursor-pointer"
             onClick={handleThumbnailClick}
