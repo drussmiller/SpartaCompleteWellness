@@ -1,3 +1,4 @@
+
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
@@ -97,7 +98,7 @@ class Logger {
         };
       }
     }
-
+    
     const logEntry = {
       message,
       ...metadata,
@@ -135,18 +136,21 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'INFO',
     });
-
-    // Only show Object Storage related logs in console
+    
+    // Only log to console if explicitly enabled
     if (this.consoleOutputEnabled) {
-      const isObjectStorageRelated = 
-        (metadata.route && metadata.route.includes('/api/object-storage')) ||
+      const skipConsoleOutput = 
+        (metadata.route && (
+          metadata.route.includes('/api/posts/counts') || 
+          metadata.route.includes('/api/posts')
+        )) ||
         (message && (
-          message.includes('Object Storage') ||
-          message.includes('shared/uploads') ||
-          message.includes('direct-download')
+          message.includes('Post count') || 
+          message.includes('GET /api/posts/counts') ||
+          message.includes('Deserializing user')
         ));
-
-      if (isObjectStorageRelated) {
+        
+      if (!skipConsoleOutput) {
         console.log(entry);
       }
     }
@@ -164,7 +168,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'ERROR',
     }, error);
-
+    
     // Only critical errors to console
     if (this.consoleOutputEnabled) {
       console.error(entry);
@@ -185,7 +189,7 @@ class Logger {
         timestamp: new Date().toISOString(),
         level: 'DEBUG',
       });
-
+      
       // Debug logs only to file, not console
       this.logBuffer.push(entry);
       if (!this.bufferTimeout) {
@@ -200,7 +204,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level: 'WARN',
     });
-
+    
     if (this.consoleOutputEnabled) {
       console.warn(entry);
     }

@@ -525,9 +525,10 @@ export function MessageSlideCard() {
                             }}
                           />
                         )}
-
-                        {((message.imageUrl && message.imageUrl !== '/uploads/undefined' && message.imageUrl !== 'undefined') || 
-                          (message.mediaUrl && message.mediaUrl !== '/uploads/undefined' && message.mediaUrl !== 'undefined')) && (
+                        
+                        {(message.imageUrl || message.mediaUrl) && 
+                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                           message.is_video ? (
                             <VideoPlayer
                               src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
@@ -535,21 +536,16 @@ export function MessageSlideCard() {
                               onError={(error) => console.error("Error loading message video:", message.imageUrl || message.mediaUrl, error)}
                             />
                           ) : (
-                            <div className="relative mt-2">
-                              <img
-                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                                alt="Message image"
-                                className="max-w-full rounded transition-opacity duration-200"
-                                style={{ opacity: 1 }}
-                                onLoad={(e) => {
-                                  console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl);
-                                  e.currentTarget.style.opacity = '1';
-                                }}
-                                onError={(e) => {
-                                console.log("Message image failed to load:", message.imageUrl || message.mediaUrl);
+                            <img
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                              alt="Message image"
+                              className="max-w-full rounded mt-2"
+                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
+                              onError={(e) => {
+                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
+                                e.currentTarget.style.display = 'none';
                               }}
-                              />
-                            </div>
+                            />
                           )
                         )}
                       </div>

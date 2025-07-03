@@ -4,8 +4,6 @@
  * This module provides clean, simple media URL handling without recursive patterns.
  */
 
-import { createDirectDownloadUrl } from './object-storage-utils';
-
 /**
  * Extracts a clean filename from any URL or path
  */
@@ -17,10 +15,10 @@ function extractCleanFilename(input: string): string | null {
 
   // Remove any query parameters first
   const withoutQuery = input.split('?')[0];
-
+  
   // Split by slashes and find the last part that looks like a filename
   const parts = withoutQuery.split('/');
-
+  
   // Look for a part that has a file extension or looks like our filename pattern
   for (let i = parts.length - 1; i >= 0; i--) {
     const part = parts[i];
@@ -31,120 +29,105 @@ function extractCleanFilename(input: string): string | null {
       return part;
     }
   }
-
+  
   return null;
 }
 
 /**
- * Creates a simple, clean media URL with fallback priority
+ * Creates a simple, clean media URL
  */
-export function createMediaUrl(originalUrl: string | null): string {
-  if (!originalUrl) {
-    console.log('❌ createMediaUrl: No originalUrl provided');
-    return '';
+export function createMediaUrl(mediaUrl: string | null): string {
+  if (!mediaUrl) return '';
+
+  console.log('createMediaUrl called with:', mediaUrl);
+
+  // Handle base64 data URLs directly
+  if (mediaUrl.startsWith('data:')) {
+    console.log('Base64 data URL, returning as-is');
+    return mediaUrl;
   }
 
-  console.log('🔧 createMediaUrl called with:', originalUrl);
-
-  // Handle data URLs (base64 images)
-  if (originalUrl.startsWith('data:')) {
-    console.log('✅ Data URL detected, returning as-is');
-    return originalUrl;
+  // Handle full HTTP URLs directly
+  if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+    console.log('Full HTTP URL, returning as-is');
+    return mediaUrl;
   }
 
-  // Handle direct download URLs (new Object Storage format)
-  if (originalUrl.includes('/api/object-storage/direct-download')) {
-    console.log('✅ Object Storage direct download URL detected, returning as-is');
-    return originalUrl;
+  // If it's already a serve-file URL, return as-is
+  if (mediaUrl.startsWith('/api/serve-file')) {
+    console.log('Already a serve-file URL, returning as-is');
+    return mediaUrl;
   }
 
-  // Handle serve-file URLs (legacy format)
-  if (originalUrl.includes('/api/serve-file')) {
-    console.log('✅ Serve-file URL detected, returning as-is');
-    return originalUrl;
+  // If it's already a direct download URL, return as-is
+  if (mediaUrl.startsWith('/api/object-storage/direct-download')) {
+    console.log('Already a direct download URL, returning as-is');
+    return mediaUrl;
   }
 
-  // Handle full URLs (external)
-  if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
-    console.log('✅ Full URL detected, returning as-is');
-    return originalUrl;
+  // Extract just the filename from the end of the path
+  let filename = mediaUrl;
+  
+  // Remove leading slashes and path components
+  if (filename.includes('/')) {
+    filename = filename.split('/').pop() || filename;
+  }
+  
+  // Remove query parameters
+  if (filename.includes('?')) {
+    filename = filename.split('?')[0];
   }
 
-  // For storage keys or relative paths, create Object Storage URL
-  console.log('🔧 Creating Object Storage URL for:', originalUrl);
-  const result = createDirectDownloadUrl(originalUrl);
-  console.log('✅ createMediaUrl final result:', result);
+  console.log('Cleaned filename:', filename);
+
+  // Use the /api/serve-file route that works correctly
+  const result = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+  
+  console.log('Created clean media URL:', result);
   return result;
 }
 
 /**
  * Creates a thumbnail URL for a given media file
  */
-export function createThumbnailUrl(mediaUrl: string): string | null {
-  if (!mediaUrl) return null;
+export function createThumbnailUrl(mediaUrl: string | null): string {
+  if (!mediaUrl) return '';
 
   console.log('createThumbnailUrl called with:', mediaUrl);
 
-  // Check if this is already a thumbnail URL
-  if (mediaUrl.includes('direct-download') && (mediaUrl.includes('.jpeg') || mediaUrl.includes('.jpg'))) {
-    console.log('Already a thumbnail URL, returning as-is');
-    return mediaUrl;
+  // Handle base64 data URLs - no thumbnails available
+  if (mediaUrl.startsWith('data:')) {
+    return '';
   }
 
-  // If this is a serve-file URL, extract the filename
-  if (mediaUrl.includes('/api/serve-file') && mediaUrl.includes('filename=')) {
-    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
-    const filename = urlParams.get('filename');
-    if (filename) {
-      console.log('Extracted filename from serve-file URL:', filename);
-
-      // Create thumbnail filename - use .jpg extension (not .jpeg)
-      const baseFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '');
-
-      // Use .jpg extension for thumbnails (this is what our thumbnail generation creates)
-      const jpgThumbnail = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(`shared/uploads/${baseFilename}.jpg`)}`;
-      console.log('Created .jpg thumbnail URL:', jpgThumbnail);
-      return jpgThumbnail;
-    }
+  // Extract just the filename from the end of the path
+  let filename = mediaUrl;
+  
+  // Remove leading slashes and path components
+  if (filename.includes('/')) {
+    filename = filename.split('/').pop() || filename;
+  }
+  
+  // Remove query parameters
+  if (filename.includes('?')) {
+    filename = filename.split('?')[0];
   }
 
-  // Extract filename from various URL formats
-  let filename = '';
+  console.log('Creating thumbnail for filename:', filename);
 
-  if (mediaUrl.includes('/api/object-storage/direct-download')) {
-    // Extract from Object Storage URL
-    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
-    const storageKey = urlParams.get('storageKey');
-    if (storageKey) {
-      filename = storageKey.split('/').pop() || '';
-    }
-  } else {
-    // Extract from regular path
-    filename = mediaUrl.split('/').pop() || '';
-    filename = filename.split('?')[0]; // Remove query parameters
+  // For video files (.mov, .mp4, etc.), use simplified thumbnail naming
+  if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+    const baseName = filename.substring(0, filename.lastIndexOf('.'));
+    const thumbnailFilename = `${baseName}.jpg`;
+    const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
+    console.log('Created video thumbnail URL:', result);
+    return result;
   }
 
-  if (!filename) {
-    console.log('No filename found, returning null');
-    return null;
-  }
-
-  console.log('Extracted filename:', filename);
-
-  // Replace video extension with .jpg for thumbnail
-  const baseFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '');
-  const thumbnailFilename = `${baseFilename}.jpg`;
-  console.log('Generated thumbnail filename:', thumbnailFilename);
-
-  // Create Object Storage URL for thumbnail
-  const storageKey = `shared/uploads/${thumbnailFilename}`;
-  const result = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
-  console.log('📸 THUMBNAIL GENERATION DEBUG:');
-  console.log('📸 Original mediaUrl:', mediaUrl);
-  console.log('📸 Extracted filename:', filename);
-  console.log('📸 Base filename (no extension):', baseFilename);
-  console.log('📸 Thumbnail filename:', thumbnailFilename);
-  console.log('📸 Storage key:', storageKey);
-  console.log('📸 Final thumbnail URL:', result);
+  // For images, try thumbnail with .poster.jpg suffix
+  const fileBase = filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
+  const thumbnailFilename = `${fileBase}.poster.jpg`;
+  const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
+  console.log('Created image thumbnail URL:', result);
   return result;
 }

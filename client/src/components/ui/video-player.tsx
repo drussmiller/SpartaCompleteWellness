@@ -106,44 +106,12 @@ export function VideoPlayer({
   // Handle thumbnail click - navigate to video player page
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, navigating to video player page");
-    console.log("Original video src:", src);
-
-    // Ensure we pass the correct video URL for playback
-    let videoUrl = src;
-    
-    // Clean up the URL and ensure it's in the right format
-    if (videoUrl.includes('shared/uploads/')) {
-      // Extract filename from full path
-      const pathParts = videoUrl.split('shared/uploads/');
-      const filename = pathParts[1] || pathParts[0].split('/').pop() || videoUrl;
-      // Remove any query parameters from filename
-      const cleanFilename = filename.split('?')[0];
-      videoUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
-    } else if (videoUrl.startsWith('/api/serve-file')) {
-      // Already in correct format
-      videoUrl = videoUrl;
-    } else if (videoUrl.includes('filename=')) {
-      // Extract filename parameter and reconstruct
-      const urlParts = videoUrl.split('?');
-      const params = new URLSearchParams(urlParts[1] || '');
-      const filename = params.get('filename');
-      if (filename) {
-        videoUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
-      }
-    } else {
-      // Treat as raw filename
-      const filename = videoUrl.split('/').pop() || videoUrl;
-      const cleanFilename = filename.split('?')[0]; // Remove any query params
-      videoUrl = `/api/serve-file?filename=${encodeURIComponent(cleanFilename)}`;
-    }
-
-    console.log("Video URL for player:", videoUrl);
 
     // Navigate to video player page with video URL as parameter
-    const encodedVideoUrl = encodeURIComponent(videoUrl);
+    const videoUrl = encodeURIComponent(src);
     const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
 
-    setLocation(`/video-player?src=${encodedVideoUrl}&poster=${posterUrl}`);
+    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
   };
 
 
@@ -299,27 +267,25 @@ export function VideoPlayer({
                 onClick={handleThumbnailClick}
                 style={{
                   background: posterError ? 
-                    "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))" : 
-                    "linear-gradient(135deg, rgba(248, 250, 252, 1), rgba(241, 245, 249, 1))",
-                  border: "1px solid #e2e8f0"
+                    "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
+                    "white",
+                  border: "1px solid #e5e7eb"
                 }}
               >
-                <div className="p-6 rounded-lg flex flex-col items-center text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4">
+                <div className="p-4 rounded-lg flex flex-col items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                   </svg>
-                  <p className="text-sm text-slate-600 font-medium">Video Ready</p>
-                  <p className="text-xs text-slate-500 mt-1">Click to play</p>
                 </div>
               </div>
               {/* Play button overlay on fallback */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/5">
+              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
                 <div 
-                  className="p-3 m-4 rounded-full bg-black/70 cursor-pointer hover:bg-black/90 shadow-lg"
+                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
                   onClick={handleThumbnailClick}
-                  style={{ transition: 'background-color 0.2s ease' }}
+                  style={{ transition: 'none' }}
                 >
-                  <Play size={20} className="text-white" fill="white" />
+                  <Play size={24} className="text-white" fill="white" />
                 </div>
               </div>
             </>

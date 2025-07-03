@@ -3256,6 +3256,126 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
+  // Add thumbnail generation endpoint
+  router.post("/api/generate-thumbnail", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      
+      const { videoUrl } = req.body;
+      
+      if (!videoUrl) {
+        return res.status(400).json({ message: "Video URL is required" });
+      }
+
+      console.log('Thumbnail generation requested for:', videoUrl);
+      
+      // Extract filename from the video URL
+      let filename = '';
+      if (videoUrl.includes('filename=')) {
+        const urlParams = new URLSearchParams(videoUrl.split('?')[1]);
+        filename = urlParams.get('filename') || '';
+      } else {
+        filename = videoUrl.split('/').pop() || '';
+      }
+
+      if (!filename) {
+        return res.status(400).json({ message: "Could not extract filename from video URL" });
+      }
+
+      try {
+        // Import the simplified MOV frame extractor
+        const { createMovThumbnail } = await import('./mov-frame-extractor-new');
+        
+        // Use Object Storage client
+        const { Client } = await import('@replit/object-storage');
+        const objectStorage = new Client();
+        
+        // Download the video file temporarily to extract thumbnail
+        const videoKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
+        console.log(`Attempting to download video from Object Storage: ${videoKey}`);
+        
+        const videoResult = await objectStorage.downloadAsBytes(videoKey);
+        
+        // Handle Object Storage response format
+        let videoBuffer: Buffer;
+        if (Buffer.isBuffer(videoResult)) {
+          videoBuffer = videoResult;
+        } else if (videoResult && typeof videoResult === 'object') {
+          if ('value' in videoResult && videoResult.value) {
+            if (Buffer.isBuffer(videoResult.value)) {
+              videoBuffer = videoResult.value;
+            } else if (Array.isArray(videoResult.value)) {
+              videoBuffer = Buffer.from(videoResult.value);
+            } else if (typeof videoResult.value === 'string') {
+              videoBuffer = Buffer.from(videoResult.value, 'base64');
+            } else {
+              throw new Error('Invalid video data format from Object Storage');
+            }
+          } else if ('ok' in videoResult && !videoResult.ok) {
+            throw new Error(`Video file not found in Object Storage: ${videoKey}`);
+          } else {
+            throw new Error('Unexpected Object Storage response format');
+          }
+        } else {
+          throw new Error('Could not retrieve video data from Object Storage');
+        }
+
+        console.log(`Successfully downloaded video buffer, size: ${videoBuffer.length} bytes`);
+
+        // Write video to temporary file for thumbnail extraction
+        const fs = await import('fs');
+        const path = await import('path');
+        const tempDir = path.join(process.cwd(), 'temp');
+        
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const tempVideoPath = path.join(tempDir, filename);
+        fs.writeFileSync(tempVideoPath, videoBuffer);
+        console.log(`Written video to temporary file: ${tempVideoPath}`);
+        
+        try {
+          // Generate thumbnail using the simplified extractor
+          const thumbnailFilename = await createMovThumbnail(tempVideoPath);
+          
+          if (thumbnailFilename) {
+            console.log(`Thumbnail generated successfully: ${thumbnailFilename}`);
+            
+            // Clean up temporary video file
+            fs.unlinkSync(tempVideoPath);
+            
+            res.json({ 
+              success: true, 
+              thumbnailUrl: `/api/serve-file?filename=${thumbnailFilename}`,
+              message: 'Thumbnail generated successfully'
+            });
+          } else {
+            throw new Error('Thumbnail generation failed - no file created');
+          }
+        } catch (extractError) {
+          // Clean up temp video file
+          if (fs.existsSync(tempVideoPath)) {
+            fs.unlinkSync(tempVideoPath);
+          }
+          throw extractError;
+        }
+      } catch (error) {
+        logger.error('Error generating thumbnail:', error);
+        return res.status(500).json({ 
+          message: "Failed to generate thumbnail",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      logger.error('Error in thumbnail generation endpoint:', error);
+      res.status(500).json({
+        message: "Failed to process thumbnail request",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Add this endpoint before the app.use(router) line
   // Get current user data
   router.get("/api/users/me", authenticate, async (req, res) => {
@@ -4529,6 +4649,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         return res.status(400).json({ error: 'Filename parameter is required' });
       }
 
+      console.log(`[serve-file] Request for filename: ${filename}`);
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
       // Use Object Storage client
@@ -4547,31 +4668,67 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         storageKey = filename.startsWith('shared/') ? filename : `shared/uploads/${filename}`;
       }
 
-      logger.info(`Attempting to serve from storage key: ${storageKey}`);
-
       // Download the file from Object Storage with proper error handling
+      console.log(`[serve-file] Attempting to download from Object Storage key: ${storageKey}`);
       const result = await objectStorage.downloadAsBytes(storageKey);
+      console.log(`[serve-file] Object Storage result:`, {
+        type: typeof result,
+        hasOk: result && typeof result === 'object' && 'ok' in result,
+        hasValue: result && typeof result === 'object' && 'value' in result,
+        ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined,
+        valueType: result && typeof result === 'object' && 'value' in result ? typeof result.value : undefined,
+        isBuffer: Buffer.isBuffer(result),
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : undefined
+      });
       
-      // Handle the Object Storage response format - simplified
+      // Handle the Object Storage response format - simplified and more robust
       let fileBuffer: Buffer;
       
       if (Buffer.isBuffer(result)) {
         fileBuffer = result;
-      } else if (result && typeof result === 'object' && 'ok' in result && result.ok === true) {
-        if (Buffer.isBuffer(result.value)) {
-          fileBuffer = result.value;
-        } else if (Array.isArray(result.value)) {
-          fileBuffer = Buffer.from(result.value);
+        console.log(`[serve-file] Direct Buffer response, size: ${fileBuffer.length} bytes`);
+      } else if (result && typeof result === 'object') {
+        // Check for value property first (most common case)
+        if (result.value !== undefined) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+            console.log(`[serve-file] Object with Buffer value, size: ${fileBuffer.length} bytes`);
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
+            console.log(`[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`);
+          } else if (typeof result.value === 'string') {
+            fileBuffer = Buffer.from(result.value, 'base64');
+            console.log(`[serve-file] Object with string value converted from base64, size: ${fileBuffer.length} bytes`);
+          } else {
+            logger.error(`Unexpected value type from Object Storage for ${storageKey}:`, typeof result.value);
+            return res.status(404).json({ error: 'File not found', message: `Invalid data format for ${storageKey}` });
+          }
+        } else if ('ok' in result) {
+          // Handle legacy ok/error format
+          if (result.ok === false || !result.value) {
+            console.log(`[serve-file] Object Storage returned error for ${storageKey}:`, result.error || 'File not found');
+            return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
+          }
+          
+          // If ok is true, try to extract the value
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
+          } else {
+            fileBuffer = Buffer.from(result.value, 'base64');
+          }
+          console.log(`[serve-file] Legacy ok format, Buffer size: ${fileBuffer.length} bytes`);
         } else {
-          console.error(`Invalid Object Storage data format for ${storageKey}`);
-          return res.status(404).json({ error: 'File not found' });
+          logger.error(`Unknown Object Storage response format for ${storageKey}:`, Object.keys(result));
+          return res.status(404).json({ error: 'File not found', message: `Could not retrieve ${storageKey}` });
         }
       } else {
-        console.error(`Object Storage download failed for ${storageKey}`);
-        return res.status(404).json({ error: 'File not found' });
+        logger.error(`Invalid response format from Object Storage for ${storageKey}:`, typeof result);
+        return res.status(500).json({ error: 'Failed to serve file', message: 'Invalid response from storage' });
       }
 
-      // Set appropriate content type and headers
+      // Set appropriate content type
       const ext = filename.toLowerCase().split('.').pop();
       let contentType = 'application/octet-stream';
       
@@ -4601,22 +4758,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         case 'webm':
           contentType = 'video/webm';
           break;
-        case 'avi':
-          contentType = 'video/x-msvideo';
-          break;
       }
       
       res.setHeader('Content-Type', contentType);
-      
-      // For video files, set additional headers to support streaming
-      if (contentType.startsWith('video/')) {
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Content-Length', fileBuffer.length);
-        // Allow videos to be cached but for shorter time
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-      } else {
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache images for 24 hours
-      }
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
       logger.info(`Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
       return res.send(fileBuffer);
