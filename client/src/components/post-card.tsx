@@ -359,11 +359,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 </div>
               </div>
             )}
-            {/* Play button overlay - only show when thumbnail is loaded */}
+            {/* Play button overlay - positioned in lower left */}
             {thumbnailLoaded && !thumbnailError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
-                <div className="bg-white bg-opacity-90 rounded-full p-3">
-                  <Play className="h-6 w-6 text-black fill-current" />
+              <div className="absolute bottom-3 left-3">
+                <div className="bg-black bg-opacity-80 rounded-full p-2">
+                  <Play className="h-5 w-5 text-white fill-current" />
                 </div>
               </div>
             )}
