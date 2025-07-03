@@ -329,7 +329,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               <img
                 src={thumbnailUrl}
                 alt="Video thumbnail"
-                className="w-full h-48 object-cover rounded-lg"
+                className="w-full h-48 object-cover"
                 onLoad={() => {
                   console.log('Thumbnail loaded successfully:', thumbnailUrl);
                   setThumbnailLoaded(true);
