@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2 } from "lucide-react";
+import { createMediaUrl } from "@/lib/media-utils";
 
 export function VideoPlayerPage() {
   const [location, setLocation] = useLocation();
@@ -22,7 +23,11 @@ export function VideoPlayerPage() {
     if (src) {
       const decodedSrc = decodeURIComponent(src);
       console.log('Video player page - decoded src:', decodedSrc);
-      setVideoSrc(decodedSrc);
+      
+      // Use createMediaUrl to ensure proper Object Storage URL formatting
+      const mediaUrl = createMediaUrl(decodedSrc);
+      console.log('Video player page - using media URL:', mediaUrl);
+      setVideoSrc(mediaUrl);
 
       // Generate thumbnail for the video if it doesn't exist
       const generateThumbnailIfNeeded = async () => {
