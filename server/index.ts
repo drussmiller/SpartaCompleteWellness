@@ -105,13 +105,20 @@ app.use('/api', (req, res, next) => {
 (async () => {
   try {
     console.log("[Startup] Beginning server initialization...");
+    console.log("[Debug] Environment variables:", {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? '***configured***' : 'missing',
+      REPLIT_OBJECT_STORAGE_TOKEN: process.env.REPLIT_OBJECT_STORAGE_TOKEN ? '***configured***' : 'missing',
+      ENABLE_CONSOLE_LOGGING: process.env.ENABLE_CONSOLE_LOGGING
+    });
     const startTime = Date.now();
 
     // Verify database connection
     console.log("[Startup] Verifying database connection...");
     try {
-      await db.execute(sql`SELECT 1`);
+      const testQuery = await db.execute(sql`SELECT 1`);
       console.log("[Startup] Database connection verified", Date.now() - startTime, "ms");
+      console.log("[Debug] Database test query result:", testQuery);
     } catch (error) {
       console.error("[Startup] Database connection failed:", error);
       throw error;
