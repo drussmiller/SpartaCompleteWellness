@@ -375,12 +375,29 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               </div>
             ) : (
               <img
-                src={imageUrl}
+                src={imageUrl || undefined}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-contain cursor-pointer"
                 onError={(e) => {
+                  console.error('[Image Load Error]', {
+                    src: e.currentTarget.src,
+                    originalUrl: post.mediaUrl,
+                    postId: post.id,
+                    postType: post.type,
+                    error: 'Image failed to load'
+                  });
+                }}
+                onLoad={() => {
+                  console.log('[Image Load Success]', {
+                    src: imageUrl,
+                    originalUrl: post.mediaUrl,
+                    postId: post.id,
+                    postType: post.type
+                  });
+                }}
+                onClick={(e) => {
                   // No longer hiding images - let them display even if some fail to load
                   console.log('Image load error, but not hiding container');
                 }}

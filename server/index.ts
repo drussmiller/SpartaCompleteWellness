@@ -262,14 +262,16 @@ app.use('/api', (req, res, next) => {
               return res.send(fileBuffer);
             }
           } catch (error) {
-            console.log(`Failed to download ${key}: ${error.message}`);
+            console.error(`[serve-file] FAILED to download ${key}:`, error.message);
+            console.error(`[serve-file] Error details:`, error);
             // Continue to next key
           }
         }
 
         // No longer check filesystem as requested - Object Storage only
         // Return a proper 404 response
-        console.log(`File ${filePath} not found in Object Storage and no filesystem fallback as configured`);
+        console.error(`[serve-file] FILE NOT FOUND: ${filePath} not found in Object Storage and no filesystem fallback as configured`);
+        console.error(`[serve-file] Attempted keys:`, keysToCheck);
         return res.status(404).json({
           success: false,
           message: 'File not found in Object Storage',

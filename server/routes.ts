@@ -4650,6 +4650,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       console.log(`[serve-file] Request for filename: ${filename}`);
+      console.log(`[serve-file] Full request details:`, {
+        originalUrl: req.originalUrl,
+        query: req.query,
+        headers: {
+          referer: req.headers.referer,
+          userAgent: req.headers['user-agent']?.substring(0, 50)
+        }
+      });
       logger.info(`Serving file: ${filename}`, { route: '/api/serve-file' });
 
       // Use Object Storage client
@@ -4670,6 +4678,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Download the file from Object Storage with proper error handling
       console.log(`[serve-file] Attempting to download from Object Storage key: ${storageKey}`);
+      console.log(`[serve-file] isThumbnail: ${isThumbnail}, constructed storageKey: ${storageKey}`);
       const result = await objectStorage.downloadAsBytes(storageKey);
       console.log(`[serve-file] Object Storage result:`, {
         type: typeof result,
@@ -4678,7 +4687,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined,
         valueType: result && typeof result === 'object' && 'value' in result ? typeof result.value : undefined,
         isBuffer: Buffer.isBuffer(result),
-        resultKeys: result && typeof result === 'object' ? Object.keys(result) : undefined
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : undefined,
+        valueIsArray: result && typeof result === 'object' && 'value' in result ? Array.isArray(result.value) : undefined,
+        valueArrayLength: result && typeof result === 'object' && 'value' in result && Array.isArray(result.value) ? result.value.length : undefined,
+        firstElementType: result && typeof result === 'object' && 'value' in result && Array.isArray(result.value) && result.value.length > 0 ? typeof result.value[0] : undefined,
+        firstElementIsBuffer: result && typeof result === 'object' && 'value' in result && Array.isArray(result.value) && result.value.length > 0 ? Buffer.isBuffer(result.value[0]) : undefined
       });
       
       // Handle the Object Storage response format - simplified and more robust
@@ -4694,8 +4707,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             fileBuffer = result.value;
             console.log(`[serve-file] Object with Buffer value, size: ${fileBuffer.length} bytes`);
           } else if (Array.isArray(result.value)) {
-            fileBuffer = Buffer.from(result.value);
-            console.log(`[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`);
+            // Handle array with one Buffer element (common Object Storage format)
+            if (result.value.length === 1 && Buffer.isBuffer(result.value[0])) {
+              fileBuffer = result.value[0];
+              console.log(`[serve-file] Object with array containing Buffer, size: ${fileBuffer.length} bytes`);
+            } else {
+              // Convert entire array to Buffer
+              fileBuffer = Buffer.from(result.value);
+              console.log(`[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`);
+            }
           } else if (typeof result.value === 'string') {
             fileBuffer = Buffer.from(result.value, 'base64');
             console.log(`[serve-file] Object with string value converted from base64, size: ${fileBuffer.length} bytes`);
@@ -4767,6 +4787,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       return res.send(fileBuffer);
       
     } catch (error) {
+      console.error(`[serve-file] ERROR serving file:`, error);
       logger.error(`Error serving file: ${error}`, { route: '/api/serve-file' });
       return res.status(500).json({ 
         error: 'Failed to serve file',
