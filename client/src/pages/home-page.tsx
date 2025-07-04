@@ -89,12 +89,84 @@ export default function HomePage() {
     navigate('/prayer-requests');
   };
 
-  // Panels are now fixed and don't move based on scroll
+  // Handle scroll for moving navigation panels
   useEffect(() => {
-    // Reset scroll offset and ensure panels are always visible
-    setScrollOffset(0);
-    setIsHeaderVisible(true);
-    setIsBottomNavVisible(true);
+    let scrollVelocity = 0;
+    let lastScrollTime = Date.now();
+    
+    const handleScroll = (event) => {
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const currentTime = Date.now();
+      const timeDelta = currentTime - lastScrollTime;
+      
+      // Calculate scroll velocity (pixels per millisecond)
+      if (timeDelta > 0) {
+        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
+      }
+      
+      console.log('🟢 Home - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
+      
+      // Move panels down when scrolling down past 50px
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        // Scrolling down - move panels off screen
+        console.log('🔽 Home - Moving panels down - scrollY:', currentScrollY);
+        setScrollOffset(currentScrollY);
+        setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
+      } 
+      // Move panels back when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
+      else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
+        // Near top OR scrolling up fast - bring panels back pixel by pixel
+        const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
+        console.log('🔼 Home - Bringing panels back -', reason, '- scrollY:', currentScrollY);
+        
+        // Calculate how much to bring panels back based on current scroll position
+        const panelOffset = Math.max(0, currentScrollY);
+        setScrollOffset(panelOffset);
+        setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+      lastScrollTime = currentTime;
+    };
+
+    // Add scroll listeners to multiple potential scroll containers
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    document.body.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Also try listening on the main content area
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    
+    // Also try the root div
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    
+    // Initial check
+    console.log('📝 Initial scroll setup - scrollY:', window.scrollY);
+    console.log('📝 Document height:', document.documentElement.scrollHeight);
+    console.log('📝 Window height:', window.innerHeight);
+    console.log('📝 Body scroll height:', document.body.scrollHeight);
+    console.log('📝 Main element found:', !!mainElement);
+    console.log('📝 Root element found:', !!rootElement);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      document.body.removeEventListener('scroll', handleScroll);
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', handleScroll);
+      }
+      if (rootElement) {
+        rootElement.removeEventListener('scroll', handleScroll);
+      }
+    };
   }, []);
 
   if (error) {
@@ -117,6 +189,7 @@ export default function HomePage() {
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
+            transform: `translateY(-${scrollOffset}px)`,
             pointerEvents: 'auto'
           }}
         >
