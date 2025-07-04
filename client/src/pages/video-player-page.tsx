@@ -8,9 +8,7 @@ export function VideoPlayerPage() {
   const [location, setLocation] = useLocation();
   const [videoSrc, setVideoSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  const [videoReady, setVideoReady] = useState(false);
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
-  const [videoDimensions, setVideoDimensions] = useState<{width: number, height: number} | null>(null);
+  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -23,75 +21,12 @@ export function VideoPlayerPage() {
     if (src) {
       const decodedSrc = decodeURIComponent(src);
       console.log('Video player page - decoded src:', decodedSrc);
-      
+
       // Use createMediaUrl to ensure proper Object Storage URL formatting
       const mediaUrl = createMediaUrl(decodedSrc);
       console.log('Video player page - using media URL:', mediaUrl);
       setVideoSrc(mediaUrl);
-
-      // Generate thumbnail for the video if it doesn't exist
-      const generateThumbnailIfNeeded = async () => {
-        try {
-          // Extract filename from the video URL
-          let filename = '';
-          if (decodedSrc.includes('filename=')) {
-            const urlParams = new URLSearchParams(decodedSrc.split('?')[1]);
-            filename = urlParams.get('filename') || '';
-          } else {
-            filename = decodedSrc.split('/').pop() || '';
-          }
-
-          if (filename) {
-            console.log('Checking thumbnail for video:', filename);
-            
-            // Try to request thumbnail generation
-            const response = await fetch('/api/generate-thumbnail', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ videoUrl: decodedSrc })
-            });
-
-            if (response.ok) {
-              console.log('Thumbnail generation requested successfully');
-            } else {
-              console.warn('Thumbnail generation failed:', response.status);
-            }
-          }
-        } catch (error) {
-          console.error('Error requesting thumbnail generation:', error);
-        }
-      };
-
-      // Start thumbnail generation in the background
-      generateThumbnailIfNeeded();
-
-      // Preload only metadata for faster startup
-      const video = document.createElement('video');
-      video.src = decodedSrc;
-      video.preload = 'metadata';
-      video.muted = true; // Required for autoplay on mobile
-      
-      video.onloadedmetadata = () => {
-        console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
-        setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
-      };
-      
-      video.onloadedmetadata = () => {
-        console.log('Video metadata loaded, ready to start');
-        setIsLoading(false);
-        setVideoReady(true);
-        setShouldAutoPlay(true);
-      };
-      
-      video.onerror = (e) => {
-        console.error('Failed to load video:', decodedSrc, e);
-        setIsLoading(false);
-        setVideoReady(false); // Don't show video on error
-      };
-      
-      video.load();
+      setIsLoading(false);
     } else {
       console.log('No video source found in URL parameters');
       setIsLoading(false);
@@ -101,6 +36,18 @@ export function VideoPlayerPage() {
   const handleGoBack = () => {
     // Go back to home page since wouter doesn't have navigate(-1)
     setLocation('/');
+  };
+
+  const handleVideoError = (e: any) => {
+    console.error('Video playback error:', e);
+    setVideoError(true);
+    setIsLoading(false);
+  };
+
+  const handleVideoLoad = () => {
+    console.log('Video loaded successfully');
+    setIsLoading(false);
+    setVideoError(false);
   };
 
   if (isLoading) {
@@ -126,10 +73,23 @@ export function VideoPlayerPage() {
     );
   }
 
+  if (videoError) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
+        <h1 className="text-xl mb-4">Error loading video</h1>
+        <p className="mb-4">The video could not be loaded. Please try again.</p>
+        <Button onClick={handleGoBack} variant="outline">
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Go Back
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black relative">
       {/* Header with back button */}
-      <div className="absolute top-16 left-4 z-10">
+      <div className="absolute top-4 left-4 z-10">
         <Button
           onClick={handleGoBack}
           variant="ghost"
@@ -141,74 +101,37 @@ export function VideoPlayerPage() {
       </div>
 
       {/* Video container */}
-      <div className="w-full h-screen flex items-center justify-center pt-20">
-        {isLoading && (
-          <div className="flex items-center justify-center text-white">
-            <Loader2 className="h-8 w-8 animate-spin mr-3" />
-            <span>Loading video...</span>
-          </div>
-        )}
-        {!isLoading && videoReady && videoDimensions && (
-          <video
-            ref={videoRef}
-            src={videoSrc}
-            controls
-            preload="auto"
-            controlsList="nodownload noremoteplayback"
-            disablePictureInPicture
-            disableRemotePlayback
-            width={videoDimensions.width}
-            height={videoDimensions.height}
-            className="max-w-full max-h-full object-contain"
-            style={{
-              width: 'auto',
-              height: 'auto',
-              maxWidth: '100%',
-              maxHeight: '100%',
-              objectFit: 'contain'
-            }}
-            x-webkit-airplay="deny"
-            onError={(e) => {
-              console.error('Video playback error:', e);
-            }}
-            onCanPlay={() => {
-              // Auto-play when the video can start playing
-              if (shouldAutoPlay && videoRef.current) {
-                console.log('Attempting auto-play...');
-                videoRef.current.play().catch(e => {
-                  console.log('Auto-play failed, user interaction required:', e);
-                });
-                setShouldAutoPlay(false); // Only try once
-              }
-            }}
-            onLoadedMetadata={() => {
-              // Handle fullscreen events - close player when exiting fullscreen
-              const video = videoRef.current;
-              if (video) {
-                // When fullscreen ends, close the video player
-                video.addEventListener('webkitendfullscreen', () => {
-                  console.log('Exiting fullscreen - closing video player');
-                  handleGoBack();
-                }, { capture: true });
-                
-                video.addEventListener('fullscreenchange', () => {
-                  if (!document.fullscreenElement) {
-                    console.log('Exiting fullscreen - closing video player');
-                    handleGoBack();
-                  }
-                }, { capture: true });
-              }
-            }}
-            onPlay={() => {
-              console.log('Video started playing');
-            }}
-          />
-        )}
-        {!isLoading && !videoReady && (
-          <div className="flex items-center justify-center text-white">
-            <span>Unable to load video</span>
-          </div>
-        )}
+      <div className="w-full h-screen flex items-center justify-center p-4">
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          controls
+          preload="auto"
+          controlsList="nodownload noremoteplayback"
+          disablePictureInPicture
+          disableRemotePlayback
+          className="max-w-full max-h-full object-contain"
+          style={{
+            width: 'auto',
+            height: 'auto',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain'
+          }}
+          x-webkit-airplay="deny"
+          onError={handleVideoError}
+          onLoadedData={handleVideoLoad}
+          onCanPlay={() => {
+            console.log('Video can play');
+            setIsLoading(false);
+          }}
+          onLoadStart={() => {
+            console.log('Video load started');
+          }}
+          onLoadedMetadata={() => {
+            console.log('Video metadata loaded');
+          }}
+        />
       </div>
     </div>
   );
