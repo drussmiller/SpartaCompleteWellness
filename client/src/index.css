@@ -36,16 +36,6 @@ main img {
 
 /* Desktop-specific image styling */
 @media (min-width: 768px) {
-  .post-content img,
-  .post-card img {
-    max-width: calc(1000px - 4rem);
-    width: calc(100% - 4rem);
-    margin: 0 auto;
-    padding: 0;
-    box-sizing: border-box;
-    display: block;
-  }
-  
   /* Ensure image containers have proper centering and padding */
   .post-content,
   .post-card {
@@ -55,11 +45,15 @@ main img {
     box-sizing: border-box;
   }
   
-  /* Add specific styling for image containers to ensure proper spacing */
-  .post-content > img,
-  .post-card > img {
-    margin-left: 2rem;
-    margin-right: 2rem;
+  /* Images should be smaller than container to show padding */
+  .post-content img,
+  .post-card img {
+    max-width: calc(100% - 4rem);
+    width: calc(100% - 4rem);
+    margin: 0 2rem;
+    padding: 0;
+    box-sizing: border-box;
+    display: block;
   }
 }
 
