@@ -91,39 +91,42 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
+    let animationFrameId;
+    const maxTranslateDistance = 100; // Maximum distance panels can move
+    
     const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-      const scrollDelta = currentScrollY - lastScrollY.current;
+      // Cancel any pending animation frame
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
       
-      console.log('Scroll detected - scrollY:', currentScrollY, 'delta:', scrollDelta);
-      
-      // Always keep panels visible but move them based on scroll
-      setIsHeaderVisible(true);
-      setIsBottomNavVisible(true);
-      
-      lastScrollY.current = currentScrollY;
+      animationFrameId = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+        const scrollDelta = currentScrollY - lastScrollY.current;
+        
+        // Calculate smooth translation - only move panels a fraction of scroll distance
+        const translateDistance = Math.min(currentScrollY * 0.3, maxTranslateDistance);
+        
+        console.log('Scroll detected - scrollY:', currentScrollY, 'translateDistance:', translateDistance);
+        
+        // Always keep panels visible but move them based on scroll
+        setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
+        
+        lastScrollY.current = translateDistance; // Store the translate distance instead of raw scroll
+      });
     };
 
     // Test scroll immediately to see current state
     console.log('Setting up scroll listener - current scroll:', window.scrollY);
     
-    // Add multiple event listeners to catch scroll events
+    // Add scroll listener with passive for better performance
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
-    document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Also try listening on the main content area
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      document.body.removeEventListener('scroll', handleScroll);
-      if (mainElement) {
-        mainElement.removeEventListener('scroll', handleScroll);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
   }, []);
@@ -146,7 +149,7 @@ export default function HomePage() {
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
-          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
+          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-100 ease-out"
           style={{
             transform: `translateY(-${lastScrollY.current}px)`,
             pointerEvents: 'auto'
