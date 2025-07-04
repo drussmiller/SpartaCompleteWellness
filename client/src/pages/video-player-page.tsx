@@ -106,6 +106,7 @@ export function VideoPlayerPage() {
           ref={videoRef}
           src={videoSrc}
           controls
+          autoPlay
           preload="auto"
           controlsList="nodownload noremoteplayback"
           disablePictureInPicture
@@ -124,6 +125,12 @@ export function VideoPlayerPage() {
           onCanPlay={() => {
             console.log('Video can play');
             setIsLoading(false);
+            // Ensure autoplay starts when video is ready
+            if (videoRef.current) {
+              videoRef.current.play().catch(error => {
+                console.log('Autoplay was prevented:', error);
+              });
+            }
           }}
           onLoadStart={() => {
             console.log('Video load started');
