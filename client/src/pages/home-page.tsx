@@ -41,8 +41,8 @@ export default function HomePage() {
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
+  const [scrollOffset, setScrollOffset] = useState(0);
   const lastScrollY = useRef(0);
-  const ticking = useRef(false);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -97,8 +97,9 @@ export default function HomePage() {
       
       // Update the scroll offset for panel movement
       lastScrollY.current = currentScrollY;
+      setScrollOffset(currentScrollY);
       
-      // Force re-render to update panel positions
+      // Keep panels visible
       setIsHeaderVisible(true);
       setIsBottomNavVisible(true);
     };
@@ -130,13 +131,13 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={lastScrollY.current}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={scrollOffset}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
-            transform: `translateY(-${lastScrollY.current}px)`,
+            transform: `translateY(-${scrollOffset}px)`,
             pointerEvents: 'auto'
           }}
         >
@@ -220,7 +221,7 @@ export default function HomePage() {
                         {/* Add content to test scrolling behavior */}
                         {Array.from({ length: 20 }, (_, i) => (
                           <div key={i} className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 text-lg font-bold">
-                            Test Content Block {i + 1} - Scroll Position: {lastScrollY.current}px
+                            Test Content Block {i + 1} - Scroll Position: {scrollOffset}px
                           </div>
                         ))}
                       </div>
