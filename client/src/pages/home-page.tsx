@@ -104,10 +104,10 @@ export default function HomePage() {
       animationFrameId = requestAnimationFrame(() => {
         const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
         
-        // Calculate smooth translation - only move panels a fraction of scroll distance
-        const newTranslateDistance = Math.min(currentScrollY * 0.3, maxTranslateDistance);
+        // Calculate translation - move panels based on scroll
+        const newTranslateDistance = Math.min(currentScrollY, maxTranslateDistance);
         
-        console.log('Scroll detected - scrollY:', currentScrollY, 'translateDistance:', newTranslateDistance);
+        console.log('HOME PAGE SCROLL - scrollY:', currentScrollY, 'translateDistance:', newTranslateDistance);
         
         // Always keep panels visible but move them based on scroll
         setIsHeaderVisible(true);
@@ -118,14 +118,29 @@ export default function HomePage() {
       });
     };
 
-    // Test scroll immediately to see current state
-    console.log('Setting up scroll listener - current scroll:', window.scrollY);
+    // Test scroll immediately and force initial state
+    const initialScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+    console.log('HOME PAGE - Setting up scroll listener - initial scroll:', initialScrollY);
+    console.log('HOME PAGE - Document height:', document.documentElement.scrollHeight);
+    console.log('HOME PAGE - Window height:', window.innerHeight);
     
-    // Add scroll listener with passive for better performance
+    // Add multiple scroll listeners to ensure we catch scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Also test with a manual scroll trigger
+    const testScroll = () => {
+      console.log('HOME PAGE - Testing scroll manually');
+      handleScroll();
+    };
+    
+    // Test scroll after a short delay
+    const timeoutId = setTimeout(testScroll, 1000);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      clearTimeout(timeoutId);
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
@@ -233,10 +248,14 @@ export default function HomePage() {
                     <div className="text-center text-muted-foreground py-8">
                       No posts yet. Be the first to share!
                       <div className="mt-8 space-y-4">
-                        {/* Add content to test scrolling behavior */}
-                        {Array.from({ length: 15 }, (_, i) => (
-                          <div key={i} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600">
-                            Test Content Block {i + 1} - Scroll to test header hiding
+                        {/* Add more content to test scrolling behavior */}
+                        {Array.from({ length: 30 }, (_, i) => (
+                          <div key={i} className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 border">
+                            <div className="text-center">
+                              <div className="font-bold">Test Content Block {i + 1}</div>
+                              <div className="text-sm">Scroll to test panel movement</div>
+                              <div className="text-xs mt-2">Current scroll: {Math.round(translateDistance)}px</div>
+                            </div>
                           </div>
                         ))}
                       </div>
