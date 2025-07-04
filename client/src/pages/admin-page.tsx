@@ -333,7 +333,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       <div className="flex flex-col h-screen pb-20">
         {/* Fixed title bar */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-          <div className="p-4 flex items-center">
+          <div className="p-4 pt-8 flex items-center">
             {onClose && (
               <Button
                 variant="ghost"
@@ -349,7 +349,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 overflow-y-auto pt-16 pb-20">
+        <div className="flex-1 overflow-y-auto pt-20 pb-20">
           <div className="container p-4 md:px-8">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>
