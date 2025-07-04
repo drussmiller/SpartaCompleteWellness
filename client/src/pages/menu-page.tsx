@@ -25,7 +25,7 @@ export default function MenuPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col p-6 md:px-60 md:pl-72">
+      <div className="flex flex-col p-6 md:px-44 md:pl-56">
         <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
           {/* This div is an empty spacer, which you can style as necessary */}
         </div>
