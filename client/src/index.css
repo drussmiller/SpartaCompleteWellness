@@ -38,19 +38,28 @@ main img {
 @media (min-width: 768px) {
   .post-content img,
   .post-card img {
-    max-width: 1000px;
-    width: 100%;
+    max-width: calc(1000px - 4rem);
+    width: calc(100% - 4rem);
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 0;
     box-sizing: border-box;
+    display: block;
   }
   
-  /* Ensure image containers have proper centering */
+  /* Ensure image containers have proper centering and padding */
   .post-content,
   .post-card {
     max-width: 1000px;
     margin: 0 auto;
     padding: 0 2rem;
+    box-sizing: border-box;
+  }
+  
+  /* Add specific styling for image containers to ensure proper spacing */
+  .post-content > img,
+  .post-card > img {
+    margin-left: 2rem;
+    margin-right: 2rem;
   }
 }
 
