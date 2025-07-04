@@ -185,16 +185,14 @@ export default function PrayerRequestsPage() {
 
         {/* Main content layout */}
         <div className="w-full">
-          <div className="flex justify-between">
-            {/* Main content area */}
-            <div className={`${!isMobile ? 'w-3/4' : 'w-full'} min-h-screen`}>
-              <main className="p-4">
-                <div className="mb-6">
-                  <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
-                  <p className="text-muted-foreground">
-                    Share your prayer requests and pray for others
-                  </p>
-                </div>
+          <div className={`${!isMobile ? 'max-w-[768px] mx-auto px-6' : 'w-full'}`}>
+            <main className="p-4">
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
+                <p className="text-muted-foreground">
+                  Share your prayer requests and pray for others
+                </p>
+              </div>
 
                 <div className="space-y-2">
                   {prayerRequests?.length > 0 ? (
@@ -220,14 +218,6 @@ export default function PrayerRequestsPage() {
                   </div>
                 </div>
               </main>
-            </div>
-
-            {/* Right panel - hidden on mobile */}
-            {!isMobile && (
-              <div className="w-1/4 min-h-screen border-l border-border p-4 bg-background">
-                <h2 className="text-lg font-semibold mb-4">Right Panel</h2>
-              </div>
-            )}
           </div>
         </div>
       </div>
