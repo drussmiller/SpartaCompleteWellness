@@ -91,9 +91,9 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      console.log('🟢 Scroll detected - scrollY:', currentScrollY, 'lastScrollY:', lastScrollY.current);
+    const handleScroll = (event) => {
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      console.log('🟢 Scroll detected from:', event?.target?.tagName || 'window', '- scrollY:', currentScrollY, 'lastScrollY:', lastScrollY.current);
       
       // Update the scroll offset for panel movement
       lastScrollY.current = currentScrollY;
@@ -104,16 +104,41 @@ export default function HomePage() {
       setIsBottomNavVisible(true);
     };
 
-    // Add scroll listener to window
+    // Add scroll listeners to multiple potential scroll containers
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    document.body.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Also try listening on the main content area
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    
+    // Also try the root div
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
     
     // Initial check
     console.log('📝 Initial scroll setup - scrollY:', window.scrollY);
     console.log('📝 Document height:', document.documentElement.scrollHeight);
     console.log('📝 Window height:', window.innerHeight);
+    console.log('📝 Body scroll height:', document.body.scrollHeight);
+    console.log('📝 Main element found:', !!mainElement);
+    console.log('📝 Root element found:', !!rootElement);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      document.body.removeEventListener('scroll', handleScroll);
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', handleScroll);
+      }
+      if (rootElement) {
+        rootElement.removeEventListener('scroll', handleScroll);
+      }
     };
   }, []);
 
