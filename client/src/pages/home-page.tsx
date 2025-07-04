@@ -91,25 +91,16 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
-    let ticking = false;
-    
     const handleScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-          console.log('🟢 Scroll detected - scrollY:', currentScrollY);
-          
-          // Update the scroll offset for panel movement
-          lastScrollY.current = currentScrollY;
-          
-          // Force re-render to update panel positions
-          setIsHeaderVisible(true);
-          setIsBottomNavVisible(true);
-          
-          ticking = false;
-        });
-        ticking = true;
-      }
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      console.log('🟢 Scroll detected - scrollY:', currentScrollY, 'lastScrollY:', lastScrollY.current);
+      
+      // Update the scroll offset for panel movement
+      lastScrollY.current = currentScrollY;
+      
+      // Force re-render to update panel positions
+      setIsHeaderVisible(true);
+      setIsBottomNavVisible(true);
     };
 
     // Add scroll listener to window
@@ -117,16 +108,8 @@ export default function HomePage() {
     
     // Initial check
     console.log('📝 Initial scroll setup - scrollY:', window.scrollY);
-    
-    // Force scroll to test detection
-    setTimeout(() => {
-      console.log('🧪 Testing scroll detection...');
-      window.scrollTo(0, 50);
-      setTimeout(() => {
-        console.log('🧪 After test scroll - scrollY:', window.scrollY);
-        window.scrollTo(0, 0);
-      }, 100);
-    }, 1000);
+    console.log('📝 Document height:', document.documentElement.scrollHeight);
+    console.log('📝 Window height:', window.innerHeight);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -153,8 +136,7 @@ export default function HomePage() {
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
-            transform: `translateY(-${Math.min(lastScrollY.current, 100)}px)`,
-            transition: 'transform 0.1s ease-out',
+            transform: `translateY(-${lastScrollY.current}px)`,
             pointerEvents: 'auto'
           }}
         >
@@ -220,7 +202,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20" style={{ minHeight: '300vh' }}>
+              <main className="pt-40 mb-20" style={{ minHeight: '200vh' }}>
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
@@ -236,9 +218,9 @@ export default function HomePage() {
                       No posts yet. Be the first to share!
                       <div className="mt-8 space-y-4">
                         {/* Add content to test scrolling behavior */}
-                        {Array.from({ length: 15 }, (_, i) => (
-                          <div key={i} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600">
-                            Test Content Block {i + 1} - Scroll to test header hiding
+                        {Array.from({ length: 20 }, (_, i) => (
+                          <div key={i} className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 text-lg font-bold">
+                            Test Content Block {i + 1} - Scroll Position: {lastScrollY.current}px
                           </div>
                         ))}
                       </div>
