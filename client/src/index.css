@@ -29,12 +29,22 @@ main img {
     padding: 0 2rem;
   }
   
+  /* Target the image container div specifically */
+  .post-content > div,
+  .post-card > div {
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 0 2rem !important;
+  }
+  
   /* Force image width constraints on desktop */
   .post-content img,
-  .post-card img {
-    max-width: 900px !important;
-    width: 900px !important;
-    margin: 0 auto !important;
+  .post-card img,
+  .post-content > div img,
+  .post-card > div img {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
   }
 }
