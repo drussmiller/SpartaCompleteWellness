@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ChevronLeft, ChevronDown, Plus, Lock, Trash2, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Plus, Lock, Trash2, Loader2, Users, FileText, Settings, BarChart3, MessageSquare, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
