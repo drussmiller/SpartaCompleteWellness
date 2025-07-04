@@ -66,13 +66,13 @@ export default function HomePage() {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
       const data = await response.json();
-      
+
       console.log("Posts received from API:", data.length, "posts");
-      
+
       // Double-check to filter out any prayer posts that might have slipped through
       const filtered = data.filter(post => post.type !== 'prayer');
       console.log("Posts after prayer filtering:", filtered.length);
-      
+
       return filtered;
     },
     enabled: !!user,
@@ -93,19 +93,19 @@ export default function HomePage() {
   useEffect(() => {
     let scrollVelocity = 0;
     let lastScrollTime = Date.now();
-    
+
     const handleScroll = (event) => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       const currentTime = Date.now();
       const timeDelta = currentTime - lastScrollTime;
-      
+
       // Calculate scroll velocity (pixels per millisecond)
       if (timeDelta > 0) {
         scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
       }
-      
+
       console.log('🟢 Home - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
-      
+
       // Move panels down when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - move panels off screen
@@ -119,13 +119,13 @@ export default function HomePage() {
         // Near top OR scrolling up fast from anywhere - bring panels back
         const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
         console.log('🔼 Home - Bringing panels back -', reason, '- scrollY:', currentScrollY);
-        
+
         // Reset scroll offset to 0 when scrolling up fast from anywhere
         setScrollOffset(0);
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
-      
+
       lastScrollY.current = currentScrollY;
       lastScrollTime = currentTime;
     };
@@ -134,19 +134,19 @@ export default function HomePage() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('scroll', handleScroll, { passive: true });
     document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
+
     // Also try listening on the main content area
     const mainElement = document.querySelector('main');
     if (mainElement) {
       mainElement.addEventListener('scroll', handleScroll, { passive: true });
     }
-    
+
     // Also try the root div
     const rootElement = document.getElementById('root');
     if (rootElement) {
       rootElement.addEventListener('scroll', handleScroll, { passive: true });
     }
-    
+
     // Initial check
     console.log('📝 Initial scroll setup - scrollY:', window.scrollY);
     console.log('📝 Document height:', document.documentElement.scrollHeight);
@@ -154,7 +154,7 @@ export default function HomePage() {
     console.log('📝 Body scroll height:', document.body.scrollHeight);
     console.log('📝 Main element found:', !!mainElement);
     console.log('📝 Root element found:', !!rootElement);
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
@@ -211,7 +211,7 @@ export default function HomePage() {
                 <MessageSlideCard />
               </div>
             </div>
-            
+
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
@@ -238,24 +238,20 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Three column layout for non-mobile */}
+        {/* Main content layout */}
         <div className="w-full">
           <div className="flex justify-between">
-            {/* Left panel - hidden on mobile */}
-            {!isMobile && (
-              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
-                <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
-                <img
-                  src="/sparta_circle_red.png"
-                  alt="Sparta Logo"
-                  className="w-full h-auto object-contain"
-                />
-              </div>
-            )}
+            {/* Main content area */}
+            <div className={`${!isMobile ? 'w-3/4' : 'w-full'} min-h-screen`}>
+              <main className="p-4">
+                {/* Header */}
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold mb-2">Welcome to Sparta</h1>
+                  <p className="text-muted-foreground">
+                    Share your journey and stay motivated with the community
+                  </p>
+                </div>
 
-            {/* Main content */}
-            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20" style={{ minHeight: '200vh' }}>
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (

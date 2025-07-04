@@ -38,19 +38,19 @@ export default function PrayerRequestsPage() {
   useEffect(() => {
     let scrollVelocity = 0;
     let lastScrollTime = Date.now();
-    
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
       const currentTime = Date.now();
       const timeDelta = currentTime - lastScrollTime;
-      
+
       // Calculate scroll velocity (pixels per millisecond)
       if (timeDelta > 0) {
         scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
       }
-      
+
       console.log('Prayer Requests - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
-      
+
       // Hide header when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - hide header and bottom nav
@@ -66,7 +66,7 @@ export default function PrayerRequestsPage() {
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
-      
+
       lastScrollY.current = currentScrollY;
       lastScrollTime = currentTime;
     };
@@ -75,13 +75,13 @@ export default function PrayerRequestsPage() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('scroll', handleScroll, { passive: true });
     document.body.addEventListener('scroll', handleScroll, { passive: true });
-    
+
     // Also try listening on the main content area
     const mainElement = document.querySelector('main');
     if (mainElement) {
       mainElement.addEventListener('scroll', handleScroll, { passive: true });
     }
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
@@ -163,7 +163,7 @@ export default function PrayerRequestsPage() {
                 <MessageSlideCard />
               </div>
             </div>
-            
+
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-1 mb-2 px-6">
               <Button 
@@ -183,24 +183,19 @@ export default function PrayerRequestsPage() {
           </div>
         </div>
 
-        {/* Three column layout for non-mobile */}
+        {/* Main content layout */}
         <div className="w-full">
           <div className="flex justify-between">
-            {/* Left panel - hidden on mobile */}
-            {!isMobile && (
-              <div className="w-1/4 min-h-screen border-r border-border p-4 bg-background">
-                <h2 className="text-lg font-semibold mb-4">Left Panel</h2>
-                <img
-                  src="/sparta_circle_red.png"
-                  alt="Sparta Logo"
-                  className="w-full h-auto object-contain"
-                />
-              </div>
-            )}
+            {/* Main content area */}
+            <div className={`${!isMobile ? 'w-3/4' : 'w-full'} min-h-screen`}>
+              <main className="p-4">
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
+                  <p className="text-muted-foreground">
+                    Share your prayer requests and pray for others
+                  </p>
+                </div>
 
-            {/* Main content */}
-            <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="mt-32 pt-8 mb-20"> {/* Extra padding for larger fixed panel */}
                 <div className="space-y-2">
                   {prayerRequests?.length > 0 ? (
                     prayerRequests.map((post: Post, index: number) => (
