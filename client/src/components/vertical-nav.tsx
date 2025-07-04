@@ -45,12 +45,7 @@ export const VerticalNav = () => {
       path: "/notifications",
       status: connectionStatus !== "connected" ? "offline" : null 
     },
-    { 
-      icon: Heart, 
-      label: "Prayer", 
-      path: "/prayer-requests",
-      count: prayerRequestCount || 0
-    },
+    
 
     { icon: Menu, label: "Menu", path: "/menu" },
   ];
