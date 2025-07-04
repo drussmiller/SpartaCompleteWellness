@@ -528,8 +528,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <CardDescription>Manage user accounts and assignments</CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-96">
-                  <div className="space-y-2">
+                <div className="h-[400px] w-full overflow-y-auto border rounded-md">
+                  <div className="space-y-2 p-2">
                     {usersLoading ? (
                       <p>Loading users...</p>
                     ) : users && users.length > 0 ? (
@@ -632,7 +632,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       <p className="text-muted-foreground">No users found.</p>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
 
