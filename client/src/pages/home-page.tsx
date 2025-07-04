@@ -91,17 +91,44 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
+    let scrollVelocity = 0;
+    let lastScrollTime = Date.now();
+    
     const handleScroll = (event) => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      console.log('🟢 Scroll detected from:', event?.target?.tagName || 'window', '- scrollY:', currentScrollY, 'lastScrollY:', lastScrollY.current);
+      const currentTime = Date.now();
+      const timeDelta = currentTime - lastScrollTime;
       
-      // Update the scroll offset for panel movement
+      // Calculate scroll velocity (pixels per millisecond)
+      if (timeDelta > 0) {
+        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
+      }
+      
+      console.log('🟢 Home - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
+      
+      // Move panels down when scrolling down past 50px
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        // Scrolling down - move panels off screen
+        console.log('🔽 Home - Moving panels down - scrollY:', currentScrollY);
+        setScrollOffset(currentScrollY);
+        setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
+      } 
+      // Move panels back when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
+      else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
+        // Near top OR scrolling up fast - bring panels back pixel by pixel
+        const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
+        console.log('🔼 Home - Bringing panels back -', reason, '- scrollY:', currentScrollY);
+        
+        // Calculate how much to bring panels back based on current scroll position
+        const panelOffset = Math.max(0, currentScrollY);
+        setScrollOffset(panelOffset);
+        setIsHeaderVisible(true);
+        setIsBottomNavVisible(true);
+      }
+      
       lastScrollY.current = currentScrollY;
-      setScrollOffset(currentScrollY);
-      
-      // Keep panels visible
-      setIsHeaderVisible(true);
-      setIsBottomNavVisible(true);
+      lastScrollTime = currentTime;
     };
 
     // Add scroll listeners to multiple potential scroll containers
