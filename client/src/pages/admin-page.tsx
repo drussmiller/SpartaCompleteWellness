@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ChevronLeft, ChevronDown, Plus, Lock, Trash2, Loader2, Users, FileText, Settings, BarChart3, MessageSquare, Shield } from "lucide-react";
+import { ChevronLeft, ChevronDown, Plus, Lock, Trash2, Loader2, Settings, BarChart3, MessageSquare, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -398,40 +398,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    User Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Manage user accounts and permissions
-                  </p>
-                  <Button className="w-full" onClick={() => setLocation("/admin/users")}>
-                    Manage Users
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Post Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Review and moderate user posts
-                  </p>
-                  <Button className="w-full" onClick={() => setLocation("/admin/posts")}>
-                    Manage Posts
-                  </Button>
-                </CardContent>
-              </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
