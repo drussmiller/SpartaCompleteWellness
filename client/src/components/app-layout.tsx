@@ -9,9 +9,10 @@ interface AppLayoutProps {
   title?: string;
   sidebarWidth?: string;
   isBottomNavVisible?: boolean;
+  scrollOffset?: number;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true, scrollOffset = 0 }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
@@ -33,7 +34,7 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
         <main className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''} min-h-0`}>
           {children}
         </main>
-        {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} />}
+        {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}
       </div>
     </div>
   );

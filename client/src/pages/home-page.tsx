@@ -89,41 +89,19 @@ export default function HomePage() {
     navigate('/prayer-requests');
   };
 
-  // Handle scroll for hiding/showing navigation
+  // Handle scroll for moving navigation panels
   useEffect(() => {
-    let scrollVelocity = 0;
-    let lastScrollTime = Date.now();
-    
     const handleScroll = () => {
       const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-      const currentTime = Date.now();
-      const timeDelta = currentTime - lastScrollTime;
+      const scrollDelta = currentScrollY - lastScrollY.current;
       
-      // Calculate scroll velocity (pixels per millisecond)
-      if (timeDelta > 0) {
-        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
-      }
+      console.log('Scroll detected - scrollY:', currentScrollY, 'delta:', scrollDelta);
       
-      console.log('Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
-      
-      // Hide header when scrolling down past 50px
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - hide header and bottom nav
-        console.log('Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
-        setIsHeaderVisible(false);
-        setIsBottomNavVisible(false);
-      } 
-      // Show header/nav when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
-      else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
-        // Near top OR scrolling up fast - show header and bottom nav
-        const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
-        console.log(`Showing header and bottom nav - ${reason} - scrollY:`, currentScrollY, 'setting isBottomNavVisible to true');
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
-      }
+      // Always keep panels visible but move them based on scroll
+      setIsHeaderVisible(true);
+      setIsBottomNavVisible(true);
       
       lastScrollY.current = currentScrollY;
-      lastScrollTime = currentTime;
     };
 
     // Test scroll immediately to see current state
@@ -164,14 +142,14 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={lastScrollY.current}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
-          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-700 ease-in-out"
+          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
-            transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
-            pointerEvents: isHeaderVisible ? 'auto' : 'none'
+            transform: `translateY(-${lastScrollY.current}px)`,
+            pointerEvents: 'auto'
           }}
         >
           <div className="w-full max-w-[768px] mx-auto px-4">
