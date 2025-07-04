@@ -635,10 +635,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </div>
-        </main>
 
-        {/* Edit Team Dialog */}
+            {/* Edit Team Dialog */}
         <Dialog open={!!editingTeam} onOpenChange={(open) => !open && setEditingTeam(null)}>
           <DialogContent>
             <DialogHeader>
