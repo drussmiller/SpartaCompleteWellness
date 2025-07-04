@@ -8,8 +8,7 @@ import {
   Settings, 
   HelpCircle,
   WifiOff,
-  Heart,
-  Database
+  Heart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -52,12 +51,12 @@ export const VerticalNav = () => {
       path: "/prayer-requests",
       count: prayerRequestCount || 0
     },
-    { icon: Database, label: "Storage", path: "/storage-test" },
+
     { icon: Menu, label: "Menu", path: "/menu" },
   ];
 
   return (
-    <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex">
+    <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[70]">
       {navItems.map((item) => (
         <TooltipProvider key={item.path}>
           <Tooltip>
