@@ -114,15 +114,14 @@ export default function HomePage() {
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       } 
-      // Move panels back when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
+      // Move panels back when at top OR when scrolling up fast (velocity > 1.5 pixels/ms) from anywhere
       else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
-        // Near top OR scrolling up fast - bring panels back pixel by pixel
+        // Near top OR scrolling up fast from anywhere - bring panels back
         const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
         console.log('🔼 Home - Bringing panels back -', reason, '- scrollY:', currentScrollY);
         
-        // Calculate how much to bring panels back based on current scroll position
-        const panelOffset = Math.max(0, currentScrollY);
-        setScrollOffset(panelOffset);
+        // Reset scroll offset to 0 when scrolling up fast from anywhere
+        setScrollOffset(0);
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
