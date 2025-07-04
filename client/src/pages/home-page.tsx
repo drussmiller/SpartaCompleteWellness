@@ -95,7 +95,7 @@ export default function HomePage() {
     const maxTranslateDistance = 100; // Maximum distance panels can move
     
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
       
       // Calculate translation - move panels based on scroll
       const newTranslateDistance = Math.min(currentScrollY, maxTranslateDistance);
@@ -110,55 +110,36 @@ export default function HomePage() {
       lastScrollY.current = currentScrollY;
     };
 
-    // Force initial debug info
-    const checkScrollability = () => {
-      const docHeight = document.documentElement.scrollHeight;
-      const winHeight = window.innerHeight;
-      const bodyHeight = document.body.scrollHeight;
-      const isScrollable = docHeight > winHeight;
-      
-      console.log('📝 SCROLL DEBUG:');
-      console.log('  - Document height:', docHeight);
-      console.log('  - Window height:', winHeight);
-      console.log('  - Body height:', bodyHeight);
-      console.log('  - Is scrollable:', isScrollable);
-      console.log('  - Current scroll:', window.scrollY);
-      console.log('  - Overflow-y computed style:', window.getComputedStyle(document.body).overflowY);
-      console.log('  - HTML overflow-y:', window.getComputedStyle(document.documentElement).overflowY);
-    };
+    // Simple scroll setup with immediate test
+    console.log('📝 Setting up scroll listener');
     
-    // Check scrollability immediately and after a delay
-    checkScrollability();
-    setTimeout(checkScrollability, 1000);
-    
-    // Add scroll listener with more aggressive event capture
-    const scrollOptions = { passive: true, capture: false };
+    // Add scroll listener - try both window and document
+    const scrollOptions = { passive: true };
     window.addEventListener('scroll', handleScroll, scrollOptions);
     document.addEventListener('scroll', handleScroll, scrollOptions);
     
-    // Also try listening to the body
-    document.body.addEventListener('scroll', handleScroll, scrollOptions);
+    // Force an initial call to test
+    handleScroll();
     
-    // Test scroll manually
+    // Test scroll detection after a short delay
     setTimeout(() => {
-      console.log('🧪 Manual scroll test - calling handleScroll()');
-      handleScroll();
+      console.log('🧪 Testing scroll detection...');
+      console.log('  - Current scrollY:', window.scrollY);
+      console.log('  - Document height:', document.documentElement.scrollHeight);
+      console.log('  - Window height:', window.innerHeight);
+      console.log('  - Is scrollable:', document.documentElement.scrollHeight > window.innerHeight);
       
-      // Try to scroll programmatically to test
-      if (window.scrollY === 0) {
-        console.log('🧪 Attempting programmatic scroll to test detection');
-        window.scrollTo(0, 10);
-        setTimeout(() => {
-          console.log('🧪 After programmatic scroll - scrollY:', window.scrollY);
-          window.scrollTo(0, 0);
-        }, 100);
-      }
-    }, 1000);
+      // Force a manual scroll to test
+      window.scrollTo(0, 20);
+      setTimeout(() => {
+        console.log('  - After manual scroll - scrollY:', window.scrollY);
+        handleScroll(); // Force handler call
+      }, 100);
+    }, 500);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
-      document.body.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
