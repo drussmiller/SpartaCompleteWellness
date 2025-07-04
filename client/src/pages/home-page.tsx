@@ -91,40 +91,45 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-      const scrollDelta = currentScrollY - lastScrollY.current;
-      
-      console.log('Scroll detected - scrollY:', currentScrollY, 'delta:', scrollDelta);
-      
-      // Always keep panels visible but move them based on scroll
-      setIsHeaderVisible(true);
-      setIsBottomNavVisible(true);
-      
-      lastScrollY.current = currentScrollY;
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+          console.log('🟢 Scroll detected - scrollY:', currentScrollY);
+          
+          // Update the scroll offset for panel movement
+          lastScrollY.current = currentScrollY;
+          
+          // Force re-render to update panel positions
+          setIsHeaderVisible(true);
+          setIsBottomNavVisible(true);
+          
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
-    // Test scroll immediately to see current state
-    console.log('Setting up scroll listener - current scroll:', window.scrollY);
-    
-    // Add multiple event listeners to catch scroll events
+    // Add scroll listener to window
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
-    document.body.addEventListener('scroll', handleScroll, { passive: true });
     
-    // Also try listening on the main content area
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
+    // Initial check
+    console.log('📝 Initial scroll setup - scrollY:', window.scrollY);
+    
+    // Force scroll to test detection
+    setTimeout(() => {
+      console.log('🧪 Testing scroll detection...');
+      window.scrollTo(0, 50);
+      setTimeout(() => {
+        console.log('🧪 After test scroll - scrollY:', window.scrollY);
+        window.scrollTo(0, 0);
+      }, 100);
+    }, 1000);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      document.body.removeEventListener('scroll', handleScroll);
-      if (mainElement) {
-        mainElement.removeEventListener('scroll', handleScroll);
-      }
     };
   }, []);
 
@@ -148,7 +153,8 @@ export default function HomePage() {
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
-            transform: `translateY(-${lastScrollY.current}px)`,
+            transform: `translateY(-${Math.min(lastScrollY.current, 100)}px)`,
+            transition: 'transform 0.1s ease-out',
             pointerEvents: 'auto'
           }}
         >
@@ -214,7 +220,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20 min-h-[200vh]">
+              <main className="pt-40 mb-20" style={{ minHeight: '300vh' }}>
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
