@@ -166,11 +166,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     },
   });
 
-    const handleThumbnailClick = () => {
-    // Navigate to video player page
-    const videoUrl = encodeURIComponent(imageUrl || '');
-    window.location.href = `/video-player?src=${videoUrl}`;
-  };
+
 
   const handleFailedPosterLoad = async (mediaUrl: string) => {
         console.log('handleFailedPosterLoad called with:', mediaUrl);
@@ -319,56 +315,20 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           <div className="w-full bg-gray-50">
             {shouldShowAsVideo ? (
               <div className="relative w-full video-container" data-post-id={post.id}>
-                {/* Thumbnail overlay for videos */}
-        {(post.is_video || post.type === 'memory_verse') && (
-          <div 
-            className="relative cursor-pointer"
-            onClick={handleThumbnailClick}
-          >
-            {thumbnailUrl && !thumbnailError ? (
-              <img
-                src={thumbnailUrl}
-                alt="Video thumbnail"
-                className="w-full h-48 object-cover"
-                onLoad={() => {
-                  console.log('Thumbnail loaded successfully:', thumbnailUrl);
-                  setThumbnailLoaded(true);
-                }}
-                onError={(e) => {
-                  console.error('Thumbnail failed to load:', thumbnailUrl);
-                  setThumbnailError(true);
-                  // Try to generate thumbnail when poster fails
-                  handleFailedPosterLoad(post.mediaUrl || '').catch(err => {
-                    console.error('Failed to generate thumbnail:', err);
-                  });
-                }}
-              />
-            ) : (
-              // Fallback placeholder when thumbnail is missing or failed
-              <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="bg-gray-400 rounded-full p-4 mx-auto mb-2">
-                    <Play className="h-8 w-8 text-white fill-current" />
-                  </div>
-                  <p className="text-gray-600 text-sm">Video</p>
-                  {thumbnailError ? (
-                    <p className="text-xs text-gray-500 mt-1">Thumbnail unavailable</p>
-                  ) : (
-                    <p className="text-xs text-gray-500 mt-1">Loading thumbnail...</p>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Play button overlay - positioned in lower left */}
-            {thumbnailLoaded && !thumbnailError && (
-              <div className="absolute bottom-3 left-3">
-                <div className="bg-black bg-opacity-80 rounded-full p-2">
-                  <Play className="h-5 w-5 text-white fill-current" />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                <VideoPlayer
+                  src={createMediaUrl(post.mediaUrl)}
+                  poster={thumbnailUrl || undefined}
+                  className="w-full video-player-container"
+                  preload="metadata"
+                  playsInline
+                  controlsList="nodownload"
+                  onLoad={() => {
+                    console.log(`Home page: Video loaded successfully for post ${post.id}`);
+                  }}
+                  onError={(error) => {
+                    console.error(`Failed to load video on home page: ${post.mediaUrl}`, error);
+                  }}
+                />
               </div>
             ) : (
               <img
