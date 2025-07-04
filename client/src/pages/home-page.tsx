@@ -41,8 +41,8 @@ export default function HomePage() {
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
-  const [scrollOffset, setScrollOffset] = useState(0);
   const lastScrollY = useRef(0);
+  const ticking = useRef(false);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -91,47 +91,23 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
-    let scrollVelocity = 0;
-    let lastScrollTime = Date.now();
-    
-    const handleScroll = (event) => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      const currentTime = Date.now();
-      const timeDelta = currentTime - lastScrollTime;
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      const scrollDelta = currentScrollY - lastScrollY.current;
       
-      // Calculate scroll velocity (pixels per millisecond)
-      if (timeDelta > 0) {
-        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
-      }
+      console.log('Scroll detected - scrollY:', currentScrollY, 'delta:', scrollDelta);
       
-      console.log('🟢 Home - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
-      
-      // Move panels down when scrolling down past 50px
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - move panels off screen
-        console.log('🔽 Home - Moving panels down - scrollY:', currentScrollY);
-        setScrollOffset(currentScrollY);
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
-      } 
-      // Move panels back when at top OR when scrolling up fast (velocity > 1.5 pixels/ms)
-      else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
-        // Near top OR scrolling up fast - bring panels back pixel by pixel
-        const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
-        console.log('🔼 Home - Bringing panels back -', reason, '- scrollY:', currentScrollY);
-        
-        // Calculate how much to bring panels back based on current scroll position
-        const panelOffset = Math.max(0, currentScrollY);
-        setScrollOffset(panelOffset);
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
-      }
+      // Always keep panels visible but move them based on scroll
+      setIsHeaderVisible(true);
+      setIsBottomNavVisible(true);
       
       lastScrollY.current = currentScrollY;
-      lastScrollTime = currentTime;
     };
 
-    // Add scroll listeners to multiple potential scroll containers
+    // Test scroll immediately to see current state
+    console.log('Setting up scroll listener - current scroll:', window.scrollY);
+    
+    // Add multiple event listeners to catch scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('scroll', handleScroll, { passive: true });
     document.body.addEventListener('scroll', handleScroll, { passive: true });
@@ -142,29 +118,12 @@ export default function HomePage() {
       mainElement.addEventListener('scroll', handleScroll, { passive: true });
     }
     
-    // Also try the root div
-    const rootElement = document.getElementById('root');
-    if (rootElement) {
-      rootElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
-    
-    // Initial check
-    console.log('📝 Initial scroll setup - scrollY:', window.scrollY);
-    console.log('📝 Document height:', document.documentElement.scrollHeight);
-    console.log('📝 Window height:', window.innerHeight);
-    console.log('📝 Body scroll height:', document.body.scrollHeight);
-    console.log('📝 Main element found:', !!mainElement);
-    console.log('📝 Root element found:', !!rootElement);
-    
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
       document.body.removeEventListener('scroll', handleScroll);
       if (mainElement) {
         mainElement.removeEventListener('scroll', handleScroll);
-      }
-      if (rootElement) {
-        rootElement.removeEventListener('scroll', handleScroll);
       }
     };
   }, []);
@@ -183,13 +142,13 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={scrollOffset}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={lastScrollY.current}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
-            transform: `translateY(-${scrollOffset}px)`,
+            transform: `translateY(-${lastScrollY.current}px)`,
             pointerEvents: 'auto'
           }}
         >
@@ -255,7 +214,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20" style={{ minHeight: '200vh' }}>
+              <main className="pt-40 mb-20 min-h-[200vh]">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
@@ -271,9 +230,9 @@ export default function HomePage() {
                       No posts yet. Be the first to share!
                       <div className="mt-8 space-y-4">
                         {/* Add content to test scrolling behavior */}
-                        {Array.from({ length: 20 }, (_, i) => (
-                          <div key={i} className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 text-lg font-bold">
-                            Test Content Block {i + 1} - Scroll Position: {scrollOffset}px
+                        {Array.from({ length: 15 }, (_, i) => (
+                          <div key={i} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600">
+                            Test Content Block {i + 1} - Scroll to test header hiding
                           </div>
                         ))}
                       </div>
