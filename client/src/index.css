@@ -2,7 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Image width constraints */
+/* Container styles */
+.post-content,
+.post-card {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Base image styles */
 .post-content img,
 .post-card img,
 article img,
@@ -11,38 +19,22 @@ main img {
   width: 100%;
   height: auto;
   object-fit: cover;
-}
-
-/* Mobile styles */
-.post-content,
-.post-card {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.post-content img,
-.post-card img {
-  max-width: 1000px;
-  width: 100%;
   display: block;
 }
 
-/* Desktop-specific image styling */
+/* Desktop-specific styling */
 @media (min-width: 768px) {
   .post-content,
   .post-card {
-    max-width: 1000px;
-    margin: 0 auto;
     padding: 0 2rem;
   }
   
   .post-content img,
   .post-card img {
-    max-width: calc(1000px - 4rem);
+    max-width: 936px; /* 1000px - 64px (2rem padding on each side) */
     width: calc(100% - 4rem);
-    margin: 0 2rem;
-    display: block;
+    margin-left: 2rem;
+    margin-right: 2rem;
   }
 }
 
