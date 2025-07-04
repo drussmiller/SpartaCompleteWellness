@@ -13,10 +13,12 @@ main img {
   object-fit: cover;
 }
 
-/* Ensure consistent image container width */
+/* Mobile styles */
 .post-content,
 .post-card {
   max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .post-content img,
@@ -24,35 +26,22 @@ main img {
   max-width: 1000px;
   width: 100%;
   display: block;
-  margin: 0 auto;
-}
-
-/* Center images within their containers */
-.post-content,
-.post-card {
-  margin: 0 auto;
-  padding: 0 1rem;
 }
 
 /* Desktop-specific image styling */
 @media (min-width: 768px) {
-  /* Ensure image containers have proper centering and padding */
   .post-content,
   .post-card {
     max-width: 1000px;
     margin: 0 auto;
     padding: 0 2rem;
-    box-sizing: border-box;
   }
   
-  /* Images should be smaller than container to show padding */
   .post-content img,
   .post-card img {
-    max-width: calc(100% - 4rem);
+    max-width: calc(1000px - 4rem);
     width: calc(100% - 4rem);
     margin: 0 2rem;
-    padding: 0;
-    box-sizing: border-box;
     display: block;
   }
 }
