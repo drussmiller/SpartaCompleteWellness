@@ -39,6 +39,7 @@ import { logger } from './logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { objectStorageRouter } from './object-storage-routes';
 import { messageRouter } from './message-routes';
+import { userRoleRouter } from './user-role-route';
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
@@ -3450,6 +3451,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Register message routes first (with Object Storage implementation)
   app.use(messageRouter);
+  
+  // Register user role routes
+  app.use(userRoleRouter);
   
   app.use(router);
 
