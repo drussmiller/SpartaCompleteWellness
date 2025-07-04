@@ -193,7 +193,7 @@ export default function HomePage() {
             pointerEvents: 'auto'
           }}
         >
-          <div className="w-full max-w-[850px] mx-auto px-4">
+          <div className="w-full max-w-[1000px] mx-auto px-4">
             <div className="flex items-center justify-between pt-12">
               <div className="flex-1 flex justify-center">
                 <img
@@ -240,7 +240,7 @@ export default function HomePage() {
 
         {/* Main content layout */}
         <div className="w-full">
-          <div className={`${!isMobile ? 'max-w-[850px] mx-auto px-6' : 'w-full'}`}>
+          <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'w-full'}`}>
             <main className="p-4">
               {/* Header */}
               <div className="mb-6">

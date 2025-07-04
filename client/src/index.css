@@ -16,13 +16,20 @@ main img {
 /* Ensure consistent image container width */
 .post-content,
 .post-card {
-  max-width: 850px;
+  max-width: 1000px;
 }
 
 .post-content img,
 .post-card img {
-  max-width: 850px;
+  max-width: 1000px;
   width: 100%;
+}
+
+/* Center images within their containers */
+.post-content,
+.post-card {
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
 /* Fix for video player controls being cut off */

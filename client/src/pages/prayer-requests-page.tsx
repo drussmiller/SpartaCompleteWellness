@@ -145,7 +145,7 @@ export default function PrayerRequestsPage() {
             transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)'
           }}
         >
-          <div className="w-full max-w-[850px] mx-auto px-4">
+          <div className="w-full max-w-[1000px] mx-auto px-4">
             <div className="flex items-center justify-between pt-12">
               <div className="flex-1 flex justify-center">
                 <img
@@ -185,7 +185,7 @@ export default function PrayerRequestsPage() {
 
         {/* Main content layout */}
         <div className="w-full">
-          <div className={`${!isMobile ? 'max-w-[850px] mx-auto px-6' : 'w-full'}`}>
+          <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'w-full'}`}>
             <main className="p-4">
               <div className="mb-6">
                 <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
