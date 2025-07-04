@@ -189,7 +189,7 @@ export default function HomePage() {
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
             transform: `translateY(-${scrollOffset}px)`,
-            transition: 'transform 0.5s ease-out',
+            transition: 'transform 1.5s ease-out',
             pointerEvents: 'auto'
           }}
         >
