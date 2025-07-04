@@ -154,10 +154,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Create team mutation
   const createTeamMutation = useMutation({
     mutationFn: async (teamData: TeamFormData) => {
-      return apiRequest("/api/teams", {
-        method: "POST",
-        body: JSON.stringify(teamData),
-      });
+      return apiRequest("POST", "/api/teams", teamData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -180,10 +177,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const editTeamMutation = useMutation({
     mutationFn: async (teamData: TeamFormData) => {
       if (!editingTeam) throw new Error("No team selected for editing");
-      return apiRequest(`/api/teams/${editingTeam.id}`, {
-        method: "PUT",
-        body: JSON.stringify(teamData),
-      });
+      return apiRequest("PUT", `/api/teams/${editingTeam.id}`, teamData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -205,9 +199,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Delete team mutation
   const deleteTeamMutation = useMutation({
     mutationFn: async (teamId: number) => {
-      return apiRequest(`/api/teams/${teamId}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/teams/${teamId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
@@ -230,10 +222,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const editUserMutation = useMutation({
     mutationFn: async (userData: Partial<User>) => {
       if (!editingUser) throw new Error("No user selected for editing");
-      return apiRequest(`/api/users/${editingUser.id}`, {
-        method: "PUT",
-        body: JSON.stringify(userData),
-      });
+      return apiRequest("PUT", `/api/users/${editingUser.id}`, userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -255,9 +244,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      return apiRequest(`/api/users/${userId}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/users/${userId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -278,10 +265,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Reset password mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async ({ userId, newPassword }: { userId: number; newPassword: string }) => {
-      return apiRequest(`/api/users/${userId}/reset-password`, {
-        method: "POST",
-        body: JSON.stringify({ password: newPassword }),
-      });
+      return apiRequest("POST", `/api/users/${userId}/reset-password`, { password: newPassword });
     },
     onSuccess: () => {
       setResetPasswordOpen(false);
@@ -345,189 +329,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   }, [users, tzOffset]);
 
 
-  const form = useForm<TeamFormData>({
-    resolver: zodResolver(insertTeamSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-    },
-  });
 
-  const createTeamMutation = useMutation({
-    mutationFn: async (data: TeamFormData) => {
-      const res = await apiRequest("POST", "/api/teams", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create team");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Team created successfully",
-      });
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
-  const deleteTeamMutation = useMutation({
-    mutationFn: async (teamId: number) => {
-      const res = await apiRequest("DELETE", `/api/teams/${teamId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete team");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Team deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
-  const updateUserTeamMutation = useMutation({
-    mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}`, { teamId });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user's team");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User's team updated successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
-  const updateUserRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, value }: { userId: number; role: 'isAdmin' | 'isTeamLead'; value: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role, value });
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User's role updated successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
-  const updateTeamMutation = useMutation({
-    mutationFn: async ({ teamId, data }: { teamId: number; data: Partial<Team> }) => {
-      const res = await apiRequest("PATCH", `/api/teams/${teamId}`, data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update team");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Team updated successfully",
-      });
-      setEditingTeam(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: async ({ userId, data }: { userId: number; data: Partial<User> }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      });
-      setEditingUser(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const isLoading = teamsLoading || usersLoading;
   const error = teamsError || usersError;
