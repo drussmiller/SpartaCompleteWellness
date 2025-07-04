@@ -222,7 +222,7 @@ export default function HomePage() {
               </Button>
               <Button 
                 variant="outline"
-                className="flex-1 ml-2 h-10 text-sm font-medium"
+                className="flex-1 ml-2 h-10 text-sm font-medium md:hidden"
                 onClick={handlePrayerRequestsClick}
               >
                 <div className="relative">

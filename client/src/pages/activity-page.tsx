@@ -198,7 +198,7 @@ export default function ActivityPage() {
           <h1 className="text-xl font-bold pl-0">Daily Activity</h1>
         </div>
       </header>
-      <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
+      <main className="p-4 max-w-3xl mx-auto w-full space-y-4 md:px-44 md:pl-56">
         {/* Week Content Collapsible Section */}
         <Collapsible 
           open={isWeekOverviewOpen} 
