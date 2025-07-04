@@ -393,21 +393,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   return (
     <AppLayout>
       <div className="min-h-screen bg-background">
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-          <div className="w-full max-w-[768px] mx-auto px-4">
-            <div className="flex items-center justify-between pt-12 pb-4">
-              <div className="flex-1 flex justify-center">
-                <img
-                  src="/sparta_circle_red.png"
-                  alt="Sparta Complete Wellness Logo"
-                  className="w-48 h-auto mx-auto"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <main className="pt-32 pb-24 px-4">
+        <main className="py-6 px-4">
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold text-primary">Admin Dashboard</h1>
@@ -817,6 +803,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           </DialogContent>
         </Dialog>
 
+          </div>
+        </main>
       </div>
     </AppLayout>
   );
