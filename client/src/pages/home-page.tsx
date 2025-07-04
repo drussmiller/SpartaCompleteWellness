@@ -110,23 +110,55 @@ export default function HomePage() {
       lastScrollY.current = currentScrollY;
     };
 
-    // Force initial check
-    console.log('📝 Setting up scroll - Initial scrollY:', window.scrollY);
-    console.log('📏 Document height:', document.documentElement.scrollHeight);
-    console.log('🖥️ Window height:', window.innerHeight);
-    console.log('📱 Is scrollable:', document.documentElement.scrollHeight > window.innerHeight);
+    // Force initial debug info
+    const checkScrollability = () => {
+      const docHeight = document.documentElement.scrollHeight;
+      const winHeight = window.innerHeight;
+      const bodyHeight = document.body.scrollHeight;
+      const isScrollable = docHeight > winHeight;
+      
+      console.log('📝 SCROLL DEBUG:');
+      console.log('  - Document height:', docHeight);
+      console.log('  - Window height:', winHeight);
+      console.log('  - Body height:', bodyHeight);
+      console.log('  - Is scrollable:', isScrollable);
+      console.log('  - Current scroll:', window.scrollY);
+      console.log('  - Overflow-y computed style:', window.getComputedStyle(document.body).overflowY);
+      console.log('  - HTML overflow-y:', window.getComputedStyle(document.documentElement).overflowY);
+    };
     
-    // Add scroll listener
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Check scrollability immediately and after a delay
+    checkScrollability();
+    setTimeout(checkScrollability, 1000);
     
-    // Test scroll manually after setup
+    // Add scroll listener with more aggressive event capture
+    const scrollOptions = { passive: true, capture: false };
+    window.addEventListener('scroll', handleScroll, scrollOptions);
+    document.addEventListener('scroll', handleScroll, scrollOptions);
+    
+    // Also try listening to the body
+    document.body.addEventListener('scroll', handleScroll, scrollOptions);
+    
+    // Test scroll manually
     setTimeout(() => {
-      console.log('🧪 Manual test scroll');
+      console.log('🧪 Manual scroll test - calling handleScroll()');
       handleScroll();
-    }, 500);
+      
+      // Try to scroll programmatically to test
+      if (window.scrollY === 0) {
+        console.log('🧪 Attempting programmatic scroll to test detection');
+        window.scrollTo(0, 10);
+        setTimeout(() => {
+          console.log('🧪 After programmatic scroll - scrollY:', window.scrollY);
+          window.scrollTo(0, 0);
+        }, 100);
+      }
+    }, 1000);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      document.body.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -221,7 +253,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 pb-32 min-h-[300vh]">
+              <main className="pt-40 pb-32" style={{ minHeight: '200vh' }}>
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
@@ -235,20 +267,21 @@ export default function HomePage() {
                   ) : !isLoading ? (
                     <div className="text-center text-muted-foreground py-8">
                       No posts yet. Be the first to share!
-                      <div className="mt-8 space-y-4">
-                        {/* Add more content to test scrolling behavior */}
-                        {Array.from({ length: 30 }, (_, i) => (
-                          <div key={i} className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 border">
-                            <div className="text-center">
-                              <div className="font-bold">Test Content Block {i + 1}</div>
-                              <div className="text-sm">Scroll to test panel movement</div>
-                              <div className="text-xs mt-2">Current scroll: {Math.round(translateDistance)}px</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   ) : null}
+                  
+                  {/* Always add test content to ensure scrollability */}
+                  <div className="mt-8 space-y-4">
+                    {Array.from({ length: 50 }, (_, i) => (
+                      <div key={`scroll-test-${i}`} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600 border">
+                        <div className="text-center">
+                          <div className="font-bold">Scroll Test Block {i + 1}</div>
+                          <div className="text-sm">Current scroll offset: {Math.round(translateDistance)}px</div>
+                          <div className="text-xs">Window scrollY: {Math.round(lastScrollY.current)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Loading indicator */}
                   <div ref={loadingRef} className="flex justify-center py-4">
