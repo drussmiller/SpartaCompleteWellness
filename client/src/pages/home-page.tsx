@@ -41,6 +41,7 @@ export default function HomePage() {
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
+  const [translateDistance, setTranslateDistance] = useState(0);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
@@ -102,18 +103,18 @@ export default function HomePage() {
       
       animationFrameId = requestAnimationFrame(() => {
         const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-        const scrollDelta = currentScrollY - lastScrollY.current;
         
         // Calculate smooth translation - only move panels a fraction of scroll distance
-        const translateDistance = Math.min(currentScrollY * 0.3, maxTranslateDistance);
+        const newTranslateDistance = Math.min(currentScrollY * 0.3, maxTranslateDistance);
         
-        console.log('Scroll detected - scrollY:', currentScrollY, 'translateDistance:', translateDistance);
+        console.log('Scroll detected - scrollY:', currentScrollY, 'translateDistance:', newTranslateDistance);
         
         // Always keep panels visible but move them based on scroll
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
+        setTranslateDistance(newTranslateDistance);
         
-        lastScrollY.current = translateDistance; // Store the translate distance instead of raw scroll
+        lastScrollY.current = currentScrollY; // Store the actual scroll position
       });
     };
 
@@ -145,13 +146,13 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={lastScrollY.current}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={translateDistance}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-100 ease-out"
           style={{
-            transform: `translateY(-${lastScrollY.current}px)`,
+            transform: `translateY(-${translateDistance}px)`,
             pointerEvents: 'auto'
           }}
         >
