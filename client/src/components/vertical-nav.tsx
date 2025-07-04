@@ -56,7 +56,7 @@ export const VerticalNav = () => {
   ];
 
   return (
-    <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[70]">
+    <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[100]">
       {navItems.map((item) => (
         <TooltipProvider key={item.path}>
           <Tooltip>

@@ -65,7 +65,7 @@ function MainContent() {
   // If authenticated, show the app with routes
   return (
     <div className="min-h-screen">
-      {user && <div className="fixed left-0 top-0 z-[51]"><VerticalNav /></div>}
+      {user && <div className="fixed left-0 top-0 z-[100]"><VerticalNav /></div>}
       <div className="md:pl-20" style={{overflowX: 'hidden'}}> {/* Adjusted padding to match new nav width */}
         <Switch>
           <Route path="/" component={HomePage} />

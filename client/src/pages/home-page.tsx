@@ -186,7 +186,7 @@ export default function HomePage() {
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
-          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
+          className="fixed top-0 left-0 right-0 z-[50] bg-background border-b border-border"
           style={{
             transform: `translateY(-${scrollOffset}px)`,
             transition: 'transform 1.5s ease-out',
