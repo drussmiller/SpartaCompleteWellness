@@ -41,7 +41,6 @@ export default function HomePage() {
   const [_, navigate] = useLocation();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
-  const [translateDistance, setTranslateDistance] = useState(0);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
@@ -92,54 +91,40 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
-    const maxTranslateDistance = 100; // Maximum distance panels can move
-    
     const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      const scrollDelta = currentScrollY - lastScrollY.current;
       
-      // Calculate translation - move panels based on scroll
-      const newTranslateDistance = Math.min(currentScrollY, maxTranslateDistance);
-      
-      console.log('🚀 SCROLL EVENT - scrollY:', currentScrollY, 'translateDistance:', newTranslateDistance);
+      console.log('Scroll detected - scrollY:', currentScrollY, 'delta:', scrollDelta);
       
       // Always keep panels visible but move them based on scroll
       setIsHeaderVisible(true);
       setIsBottomNavVisible(true);
-      setTranslateDistance(newTranslateDistance);
       
       lastScrollY.current = currentScrollY;
     };
 
-    // Simple scroll setup with immediate test
-    console.log('📝 Setting up scroll listener');
+    // Test scroll immediately to see current state
+    console.log('Setting up scroll listener - current scroll:', window.scrollY);
     
-    // Add scroll listener - try both window and document
-    const scrollOptions = { passive: true };
-    window.addEventListener('scroll', handleScroll, scrollOptions);
-    document.addEventListener('scroll', handleScroll, scrollOptions);
+    // Add multiple event listeners to catch scroll events
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    document.body.addEventListener('scroll', handleScroll, { passive: true });
     
-    // Force an initial call to test
-    handleScroll();
-    
-    // Test scroll detection after a short delay
-    setTimeout(() => {
-      console.log('🧪 Testing scroll detection...');
-      console.log('  - Current scrollY:', window.scrollY);
-      console.log('  - Document height:', document.documentElement.scrollHeight);
-      console.log('  - Window height:', window.innerHeight);
-      console.log('  - Is scrollable:', document.documentElement.scrollHeight > window.innerHeight);
-      
-      // Force a manual scroll to test
-      window.scrollTo(0, 20);
-      setTimeout(() => {
-        console.log('  - After manual scroll - scrollY:', window.scrollY);
-        handleScroll(); // Force handler call
-      }, 100);
-    }, 500);
+    // Also try listening on the main content area
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', handleScroll, { passive: true });
+    }
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('scroll', handleScroll);
+      document.body.removeEventListener('scroll', handleScroll);
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', handleScroll);
+      }
     };
   }, []);
 
@@ -157,18 +142,13 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={translateDistance}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={lastScrollY.current}>
       <div className="min-h-screen bg-background">
-        {/* Scroll Debug Indicator */}
-        <div className="fixed top-0 left-0 z-[70] bg-red-500 text-white px-2 py-1 text-xs">
-          Scroll: {Math.round(translateDistance)}px
-        </div>
-
         {/* Fixed Header - spans full width */}
         <div 
-          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-100 ease-out"
+          className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border"
           style={{
-            transform: `translateY(-${translateDistance}px)`,
+            transform: `translateY(-${lastScrollY.current}px)`,
             pointerEvents: 'auto'
           }}
         >
@@ -234,7 +214,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 pb-32" style={{ minHeight: '200vh' }}>
+              <main className="pt-40 mb-20 min-h-[200vh]">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
@@ -248,21 +228,16 @@ export default function HomePage() {
                   ) : !isLoading ? (
                     <div className="text-center text-muted-foreground py-8">
                       No posts yet. Be the first to share!
+                      <div className="mt-8 space-y-4">
+                        {/* Add content to test scrolling behavior */}
+                        {Array.from({ length: 15 }, (_, i) => (
+                          <div key={i} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600">
+                            Test Content Block {i + 1} - Scroll to test header hiding
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
-                  
-                  {/* Always add test content to ensure scrollability */}
-                  <div className="mt-8 space-y-4">
-                    {Array.from({ length: 50 }, (_, i) => (
-                      <div key={`scroll-test-${i}`} className="h-32 bg-gray-100 rounded flex items-center justify-center text-gray-600 border">
-                        <div className="text-center">
-                          <div className="font-bold">Scroll Test Block {i + 1}</div>
-                          <div className="text-sm">Current scroll offset: {Math.round(translateDistance)}px</div>
-                          <div className="text-xs">Window scrollY: {Math.round(lastScrollY.current)}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
 
                   {/* Loading indicator */}
                   <div ref={loadingRef} className="flex justify-center py-4">
