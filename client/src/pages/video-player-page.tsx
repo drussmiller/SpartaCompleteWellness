@@ -67,10 +67,10 @@ export function VideoPlayerPage() {
       // Start thumbnail generation in the background
       generateThumbnailIfNeeded();
 
-      // Preload the video completely before showing anything
+      // Preload only metadata for faster startup
       const video = document.createElement('video');
       video.src = decodedSrc;
-      video.preload = 'auto';
+      video.preload = 'metadata';
       video.muted = true; // Required for autoplay on mobile
       
       video.onloadedmetadata = () => {
@@ -78,8 +78,8 @@ export function VideoPlayerPage() {
         setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
       };
       
-      video.oncanplaythrough = () => {
-        console.log('Video fully loaded and ready to play');
+      video.onloadedmetadata = () => {
+        console.log('Video metadata loaded, ready to start');
         setIsLoading(false);
         setVideoReady(true);
         setShouldAutoPlay(true);
