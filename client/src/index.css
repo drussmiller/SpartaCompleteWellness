@@ -23,6 +23,8 @@ main img {
 .post-card img {
   max-width: 1000px;
   width: 100%;
+  display: block;
+  margin: 0 auto;
 }
 
 /* Center images within their containers */
@@ -30,6 +32,26 @@ main img {
 .post-card {
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+/* Desktop-specific image styling */
+@media (min-width: 768px) {
+  .post-content img,
+  .post-card img {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 2rem;
+    box-sizing: border-box;
+  }
+  
+  /* Ensure image containers have proper centering */
+  .post-content,
+  .post-card {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
 }
 
 /* Fix for video player controls being cut off */
