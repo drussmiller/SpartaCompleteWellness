@@ -92,58 +92,41 @@ export default function HomePage() {
 
   // Handle scroll for moving navigation panels
   useEffect(() => {
-    let animationFrameId;
     const maxTranslateDistance = 100; // Maximum distance panels can move
     
     const handleScroll = () => {
-      // Cancel any pending animation frame
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      const currentScrollY = window.scrollY;
       
-      animationFrameId = requestAnimationFrame(() => {
-        const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-        
-        // Calculate translation - move panels based on scroll
-        const newTranslateDistance = Math.min(currentScrollY, maxTranslateDistance);
-        
-        console.log('HOME PAGE SCROLL - scrollY:', currentScrollY, 'translateDistance:', newTranslateDistance);
-        
-        // Always keep panels visible but move them based on scroll
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
-        setTranslateDistance(newTranslateDistance);
-        
-        lastScrollY.current = currentScrollY; // Store the actual scroll position
-      });
+      // Calculate translation - move panels based on scroll
+      const newTranslateDistance = Math.min(currentScrollY, maxTranslateDistance);
+      
+      console.log('🚀 SCROLL EVENT - scrollY:', currentScrollY, 'translateDistance:', newTranslateDistance);
+      
+      // Always keep panels visible but move them based on scroll
+      setIsHeaderVisible(true);
+      setIsBottomNavVisible(true);
+      setTranslateDistance(newTranslateDistance);
+      
+      lastScrollY.current = currentScrollY;
     };
 
-    // Test scroll immediately and force initial state
-    const initialScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-    console.log('HOME PAGE - Setting up scroll listener - initial scroll:', initialScrollY);
-    console.log('HOME PAGE - Document height:', document.documentElement.scrollHeight);
-    console.log('HOME PAGE - Window height:', window.innerHeight);
+    // Force initial check
+    console.log('📝 Setting up scroll - Initial scrollY:', window.scrollY);
+    console.log('📏 Document height:', document.documentElement.scrollHeight);
+    console.log('🖥️ Window height:', window.innerHeight);
+    console.log('📱 Is scrollable:', document.documentElement.scrollHeight > window.innerHeight);
     
-    // Add multiple scroll listeners to ensure we catch scroll events
+    // Add scroll listener
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('scroll', handleScroll, { passive: true });
     
-    // Also test with a manual scroll trigger
-    const testScroll = () => {
-      console.log('HOME PAGE - Testing scroll manually');
+    // Test scroll manually after setup
+    setTimeout(() => {
+      console.log('🧪 Manual test scroll');
       handleScroll();
-    };
-    
-    // Test scroll after a short delay
-    const timeoutId = setTimeout(testScroll, 1000);
+    }, 500);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('scroll', handleScroll);
-      clearTimeout(timeoutId);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
     };
   }, []);
 
@@ -163,6 +146,11 @@ export default function HomePage() {
   return (
     <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={translateDistance}>
       <div className="min-h-screen bg-background">
+        {/* Scroll Debug Indicator */}
+        <div className="fixed top-0 left-0 z-[70] bg-red-500 text-white px-2 py-1 text-xs">
+          Scroll: {Math.round(translateDistance)}px
+        </div>
+
         {/* Fixed Header - spans full width */}
         <div 
           className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border transition-transform duration-100 ease-out"
@@ -233,7 +221,7 @@ export default function HomePage() {
 
             {/* Main content */}
             <div className={`${isMobile ? 'w-full' : 'w-2/4'} px-4`}>
-              <main className="pt-40 mb-20 min-h-[200vh]">
+              <main className="pt-40 pb-32 min-h-[300vh]">
                 <div className="space-y-2">
                   {posts?.length > 0 ? (
                     posts.map((post: Post, index: number) => (
