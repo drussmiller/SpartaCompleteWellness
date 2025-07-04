@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Image width constraints */
+.post-content img,
+.post-card img,
+article img,
+main img {
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Ensure consistent image container width */
+.post-content,
+.post-card {
+  max-width: 850px;
+}
+
+.post-content img,
+.post-card img {
+  max-width: 850px;
+  width: 100%;
+}
+
 /* Fix for video player controls being cut off */
 .video-container {
   position: relative;
