@@ -180,6 +180,23 @@ export const storage = {
     }
   },
 
+  async getActivitiesForWeeks(weekNumbers: number[]): Promise<Activity[]> {
+    try {
+      if (weekNumbers.length === 0) {
+        return [];
+      }
+
+      const query = db.select().from(activities).where(
+        or(...weekNumbers.map(week => eq(activities.week, week)))
+      );
+
+      return await query.orderBy(activities.week, activities.day);
+    } catch (error) {
+      logger.error(`Failed to get activities for weeks: ${error}`);
+      throw error;
+    }
+  },
+
   async createActivity(data: Partial<Activity>): Promise<Activity> {
     try {
       const [activity] = await db.insert(activities).values(data).returning();

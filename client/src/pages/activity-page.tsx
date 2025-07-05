@@ -127,11 +127,71 @@ export default function ActivityPage() {
 
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [selectedDay, setSelectedDay] = useState(1);
+  const [loadedWeeks, setLoadedWeeks] = useState<Set<number>>(new Set());
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Calculate initial weeks to load (current week + previous 4)
+  const getInitialWeeks = (currentWeek: number) => {
+    const weeks = [];
+    for (let i = Math.max(1, currentWeek - 4); i <= currentWeek; i++) {
+      weeks.push(i);
+    }
+    return weeks;
+  };
 
-  const { data: activities, isLoading: isActivitiesLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/activities"]
+  // Initial load of current week + previous 4 weeks
+  const { isLoading: isActivitiesLoading } = useQuery<Activity[]>({
+    queryKey: ["/api/activities", "initial", currentProgress?.currentWeek],
+    queryFn: async () => {
+      if (!currentProgress) return [];
+      
+      const initialWeeks = getInitialWeeks(currentProgress.currentWeek);
+      const response = await fetch(`/api/activities?weeks=${initialWeeks.join(',')}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
+      
+      const data = await response.json();
+      setActivities(data);
+      setLoadedWeeks(new Set(initialWeeks));
+      
+      console.log(`Loaded initial weeks: ${initialWeeks.join(', ')}`);
+      return data;
+    },
+    enabled: !!currentProgress,
   });
+
+  // Function to load additional weeks when needed
+  const loadWeek = async (week: number) => {
+    if (loadedWeeks.has(week) || isLoadingMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const response = await fetch(`/api/activities?weeks=${week}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch additional week');
+      }
+      
+      const newActivities = await response.json();
+      setActivities(prev => [...prev, ...newActivities]);
+      setLoadedWeeks(prev => new Set([...prev, week]));
+      
+      console.log(`Lazy loaded week: ${week}`);
+    } catch (error) {
+      console.error('Failed to load week:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Load week when user navigates to it
+  React.useEffect(() => {
+    if (selectedWeek && !loadedWeeks.has(selectedWeek)) {
+      loadWeek(selectedWeek);
+    }
+  }, [selectedWeek, loadedWeeks]);
 
   // Get current activity for selected day
   const currentActivity = activities?.find(
@@ -199,6 +259,46 @@ export default function ActivityPage() {
         </div>
       </header>
       <main className="p-4 max-w-[1000px] mx-auto w-full space-y-4 md:px-44 md:pl-56">
+        {/* Load Earlier Weeks Button */}
+        {currentProgress && selectedWeek <= Math.max(1, currentProgress.currentWeek - 4) && (
+          <div className="text-center">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                const earlierWeeks = [];
+                const startWeek = Math.max(1, selectedWeek - 5);
+                for (let i = startWeek; i < selectedWeek; i++) {
+                  if (!loadedWeeks.has(i)) {
+                    earlierWeeks.push(i);
+                  }
+                }
+                if (earlierWeeks.length > 0) {
+                  loadWeek(earlierWeeks[0]); // Load one week at a time
+                }
+              }}
+              disabled={isLoadingMore}
+              className="mb-4"
+            >
+              {isLoadingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Loading...
+                </>
+              ) : (
+                'Load Earlier Weeks'
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Loading status for current week */}
+        {!loadedWeeks.has(selectedWeek) && (
+          <div className="text-center p-4 bg-muted/50 rounded-md">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading Week {selectedWeek}...</p>
+          </div>
+        )}
+
         {/* Week Content Collapsible Section */}
         <Collapsible 
           open={isWeekOverviewOpen} 

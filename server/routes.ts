@@ -1223,7 +1223,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   // Activities endpoints
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
-      const { week, day } = req.query;
+      const { week, day, weeks } = req.query;
+      
+      // If weeks parameter is provided, fetch multiple weeks efficiently
+      if (weeks) {
+        const weekNumbers = (weeks as string).split(',').map(w => parseInt(w.trim()));
+        const activities = await storage.getActivitiesForWeeks(weekNumbers);
+        logger.info(`Retrieved activities for weeks: ${weekNumbers.join(', ')}`);
+        res.json(activities);
+        return;
+      }
+      
       const activities = await storage.getActivities(
         week ? parseInt(week as string) : undefined,
         day ? parseInt(day as string) : undefined
