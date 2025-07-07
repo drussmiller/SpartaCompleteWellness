@@ -140,14 +140,15 @@ export default function ActivityPage() {
     return weeks;
   };
 
-  // Initial load of current week + previous 4 weeks
+  // Initial load of ONLY current week for fastest loading
   const { isLoading: isActivitiesLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/activities", "initial", currentProgress?.currentWeek],
+    queryKey: ["/api/activities", "current", currentProgress?.currentWeek],
     queryFn: async () => {
       if (!currentProgress) return [];
       
-      const initialWeeks = getInitialWeeks(currentProgress.currentWeek);
-      const response = await fetch(`/api/activities?weeks=${initialWeeks.join(',')}`);
+      // Load only the current week initially
+      const currentWeek = currentProgress.currentWeek;
+      const response = await fetch(`/api/activities?weeks=${currentWeek}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch activities');
@@ -155,9 +156,9 @@ export default function ActivityPage() {
       
       const data = await response.json();
       setActivities(data);
-      setLoadedWeeks(new Set(initialWeeks));
+      setLoadedWeeks(new Set([currentWeek]));
       
-      console.log(`Loaded initial weeks: ${initialWeeks.join(', ')}`);
+      console.log(`Loaded current week: ${currentWeek}`);
       return data;
     },
     enabled: !!currentProgress,
@@ -259,21 +260,37 @@ export default function ActivityPage() {
         </div>
       </header>
       <main className="p-4 max-w-[1000px] mx-auto w-full space-y-4 md:px-44 md:pl-56">
-        {/* Load Earlier Weeks Button */}
-        {currentProgress && selectedWeek <= Math.max(1, currentProgress.currentWeek - 4) && (
+        {/* Load Previous Weeks Button */}
+        {currentProgress && selectedWeek < currentProgress.currentWeek && (
           <div className="text-center">
             <Button 
               variant="outline" 
-              onClick={() => {
-                const earlierWeeks = [];
-                const startWeek = Math.max(1, selectedWeek - 5);
-                for (let i = startWeek; i < selectedWeek; i++) {
-                  if (!loadedWeeks.has(i)) {
-                    earlierWeeks.push(i);
+              onClick={async () => {
+                if (isLoadingMore) return;
+                
+                setIsLoadingMore(true);
+                try {
+                  // Load the previous 3 weeks in one batch for efficiency
+                  const weeksToLoad = [];
+                  for (let i = Math.max(1, selectedWeek - 3); i < selectedWeek; i++) {
+                    if (!loadedWeeks.has(i)) {
+                      weeksToLoad.push(i);
+                    }
                   }
-                }
-                if (earlierWeeks.length > 0) {
-                  loadWeek(earlierWeeks[0]); // Load one week at a time
+                  
+                  if (weeksToLoad.length > 0) {
+                    const response = await fetch(`/api/activities?weeks=${weeksToLoad.join(',')}`);
+                    if (response.ok) {
+                      const newActivities = await response.json();
+                      setActivities(prev => [...prev, ...newActivities]);
+                      setLoadedWeeks(prev => new Set([...prev, ...weeksToLoad]));
+                      console.log(`Loaded previous weeks: ${weeksToLoad.join(', ')}`);
+                    }
+                  }
+                } catch (error) {
+                  console.error('Failed to load previous weeks:', error);
+                } finally {
+                  setIsLoadingMore(false);
                 }
               }}
               disabled={isLoadingMore}
@@ -285,7 +302,7 @@ export default function ActivityPage() {
                   Loading...
                 </>
               ) : (
-                'Load Earlier Weeks'
+                'Load Previous Weeks'
               )}
             </Button>
           </div>
