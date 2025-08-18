@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +55,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [, setLocation] = useLocation();
   const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
+
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation("/menu");
+      }
+    }
+  });
 
   // Get timezone offset for current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();
@@ -330,7 +341,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   return (
     <AppLayout sidebarWidth="80">
-      <div className="flex flex-col h-screen pb-20">
+      <div 
+        className="flex flex-col h-screen pb-20"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Fixed title bar */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
           <div className="p-4 pt-16 flex items-center">

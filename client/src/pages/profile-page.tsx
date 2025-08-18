@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LogOut, ChevronLeft } from "lucide-react";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
@@ -30,6 +31,16 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
+
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation(-1);
+      }
+    }
+  });
 
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
@@ -151,7 +162,12 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   });
 
   return (
-    <div className="flex flex-col h-screen">
+    <div 
+      className="flex flex-col h-screen"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
         <div className="p-4 flex items-center">
           {onClose && (
