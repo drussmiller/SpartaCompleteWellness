@@ -162,7 +162,7 @@ export default function CommentsPage() {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full"></div>
+          <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
               <PostView post={originalPost} />
             </div>
