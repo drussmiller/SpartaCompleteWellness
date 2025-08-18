@@ -106,22 +106,18 @@ export default function HomePage() {
 
       console.log('🟢 Home - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
 
-      // Move panels down when scrolling down past 50px
+      // Hide panels when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - move panels off screen
-        console.log('🔽 Home - Moving panels down - scrollY:', currentScrollY);
-        setScrollOffset(currentScrollY);
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
+        // Scrolling down - hide both panels
+        console.log('🔽 Home - Hiding panels - scrollY:', currentScrollY);
+        setIsHeaderVisible(false);
+        setIsBottomNavVisible(false);
       } 
-      // Move panels back when at top OR when scrolling up fast (velocity > 1.5 pixels/ms) from anywhere
+      // Show panels when at top OR when scrolling up fast (velocity > 1.5 pixels/ms) from anywhere
       else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
-        // Near top OR scrolling up fast from anywhere - bring panels back
+        // Near top OR scrolling up fast from anywhere - show both panels
         const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
-        console.log('🔼 Home - Bringing panels back -', reason, '- scrollY:', currentScrollY);
-
-        // Reset scroll offset to 0 when scrolling up fast from anywhere
-        setScrollOffset(0);
+        console.log('🔼 Home - Showing panels -', reason, '- scrollY:', currentScrollY);
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
@@ -182,14 +178,14 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible} scrollOffset={scrollOffset}>
+    <AppLayout isBottomNavVisible={isBottomNavVisible}>
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div 
           className="fixed top-0 left-0 right-0 z-[50] bg-background border-b border-border"
           style={{
-            transform: `translateY(-${scrollOffset}px)`,
-            transition: 'transform 1.5s ease-out',
+            transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
+            transition: 'transform 0.3s ease-out',
             pointerEvents: 'auto'
           }}
         >
