@@ -148,7 +148,7 @@ export function MessageSlideCard() {
   }, [messageCount]);
 
   // Query for unread messages by sender
-  const { data: unreadMessages = {} } = useQuery<Record<number, boolean>>({
+  const { data: unreadMessagesData = [] } = useQuery<Array<{senderId: number, count: number, sender: any}>>({
     queryKey: ["/api/messages/unread/by-sender"],
     queryFn: async () => {
       try {
@@ -157,13 +157,22 @@ export function MessageSlideCard() {
         return await response.json();
       } catch (error) {
         console.error("Error fetching unread messages by sender:", error);
-        return {};
+        return [];
       }
     },
     enabled: isOpen,
     refetchInterval: 60000, // Refetch every 60 seconds instead of 30
     staleTime: 30000 // 30 seconds
   });
+
+  // Convert array to lookup object for easier access
+  const unreadMessages = React.useMemo(() => {
+    const lookup: Record<number, boolean> = {};
+    unreadMessagesData.forEach(item => {
+      lookup[item.senderId] = true;
+    });
+    return lookup;
+  }, [unreadMessagesData]);
 
   // Mark messages as read when selecting a member
   useEffect(() => {
