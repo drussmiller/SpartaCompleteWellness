@@ -13,6 +13,7 @@ import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -55,6 +56,17 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+  
+  // Swipe to close functionality
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (selectedMember) {
+        setSelectedMember(null);
+      } else {
+        setIsOpen(false);
+      }
+    }
+  });
 
   // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
@@ -433,6 +445,7 @@ export function MessageSlideCard() {
 
       {/* Full screen slide-out panel */}
       <div
+        ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000] overflow-hidden`}
@@ -444,6 +457,9 @@ export function MessageSlideCard() {
           touchAction: 'pan-y',
           overscrollBehavior: 'contain'
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <Card className="h-full w-full rounded-none bg-white border-none shadow-none">
           {/* Header */}
