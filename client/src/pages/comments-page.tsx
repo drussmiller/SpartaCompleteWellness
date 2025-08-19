@@ -20,18 +20,12 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Using direct window.location navigation...');
-      console.log('🔍 Current location:', window.location.href);
+      console.log('🚀 Comments page: Swipe right detected! Using navigate() method...');
+      console.log('🔍 Current path:', window.location.pathname);
       
-      try {
-        // Force immediate navigation using window.location.replace
-        console.log('💫 Executing window.location.replace("/")');
-        window.location.replace('/');
-      } catch (error) {
-        console.error('❌ Navigation failed:', error);
-        // Ultimate fallback - reload the page to the home
-        window.location.href = '/';
-      }
+      // Use the same navigation method as the chevron button
+      console.log('💫 Executing navigate("/") - same as chevron button');
+      navigate('/');
     },
     threshold: 50, // Lower threshold for easier detection
     maxVerticalMovement: 200 // Allow more vertical movement
