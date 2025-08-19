@@ -20,18 +20,18 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('Comments page: Swipe right detected! Calling navigation...');
-      try {
-        navigate(-1);
-        console.log('Comments page: Navigation called successfully');
-      } catch (error) {
-        console.error('Comments page: Navigation error:', error);
-        // Fallback - try going to home
+      console.log('Comments page: Swipe right detected! Navigating back...');
+      // Use history.back() or fallback to home page
+      if (window.history.length > 1) {
+        window.history.back();
+        console.log('Comments page: Used history.back()');
+      } else {
         navigate('/');
+        console.log('Comments page: Navigated to home page');
       }
     },
-    threshold: 80, // Lower threshold for easier detection
-    maxVerticalMovement: 120 // Allow more vertical movement
+    threshold: 60, // Even lower threshold for easier detection
+    maxVerticalMovement: 150 // Allow more vertical movement
   });
 
   // Fetch original post
