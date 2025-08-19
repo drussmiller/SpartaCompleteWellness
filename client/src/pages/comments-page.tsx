@@ -20,18 +20,17 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('Comments page: Swipe right detected! Navigating back...');
-      // Use history.back() or fallback to home page
-      if (window.history.length > 1) {
-        window.history.back();
-        console.log('Comments page: Used history.back()');
-      } else {
+      console.log('🚀 Comments page: Swipe right detected! Attempting navigation...');
+      try {
+        // Force navigation to home page
         navigate('/');
-        console.log('Comments page: Navigated to home page');
+        console.log('✅ Comments page: Successfully navigated to home');
+      } catch (error) {
+        console.error('❌ Comments page: Navigation failed:', error);
       }
     },
-    threshold: 60, // Even lower threshold for easier detection
-    maxVerticalMovement: 150 // Allow more vertical movement
+    threshold: 50, // Lower threshold for easier detection
+    maxVerticalMovement: 200 // Allow more vertical movement
   });
 
   // Fetch original post
@@ -169,20 +168,9 @@ export default function CommentsPage() {
     <AppLayout title="Comments">
       <div 
         className="flex-1 bg-white"
-        onTouchStart={(e) => {
-          console.log('Comments page: Touch start detected', e.touches[0].clientX, e.touches[0].clientY);
-          handleTouchStart(e);
-        }}
-        onTouchMove={(e) => {
-          const touch = e.touches[0];
-          console.log('Comments page: Touch move detected', touch.clientX, touch.clientY);
-          handleTouchMove(e);
-        }}
-        onTouchEnd={(e) => {
-          const touch = e.changedTouches[0];
-          console.log('Comments page: Touch end detected', touch.clientX, touch.clientY);
-          handleTouchEnd(e);
-        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{ touchAction: 'pan-y' }}
       >
         <ScrollArea className="h-[calc(100vh-6rem)]">

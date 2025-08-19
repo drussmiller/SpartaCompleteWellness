@@ -21,10 +21,11 @@ export function useSwipeToClose({
     touchStartX.current = touch.clientX;
     touchStartY.current = touch.clientY;
     console.log('🟢 Swipe: Touch start at', touch.clientX, touch.clientY);
+    // Don't prevent default to allow normal scrolling
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    // Don't prevent default to allow normal scrolling
+    // Allow normal scrolling
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
@@ -36,8 +37,14 @@ export function useSwipeToClose({
     
     // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
     if (deltaX > threshold && deltaY < maxVerticalMovement) {
-      console.log('✅ Swipe: Right swipe detected! Triggering navigation');
-      onSwipeRight();
+      console.log('✅ Swipe: Right swipe detected! Preventing default and triggering navigation');
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Add a small delay to ensure the touch event is fully processed
+      setTimeout(() => {
+        onSwipeRight();
+      }, 50);
     } else {
       console.log('❌ Swipe: No valid swipe - deltaX needs >', threshold, 'got', deltaX, '| deltaY needs <', maxVerticalMovement, 'got', deltaY);
     }
