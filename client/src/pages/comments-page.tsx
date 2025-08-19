@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,7 +10,7 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -19,55 +19,44 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Simulating back button click...');
-      console.log('🔍 Current path:', window.location.pathname);
+  // Direct swipe handling with detailed logging
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    console.log('🟢 COMMENTS: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    console.log('🔵 COMMENTS: Touch move at', touch.clientX, touch.clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX.current;
+    const deltaY = Math.abs(touch.clientY - touchStartY.current);
+    
+    console.log('🔵 COMMENTS: Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
+    
+    // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
+    if (deltaX > 50 && deltaY < 200) {
+      console.log('✅ COMMENTS: Right swipe detected! Triggering navigation');
+      e.preventDefault();
+      e.stopPropagation();
       
-      // Find and click the actual back button that works
-      console.log('💫 Looking for back button to simulate click...');
-      
-      // Try to find the chevron back button in the AppLayout
-      const backButton = document.querySelector('[data-testid="back-button"], .lucide-chevron-left, button[aria-label="Close"], .sheet-close');
-      if (backButton) {
-        console.log('✅ Found back button, simulating click');
-        (backButton as HTMLElement).click();
-      } else {
-        console.log('❌ Back button not found, trying query selectors...');
-        
-        // Try different selectors for the back button
-        const selectors = [
-          'button:has(.lucide-chevron-left)',
-          '[role="button"]:has(.lucide-chevron-left)', 
-          'button[class*="sheet"]',
-          'button[class*="close"]',
-          '.sheet-close'
-        ];
-        
-        let buttonFound = false;
-        for (const selector of selectors) {
-          try {
-            const btn = document.querySelector(selector);
-            if (btn) {
-              console.log(`✅ Found button with selector: ${selector}`);
-              (btn as HTMLElement).click();
-              buttonFound = true;
-              break;
-            }
-          } catch (e) {
-            console.log(`❌ Selector failed: ${selector}`);
-          }
-        }
-        
-        if (!buttonFound) {
-          console.log('💫 No back button found, using history.back()');
-          window.history.back();
-        }
-      }
-    },
-    threshold: 50, // Lower threshold for easier detection
-    maxVerticalMovement: 200 // Allow more vertical movement
-  });
+      // Simple navigation back
+      setTimeout(() => {
+        console.log('🚀 COMMENTS: Executing navigation...');
+        window.history.back();
+      }, 50);
+    } else {
+      console.log('❌ COMMENTS: No valid swipe - deltaX:', deltaX, 'deltaY:', deltaY);
+    }
+  };
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
