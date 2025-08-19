@@ -23,7 +23,7 @@ export default function CommentsPage() {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
-  // Use document-level touch events for better capture
+  // Use both document-level and container-level touch events for better capture
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
@@ -65,13 +65,31 @@ export default function CommentsPage() {
     document.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
     document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
 
-    console.log('🔧 COMMENTS: Document touch listeners attached');
+    // Also add to body and html elements for broader coverage
+    document.body.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.body.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.body.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    document.documentElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.documentElement.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.documentElement.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    console.log('🔧 COMMENTS: Multiple touch listeners attached');
 
     return () => {
       document.removeEventListener('touchstart', handleTouchStart, { capture: true });
       document.removeEventListener('touchmove', handleTouchMove, { capture: true });
       document.removeEventListener('touchend', handleTouchEnd, { capture: true });
-      console.log('🔧 COMMENTS: Document touch listeners removed');
+      
+      document.body.removeEventListener('touchstart', handleTouchStart);
+      document.body.removeEventListener('touchmove', handleTouchMove);
+      document.body.removeEventListener('touchend', handleTouchEnd);
+      
+      document.documentElement.removeEventListener('touchstart', handleTouchStart);
+      document.documentElement.removeEventListener('touchmove', handleTouchMove);
+      document.documentElement.removeEventListener('touchend', handleTouchEnd);
+      
+      console.log('🔧 COMMENTS: All touch listeners removed');
     };
   }, []);
 
@@ -207,7 +225,36 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="min-h-screen w-full">
+    <div 
+      className="min-h-screen w-full"
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        touchStartX.current = touch.clientX;
+        touchStartY.current = touch.clientY;
+        console.log('🟡 COMMENTS (JSX): Touch start at', touch.clientX, touch.clientY);
+      }}
+      onTouchMove={(e) => {
+        const touch = e.touches[0];
+        console.log('🟡 COMMENTS (JSX): Touch move at', touch.clientX, touch.clientY);
+      }}
+      onTouchEnd={(e) => {
+        const touch = e.changedTouches[0];
+        const deltaX = touch.clientX - touchStartX.current;
+        const deltaY = Math.abs(touch.clientY - touchStartY.current);
+        
+        console.log('🟡 COMMENTS (JSX): Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
+        
+        if (deltaX > 50 && deltaY < 200) {
+          console.log('✅ COMMENTS (JSX): Right swipe detected!');
+          e.preventDefault();
+          e.stopPropagation();
+          setTimeout(() => {
+            window.history.back();
+          }, 50);
+        }
+      }}
+      style={{ touchAction: 'pan-y' }}
+    >
       <AppLayout title="Comments">
         <div className="flex-1 bg-white">
         <ScrollArea className="h-[calc(100vh-6rem)]">
