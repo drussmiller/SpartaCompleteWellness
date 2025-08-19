@@ -10,6 +10,7 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 
 export default function CommentsPage() {
@@ -19,7 +20,12 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // No swipe functionality - comments page doesn't have chevron close button
+  // Add swipe-to-close functionality since this page has a chevron close button
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      window.history.back();
+    }
+  });
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -153,7 +159,13 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="min-h-screen w-full">
+    <div 
+      className="min-h-screen w-full"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'pan-y' }}
+    >
       <AppLayout title="Comments">
         <div className="flex-1 bg-white">
         <ScrollArea className="h-[calc(100vh-6rem)]">
