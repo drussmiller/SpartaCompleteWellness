@@ -20,12 +20,14 @@ export function useSwipeToClose({
     const touch = e.touches[0];
     touchStartX.current = touch.clientX;
     touchStartY.current = touch.clientY;
-    console.log('🟢 Swipe: Touch start at', touch.clientX, touch.clientY);
+    console.log('🟢 Swipe: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
     // Don't prevent default to allow normal scrolling
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // Allow normal scrolling
+    const touch = e.touches[0];
+    console.log('🔵 Swipe: Touch move at', touch.clientX, touch.clientY);
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
