@@ -20,16 +20,17 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Clicking hidden back button...');
+      console.log('🚀 Comments page: Swipe right detected! Using direct window.location navigation...');
+      console.log('🔍 Current location:', window.location.href);
       
-      // Find and click our hidden back button
-      const hiddenBackButton = document.getElementById('hidden-back-button');
-      if (hiddenBackButton) {
-        console.log('✅ Comments page: Found hidden back button, clicking it...');
-        hiddenBackButton.click();
-      } else {
-        console.log('❌ Comments page: Hidden back button not found, using navigate fallback');
-        navigate('/');
+      try {
+        // Force immediate navigation using window.location.replace
+        console.log('💫 Executing window.location.replace("/")');
+        window.location.replace('/');
+      } catch (error) {
+        console.error('❌ Navigation failed:', error);
+        // Ultimate fallback - reload the page to the home
+        window.location.href = '/';
       }
     },
     threshold: 50, // Lower threshold for easier detection
@@ -169,15 +170,7 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      {/* Hidden back button that can be programmatically clicked */}
-      <button 
-        id="hidden-back-button"
-        onClick={() => navigate('/')}
-        style={{ display: 'none', position: 'absolute', left: '-9999px' }}
-        aria-hidden="true"
-      >
-        Hidden Back Button
-      </button>
+      
       
       <div 
         className="flex-1 bg-white"
