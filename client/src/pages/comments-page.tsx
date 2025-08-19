@@ -171,6 +171,20 @@ export default function CommentsPage() {
           console.log('Touch end detected on comments page');
           handleTouchEnd(e);
         }}
+        onMouseDown={(e) => {
+          console.log('Mouse down detected on comments page');
+          // Convert mouse event to touch event format for testing
+          const fakeTouch = { clientX: e.clientX, clientY: e.clientY };
+          const fakeTouchEvent = { touches: [fakeTouch] } as React.TouchEvent;
+          handleTouchStart(fakeTouchEvent);
+        }}
+        onMouseUp={(e) => {
+          console.log('Mouse up detected on comments page');
+          // Convert mouse event to touch event format for testing
+          const fakeTouch = { clientX: e.clientX, clientY: e.clientY };
+          const fakeTouchEvent = { changedTouches: [fakeTouch] } as React.TouchEvent;
+          handleTouchEnd(fakeTouchEvent);
+        }}
         style={{ touchAction: 'pan-y' }}
       >
         <ScrollArea className="h-[calc(100vh-6rem)]">
