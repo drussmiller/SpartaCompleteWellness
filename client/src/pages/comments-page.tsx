@@ -204,14 +204,14 @@ export default function CommentsPage() {
     <AppLayout title="Comments">
       
       
-      <div className="flex-1 bg-white">
-        <ScrollArea 
-          className="h-[calc(100vh-6rem)]"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          style={{ touchAction: 'pan-y' }}
-        >
+      <div 
+        className="flex-1 bg-white"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ touchAction: 'pan-y' }}
+      >
+        <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
               <PostView post={originalPost} />
