@@ -21,24 +21,46 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Using router.push method...');
+      console.log('🚀 Comments page: Swipe right detected! Simulating back button click...');
       console.log('🔍 Current path:', window.location.pathname);
       
-      // Try using router.push for more direct navigation
-      console.log('💫 Executing router.push("/") - direct router navigation');
-      try {
-        router.push('/');
-        console.log('✅ Router navigation successful');
-      } catch (error) {
-        console.error('❌ Router navigation failed:', error);
-        // Fallback to regular navigate
-        try {
-          navigate('/');
-          console.log('✅ Navigate fallback successful');
-        } catch (navError) {
-          console.error('❌ Navigate fallback failed:', navError);
-          // Ultimate fallback - browser back button
-          console.log('💫 Using window.history.back() as ultimate fallback');
+      // Find and click the actual back button that works
+      console.log('💫 Looking for back button to simulate click...');
+      
+      // Try to find the chevron back button in the AppLayout
+      const backButton = document.querySelector('[data-testid="back-button"], .lucide-chevron-left, button[aria-label="Close"], .sheet-close');
+      if (backButton) {
+        console.log('✅ Found back button, simulating click');
+        (backButton as HTMLElement).click();
+      } else {
+        console.log('❌ Back button not found, trying query selectors...');
+        
+        // Try different selectors for the back button
+        const selectors = [
+          'button:has(.lucide-chevron-left)',
+          '[role="button"]:has(.lucide-chevron-left)', 
+          'button[class*="sheet"]',
+          'button[class*="close"]',
+          '.sheet-close'
+        ];
+        
+        let buttonFound = false;
+        for (const selector of selectors) {
+          try {
+            const btn = document.querySelector(selector);
+            if (btn) {
+              console.log(`✅ Found button with selector: ${selector}`);
+              (btn as HTMLElement).click();
+              buttonFound = true;
+              break;
+            }
+          } catch (e) {
+            console.log(`❌ Selector failed: ${selector}`);
+          }
+        }
+        
+        if (!buttonFound) {
+          console.log('💫 No back button found, using history.back()');
           window.history.back();
         }
       }
