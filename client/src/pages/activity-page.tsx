@@ -210,11 +210,17 @@ export default function ActivityPage() {
   // State for collapsible section
   const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
 
-  const navigatePrevDay = () => {
+  const navigatePrevDay = async () => {
     if (selectedDay > 1) {
       setSelectedDay(selectedDay - 1);
     } else if (selectedWeek > 1) {
       const prevWeek = selectedWeek - 1;
+      
+      // Load the previous week if it's not already loaded
+      if (!loadedWeeks.has(prevWeek)) {
+        await loadWeek(prevWeek);
+      }
+      
       setSelectedWeek(prevWeek);
       const maxDay = 7;
       setSelectedDay(maxDay);
@@ -260,54 +266,6 @@ export default function ActivityPage() {
         </div>
       </header>
       <main className="p-4 max-w-[1000px] mx-auto w-full space-y-4 md:px-44 md:pl-56">
-        {/* Load Previous Weeks Button */}
-        {currentProgress && selectedWeek < currentProgress.currentWeek && (
-          <div className="text-center">
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                if (isLoadingMore) return;
-
-                setIsLoadingMore(true);
-                try {
-                  // Load the previous 3 weeks in one batch for efficiency
-                  const weeksToLoad = [];
-                  for (let i = Math.max(1, selectedWeek - 3); i < selectedWeek; i++) {
-                    if (!loadedWeeks.has(i)) {
-                      weeksToLoad.push(i);
-                    }
-                  }
-
-                  if (weeksToLoad.length > 0) {
-                    const response = await fetch(`/api/activities?weeks=${weeksToLoad.join(',')}`);
-                    if (response.ok) {
-                      const newActivities = await response.json();
-                      setActivities(prev => [...prev, ...newActivities]);
-                      setLoadedWeeks(prev => new Set([...prev, ...weeksToLoad]));
-                      console.log(`Loaded previous weeks: ${weeksToLoad.join(', ')}`);
-                    }
-                  }
-                } catch (error) {
-                  console.error('Failed to load previous weeks:', error);
-                } finally {
-                  setIsLoadingMore(false);
-                }
-              }}
-              disabled={isLoadingMore}
-              className="mb-4"
-            >
-              {isLoadingMore ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Loading...
-                </>
-              ) : (
-                'Load Previous Weeks'
-              )}
-            </Button>
-          </div>
-        )}
-
         {/* Loading status for current week */}
         {!loadedWeeks.has(selectedWeek) && (
           <div className="text-center p-4 bg-muted/50 rounded-md">
