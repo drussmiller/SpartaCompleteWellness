@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,40 +23,57 @@ export default function CommentsPage() {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartX.current = touch.clientX;
-    touchStartY.current = touch.clientY;
-    console.log('🟢 COMMENTS: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
-  };
+  // Use document-level touch events for better capture
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      touchStartX.current = touch.clientX;
+      touchStartY.current = touch.clientY;
+      console.log('🟢 COMMENTS: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
+    };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    console.log('🔵 COMMENTS: Touch move at', touch.clientX, touch.clientY);
-  };
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      console.log('🔵 COMMENTS: Touch move at', touch.clientX, touch.clientY);
+    };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartX.current;
-    const deltaY = Math.abs(touch.clientY - touchStartY.current);
-    
-    console.log('🔵 COMMENTS: Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
-    
-    // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
-    if (deltaX > 50 && deltaY < 200) {
-      console.log('✅ COMMENTS: Right swipe detected! Triggering navigation');
-      e.preventDefault();
-      e.stopPropagation();
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX.current;
+      const deltaY = Math.abs(touch.clientY - touchStartY.current);
       
-      // Simple navigation back
-      setTimeout(() => {
-        console.log('🚀 COMMENTS: Executing navigation...');
-        window.history.back();
-      }, 50);
-    } else {
-      console.log('❌ COMMENTS: No valid swipe - deltaX:', deltaX, 'deltaY:', deltaY);
-    }
-  };
+      console.log('🔵 COMMENTS: Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
+      
+      // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
+      if (deltaX > 50 && deltaY < 200) {
+        console.log('✅ COMMENTS: Right swipe detected! Triggering navigation');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Simple navigation back
+        setTimeout(() => {
+          console.log('🚀 COMMENTS: Executing navigation...');
+          window.history.back();
+        }, 50);
+      } else {
+        console.log('❌ COMMENTS: No valid swipe - deltaX:', deltaX, 'deltaY:', deltaY);
+      }
+    };
+
+    // Add document-level listeners with capture
+    document.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
+
+    console.log('🔧 COMMENTS: Document touch listeners attached');
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      document.removeEventListener('touchmove', handleTouchMove, { capture: true });
+      document.removeEventListener('touchend', handleTouchEnd, { capture: true });
+      console.log('🔧 COMMENTS: Document touch listeners removed');
+    };
+  }, []);
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -190,13 +207,7 @@ export default function CommentsPage() {
   }
 
   return (
-    <div 
-      className="min-h-screen w-full"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ touchAction: 'pan-y' }}
-    >
+    <div className="min-h-screen w-full">
       <AppLayout title="Comments">
         <div className="flex-1 bg-white">
         <ScrollArea className="h-[calc(100vh-6rem)]">
