@@ -20,9 +20,18 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('Swipe right detected, navigating back');
-      navigate(-1);
-    }
+      console.log('Comments page: Swipe right detected! Calling navigation...');
+      try {
+        navigate(-1);
+        console.log('Comments page: Navigation called successfully');
+      } catch (error) {
+        console.error('Comments page: Navigation error:', error);
+        // Fallback - try going to home
+        navigate('/');
+      }
+    },
+    threshold: 80, // Lower threshold for easier detection
+    maxVerticalMovement: 120 // Allow more vertical movement
   });
 
   // Fetch original post
@@ -161,29 +170,18 @@ export default function CommentsPage() {
       <div 
         className="flex-1 bg-white"
         onTouchStart={(e) => {
-          console.log('Touch start detected on comments page');
+          console.log('Comments page: Touch start detected', e.touches[0].clientX, e.touches[0].clientY);
           handleTouchStart(e);
         }}
         onTouchMove={(e) => {
+          const touch = e.touches[0];
+          console.log('Comments page: Touch move detected', touch.clientX, touch.clientY);
           handleTouchMove(e);
         }}
         onTouchEnd={(e) => {
-          console.log('Touch end detected on comments page');
+          const touch = e.changedTouches[0];
+          console.log('Comments page: Touch end detected', touch.clientX, touch.clientY);
           handleTouchEnd(e);
-        }}
-        onMouseDown={(e) => {
-          console.log('Mouse down detected on comments page');
-          // Convert mouse event to touch event format for testing
-          const fakeTouch = { clientX: e.clientX, clientY: e.clientY };
-          const fakeTouchEvent = { touches: [fakeTouch] } as React.TouchEvent;
-          handleTouchStart(fakeTouchEvent);
-        }}
-        onMouseUp={(e) => {
-          console.log('Mouse up detected on comments page');
-          // Convert mouse event to touch event format for testing
-          const fakeTouch = { clientX: e.clientX, clientY: e.clientY };
-          const fakeTouchEvent = { changedTouches: [fakeTouch] } as React.TouchEvent;
-          handleTouchEnd(fakeTouchEvent);
         }}
         style={{ touchAction: 'pan-y' }}
       >
