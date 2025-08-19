@@ -19,11 +19,7 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Direct swipe handling with detailed logging
-  const touchStartX = useRef<number>(0);
-  const touchStartY = useRef<number>(0);
-
-  // No global touch handlers - only use container-level JSX handlers
+  // No swipe functionality - comments page doesn't have chevron close button
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -157,38 +153,7 @@ export default function CommentsPage() {
   }
 
   return (
-    <div 
-      className="min-h-screen w-full"
-      onTouchStart={(e) => {
-        const touch = e.touches[0];
-        touchStartX.current = touch.clientX;
-        touchStartY.current = touch.clientY;
-        console.log('🟡 COMMENTS: Touch start at', touch.clientX, touch.clientY);
-      }}
-      onTouchMove={(e) => {
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - touchStartX.current;
-        console.log('🔵 COMMENTS: Touch move - deltaX so far:', deltaX);
-      }}
-      onTouchEnd={(e) => {
-        const touch = e.changedTouches[0];
-        const deltaX = touch.clientX - touchStartX.current;
-        const deltaY = Math.abs(touch.clientY - touchStartY.current);
-        
-        console.log('🟡 COMMENTS: Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
-        
-        // More lenient swipe detection - 80px minimum, allow more vertical movement
-        if (deltaX > 80 && deltaY < 300) {
-          console.log('✅ COMMENTS: Right swipe detected! Going back...');
-          e.preventDefault();
-          e.stopPropagation();
-          window.history.back();
-        } else {
-          console.log('❌ COMMENTS: No swipe - need deltaX > 80, deltaY < 300');
-        }
-      }}
-      style={{ touchAction: 'pan-y' }}
-    >
+    <div className="min-h-screen w-full">
       <AppLayout title="Comments">
         <div className="flex-1 bg-white">
         <ScrollArea className="h-[calc(100vh-6rem)]">
