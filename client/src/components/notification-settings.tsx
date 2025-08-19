@@ -18,6 +18,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { useAchievements } from "@/hooks/use-achievements";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -36,6 +37,10 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [isFixingThumbnails, setIsFixingThumbnails] = useState(false);
+
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: onClose
+  });
 
   // Handler for manual reconnection
   const handleReconnect = useCallback(() => {
@@ -250,7 +255,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div 
+      className="flex flex-col h-full overflow-y-auto"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-20">
         <Button
           variant="ghost"
