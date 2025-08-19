@@ -264,7 +264,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         {renderConnectionStatus()}
       </div>
 
-      <div className="p-6 space-y-6 pb-24 overflow-y-auto">
+      <div 
+        className="p-6 space-y-6 pb-24 overflow-y-auto"
+      >
         {/* Achievement notification toggle */}
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Achievement Notifications</h3>

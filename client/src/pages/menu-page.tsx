@@ -87,7 +87,7 @@ export default function MenuPage() {
               <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />
             </SheetContent>
           </Sheet>
-
+          
           {/* Support Sparta */}
           <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
             <SheetTrigger asChild>

@@ -52,16 +52,14 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose); // If onClose is provided, we're in sheet mode
 
-  // Add swipe to close functionality
-  useSwipeToClose({
-    onClose: () => {
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
       if (isSheetMode && onClose) {
         onClose();
       } else {
         navigate("/menu");
       }
-    },
-    enabled: true
+    }
   });
 
   const { data, isLoading, error } = useQuery<LeaderboardData>({
@@ -91,7 +89,12 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-16 md:pb-0">
+    <div 
+      className="flex flex-col min-h-screen pb-16 md:pb-0"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <header className="sticky top-0 z-50 border-b border-border bg-background">
         <div className="container flex items-center p-4 pt-16">
           <Button

@@ -21,16 +21,14 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
   const isSheetMode = Boolean(onClose);
   const [showDonation, setShowDonation] = useState(false);
 
-  // Add swipe to close functionality
-  useSwipeToClose({
-    onClose: () => {
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
       if (isSheetMode && onClose) {
         onClose();
       } else {
         navigate("/menu");
       }
-    },
-    enabled: true
+    }
   });
 
   if (!user) {
@@ -50,7 +48,12 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
   };
 
   return (
-    <div className="flex flex-col h-[100vh]">
+    <div 
+      className="flex flex-col h-[100vh]"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
         <div className="container flex items-center p-4 pt-16">
           <Button

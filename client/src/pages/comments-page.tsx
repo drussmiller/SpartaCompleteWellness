@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useRouter } from "wouter";
 import { Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -12,16 +12,19 @@ import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
+
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
+  const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Add swipe to close functionality
-  useSwipeToClose({
-    onClose: () => navigate(-1),
-    enabled: true
+  // Add swipe-to-close functionality since this page has a chevron close button
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      window.history.back();
+    }
   });
 
   // Fetch original post
@@ -156,8 +159,15 @@ export default function CommentsPage() {
   }
 
   return (
-    <AppLayout title="Comments">
-      <div className="flex-1 bg-white">
+    <div 
+      className="min-h-screen w-full"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'pan-y' }}
+    >
+      <AppLayout title="Comments">
+        <div className="flex-1 bg-white">
         <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
@@ -185,7 +195,8 @@ export default function CommentsPage() {
             </div>
           </div>
         </ScrollArea>
-      </div>
-    </AppLayout>
+        </div>
+      </AppLayout>
+    </div>
   );
 }

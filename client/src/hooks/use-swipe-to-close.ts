@@ -1,68 +1,60 @@
 
-import { useEffect, useRef } from 'react';
+
+import { useCallback, useRef } from 'react';
 
 interface UseSwipeToCloseOptions {
-  onClose: () => void;
-  enabled?: boolean;
+  onSwipeRight: () => void;
+  threshold?: number;
+  maxVerticalMovement?: number;
 }
 
-export function useSwipeToClose({ onClose, enabled = true }: UseSwipeToCloseOptions) {
-  const startX = useRef<number>(0);
-  const startY = useRef<number>(0);
-  const isDragging = useRef<boolean>(false);
+export function useSwipeToClose({ 
+  onSwipeRight, 
+  threshold = 60, 
+  maxVerticalMovement = 150 
+}: UseSwipeToCloseOptions) {
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
 
-  useEffect(() => {
-    if (!enabled) return;
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    console.log('🟢 Swipe: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
+    // Don't prevent default to allow normal scrolling
+  }, []);
 
-    const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      startX.current = touch.clientX;
-      startY.current = touch.clientY;
-      isDragging.current = false;
-    };
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // Allow normal scrolling
+    const touch = e.touches[0];
+    console.log('🔵 Swipe: Touch move at', touch.clientX, touch.clientY);
+  }, []);
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX.current;
+    const deltaY = Math.abs(touch.clientY - touchStartY.current);
+    
+    console.log('🔵 Swipe: Touch end - deltaX:', deltaX, 'deltaY:', deltaY, 'threshold:', threshold, 'maxVertical:', maxVerticalMovement);
+    
+    // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
+    if (deltaX > threshold && deltaY < maxVerticalMovement) {
+      console.log('✅ Swipe: Right swipe detected! Preventing default and triggering navigation');
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Add a small delay to ensure the touch event is fully processed
+      setTimeout(() => {
+        onSwipeRight();
+      }, 50);
+    } else {
+      console.log('❌ Swipe: No valid swipe - deltaX needs >', threshold, 'got', deltaX, '| deltaY needs <', maxVerticalMovement, 'got', deltaY);
+    }
+  }, [onSwipeRight, threshold, maxVerticalMovement]);
 
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - startX.current;
-      const deltaY = touch.clientY - startY.current;
-
-      // Only start tracking if horizontal movement is dominant
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-        isDragging.current = true;
-      }
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!isDragging.current) return;
-
-      const touch = e.changedTouches[0];
-      const deltaX = touch.clientX - startX.current;
-      const deltaY = touch.clientY - startY.current;
-
-      // Check if it's a right swipe with sufficient distance and horizontal dominance
-      if (
-        deltaX > 100 && // Minimum swipe distance
-        Math.abs(deltaY) < 100 && // Maximum vertical movement
-        Math.abs(deltaX) > Math.abs(deltaY) * 2 // Horizontal movement should be at least 2x vertical
-      ) {
-        console.log('Swipe right detected, closing page');
-        onClose();
-      }
-
-      isDragging.current = false;
-    };
-
-    // Add event listeners to document
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [onClose, enabled]);
+  return {
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd
+  };
 }

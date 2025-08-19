@@ -106,7 +106,7 @@ export default function HelpPage() {
               <li>Successfully memorize and share weekly verses</li>
               <li>Help your team reach collective goals</li>
             </ul>
-
+            
             <AchievementDemo />
           </CardContent>
         </Card>
