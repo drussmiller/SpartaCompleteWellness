@@ -19,7 +19,10 @@ export default function CommentsPage() {
   const { toast } = useToast();
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: () => navigate(-1)
+    onSwipeRight: () => {
+      console.log('Swipe right detected, navigating back');
+      navigate(-1);
+    }
   });
 
   // Fetch original post
@@ -157,9 +160,18 @@ export default function CommentsPage() {
     <AppLayout title="Comments">
       <div 
         className="flex-1 bg-white"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={(e) => {
+          console.log('Touch start detected on comments page');
+          handleTouchStart(e);
+        }}
+        onTouchMove={(e) => {
+          handleTouchMove(e);
+        }}
+        onTouchEnd={(e) => {
+          console.log('Touch end detected on comments page');
+          handleTouchEnd(e);
+        }}
+        style={{ touchAction: 'pan-y' }}
       >
         <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
