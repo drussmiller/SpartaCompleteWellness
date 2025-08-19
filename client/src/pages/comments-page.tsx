@@ -20,22 +20,19 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Looking for back button...');
+      console.log('🚀 Comments page: Swipe right detected! Forcing navigation...');
+      console.log('🔍 Current URL:', window.location.href);
+      console.log('🔍 Current pathname:', window.location.pathname);
       
-      // Try to find and click the back button
-      const backButton = document.querySelector('[data-testid="back-button"]') || 
-                        document.querySelector('button[aria-label*="back"]') ||
-                        document.querySelector('button[aria-label*="Back"]') ||
-                        document.querySelector('svg[class*="chevron"]')?.closest('button') ||
-                        document.querySelector('[class*="chevron"]')?.closest('button');
+      // Force navigation using window.location
+      console.log('💫 Setting window.location.href to "/"');
+      window.location.href = '/';
       
-      if (backButton) {
-        console.log('✅ Comments page: Found back button, clicking it...');
-        (backButton as HTMLElement).click();
-      } else {
-        console.log('❌ Comments page: No back button found, using navigate fallback');
+      // Also try the navigate function as backup
+      setTimeout(() => {
+        console.log('⏰ Backup navigation triggered');
         navigate('/');
-      }
+      }, 100);
     },
     threshold: 50, // Lower threshold for easier detection
     maxVerticalMovement: 200 // Allow more vertical movement
