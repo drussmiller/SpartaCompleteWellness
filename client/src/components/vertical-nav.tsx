@@ -45,7 +45,7 @@ export const VerticalNav = () => {
       path: "/notifications",
       status: connectionStatus !== "connected" ? "offline" : null 
     },
-    
+
 
     { icon: Menu, label: "Menu", path: "/menu" },
   ];
