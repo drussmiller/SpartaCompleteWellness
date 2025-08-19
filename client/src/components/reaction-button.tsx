@@ -182,12 +182,14 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
             
             const cleanup = () => {
               clearTimeout(longPressTimer);
-              document.removeEventListener('touchend', cleanup);
-              document.removeEventListener('touchmove', cleanup);
             };
 
-            document.addEventListener('touchend', cleanup);
-            document.addEventListener('touchmove', cleanup);
+            // Use local event handling instead of global document listeners
+            const handleTouchEnd = () => cleanup();
+            const handleTouchMove = () => cleanup();
+
+            e.currentTarget.addEventListener('touchend', handleTouchEnd, { once: true });
+            e.currentTarget.addEventListener('touchmove', handleTouchMove, { once: true });
           }}
           onClick={(e) => {
             e.preventDefault(); // Prevent default action
