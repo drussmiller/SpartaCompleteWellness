@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useRouter } from "wouter";
 import { Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -15,17 +15,33 @@ import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
   const [, navigate] = useLocation();
+  const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Using navigate() method...');
+      console.log('🚀 Comments page: Swipe right detected! Using router.push method...');
       console.log('🔍 Current path:', window.location.pathname);
       
-      // Use the same navigation method as the chevron button
-      console.log('💫 Executing navigate("/") - same as chevron button');
-      navigate('/');
+      // Try using router.push for more direct navigation
+      console.log('💫 Executing router.push("/") - direct router navigation');
+      try {
+        router.push('/');
+        console.log('✅ Router navigation successful');
+      } catch (error) {
+        console.error('❌ Router navigation failed:', error);
+        // Fallback to regular navigate
+        try {
+          navigate('/');
+          console.log('✅ Navigate fallback successful');
+        } catch (navError) {
+          console.error('❌ Navigate fallback failed:', navError);
+          // Ultimate fallback - browser back button
+          console.log('💫 Using window.history.back() as ultimate fallback');
+          window.history.back();
+        }
+      }
     },
     threshold: 50, // Lower threshold for easier detection
     maxVerticalMovement: 200 // Allow more vertical movement
