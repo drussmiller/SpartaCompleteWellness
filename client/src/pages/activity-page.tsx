@@ -39,41 +39,41 @@ interface ContentField {
 // (not already embedded videos)
 function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
   if (!content) return { id: null, url: null };
-
+  
   // Check if content already has embedded YouTube iframes
   const hasEmbeddedVideos = content.includes('<iframe src="https://www.youtube.com/embed/');
-
+  
   // If the content already has embedded videos, don't extract additional videos
   if (hasEmbeddedVideos) {
     return { id: null, url: null };
   }
-
+  
   // More comprehensive regex to find YouTube URLs in various formats
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-
+  
   // Extract all matches and use the first valid one
   const matches = content.match(youtubeRegex);
   if (matches && matches[1]) {
     console.log('Found YouTube URL in content:', matches[0]);
     return { id: matches[1], url: matches[0] };
   }
-
+  
   // Also look for bare YouTube IDs surrounded by non-URL text
   // Check if there's any text that might be a YouTube ID but not part of a biblical reference or other text
   const youtubeSpecificIdPattern = /\b([A-Za-z0-9_-]{11})\b/;
   const bareMatches = content.match(youtubeSpecificIdPattern);
-
+  
   if (bareMatches && bareMatches[1]) {
     const possibleId = bareMatches[1];
     // Make sure it's not a biblical reference or other common text
     const notYouTubeIdPatterns = /(Corinthians|Testament|Scripture|Genesis|Exodus|Matthew|Chapter)/i;
-
+    
     if (possibleId.length === 11 && !notYouTubeIdPatterns.test(possibleId) && /[0-9]/.test(possibleId)) {
       console.log('Found possible YouTube ID in content:', possibleId);
       return { id: possibleId, url: null };
     }
   }
-
+  
   return { id: null, url: null };
 }
 
@@ -145,19 +145,19 @@ export default function ActivityPage() {
     queryKey: ["/api/activities", "current", currentProgress?.currentWeek],
     queryFn: async () => {
       if (!currentProgress) return [];
-
+      
       // Load only the current week initially
       const currentWeek = currentProgress.currentWeek;
       const response = await fetch(`/api/activities?weeks=${currentWeek}`);
-
+      
       if (!response.ok) {
         throw new Error('Failed to fetch activities');
       }
-
+      
       const data = await response.json();
       setActivities(data);
       setLoadedWeeks(new Set([currentWeek]));
-
+      
       console.log(`Loaded current week: ${currentWeek}`);
       return data;
     },
@@ -167,18 +167,18 @@ export default function ActivityPage() {
   // Function to load additional weeks when needed
   const loadWeek = async (week: number) => {
     if (loadedWeeks.has(week) || isLoadingMore) return;
-
+    
     setIsLoadingMore(true);
     try {
       const response = await fetch(`/api/activities?weeks=${week}`);
       if (!response.ok) {
         throw new Error('Failed to fetch additional week');
       }
-
+      
       const newActivities = await response.json();
       setActivities(prev => [...prev, ...newActivities]);
       setLoadedWeeks(prev => new Set([...prev, week]));
-
+      
       console.log(`Lazy loaded week: ${week}`);
     } catch (error) {
       console.error('Failed to load week:', error);
@@ -198,15 +198,15 @@ export default function ActivityPage() {
   const currentActivity = activities?.find(
     (a: Activity) => a.week === selectedWeek && a.day === selectedDay
   );
-
+  
   // Get week activities - all activities for the selected week
   const weekActivities = activities?.filter(
     (a: Activity) => a.week === selectedWeek
   );
-
+  
   // Find the first activity of the week to use as the week overview
   const weekOverviewActivity = weekActivities?.[0];
-
+  
   // State for collapsible section
   const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
 
@@ -250,7 +250,7 @@ export default function ActivityPage() {
       <DuplicateVideoDetector />
       {selectedWeek === 3 && <FixWeek3WarmupVideo />}
       {selectedWeek === 9 && <FixWeek9WarmupVideo />}
-
+      
       <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
         {/* This div is an empty spacer, which you can style as necessary */}
       </div>
@@ -267,7 +267,7 @@ export default function ActivityPage() {
               variant="outline" 
               onClick={async () => {
                 if (isLoadingMore) return;
-
+                
                 setIsLoadingMore(true);
                 try {
                   // Load the previous 3 weeks in one batch for efficiency
@@ -277,7 +277,7 @@ export default function ActivityPage() {
                       weeksToLoad.push(i);
                     }
                   }
-
+                  
                   if (weeksToLoad.length > 0) {
                     const response = await fetch(`/api/activities?weeks=${weeksToLoad.join(',')}`);
                     if (response.ok) {
@@ -345,30 +345,30 @@ export default function ActivityPage() {
                     (field.title?.includes(`Week ${selectedWeek}`) || weekOverviewActivity.day === 0) && 
                     !field.title?.includes('Day')
                   );
-
+                  
                   // Special handling for Week 3 warmup video
                   if (selectedWeek === 3 && weekOverviewActivity.week === 3 && weekOverviewActivity.day === 0) {
                     // Process each field to render only once
                     return relevantFields.map((field: ContentField, index: number) => {
                       // Clean embedded content of duplicate videos
                       let processedContent = field.content;
-
+                      
                       // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
                       if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
                         // First, extract all video iframes
                         const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
                         const matches = processedContent.match(iframeRegex);
-
+                        
                         if (matches && matches.length > 1) {
                           // We have multiple videos with the same ID
                           console.log(`Found ${matches.length} instances of Week 3 warmup video`);
-
+                          
                           // Remove all video wrappers
                           processedContent = processedContent.replace(
                             /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
                             ''
                           );
-
+                          
                           // Add back just one video after "WARM UP VIDEO" text
                           if (processedContent.includes('WARM UP VIDEO')) {
                             processedContent = processedContent.replace(
@@ -381,7 +381,7 @@ export default function ActivityPage() {
                           }
                         }
                       }
-
+                      
                       // Create unique rendered element
                       return (
                         <div key={index} className="mb-4">
@@ -408,12 +408,12 @@ export default function ActivityPage() {
                       );
                     });
                   }
-
+                  
                   // Standard rendering for other weeks
                   return relevantFields.map((field: ContentField, index: number) => {
                     // Process content for all weeks to prevent duplicate videos
                     let processedContent = field.content;
-
+                    
                     // General solution to prevent duplicate videos in any week's content
                     if (processedContent && processedContent.includes('class="video-wrapper"')) {
                       // Make sure we don't have duplicate video wrappers
@@ -422,11 +422,11 @@ export default function ActivityPage() {
                       const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
                       let match;
                       const videoIds = [];
-
+                      
                       while ((match = videoRegex.exec(processedContent)) !== null) {
                         videoIds.push(match[1]);
                       }
-
+                      
                       // For any duplicated videos, keep only the first instance
                       videoIds.forEach(videoId => {
                         if (uniqueVideos.has(videoId)) {
@@ -437,7 +437,7 @@ export default function ActivityPage() {
                           );
                           let replacement = '';
                           let found = false;
-
+                          
                           // Replace the processedContent with each match replaced properly
                           processedContent = processedContent.replace(videoPattern, (match) => {
                             if (!found) {
@@ -451,7 +451,7 @@ export default function ActivityPage() {
                         }
                       });
                     }
-
+                    
                     return (
                       <div key={index} className="mb-4">
                         {field.title && (
@@ -489,7 +489,7 @@ export default function ActivityPage() {
             )}
           </CollapsibleContent>
         </Collapsible>
-
+        
         {/* Day Navigation */}
         <div className="flex items-center justify-center gap-4 mt-2">
           <Button
@@ -525,7 +525,7 @@ export default function ActivityPage() {
                 {currentActivity.contentFields?.map((field: ContentField, index: number) => {
                   // Process daily content to remove duplicate videos
                   let processedContent = field.content;
-
+                  
                   // Only process content with embedded videos
                   if (processedContent && processedContent.includes('class="video-wrapper"')) {
                     // Make sure we don't have duplicate video wrappers
@@ -534,11 +534,11 @@ export default function ActivityPage() {
                     const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
                     let match;
                     const videoIds = [];
-
+                    
                     while ((match = videoRegex.exec(processedContent)) !== null) {
                       videoIds.push(match[1]);
                     }
-
+                    
                     // Process each unique video ID
                     videoIds.forEach(videoId => {
                       if (uniqueVideos.has(videoId)) {
@@ -548,7 +548,7 @@ export default function ActivityPage() {
                           'g'
                         );
                         let found = false;
-
+                        
                         // Replace content keeping only the first instance
                         processedContent = processedContent.replace(videoPattern, (match) => {
                           if (!found) {
@@ -562,7 +562,7 @@ export default function ActivityPage() {
                       }
                     });
                   }
-
+                  
                   return (
                     <div key={index} className="mb-8">
                       {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (

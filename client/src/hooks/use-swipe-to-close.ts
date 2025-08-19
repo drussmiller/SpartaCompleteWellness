@@ -1,5 +1,4 @@
 
-
 import { useCallback, useRef } from 'react';
 
 interface UseSwipeToCloseOptions {
@@ -10,46 +9,46 @@ interface UseSwipeToCloseOptions {
 
 export function useSwipeToClose({ 
   onSwipeRight, 
-  threshold = 60, 
-  maxVerticalMovement = 150 
+  threshold = 100, 
+  maxVerticalMovement = 100 
 }: UseSwipeToCloseOptions) {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+  const isDragging = useRef<boolean>(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartX.current = touch.clientX;
     touchStartY.current = touch.clientY;
-    console.log('🟢 Swipe: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
-    // Don't prevent default to allow normal scrolling
+    isDragging.current = false;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    // Allow normal scrolling
-    const touch = e.touches[0];
-    console.log('🔵 Swipe: Touch move at', touch.clientX, touch.clientY);
+    if (!isDragging.current) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartX.current);
+      const deltaY = Math.abs(touch.clientY - touchStartY.current);
+      
+      // Start tracking if horizontal movement is greater than vertical
+      if (deltaX > deltaY && deltaX > 10) {
+        isDragging.current = true;
+      }
+    }
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    
     const touch = e.changedTouches[0];
     const deltaX = touch.clientX - touchStartX.current;
     const deltaY = Math.abs(touch.clientY - touchStartY.current);
     
-    console.log('🔵 Swipe: Touch end - deltaX:', deltaX, 'deltaY:', deltaY, 'threshold:', threshold, 'maxVertical:', maxVerticalMovement);
-    
-    // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
+    // Check for right swipe (positive deltaX) with minimum distance and primarily horizontal movement
     if (deltaX > threshold && deltaY < maxVerticalMovement) {
-      console.log('✅ Swipe: Right swipe detected! Preventing default and triggering navigation');
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Add a small delay to ensure the touch event is fully processed
-      setTimeout(() => {
-        onSwipeRight();
-      }, 50);
-    } else {
-      console.log('❌ Swipe: No valid swipe - deltaX needs >', threshold, 'got', deltaX, '| deltaY needs <', maxVerticalMovement, 'got', deltaY);
+      onSwipeRight();
     }
+    
+    isDragging.current = false;
   }, [onSwipeRight, threshold, maxVerticalMovement]);
 
   return {

@@ -266,6 +266,24 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
       <div 
         className="p-6 space-y-6 pb-24 overflow-y-auto"
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          e.currentTarget.dataset.touchStartX = touch.clientX.toString();
+          e.currentTarget.dataset.touchStartY = touch.clientY.toString();
+        }}
+        onTouchEnd={(e) => {
+          const touch = e.changedTouches[0];
+          const startX = parseFloat(e.currentTarget.dataset.touchStartX || '0');
+          const startY = parseFloat(e.currentTarget.dataset.touchStartY || '0');
+          
+          const deltaX = touch.clientX - startX;
+          const deltaY = Math.abs(touch.clientY - startY);
+          
+          // Check for right swipe with minimum distance and primarily horizontal movement
+          if (deltaX > 100 && deltaY < 100) {
+            onClose();
+          }
+        }}
       >
         {/* Achievement notification toggle */}
         <div className="space-y-2">

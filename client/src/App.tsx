@@ -66,7 +66,7 @@ function MainContent() {
   return (
     <div className="min-h-screen">
       {user && <div className="fixed left-0 top-0 z-[100]"><VerticalNav /></div>}
-      <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom'}}> {/* Removed global swipe handling */}
+      <div className="md:pl-20" style={{overflowX: 'hidden'}}> {/* Adjusted padding to match new nav width */}
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/activity" component={ActivityPage} />
