@@ -23,75 +23,7 @@ export default function CommentsPage() {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
-  // Use both document-level and container-level touch events for better capture
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      touchStartX.current = touch.clientX;
-      touchStartY.current = touch.clientY;
-      console.log('🟢 COMMENTS: Touch start at', touch.clientX, touch.clientY, 'target:', e.target);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      console.log('🔵 COMMENTS: Touch move at', touch.clientX, touch.clientY);
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      const touch = e.changedTouches[0];
-      const deltaX = touch.clientX - touchStartX.current;
-      const deltaY = Math.abs(touch.clientY - touchStartY.current);
-      
-      console.log('🔵 COMMENTS: Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
-      
-      // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
-      if (deltaX > 50 && deltaY < 200) {
-        console.log('✅ COMMENTS: Right swipe detected! Triggering navigation');
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Simple navigation back
-        setTimeout(() => {
-          console.log('🚀 COMMENTS: Executing navigation...');
-          window.history.back();
-        }, 50);
-      } else {
-        console.log('❌ COMMENTS: No valid swipe - deltaX:', deltaX, 'deltaY:', deltaY);
-      }
-    };
-
-    // Add document-level listeners with capture
-    document.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
-
-    // Also add to body and html elements for broader coverage
-    document.body.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.body.addEventListener('touchmove', handleTouchMove, { passive: true });
-    document.body.addEventListener('touchend', handleTouchEnd, { passive: false });
-
-    document.documentElement.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.documentElement.addEventListener('touchmove', handleTouchMove, { passive: true });
-    document.documentElement.addEventListener('touchend', handleTouchEnd, { passive: false });
-
-    console.log('🔧 COMMENTS: Multiple touch listeners attached');
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart, { capture: true });
-      document.removeEventListener('touchmove', handleTouchMove, { capture: true });
-      document.removeEventListener('touchend', handleTouchEnd, { capture: true });
-      
-      document.body.removeEventListener('touchstart', handleTouchStart);
-      document.body.removeEventListener('touchmove', handleTouchMove);
-      document.body.removeEventListener('touchend', handleTouchEnd);
-      
-      document.documentElement.removeEventListener('touchstart', handleTouchStart);
-      document.documentElement.removeEventListener('touchmove', handleTouchMove);
-      document.documentElement.removeEventListener('touchend', handleTouchEnd);
-      
-      console.log('🔧 COMMENTS: All touch listeners removed');
-    };
-  }, []);
+  // No global touch handlers - only use container-level JSX handlers
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -231,26 +163,28 @@ export default function CommentsPage() {
         const touch = e.touches[0];
         touchStartX.current = touch.clientX;
         touchStartY.current = touch.clientY;
-        console.log('🟡 COMMENTS (JSX): Touch start at', touch.clientX, touch.clientY);
+        console.log('🟡 COMMENTS: Touch start at', touch.clientX, touch.clientY);
       }}
       onTouchMove={(e) => {
         const touch = e.touches[0];
-        console.log('🟡 COMMENTS (JSX): Touch move at', touch.clientX, touch.clientY);
+        const deltaX = touch.clientX - touchStartX.current;
+        console.log('🔵 COMMENTS: Touch move - deltaX so far:', deltaX);
       }}
       onTouchEnd={(e) => {
         const touch = e.changedTouches[0];
         const deltaX = touch.clientX - touchStartX.current;
         const deltaY = Math.abs(touch.clientY - touchStartY.current);
         
-        console.log('🟡 COMMENTS (JSX): Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
+        console.log('🟡 COMMENTS: Touch end - deltaX:', deltaX, 'deltaY:', deltaY);
         
-        if (deltaX > 50 && deltaY < 200) {
-          console.log('✅ COMMENTS (JSX): Right swipe detected!');
+        // More lenient swipe detection - 80px minimum, allow more vertical movement
+        if (deltaX > 80 && deltaY < 300) {
+          console.log('✅ COMMENTS: Right swipe detected! Going back...');
           e.preventDefault();
           e.stopPropagation();
-          setTimeout(() => {
-            window.history.back();
-          }, 50);
+          window.history.back();
+        } else {
+          console.log('❌ COMMENTS: No swipe - need deltaX > 80, deltaY < 300');
         }
       }}
       style={{ touchAction: 'pan-y' }}
