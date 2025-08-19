@@ -457,9 +457,9 @@ export function MessageSlideCard() {
           touchAction: 'pan-y',
           overscrollBehavior: 'contain'
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={isOpen ? handleTouchStart : undefined}
+        onTouchMove={isOpen ? handleTouchMove : undefined}
+        onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card className="h-full w-full rounded-none bg-white border-none shadow-none">
           {/* Header */}
