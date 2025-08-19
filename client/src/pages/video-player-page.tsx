@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { createMediaUrl } from "@/lib/media-utils";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 export function VideoPlayerPage() {
   const [location, setLocation] = useLocation();
@@ -10,6 +11,10 @@ export function VideoPlayerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => setLocation('/')
+  });
 
   useEffect(() => {
     // Extract video source from URL parameters
@@ -87,7 +92,12 @@ export function VideoPlayerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative">
+    <div 
+      className="min-h-screen bg-black relative"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header with back button */}
       <div className="absolute top-4 left-4 z-10">
         <Button
