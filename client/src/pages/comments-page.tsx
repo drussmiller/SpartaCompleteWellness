@@ -20,13 +20,15 @@ export default function CommentsPage() {
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      console.log('🚀 Comments page: Swipe right detected! Attempting navigation...');
+      console.log('🚀 Comments page: Swipe right detected! Using browser back navigation...');
       try {
-        // Force navigation to home page
-        navigate('/');
-        console.log('✅ Comments page: Successfully navigated to home');
+        // Use the same navigation method as the back button
+        window.history.back();
+        console.log('✅ Comments page: Called window.history.back()');
       } catch (error) {
         console.error('❌ Comments page: Navigation failed:', error);
+        // Fallback to home page if history.back() fails
+        navigate('/');
       }
     },
     threshold: 50, // Lower threshold for easier detection
