@@ -18,6 +18,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import {
   Card,
   CardContent,
@@ -54,6 +55,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [, setLocation] = useLocation();
   const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
+
+  // Add swipe to close functionality
+  useSwipeToClose({
+    onClose: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation("/menu");
+      }
+    },
+    enabled: true
+  });
 
   // Get timezone offset for current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();

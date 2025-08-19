@@ -20,6 +20,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { BottomNav } from "@/components/bottom-nav";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -30,6 +31,18 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
+
+  // Add swipe to close functionality
+  useSwipeToClose({
+    onClose: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation(-1);
+      }
+    },
+    enabled: true
+  });
 
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],

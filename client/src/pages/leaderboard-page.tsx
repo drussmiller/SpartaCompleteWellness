@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
 import { Link } from "wouter";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 type TeamMember = {
   id: number;
@@ -50,6 +51,18 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose); // If onClose is provided, we're in sheet mode
+
+  // Add swipe to close functionality
+  useSwipeToClose({
+    onClose: () => {
+      if (isSheetMode && onClose) {
+        onClose();
+      } else {
+        navigate("/menu");
+      }
+    },
+    enabled: true
+  });
 
   const { data, isLoading, error } = useQuery<LeaderboardData>({
     queryKey: ["/api/leaderboard"],

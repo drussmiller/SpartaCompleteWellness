@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 interface SupportSpartaPageProps {
   onClose?: () => void;
@@ -19,6 +20,18 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose);
   const [showDonation, setShowDonation] = useState(false);
+
+  // Add swipe to close functionality
+  useSwipeToClose({
+    onClose: () => {
+      if (isSheetMode && onClose) {
+        onClose();
+      } else {
+        navigate("/menu");
+      }
+    },
+    enabled: true
+  });
 
   if (!user) {
     return null;

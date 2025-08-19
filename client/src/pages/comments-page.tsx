@@ -10,12 +10,19 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Add swipe to close functionality
+  useSwipeToClose({
+    onClose: () => navigate(-1),
+    enabled: true
+  });
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
