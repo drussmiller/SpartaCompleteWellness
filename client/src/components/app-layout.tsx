@@ -20,7 +20,7 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
   console.log('AppLayout render - isBottomNavVisible:', isBottomNavVisible, 'isMobile:', isMobile);
 
   return (
-    <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom' }}>
+    <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom', overscrollBehavior: 'contain' }}>
       <div className={cn(
         "flex flex-col flex-1 min-h-screen"
       )}>
@@ -31,7 +31,7 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
             </div>
           </header>
         )}
-        <main className={`flex-1 ${isMobile ? 'pt-20' : ''} min-h-0`} style={{ touchAction: 'pan-y pinch-zoom' }}>
+        <main className={`flex-1 ${isMobile ? 'pt-20' : ''} min-h-0`} style={{ touchAction: 'pan-y pinch-zoom', overscrollBehavior: 'contain' }}>
           {children}
         </main>
         {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}

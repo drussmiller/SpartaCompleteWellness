@@ -21,7 +21,7 @@ const mobileScrollStyles = {
   minHeight: '100vh',
   WebkitOverflowScrolling: 'touch',
   scrollBehavior: 'smooth',
-  overscrollBehavior: 'auto',
+  overscrollBehavior: 'contain', // Prevent browser navigation
   touchAction: 'pan-y pinch-zoom',
   WebkitTapHighlightColor: 'transparent',
   paddingBottom: '60px',
