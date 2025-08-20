@@ -338,7 +338,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-contain cursor-pointer"
+                className="w-full h-80 object-cover cursor-pointer"
                 onError={(e) => {
                   console.error('[Image Load Error]', {
                     src: e.currentTarget.src,
