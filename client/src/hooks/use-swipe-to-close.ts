@@ -37,6 +37,11 @@ export function useSwipeToClose({
       if (Math.abs(deltaX) > 15 && deltaY < 50) {
         isSwipeInProgress.current = true;
         console.log('Horizontal swipe detected, deltaX:', deltaX, 'deltaY:', deltaY);
+        
+        // For right swipes, prevent default to avoid conflicts
+        if (deltaX > 0) {
+          e.preventDefault();
+        }
       }
     }
   }, []);
