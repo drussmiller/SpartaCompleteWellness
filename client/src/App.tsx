@@ -38,15 +38,38 @@ function MainContent() {
   // Prevent browser's native swipe navigation globally
   useEffect(() => {
     const preventBrowserNavigation = (e: TouchEvent) => {
-      // Prevent if touch starts from the far left edge (wider threshold for browser navigation)
+      // Only prevent if touch starts from the very far left edge AND moves horizontally
       const touch = e.touches[0];
-      if (touch.clientX < 50) {
-        console.log('Preventing browser navigation - touch at left edge:', touch.clientX, 'screen width:', window.innerWidth);
-        e.preventDefault();
+      if (touch.clientX < 20) {
+        console.log('Potential browser navigation - touch at edge:', touch.clientX);
+        
+        // Store initial touch position for move tracking
+        const startX = touch.clientX;
+        const startY = touch.clientY;
+        
+        const onTouchMove = (moveEvent: TouchEvent) => {
+          const moveTouch = moveEvent.touches[0];
+          const deltaX = moveTouch.clientX - startX;
+          const deltaY = Math.abs(moveTouch.clientY - startY);
+          
+          // Only prevent if it's a horizontal swipe from the edge
+          if (deltaX > 30 && deltaY < 50) {
+            console.log('Preventing browser back navigation');
+            moveEvent.preventDefault();
+          }
+        };
+        
+        const onTouchEnd = () => {
+          document.removeEventListener('touchmove', onTouchMove);
+          document.removeEventListener('touchend', onTouchEnd);
+        };
+        
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd);
       }
     };
 
-    document.addEventListener('touchstart', preventBrowserNavigation, { passive: false });
+    document.addEventListener('touchstart', preventBrowserNavigation, { passive: true });
     
     return () => {
       document.removeEventListener('touchstart', preventBrowserNavigation);
