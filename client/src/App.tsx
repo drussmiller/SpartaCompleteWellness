@@ -35,46 +35,21 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
-  // Prevent browser's native swipe navigation globally
+  // Disable browser swipe navigation completely using CSS and meta approach
   useEffect(() => {
-    // Only prevent edge swipes that are likely browser navigation
-    const preventEdgeSwipe = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      const isVeryLeftEdge = touch.clientX < 15; // Very narrow edge zone
-      
-      if (isVeryLeftEdge) {
-        console.log('Blocking very edge swipe at:', touch.clientX, 'on:', window.location.pathname);
-        
-        // Track if this becomes a horizontal swipe
-        const startX = touch.clientX;
-        const startY = touch.clientY;
-        
-        const trackSwipe = (moveEvent: TouchEvent) => {
-          const moveTouch = moveEvent.touches[0];
-          const deltaX = moveTouch.clientX - startX;
-          const deltaY = Math.abs(moveTouch.clientY - startY);
-          
-          // Only prevent if it's a clear horizontal swipe from the very edge
-          if (deltaX > 25 && deltaY < 30) {
-            console.log('Preventing edge-to-center swipe');
-            moveEvent.preventDefault();
-          }
-        };
-        
-        const cleanup = () => {
-          document.removeEventListener('touchmove', trackSwipe);
-          document.removeEventListener('touchend', cleanup);
-        };
-        
-        document.addEventListener('touchmove', trackSwipe, { passive: false });
-        document.addEventListener('touchend', cleanup);
+    // Add CSS-based prevention
+    const style = document.createElement('style');
+    style.textContent = `
+      html, body {
+        overscroll-behavior-x: none;
+        overflow-x: hidden;
+        touch-action: pan-y pinch-zoom;
       }
-    };
-
-    document.addEventListener('touchstart', preventEdgeSwipe, { passive: true });
+    `;
+    document.head.appendChild(style);
     
     return () => {
-      document.removeEventListener('touchstart', preventEdgeSwipe);
+      document.head.removeChild(style);
     };
   }, []);
 
