@@ -44,10 +44,22 @@ export default function CommentsPage() {
       
       // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Adding slide-out animation');
         e.preventDefault();
         e.stopPropagation();
-        navigate("/");
+        
+        // Add slide-out animation class
+        const pageElement = document.querySelector('[data-swipe-enabled="true"]');
+        if (pageElement) {
+          pageElement.classList.add('slide-out-right');
+          
+          // Navigate after animation completes
+          setTimeout(() => {
+            navigate("/");
+          }, 200); // Match animation duration
+        } else {
+          navigate("/");
+        }
       }
     };
 

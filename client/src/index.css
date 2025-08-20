@@ -116,12 +116,12 @@ div[data-post-id] .video-container {
 
 /* Comments page slide-in animation */
 [data-swipe-enabled="true"] {
-  animation: slideInFromLeft 0.3s ease-out;
+  animation: slideInFromLeft 0.2s ease-out;
 }
 
 /* Slide-out animation class for swipe close */
 .slide-out-right {
-  animation: slideOutToRight 0.3s ease-in forwards;
+  animation: slideOutToRight 0.2s ease-in forwards;
 }
 
 @layer base {
