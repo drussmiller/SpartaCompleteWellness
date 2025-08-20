@@ -38,10 +38,10 @@ function MainContent() {
   // Prevent browser's native swipe navigation globally
   useEffect(() => {
     const preventBrowserNavigation = (e: TouchEvent) => {
-      // Only prevent if touch starts from the far left or right edge
+      // Prevent if touch starts from the far left edge (wider threshold for browser navigation)
       const touch = e.touches[0];
-      if (touch.clientX < 20 || touch.clientX > window.innerWidth - 20) {
-        console.log('Preventing browser navigation - touch at edge:', touch.clientX);
+      if (touch.clientX < 50) {
+        console.log('Preventing browser navigation - touch at left edge:', touch.clientX, 'screen width:', window.innerWidth);
         e.preventDefault();
       }
     };
