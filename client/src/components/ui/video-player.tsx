@@ -244,15 +244,15 @@ export function VideoPlayer({
                     objectPosition: 'center'
                   }}
                 />
-              </div>
-              {/* Play button overlay on thumbnail */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
-                <div 
-                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
-                  onClick={handleThumbnailClick}
-                  style={{ transition: 'none' }}
-                >
-                  <Play size={24} className="text-white" fill="white" />
+                {/* Play button overlay moved inside thumbnail container */}
+                <div className="absolute inset-0 flex items-end justify-start bg-black/10">
+                  <div 
+                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
+                    onClick={handleThumbnailClick}
+                    style={{ transition: 'none' }}
+                  >
+                    <Play size={24} className="text-white" fill="white" />
+                  </div>
                 </div>
               </div>
             </>
@@ -268,7 +268,8 @@ export function VideoPlayer({
                   background: posterError ? 
                     "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
                     "white",
-                  border: "1px solid #e5e7eb"
+                  border: "1px solid #e5e7eb",
+                  position: 'relative'
                 }}
               >
                 <div className="p-4 rounded-lg flex flex-col items-center">
@@ -276,15 +277,15 @@ export function VideoPlayer({
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                   </svg>
                 </div>
-              </div>
-              {/* Play button overlay on fallback */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
-                <div 
-                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
-                  onClick={handleThumbnailClick}
-                  style={{ transition: 'none' }}
-                >
-                  <Play size={24} className="text-white" fill="white" />
+                {/* Play button overlay on fallback - moved inside fallback container */}
+                <div className="absolute inset-0 flex items-end justify-start bg-black/10">
+                  <div 
+                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
+                    onClick={handleThumbnailClick}
+                    style={{ transition: 'none' }}
+                  >
+                    <Play size={24} className="text-white" fill="white" />
+                  </div>
                 </div>
               </div>
             </>
