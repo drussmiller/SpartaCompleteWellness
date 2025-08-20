@@ -10,7 +10,7 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+// Removed useSwipeToClose import - using custom full-page swipe detection
 
 
 export default function CommentsPage() {
@@ -20,22 +20,47 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Add swipe-to-close functionality since this page has a chevron close button
-  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: () => {
-      console.log('🔥 COMMENTS PAGE SWIPE RIGHT TRIGGERED - NAVIGATING BACK');
-      // Use wouter's navigate function to go back to home
-      navigate("/");
-    },
-    threshold: 50, // Lower threshold for easier swiping
-    maxVerticalMovement: 200 // Allow more vertical movement
-  });
+  // Add swipe-to-close functionality - detect swipe right anywhere on the page
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
 
-  console.log('🔧 Comments page mounted with swipe handlers:', {
-    handleTouchStart: !!handleTouchStart,
-    handleTouchMove: !!handleTouchMove,
-    handleTouchEnd: !!handleTouchEnd
-  });
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      console.log('📱 Comments page - Touch start anywhere:', { startX, startY });
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      
+      const deltaX = endX - startX;
+      const deltaY = Math.abs(endY - startY);
+      
+      console.log('📱 Comments page - Touch end anywhere:', { deltaX, deltaY, startX, endX });
+      
+      // Right swipe detection: swipe right > 80px anywhere on screen, limited vertical movement
+      if (deltaX > 80 && deltaY < 120) {
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED ANYWHERE! Going back to home');
+        e.preventDefault();
+        e.stopPropagation();
+        navigate("/");
+      }
+    };
+
+    // Attach to document for full-page swipe detection
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    console.log('🔥 COMMENTS PAGE - Full-page touch event listeners attached');
+
+    return () => {
+      console.log('🔥 COMMENTS PAGE - Cleaning up full-page touch event listeners');
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [navigate]);
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
