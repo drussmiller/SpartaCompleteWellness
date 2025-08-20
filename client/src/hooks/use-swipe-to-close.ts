@@ -24,7 +24,7 @@ export function useSwipeToClose({
     isSwipeInProgress.current = false;
     
     // Don't prevent default to allow normal scrolling
-    console.log('Swipe touch start at:', touch.clientX, touch.clientY);
+    console.log('🟦 SWIPE START at:', touch.clientX, touch.clientY, 'Target:', e.target);
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -36,10 +36,11 @@ export function useSwipeToClose({
       // Check if this looks like a horizontal swipe
       if (Math.abs(deltaX) > 15 && deltaY < 50) {
         isSwipeInProgress.current = true;
-        console.log('Horizontal swipe detected, deltaX:', deltaX, 'deltaY:', deltaY);
+        console.log('🟩 HORIZONTAL SWIPE detected, deltaX:', deltaX, 'deltaY:', deltaY);
         
         // For right swipes, prevent default to avoid conflicts
         if (deltaX > 0) {
+          console.log('🟩 Preventing default for right swipe');
           e.preventDefault();
         }
       }
@@ -51,16 +52,18 @@ export function useSwipeToClose({
     const deltaX = touch.clientX - touchStartX.current;
     const deltaY = Math.abs(touch.clientY - touchStartY.current);
     
-    console.log('Swipe touch end - deltaX:', deltaX, 'deltaY:', deltaY, 'threshold:', threshold);
+    console.log('🟨 SWIPE END - deltaX:', deltaX, 'deltaY:', deltaY, 'threshold:', threshold, 'maxVertical:', maxVerticalMovement);
     
     // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
     if (deltaX > threshold && deltaY < maxVerticalMovement) {
-      console.log('Swipe right detected! Executing close action');
+      console.log('🟥 SWIPE RIGHT DETECTED! Executing close action');
       e.preventDefault();
       e.stopPropagation();
       
       // Execute immediately without delay
       onSwipeRight();
+    } else {
+      console.log('🟫 Swipe conditions not met - deltaX:', deltaX, '> threshold:', threshold, '?', deltaX > threshold, 'deltaY:', deltaY, '< maxVertical:', maxVerticalMovement, '?', deltaY < maxVerticalMovement);
     }
     
     isSwipeInProgress.current = false;
