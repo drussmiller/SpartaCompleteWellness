@@ -19,49 +19,23 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  console.log('🔥 COMMENTS PAGE RENDERED - postId:', postId);
 
-  // Simple swipe-to-close functionality
-  useEffect(() => {
-    let startX = 0;
-    let startY = 0;
+  // Add swipe-to-close functionality since this page has a chevron close button
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      console.log('🔥 COMMENTS PAGE SWIPE RIGHT TRIGGERED - NAVIGATING BACK');
+      // Use wouter's navigate function to go back to home
+      navigate("/");
+    },
+    threshold: 50, // Lower threshold for easier swiping
+    maxVerticalMovement: 200 // Allow more vertical movement
+  });
 
-    const handleTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      console.log('📱 Comments page - Touch start:', startX, startY);
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      const endX = e.changedTouches[0].clientX;
-      const endY = e.changedTouches[0].clientY;
-      
-      const deltaX = endX - startX;
-      const deltaY = Math.abs(endY - startY);
-      
-      console.log('📱 Comments page - Touch end:', { deltaX, deltaY, startX, endX });
-      
-      // Right swipe detection: swipe right > 80px, limited vertical movement
-      if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
-        e.preventDefault();
-        e.stopPropagation();
-        navigate("/");
-      }
-    };
-
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    
-    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to document');
-
-    return () => {
-      console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [navigate]);
+  console.log('🔧 Comments page mounted with swipe handlers:', {
+    handleTouchStart: !!handleTouchStart,
+    handleTouchMove: !!handleTouchMove,
+    handleTouchEnd: !!handleTouchEnd
+  });
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -196,7 +170,20 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="flex-1 bg-white min-h-screen w-full">
+      <div className="flex-1 bg-white min-h-screen w-full relative">
+        {/* Transparent swipe detection overlay */}
+        <div 
+          className="absolute inset-0 z-10 pointer-events-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ 
+            touchAction: 'pan-y',
+            pointerEvents: 'auto' 
+          }}
+          data-swipe-enabled="true"
+        />
+        
         <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
