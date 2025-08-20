@@ -95,35 +95,6 @@ div[data-post-id] .video-container {
   display: none; /* Chrome, Safari, Opera */
 }
 
-/* Page transition animations */
-@keyframes slideInFromRight {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideOutToRight {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-/* Comments page slide-in animation */
-[data-swipe-enabled="true"] {
-  animation: slideInFromRight 0.2s ease-out;
-}
-
-/* Slide-out animation class for swipe close */
-.slide-out-right {
-  animation: slideOutToRight 0.2s ease-in forwards;
-}
-
 @layer base {
   * {
     @apply border-border;

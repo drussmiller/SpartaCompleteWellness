@@ -37,14 +37,12 @@ export function PostView({ post }: PostViewProps) {
 
           {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
-            <div className="relative mt-3 mb-3 w-screen -mx-4 md:w-full md:mx-0">
-              <div className="w-full bg-gray-50">
-                <img
-                  src={getThumbnailUrl(post.mediaUrl, 'medium')}
-                  alt={post.type}
-                  className="w-full h-80 object-cover"
-                />
-              </div>
+            <div className="mt-3 mb-3 flex justify-center">
+              <img
+                src={getThumbnailUrl(post.mediaUrl, 'medium')}
+                alt={post.type}
+                className="max-w-full h-auto object-contain rounded-md"
+              />
             </div>
           )}
 
@@ -58,8 +56,24 @@ export function PostView({ post }: PostViewProps) {
                 preload="metadata"
                 playsInline
                 controlsList="nodownload"
-                onLoad={() => {}}
-                onError={() => {}}
+                onLoad={() => {
+                  console.log(`Comment view: Video loaded successfully for post ${post.id}`);
+                }}
+                onError={(error) => {
+                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`, error);
+                  // Try to trigger poster generation
+                  fetch('/api/video/generate-posters', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                      mediaUrl: post.mediaUrl,
+                      postId: post.id,
+                    }),
+                    credentials: 'include',
+                  }).catch(err => console.error("Error requesting poster generation:", err));
+                }}
               />
             </div>
           )}

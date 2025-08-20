@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams, useLocation, useRouter } from "wouter";
-import { Loader2, ChevronLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useToast } from "@/hooks/use-toast";
 import { PostView } from "@/components/comments/post-view";
@@ -20,7 +20,7 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-
+  console.log('🔥 COMMENTS PAGE RENDERED - postId:', postId);
 
   // Simple swipe-to-close functionality
   useEffect(() => {
@@ -30,6 +30,7 @@ export default function CommentsPage() {
     const handleTouchStart = (e: TouchEvent) => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
+      console.log('📱 Comments page - Touch start:', startX, startY);
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -39,30 +40,24 @@ export default function CommentsPage() {
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
       
+      console.log('📱 Comments page - Touch end:', { deltaX, deltaY, startX, endX });
+      
       // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
         e.preventDefault();
         e.stopPropagation();
-        
-        // Add slide-out animation class
-        const pageElement = document.querySelector('[data-swipe-enabled="true"]');
-        if (pageElement) {
-          pageElement.classList.add('slide-out-right');
-          
-          // Navigate after animation completes
-          setTimeout(() => {
-            navigate("/");
-          }, 200); // Match animation duration
-        } else {
-          navigate("/");
-        }
+        navigate("/");
       }
     };
 
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
     
+    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to document');
+
     return () => {
+      console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchend', handleTouchEnd);
     };
@@ -201,19 +196,7 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="flex-1 bg-white min-h-screen w-full" data-swipe-enabled="true">
-        {/* Header with chevron close button */}
-        <div className="flex items-center justify-between p-4 border-b bg-white sticky top-0 z-10">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <h1 className="text-lg font-semibold">Comments</h1>
-          <div className="w-10" /> {/* Spacer for centering */}
-        </div>
-        
+      <div className="flex-1 bg-white min-h-screen w-full">
         <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">

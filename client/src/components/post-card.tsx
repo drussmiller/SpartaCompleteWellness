@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useLocation, Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,7 +92,6 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
@@ -324,8 +322,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   preload="metadata"
                   playsInline
                   controlsList="nodownload"
-                  onLoad={() => {}}
-                  onError={() => {}}
+                  onLoad={() => {
+                    console.log(`Home page: Video loaded successfully for post ${post.id}`);
+                  }}
+                  onError={(error) => {
+                    console.error(`Failed to load video on home page: ${post.mediaUrl}`, error);
+                  }}
                 />
               </div>
             ) : (
@@ -334,10 +336,28 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-80 object-cover cursor-pointer"
-                onError={() => {}}
-                onLoad={() => {}}
-                onClick={() => {}}
+                className="w-full h-full object-contain cursor-pointer"
+                onError={(e) => {
+                  console.error('[Image Load Error]', {
+                    src: e.currentTarget.src,
+                    originalUrl: post.mediaUrl,
+                    postId: post.id,
+                    postType: post.type,
+                    error: 'Image failed to load'
+                  });
+                }}
+                onLoad={() => {
+                  console.log('[Image Load Success]', {
+                    src: imageUrl,
+                    originalUrl: post.mediaUrl,
+                    postId: post.id,
+                    postType: post.type
+                  });
+                }}
+                onClick={(e) => {
+                  // No longer hiding images - let them display even if some fail to load
+                  console.log('Image load error, but not hiding container');
+                }}
               />
             )}
           </div>
@@ -357,10 +377,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
           <div className="flex items-center gap-2 py-1 h-10">
             <ReactionButton postId={post.id} variant="icon" />
-            <Link href={`/comments/${post.id}`} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-gray-100 rounded-md transition-colors">
+            <Button
+              variant="ghost"
+              size="default"
+              className="gap-2"
+              onClick={() => {
+                // Navigate to comments page
+                window.location.href = `/comments/${post.id}`;
+              }}
+            >
               <MessageCircle className="h-5 w-5" />
               {commentCount}
-            </Link>
+            </Button>
           </div>
         </div>
       </div>
