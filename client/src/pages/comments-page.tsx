@@ -20,58 +20,35 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Add swipe-to-close functionality since this page has a chevron close button
-  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: () => {
-      console.log('🔥 COMMENTS PAGE SWIPE RIGHT TRIGGERED - NAVIGATING BACK');
-      // Use wouter's navigate function to go back to home
-      navigate("/");
-    },
-    threshold: 40, // Lower threshold for easier swiping
-    maxVerticalMovement: 150 // Allow more vertical movement
-  });
-
-  console.log('🔧 Comments page mounted with swipe handlers:', {
-    handleTouchStart: !!handleTouchStart,
-    handleTouchMove: !!handleTouchMove,
-    handleTouchEnd: !!handleTouchEnd
-  });
-
-  // Direct native touch event handling for mobile swipe detection
+  // Simple swipe-to-close functionality
   useEffect(() => {
     let startX = 0;
     let startY = 0;
-    let startTime = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      startTime = Date.now();
-      console.log('📱 Touch start:', startX, startY);
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      console.log('📱 Comments page - Touch start:', startX, startY);
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      const touch = e.changedTouches[0];
-      const endX = touch.clientX;
-      const endY = touch.clientY;
-      const endTime = Date.now();
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
       
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
-      const timeDiff = endTime - startTime;
       
-      console.log('📱 Touch end - deltaX:', deltaX, 'deltaY:', deltaY, 'time:', timeDiff);
+      console.log('📱 Comments page - Touch end:', { deltaX, deltaY, startX, endX });
       
-      // Right swipe detection: positive deltaX > 50px, vertical movement < 100px, time < 500ms
-      if (deltaX > 50 && deltaY < 100 && timeDiff < 500) {
-        console.log('✅ RIGHT SWIPE DETECTED - Navigating back!');
+      // Right swipe detection: swipe right > 80px, limited vertical movement
+      if (deltaX > 80 && deltaY < 120) {
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
         e.preventDefault();
+        e.stopPropagation();
         navigate("/");
       }
     };
 
-    // Add listeners directly to document for better capture
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
 
