@@ -35,6 +35,24 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
+  // Prevent browser's native swipe navigation globally
+  useEffect(() => {
+    const preventBrowserNavigation = (e: TouchEvent) => {
+      // Only prevent if touch starts from the far left or right edge
+      const touch = e.touches[0];
+      if (touch.clientX < 20 || touch.clientX > window.innerWidth - 20) {
+        console.log('Preventing browser navigation - touch at edge:', touch.clientX);
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchstart', preventBrowserNavigation, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchstart', preventBrowserNavigation);
+    };
+  }, []);
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
