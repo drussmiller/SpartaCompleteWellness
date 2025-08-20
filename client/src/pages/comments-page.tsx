@@ -20,7 +20,7 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  console.log('🔥 COMMENTS PAGE RENDERED - postId:', postId);
+
 
   // Simple swipe-to-close functionality
   useEffect(() => {
@@ -30,7 +30,6 @@ export default function CommentsPage() {
     const handleTouchStart = (e: TouchEvent) => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      console.log('📱 Comments page - Touch start:', startX, startY);
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -40,11 +39,8 @@ export default function CommentsPage() {
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
       
-      console.log('📱 Comments page - Touch end:', { deltaX, deltaY, startX, endX });
-      
       // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Adding slide-out animation');
         e.preventDefault();
         e.stopPropagation();
         
@@ -66,10 +62,7 @@ export default function CommentsPage() {
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
     
-    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to document');
-
     return () => {
-      console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchend', handleTouchEnd);
     };

@@ -324,12 +324,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   preload="metadata"
                   playsInline
                   controlsList="nodownload"
-                  onLoad={() => {
-                    console.log(`Home page: Video loaded successfully for post ${post.id}`);
-                  }}
-                  onError={(error) => {
-                    console.error(`Failed to load video on home page: ${post.mediaUrl}`, error);
-                  }}
+                  onLoad={() => {}}
+                  onError={() => {}}
                 />
               </div>
             ) : (
@@ -339,27 +335,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                 loading="lazy"
                 decoding="async"
                 className="w-full h-80 object-cover cursor-pointer"
-                onError={(e) => {
-                  console.error('[Image Load Error]', {
-                    src: e.currentTarget.src,
-                    originalUrl: post.mediaUrl,
-                    postId: post.id,
-                    postType: post.type,
-                    error: 'Image failed to load'
-                  });
-                }}
-                onLoad={() => {
-                  console.log('[Image Load Success]', {
-                    src: imageUrl,
-                    originalUrl: post.mediaUrl,
-                    postId: post.id,
-                    postType: post.type
-                  });
-                }}
-                onClick={(e) => {
-                  // No longer hiding images - let them display even if some fail to load
-                  console.log('Image load error, but not hiding container');
-                }}
+                onError={() => {}}
+                onLoad={() => {}}
+                onClick={() => {}}
               />
             )}
           </div>
