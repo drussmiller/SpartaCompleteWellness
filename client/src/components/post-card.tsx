@@ -379,18 +379,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
           <div className="flex items-center gap-2 py-1 h-10">
             <ReactionButton postId={post.id} variant="icon" />
-            <Link href={`/comments/${post.id}`}>
-              <Button
-                variant="ghost"
-                size="default"
-                className="gap-2"
-                asChild
-              >
-                <span>
-                  <MessageCircle className="h-5 w-5" />
-                  {commentCount}
-                </span>
-              </Button>
+            <Link href={`/comments/${post.id}`} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-gray-100 rounded-md transition-colors">
+              <MessageCircle className="h-5 w-5" />
+              {commentCount}
             </Link>
           </div>
         </div>
