@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -379,22 +379,19 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
           <div className="flex items-center gap-2 py-1 h-10">
             <ReactionButton postId={post.id} variant="icon" />
-            <Button
-              variant="ghost"
-              size="default"
-              className="gap-2"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔥 COMMENT BUTTON CLICKED - Post ID:', post.id);
-                console.log('🔥 Setting location to:', `/comments/${post.id}`);
-                setLocation(`/comments/${post.id}`);
-                console.log('🔥 setLocation called successfully');
-              }}
-            >
-              <MessageCircle className="h-5 w-5" />
-              {commentCount}
-            </Button>
+            <Link href={`/comments/${post.id}`}>
+              <Button
+                variant="ghost"
+                size="default"
+                className="gap-2"
+                asChild
+              >
+                <span>
+                  <MessageCircle className="h-5 w-5" />
+                  {commentCount}
+                </span>
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
