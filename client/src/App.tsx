@@ -37,42 +37,34 @@ function MainContent() {
 
   // Prevent browser's native swipe navigation globally
   useEffect(() => {
-    const preventBrowserNavigation = (e: TouchEvent) => {
-      // Only prevent if touch starts from the very far left edge AND moves horizontally
+    // Disable browser navigation gestures entirely
+    const preventDefault = (e: TouchEvent) => {
+      // Only prevent if touch starts from the left edge (browser swipe zone)
       const touch = e.touches[0];
-      if (touch.clientX < 20) {
-        console.log('Potential browser navigation - touch at edge:', touch.clientX);
-        
-        // Store initial touch position for move tracking
-        const startX = touch.clientX;
-        const startY = touch.clientY;
-        
-        const onTouchMove = (moveEvent: TouchEvent) => {
-          const moveTouch = moveEvent.touches[0];
-          const deltaX = moveTouch.clientX - startX;
-          const deltaY = Math.abs(moveTouch.clientY - startY);
-          
-          // Only prevent if it's a horizontal swipe from the edge
-          if (deltaX > 30 && deltaY < 50) {
-            console.log('Preventing browser back navigation');
-            moveEvent.preventDefault();
-          }
-        };
-        
-        const onTouchEnd = () => {
-          document.removeEventListener('touchmove', onTouchMove);
-          document.removeEventListener('touchend', onTouchEnd);
-        };
-        
-        document.addEventListener('touchmove', onTouchMove, { passive: false });
-        document.addEventListener('touchend', onTouchEnd);
+      if (touch.clientX < 30) {
+        console.log('Blocking edge swipe - touch at:', touch.clientX);
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
 
-    document.addEventListener('touchstart', preventBrowserNavigation, { passive: true });
+    // Also prevent history navigation via overscroll
+    const preventOverscroll = (e: TouchEvent) => {
+      // Prevent overscroll bouncing that can trigger navigation
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (touch.clientX < 50) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    document.addEventListener('touchstart', preventDefault, { passive: false });
+    document.addEventListener('touchmove', preventOverscroll, { passive: false });
     
     return () => {
-      document.removeEventListener('touchstart', preventBrowserNavigation);
+      document.removeEventListener('touchstart', preventDefault);
+      document.removeEventListener('touchmove', preventOverscroll);
     };
   }, []);
 
@@ -107,7 +99,7 @@ function MainContent() {
   return (
     <div className="min-h-screen">
       {user && <div className="fixed left-0 top-0 z-[100]"><VerticalNav /></div>}
-      <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom'}}> {/* Removed global swipe handling */}
+      <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain'}}> {/* Prevent horizontal overscroll */}
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/activity" component={ActivityPage} />
