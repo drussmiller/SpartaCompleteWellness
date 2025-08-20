@@ -90,12 +90,12 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
 
   return (
     <div 
-      className="flex flex-col min-h-screen pb-16 md:pb-0"
+      className="flex flex-col h-screen pb-16 md:pb-0"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <header className="sticky top-0 z-50 border-b border-border bg-background">
+      <header className="sticky top-0 z-50 border-b border-border bg-background flex-shrink-0">
         <div className="container flex items-center p-4 pt-16">
           <Button
             variant="ghost"
@@ -109,7 +109,9 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         </div>
       </header>
 
-      <div className="container py-4 max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto">
+        <div className="container py-4 max-w-4xl mx-auto"></div>
+      </div>
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <p>Loading leaderboard data...</p>
@@ -196,6 +198,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
             </TabsContent>
           </Tabs>
         )}
+        </div>
       </div>
       <BottomNav />
     </div>
