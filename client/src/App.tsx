@@ -41,30 +41,34 @@ function MainContent() {
     const preventDefault = (e: TouchEvent) => {
       // Only prevent if touch starts from the left edge (browser swipe zone)
       const touch = e.touches[0];
-      if (touch.clientX < 30) {
-        console.log('Blocking edge swipe - touch at:', touch.clientX);
+      console.log('Touch detected at:', touch.clientX, 'on page:', window.location.pathname);
+      if (touch.clientX < 50) { // Increased threshold
+        console.log('BLOCKING edge swipe - touch at:', touch.clientX, 'page:', window.location.pathname);
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+    };
+
+    // More aggressive prevention
+    const preventNavigation = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch.clientX < 60) {
+        console.log('PREVENTING navigation gesture at:', touch.clientX);
         e.preventDefault();
         e.stopPropagation();
       }
     };
 
-    // Also prevent history navigation via overscroll
-    const preventOverscroll = (e: TouchEvent) => {
-      // Prevent overscroll bouncing that can trigger navigation
-      if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        if (touch.clientX < 50) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    document.addEventListener('touchstart', preventDefault, { passive: false });
-    document.addEventListener('touchmove', preventOverscroll, { passive: false });
+    // Add to document and body for comprehensive coverage
+    document.addEventListener('touchstart', preventDefault, { passive: false, capture: true });
+    document.body.addEventListener('touchstart', preventDefault, { passive: false, capture: true });
+    document.addEventListener('touchmove', preventNavigation, { passive: false, capture: true });
     
     return () => {
-      document.removeEventListener('touchstart', preventDefault);
-      document.removeEventListener('touchmove', preventOverscroll);
+      document.removeEventListener('touchstart', preventDefault, true);
+      document.body.removeEventListener('touchstart', preventDefault, true);
+      document.removeEventListener('touchmove', preventNavigation, true);
     };
   }, []);
 
