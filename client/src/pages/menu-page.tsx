@@ -58,7 +58,7 @@ export default function MenuPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <ProfilePage onClose={() => setProfileOpen(false)} />
+              {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
             </SheetContent>
           </Sheet>
 
@@ -71,7 +71,7 @@ export default function MenuPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />
+              {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
             </SheetContent>
           </Sheet>
 
@@ -84,7 +84,7 @@ export default function MenuPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />
+              {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
             </SheetContent>
           </Sheet>
           
@@ -97,7 +97,7 @@ export default function MenuPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />
+              {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
             </SheetContent>
           </Sheet>
 
@@ -111,7 +111,7 @@ export default function MenuPage() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-                <AdminPage onClose={() => setAdminOpen(false)} />
+                {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
               </SheetContent>
             </Sheet>
           )}
