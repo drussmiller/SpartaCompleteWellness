@@ -170,15 +170,21 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="flex-1 bg-white min-h-screen w-full">
-        <ScrollArea 
-          className="h-[calc(100vh-6rem)]"
+      <div className="flex-1 bg-white min-h-screen w-full relative">
+        {/* Transparent swipe detection overlay */}
+        <div 
+          className="absolute inset-0 z-10 pointer-events-none"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          style={{ touchAction: 'pan-y' }}
+          style={{ 
+            touchAction: 'pan-y',
+            pointerEvents: 'auto' 
+          }}
           data-swipe-enabled="true"
-        >
+        />
+        
+        <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
               <PostView post={originalPost} />
