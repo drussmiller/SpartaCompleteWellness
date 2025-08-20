@@ -53,6 +53,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      data-swipe-enabled="true"
     >
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
         <div className="container flex items-center p-4 pt-16">

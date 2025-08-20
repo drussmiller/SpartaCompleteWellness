@@ -165,6 +165,7 @@ export default function CommentsPage() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{ touchAction: 'pan-y' }}
+      data-swipe-enabled="true"
     >
       <AppLayout title="Comments">
         <div className="flex-1 bg-white">

@@ -97,6 +97,7 @@ export function VideoPlayerPage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      data-swipe-enabled="true"
     >
       {/* Header with back button */}
       <div className="absolute top-4 left-4 z-10">

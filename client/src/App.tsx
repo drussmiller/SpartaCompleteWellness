@@ -35,51 +35,96 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
-  // Aggressive browser navigation prevention using multiple techniques
+  // Smart browser navigation prevention that allows legitimate swipe components
   useEffect(() => {
-    // Prevent all edge swipes with comprehensive event blocking
-    const blockEdgeSwipes = (e: TouchEvent) => {
+    let startX = 0;
+    let startY = 0;
+    let isTracking = false;
+    
+    const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       const fromLeftEdge = touch.clientX < 20;
-      const fromRightEdge = touch.clientX > window.innerWidth - 20;
       
-      if (fromLeftEdge || fromRightEdge) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return false;
+      if (fromLeftEdge) {
+        startX = touch.clientX;
+        startY = touch.clientY;
+        isTracking = true;
+        
+        // Check if this element or its parents have swipe handlers
+        let element = e.target as Element;
+        let hasSwipeHandler = false;
+        
+        while (element && element !== document.body) {
+          if (element.hasAttribute && (
+            element.hasAttribute('data-swipe-enabled') ||
+            element.classList.contains('swipe-enabled') ||
+            // Check for common swipe component classes/attributes
+            element.getAttribute('onTouchStart') ||
+            element.getAttribute('onTouchMove') ||
+            element.getAttribute('onTouchEnd')
+          )) {
+            hasSwipeHandler = true;
+            break;
+          }
+          element = element.parentElement as Element;
+        }
+        
+        // If no legitimate swipe handler found, block immediately
+        if (!hasSwipeHandler) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
       }
     };
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isTracking) return;
+      
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = Math.abs(touch.clientY - startY);
+      
+      // If it's clearly a horizontal swipe from the edge and doesn't have a handler, block it
+      if (startX < 20 && deltaX > 30 && deltaY < 50) {
+        // Double-check for swipe handlers in the current path
+        let element = e.target as Element;
+        let hasSwipeHandler = false;
+        
+        while (element && element !== document.body) {
+          if (element.hasAttribute && (
+            element.hasAttribute('data-swipe-enabled') ||
+            element.getAttribute('style')?.includes('touchAction') ||
+            element.getAttribute('onTouchStart')
+          )) {
+            hasSwipeHandler = true;
+            break;
+          }
+          element = element.parentElement as Element;
+        }
+        
+        if (!hasSwipeHandler) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+    
+    const handleTouchEnd = () => {
+      isTracking = false;
+    };
 
-    // Block with maximum priority and all event phases
+    // Use capture phase to intercept before other handlers
     const options = { passive: false, capture: true };
     
-    // Add to all possible targets
-    document.addEventListener('touchstart', blockEdgeSwipes, options);
-    document.addEventListener('touchmove', blockEdgeSwipes, options);
-    document.addEventListener('touchend', blockEdgeSwipes, options);
-    
-    window.addEventListener('touchstart', blockEdgeSwipes, options);
-    window.addEventListener('touchmove', blockEdgeSwipes, options);
-    window.addEventListener('touchend', blockEdgeSwipes, options);
-    
-    // Also add to body for additional coverage
-    document.body.addEventListener('touchstart', blockEdgeSwipes, options);
-    document.body.addEventListener('touchmove', blockEdgeSwipes, options);
-    document.body.addEventListener('touchend', blockEdgeSwipes, options);
+    document.addEventListener('touchstart', handleTouchStart, options);
+    document.addEventListener('touchmove', handleTouchMove, options);
+    document.addEventListener('touchend', handleTouchEnd, options);
     
     return () => {
-      document.removeEventListener('touchstart', blockEdgeSwipes, true);
-      document.removeEventListener('touchmove', blockEdgeSwipes, true);
-      document.removeEventListener('touchend', blockEdgeSwipes, true);
-      
-      window.removeEventListener('touchstart', blockEdgeSwipes, true);
-      window.removeEventListener('touchmove', blockEdgeSwipes, true);
-      window.removeEventListener('touchend', blockEdgeSwipes, true);
-      
-      document.body.removeEventListener('touchstart', blockEdgeSwipes, true);
-      document.body.removeEventListener('touchmove', blockEdgeSwipes, true);
-      document.body.removeEventListener('touchend', blockEdgeSwipes, true);
+      document.removeEventListener('touchstart', handleTouchStart, true);
+      document.removeEventListener('touchmove', handleTouchMove, true);
+      document.removeEventListener('touchend', handleTouchEnd, true);
     };
   }, []);
 
