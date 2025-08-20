@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams, useLocation, useRouter } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useToast } from "@/hooks/use-toast";
 import { PostView } from "@/components/comments/post-view";
@@ -202,6 +202,18 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div className="flex-1 bg-white min-h-screen w-full" data-swipe-enabled="true">
+        {/* Header with chevron close button */}
+        <div className="flex items-center justify-between p-4 border-b bg-white sticky top-0 z-10">
+          <button
+            onClick={() => navigate("/")}
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <h1 className="text-lg font-semibold">Comments</h1>
+          <div className="w-10" /> {/* Spacer for centering */}
+        </div>
+        
         <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
