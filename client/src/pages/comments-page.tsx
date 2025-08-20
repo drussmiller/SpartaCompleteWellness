@@ -24,7 +24,7 @@ export default function CommentsPage() {
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
       console.log('Comments page swipe right triggered, navigating back');
-      // Use navigate instead of window.history.back() to avoid confusion with browser navigation
+      // Use wouter's navigate function to go back to home
       navigate("/");
     },
     threshold: 50, // Lower threshold for easier swiping
