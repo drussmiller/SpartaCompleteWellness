@@ -35,21 +35,45 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
-  // Disable browser swipe navigation completely using CSS and meta approach
+  // Prevent browser navigation using WebKit-specific CSS
   useEffect(() => {
-    // Add CSS-based prevention
     const style = document.createElement('style');
     style.textContent = `
-      html, body {
+      html {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior-x: none !important;
+        overflow-x: hidden !important;
+      }
+      
+      body {
+        overscroll-behavior-x: none !important;
+        overflow-x: hidden !important;
+        position: relative;
+        width: 100%;
+      }
+      
+      * {
+        -webkit-touch-callout: none;
         overscroll-behavior-x: none;
-        overflow-x: hidden;
-        touch-action: pan-y pinch-zoom;
       }
     `;
     document.head.appendChild(style);
     
+    // Also try viewport meta approach
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.setAttribute('name', 'viewport');
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    
     return () => {
-      document.head.removeChild(style);
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
     };
   }, []);
 
