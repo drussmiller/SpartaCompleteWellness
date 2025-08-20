@@ -96,9 +96,9 @@ div[data-post-id] .video-container {
 }
 
 /* Page transition animations */
-@keyframes slideInFromLeft {
+@keyframes slideInFromRight {
   from {
-    transform: translateX(-100%);
+    transform: translateX(100%);
   }
   to {
     transform: translateX(0);
@@ -116,7 +116,7 @@ div[data-post-id] .video-container {
 
 /* Comments page slide-in animation */
 [data-swipe-enabled="true"] {
-  animation: slideInFromLeft 0.2s ease-out;
+  animation: slideInFromRight 0.2s ease-out;
 }
 
 /* Slide-out animation class for swipe close */
