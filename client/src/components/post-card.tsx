@@ -383,8 +383,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               variant="ghost"
               size="default"
               className="gap-2"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔥 COMMENT BUTTON CLICKED - Post ID:', post.id);
+                console.log('🔥 Setting location to:', `/comments/${post.id}`);
                 setLocation(`/comments/${post.id}`);
+                console.log('🔥 setLocation called successfully');
               }}
             >
               <MessageCircle className="h-5 w-5" />
