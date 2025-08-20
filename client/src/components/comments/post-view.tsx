@@ -50,19 +50,17 @@ export function PostView({ post }: PostViewProps) {
 
           {/* Show video if present - using improved VideoPlayer component */}
           {post.mediaUrl && post.is_video && (
-            <div className="relative mt-3 mb-3 w-screen -mx-4 md:w-full md:mx-0">
-              <div className="w-full bg-gray-50 h-80 overflow-hidden">
-                <VideoPlayer
-                  src={createMediaUrl(post.mediaUrl)}
-                  poster={getThumbnailUrl(post.mediaUrl, 'medium')}
-                  className="w-full h-full"
-                  preload="metadata"
-                  playsInline
-                  controlsList="nodownload"
-                  onLoad={() => {}}
-                  onError={() => {}}
-                />
-              </div>
+            <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
+              <VideoPlayer
+                src={createMediaUrl(post.mediaUrl)}
+                poster={getThumbnailUrl(post.mediaUrl, 'medium')}
+                className="w-full video-player-container rounded-md"
+                preload="metadata"
+                playsInline
+                controlsList="nodownload"
+                onLoad={() => {}}
+                onError={() => {}}
+              />
             </div>
           )}
 
