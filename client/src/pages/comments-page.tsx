@@ -23,8 +23,12 @@ export default function CommentsPage() {
   // Add swipe-to-close functionality since this page has a chevron close button
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
-      window.history.back();
-    }
+      console.log('Comments page swipe right triggered, navigating back');
+      // Use navigate instead of window.history.back() to avoid confusion with browser navigation
+      navigate("/");
+    },
+    threshold: 50, // Lower threshold for easier swiping
+    maxVerticalMovement: 200 // Allow more vertical movement
   });
 
   // Fetch original post

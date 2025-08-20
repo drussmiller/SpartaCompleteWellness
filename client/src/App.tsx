@@ -35,96 +35,30 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
-  // Smart browser navigation prevention that allows legitimate swipe components
+  // Simplified browser navigation prevention - only block very edge swipes without handlers
   useEffect(() => {
-    let startX = 0;
-    let startY = 0;
-    let isTracking = false;
-    
     const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
-      const fromLeftEdge = touch.clientX < 20;
+      const veryLeftEdge = touch.clientX < 10; // Very narrow edge zone
       
-      if (fromLeftEdge) {
-        startX = touch.clientX;
-        startY = touch.clientY;
-        isTracking = true;
+      if (veryLeftEdge) {
+        // Check if we're on a page with legitimate swipe functionality
+        const hasSwipeEnabled = document.querySelector('[data-swipe-enabled="true"]');
         
-        // Check if this element or its parents have swipe handlers
-        let element = e.target as Element;
-        let hasSwipeHandler = false;
-        
-        while (element && element !== document.body) {
-          if (element.hasAttribute && (
-            element.hasAttribute('data-swipe-enabled') ||
-            element.classList.contains('swipe-enabled') ||
-            // Check for common swipe component classes/attributes
-            element.getAttribute('onTouchStart') ||
-            element.getAttribute('onTouchMove') ||
-            element.getAttribute('onTouchEnd')
-          )) {
-            hasSwipeHandler = true;
-            break;
-          }
-          element = element.parentElement as Element;
-        }
-        
-        // If no legitimate swipe handler found, block immediately
-        if (!hasSwipeHandler) {
+        // If no swipe-enabled elements found, block the edge swipe
+        if (!hasSwipeEnabled) {
           e.preventDefault();
           e.stopPropagation();
           return false;
         }
       }
     };
-    
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!isTracking) return;
-      
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - startX;
-      const deltaY = Math.abs(touch.clientY - startY);
-      
-      // If it's clearly a horizontal swipe from the edge and doesn't have a handler, block it
-      if (startX < 20 && deltaX > 30 && deltaY < 50) {
-        // Double-check for swipe handlers in the current path
-        let element = e.target as Element;
-        let hasSwipeHandler = false;
-        
-        while (element && element !== document.body) {
-          if (element.hasAttribute && (
-            element.hasAttribute('data-swipe-enabled') ||
-            element.getAttribute('style')?.includes('touchAction') ||
-            element.getAttribute('onTouchStart')
-          )) {
-            hasSwipeHandler = true;
-            break;
-          }
-          element = element.parentElement as Element;
-        }
-        
-        if (!hasSwipeHandler) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }
-    };
-    
-    const handleTouchEnd = () => {
-      isTracking = false;
-    };
 
-    // Use capture phase to intercept before other handlers
-    const options = { passive: false, capture: true };
-    
-    document.addEventListener('touchstart', handleTouchStart, options);
-    document.addEventListener('touchmove', handleTouchMove, options);
-    document.addEventListener('touchend', handleTouchEnd, options);
+    // Only prevent the most edge touches that would trigger browser navigation
+    document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
     
     return () => {
       document.removeEventListener('touchstart', handleTouchStart, true);
-      document.removeEventListener('touchmove', handleTouchMove, true);
-      document.removeEventListener('touchend', handleTouchEnd, true);
     };
   }, []);
 
