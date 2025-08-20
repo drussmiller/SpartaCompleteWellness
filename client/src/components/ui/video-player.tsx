@@ -222,12 +222,11 @@ export function VideoPlayer({
           {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
             <>
               <div 
-                className="w-full cursor-pointer video-thumbnail-container"
+                className="w-full h-full cursor-pointer video-thumbnail-container"
                 onClick={handleThumbnailClick}
                 style={{ 
                   width: '100%',
-                  maxWidth: '600px',
-                  aspectRatio: '3/2',
+                  height: '100%',
                   overflow: 'hidden',
                   position: 'relative',
                   margin: '0 auto'
