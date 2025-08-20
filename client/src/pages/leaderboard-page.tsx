@@ -110,8 +110,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="container py-4 max-w-4xl mx-auto"></div>
-      </div>
+        <div className="container py-4 max-w-4xl mx-auto">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <p>Loading leaderboard data...</p>
