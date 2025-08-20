@@ -52,18 +52,16 @@ export function PostView({ post }: PostViewProps) {
           {post.mediaUrl && post.is_video && (
             <div className="relative mt-3 mb-3 w-screen -mx-4 md:w-full md:mx-0">
               <div className="w-full bg-gray-50">
-                <div className="relative w-full video-container" data-post-id={post.id}>
-                  <VideoPlayer
-                    src={createMediaUrl(post.mediaUrl)}
-                    poster={getThumbnailUrl(post.mediaUrl, 'medium')}
-                    className="w-full video-player-container"
-                    preload="metadata"
-                    playsInline
-                    controlsList="nodownload"
-                    onLoad={() => {}}
-                    onError={() => {}}
-                  />
-                </div>
+                <VideoPlayer
+                  src={createMediaUrl(post.mediaUrl)}
+                  poster={getThumbnailUrl(post.mediaUrl, 'medium')}
+                  className="w-full h-80 object-cover"
+                  preload="metadata"
+                  playsInline
+                  controlsList="nodownload"
+                  onLoad={() => {}}
+                  onError={() => {}}
+                />
               </div>
             </div>
           )}
