@@ -37,38 +37,44 @@ function MainContent() {
 
   // Prevent browser's native swipe navigation globally
   useEffect(() => {
-    // Disable browser navigation gestures entirely
-    const preventDefault = (e: TouchEvent) => {
-      // Only prevent if touch starts from the left edge (browser swipe zone)
+    // Only prevent edge swipes that are likely browser navigation
+    const preventEdgeSwipe = (e: TouchEvent) => {
       const touch = e.touches[0];
-      console.log('Touch detected at:', touch.clientX, 'on page:', window.location.pathname);
-      if (touch.clientX < 50) { // Increased threshold
-        console.log('BLOCKING edge swipe - touch at:', touch.clientX, 'page:', window.location.pathname);
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      const isVeryLeftEdge = touch.clientX < 15; // Very narrow edge zone
+      
+      if (isVeryLeftEdge) {
+        console.log('Blocking very edge swipe at:', touch.clientX, 'on:', window.location.pathname);
+        
+        // Track if this becomes a horizontal swipe
+        const startX = touch.clientX;
+        const startY = touch.clientY;
+        
+        const trackSwipe = (moveEvent: TouchEvent) => {
+          const moveTouch = moveEvent.touches[0];
+          const deltaX = moveTouch.clientX - startX;
+          const deltaY = Math.abs(moveTouch.clientY - startY);
+          
+          // Only prevent if it's a clear horizontal swipe from the very edge
+          if (deltaX > 25 && deltaY < 30) {
+            console.log('Preventing edge-to-center swipe');
+            moveEvent.preventDefault();
+          }
+        };
+        
+        const cleanup = () => {
+          document.removeEventListener('touchmove', trackSwipe);
+          document.removeEventListener('touchend', cleanup);
+        };
+        
+        document.addEventListener('touchmove', trackSwipe, { passive: false });
+        document.addEventListener('touchend', cleanup);
       }
     };
 
-    // More aggressive prevention
-    const preventNavigation = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (touch.clientX < 60) {
-        console.log('PREVENTING navigation gesture at:', touch.clientX);
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    // Add to document and body for comprehensive coverage
-    document.addEventListener('touchstart', preventDefault, { passive: false, capture: true });
-    document.body.addEventListener('touchstart', preventDefault, { passive: false, capture: true });
-    document.addEventListener('touchmove', preventNavigation, { passive: false, capture: true });
+    document.addEventListener('touchstart', preventEdgeSwipe, { passive: true });
     
     return () => {
-      document.removeEventListener('touchstart', preventDefault, true);
-      document.body.removeEventListener('touchstart', preventDefault, true);
-      document.removeEventListener('touchmove', preventNavigation, true);
+      document.removeEventListener('touchstart', preventEdgeSwipe);
     };
   }, []);
 
