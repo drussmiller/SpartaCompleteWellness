@@ -79,6 +79,16 @@ export function VideoPlayer({
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
+  
+  // Debug logging
+  console.log('VideoPlayer state:', {
+    showVideo,
+    posterError,
+    thumbnailLoaded,
+    showingBlankPlaceholder,
+    simplifiedPoster,
+    src
+  });
   const [location, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
