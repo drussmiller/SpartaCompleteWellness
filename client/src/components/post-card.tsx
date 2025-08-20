@@ -381,7 +381,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               variant="ghost"
               size="default"
               className="gap-2"
-              onClick={() => setIsCommentsOpen(true)}
+              onClick={() => {
+                // Navigate to comments page
+                window.location.href = `/comments/${post.id}`;
+              }}
             >
               <MessageCircle className="h-5 w-5" />
               {commentCount}
