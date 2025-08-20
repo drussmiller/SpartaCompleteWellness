@@ -19,6 +19,8 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  console.log('🔥 COMMENTS PAGE RENDERED - postId:', postId);
 
   // Simple swipe-to-close functionality
   useEffect(() => {
@@ -51,8 +53,11 @@ export default function CommentsPage() {
 
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to document');
 
     return () => {
+      console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchend', handleTouchEnd);
     };
