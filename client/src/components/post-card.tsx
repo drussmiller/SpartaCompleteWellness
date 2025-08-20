@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,6 +93,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
@@ -382,8 +384,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
               size="default"
               className="gap-2"
               onClick={() => {
-                // Navigate to comments page
-                window.location.href = `/comments/${post.id}`;
+                setLocation(`/comments/${post.id}`);
               }}
             >
               <MessageCircle className="h-5 w-5" />

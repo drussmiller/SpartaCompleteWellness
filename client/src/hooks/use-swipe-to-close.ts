@@ -61,10 +61,19 @@ export function useSwipeToClose({
       e.preventDefault();
       e.stopPropagation();
       
-      // Execute immediately without delay
-      requestAnimationFrame(() => {
+      // Add slide-out animation before navigating
+      const pageElement = document.querySelector('[data-swipe-enabled="true"]');
+      if (pageElement) {
+        pageElement.classList.add('slide-out-right');
+        
+        // Wait for animation to complete before navigating
+        setTimeout(() => {
+          onSwipeRight();
+        }, 300); // Match the animation duration
+      } else {
+        // Fallback if element not found
         onSwipeRight();
-      });
+      }
     } else {
       console.log('🟫 Swipe conditions not met - deltaX:', deltaX, '> threshold:', threshold, '?', deltaX > threshold, 'deltaY:', deltaY, '< maxVertical:', maxVerticalMovement, '?', deltaY < maxVerticalMovement);
     }
