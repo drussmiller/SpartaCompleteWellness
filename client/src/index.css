@@ -6,10 +6,17 @@
 html, body {
   overscroll-behavior-x: none !important;
   overflow-x: hidden !important;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: pan-y pinch-zoom;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: pan-y pinch-zoom !important;
+  position: relative !important;
+}
+
+/* Aggressive prevention on all elements */
+*, *::before, *::after {
+  overscroll-behavior-x: none !important;
+  -webkit-touch-callout: none !important;
 }
 
 /* Base container styles */

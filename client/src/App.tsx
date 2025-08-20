@@ -35,45 +35,51 @@ function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
 
-  // Prevent browser navigation using WebKit-specific CSS
+  // Aggressive browser navigation prevention using multiple techniques
   useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      html {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -webkit-tap-highlight-color: transparent;
-        overscroll-behavior-x: none !important;
-        overflow-x: hidden !important;
-      }
+    // Prevent all edge swipes with comprehensive event blocking
+    const blockEdgeSwipes = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const fromLeftEdge = touch.clientX < 20;
+      const fromRightEdge = touch.clientX > window.innerWidth - 20;
       
-      body {
-        overscroll-behavior-x: none !important;
-        overflow-x: hidden !important;
-        position: relative;
-        width: 100%;
+      if (fromLeftEdge || fromRightEdge) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
       }
-      
-      * {
-        -webkit-touch-callout: none;
-        overscroll-behavior-x: none;
-      }
-    `;
-    document.head.appendChild(style);
+    };
+
+    // Block with maximum priority and all event phases
+    const options = { passive: false, capture: true };
     
-    // Also try viewport meta approach
-    let viewportMeta = document.querySelector('meta[name="viewport"]');
-    if (!viewportMeta) {
-      viewportMeta = document.createElement('meta');
-      viewportMeta.setAttribute('name', 'viewport');
-      document.head.appendChild(viewportMeta);
-    }
-    viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    // Add to all possible targets
+    document.addEventListener('touchstart', blockEdgeSwipes, options);
+    document.addEventListener('touchmove', blockEdgeSwipes, options);
+    document.addEventListener('touchend', blockEdgeSwipes, options);
+    
+    window.addEventListener('touchstart', blockEdgeSwipes, options);
+    window.addEventListener('touchmove', blockEdgeSwipes, options);
+    window.addEventListener('touchend', blockEdgeSwipes, options);
+    
+    // Also add to body for additional coverage
+    document.body.addEventListener('touchstart', blockEdgeSwipes, options);
+    document.body.addEventListener('touchmove', blockEdgeSwipes, options);
+    document.body.addEventListener('touchend', blockEdgeSwipes, options);
     
     return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
+      document.removeEventListener('touchstart', blockEdgeSwipes, true);
+      document.removeEventListener('touchmove', blockEdgeSwipes, true);
+      document.removeEventListener('touchend', blockEdgeSwipes, true);
+      
+      window.removeEventListener('touchstart', blockEdgeSwipes, true);
+      window.removeEventListener('touchmove', blockEdgeSwipes, true);
+      window.removeEventListener('touchend', blockEdgeSwipes, true);
+      
+      document.body.removeEventListener('touchstart', blockEdgeSwipes, true);
+      document.body.removeEventListener('touchmove', blockEdgeSwipes, true);
+      document.body.removeEventListener('touchend', blockEdgeSwipes, true);
     };
   }, []);
 
