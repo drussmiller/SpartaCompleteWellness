@@ -37,64 +37,47 @@ export default function CommentsPage() {
     handleTouchEnd: !!handleTouchEnd
   });
 
-  // Add native event listeners for better touch handling on mobile
+  // Direct native touch event handling for mobile swipe detection
   useEffect(() => {
-    const container = document.querySelector('[data-swipe-container="true"]');
-    if (!container) return;
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
 
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let isSwipeInProgress = false;
-
-    const handleNativeTouchStart = (e: TouchEvent) => {
+    const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
-      isSwipeInProgress = false;
-      console.log('🟦 NATIVE TOUCH START at:', touch.clientX, touch.clientY);
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startTime = Date.now();
+      console.log('📱 Touch start:', startX, startY);
     };
 
-    const handleNativeTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - touchStartX;
-      const deltaY = Math.abs(touch.clientY - touchStartY);
-      
-      // Check if this looks like a right swipe
-      if (deltaX > 20 && deltaY < 80) {
-        if (!isSwipeInProgress) {
-          isSwipeInProgress = true;
-          console.log('🟩 NATIVE RIGHT SWIPE IN PROGRESS, deltaX:', deltaX, 'deltaY:', deltaY);
-        }
-        // Prevent default for right swipes
-        e.preventDefault();
-      }
-    };
-
-    const handleNativeTouchEnd = (e: TouchEvent) => {
+    const handleTouchEnd = (e: TouchEvent) => {
       const touch = e.changedTouches[0];
-      const deltaX = touch.clientX - touchStartX;
-      const deltaY = Math.abs(touch.clientY - touchStartY);
+      const endX = touch.clientX;
+      const endY = touch.clientY;
+      const endTime = Date.now();
       
-      console.log('🟨 NATIVE TOUCH END - deltaX:', deltaX, 'deltaY:', deltaY);
+      const deltaX = endX - startX;
+      const deltaY = Math.abs(endY - startY);
+      const timeDiff = endTime - startTime;
       
-      // Check for right swipe
-      if (deltaX > 40 && deltaY < 150) {
-        console.log('🟥 NATIVE SWIPE RIGHT DETECTED! Executing close action');
+      console.log('📱 Touch end - deltaX:', deltaX, 'deltaY:', deltaY, 'time:', timeDiff);
+      
+      // Right swipe detection: positive deltaX > 50px, vertical movement < 100px, time < 500ms
+      if (deltaX > 50 && deltaY < 100 && timeDiff < 500) {
+        console.log('✅ RIGHT SWIPE DETECTED - Navigating back!');
         e.preventDefault();
         navigate("/");
       }
-      
-      isSwipeInProgress = false;
     };
 
-    container.addEventListener('touchstart', handleNativeTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
-    container.addEventListener('touchend', handleNativeTouchEnd, { passive: false });
+    // Add listeners directly to document for better capture
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
 
     return () => {
-      container.removeEventListener('touchstart', handleNativeTouchStart);
-      container.removeEventListener('touchmove', handleNativeTouchMove);
-      container.removeEventListener('touchend', handleNativeTouchEnd);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [navigate]);
 
@@ -231,17 +214,7 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div 
-        className="flex-1 bg-white min-h-screen w-full"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ 
-          touchAction: 'pan-y'
-        }}
-        data-swipe-enabled="true"
-        data-swipe-container="true"
-      >
+      <div className="flex-1 bg-white min-h-screen w-full">
         <ScrollArea className="h-[calc(100vh-6rem)]">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
             <div className="bg-white">
