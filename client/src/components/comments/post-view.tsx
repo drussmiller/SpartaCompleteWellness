@@ -37,44 +37,32 @@ export function PostView({ post }: PostViewProps) {
 
           {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
-            <div className="mt-3 mb-3 flex justify-center">
-              <img
-                src={getThumbnailUrl(post.mediaUrl, 'medium')}
-                alt={post.type}
-                className="max-w-full h-auto object-contain rounded-md"
-              />
+            <div className="relative mt-3 mb-3 w-screen -mx-4 md:w-full md:mx-0">
+              <div className="w-full bg-gray-50">
+                <img
+                  src={getThumbnailUrl(post.mediaUrl, 'medium')}
+                  alt={post.type}
+                  className="w-full h-80 object-cover"
+                />
+              </div>
             </div>
           )}
 
           {/* Show video if present - using improved VideoPlayer component */}
           {post.mediaUrl && post.is_video && (
-            <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
-              <VideoPlayer
-                src={createMediaUrl(post.mediaUrl)}
-                poster={getThumbnailUrl(post.mediaUrl, 'medium')}
-                className="w-full video-player-container rounded-md"
-                preload="metadata"
-                playsInline
-                controlsList="nodownload"
-                onLoad={() => {
-                  console.log(`Comment view: Video loaded successfully for post ${post.id}`);
-                }}
-                onError={(error) => {
-                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`, error);
-                  // Try to trigger poster generation
-                  fetch('/api/video/generate-posters', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                      mediaUrl: post.mediaUrl,
-                      postId: post.id,
-                    }),
-                    credentials: 'include',
-                  }).catch(err => console.error("Error requesting poster generation:", err));
-                }}
-              />
+            <div className="relative mt-3 mb-3 w-screen -mx-4 md:w-full md:mx-0">
+              <div className="w-full bg-gray-50">
+                <VideoPlayer
+                  src={createMediaUrl(post.mediaUrl)}
+                  poster={getThumbnailUrl(post.mediaUrl, 'medium')}
+                  className="w-full video-player-container"
+                  preload="metadata"
+                  playsInline
+                  controlsList="nodownload"
+                  onLoad={() => {}}
+                  onError={() => {}}
+                />
+              </div>
             </div>
           )}
 
