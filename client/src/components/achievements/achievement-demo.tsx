@@ -19,7 +19,6 @@ export function AchievementDemo() {
     "memory-verse",
     "first-post",
     "week-complete",
-    "team-milestone",
     "personal-milestone",
   ];
 
