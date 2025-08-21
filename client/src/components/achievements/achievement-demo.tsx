@@ -19,7 +19,6 @@ export function AchievementDemo() {
     "memory-verse",
     "first-post",
     "week-complete",
-    "personal-milestone",
   ];
 
   const handleShowAchievement = (type: AchievementType) => {

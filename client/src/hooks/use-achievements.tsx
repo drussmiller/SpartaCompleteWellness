@@ -11,9 +11,7 @@ export type AchievementType =
   | 'scripture-streak-7'
   | 'memory-verse-streak-4'
   | 'first-post'
-  | 'week-complete'
-  | 'team-milestone'
-  | 'personal-milestone';
+  | 'week-complete';
 
 // Database achievement structure
 export interface DbAchievement {
@@ -99,16 +97,6 @@ export function createAchievement(type: AchievementType, title?: string, descrip
       defaultTitle = 'Perfect Week';
       defaultDescription = 'You completed all activities for the entire week!';
       defaultPoints = 20;
-      break;
-    case 'team-milestone':
-      defaultTitle = 'Team Champion';
-      defaultDescription = 'Your team reached an important milestone!';
-      defaultPoints = 15;
-      break;
-    case 'personal-milestone':
-      defaultTitle = 'Personal Best';
-      defaultDescription = 'You achieved a new personal milestone!';
-      defaultPoints = 10;
       break;
   }
   
