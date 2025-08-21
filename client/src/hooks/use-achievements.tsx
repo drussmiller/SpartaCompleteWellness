@@ -6,11 +6,8 @@ import { queryClient } from '@/lib/queryClient';
 
 // Achievement types
 export type AchievementType =
-  | 'food-streak-3'
-  | 'food-streak-7'
-  | 'workout-streak-3'
-  | 'workout-streak-7'
-  | 'scripture-streak-3'
+  | 'food-streak-6'
+  | 'workout-streak-5'
   | 'scripture-streak-7'
   | 'memory-verse-streak-4'
   | 'first-post'
@@ -73,40 +70,25 @@ export function createAchievement(type: AchievementType, title?: string, descrip
   let defaultPoints = 0;
   
   switch (type) {
-    case 'food-streak-3':
-      defaultTitle = 'Food Streak - 3 Days';
-      defaultDescription = 'Posted food for 3 consecutive days';
-      defaultPoints = 5;
+    case 'food-streak-6':
+      defaultTitle = 'Food Streak - 6 Days';
+      defaultDescription = 'Posted food for 6 consecutive days';
+      defaultPoints = 54;
       break;
-    case 'food-streak-7':
-      defaultTitle = 'Food Streak - 7 Days';
-      defaultDescription = 'Posted food for 7 consecutive days';
-      defaultPoints = 10;
-      break;
-    case 'workout-streak-3':
-      defaultTitle = 'Workout Streak - 3 Days';
-      defaultDescription = 'Posted workout for 3 consecutive days';
-      defaultPoints = 5;
-      break;
-    case 'workout-streak-7':
-      defaultTitle = 'Workout Streak - 7 Days';
-      defaultDescription = 'Posted workout for 7 consecutive days';
-      defaultPoints = 10;
-      break;
-    case 'scripture-streak-3':
-      defaultTitle = 'Scripture Streak - 3 Days';
-      defaultDescription = 'Posted scripture for 3 consecutive days';
-      defaultPoints = 5;
+    case 'workout-streak-5':
+      defaultTitle = 'Workout Streak - 5 Days';
+      defaultDescription = 'Posted workout for 5 consecutive days';
+      defaultPoints = 15;
       break;
     case 'scripture-streak-7':
       defaultTitle = 'Scripture Streak - 7 Days';
       defaultDescription = 'Posted scripture for 7 consecutive days';
-      defaultPoints = 10;
+      defaultPoints = 21;
       break;
-    case 'memory-verse-streak-4':
-      defaultTitle = 'Memory Verse Streak - 4 Weeks';
-      defaultDescription = 'Posted memory verse for 4 consecutive weeks';
-      defaultPoints = 15;
+    case 'memory-verse':
+      defaultTitle = 'Memory Verse';
+      defaultDescription = 'Posted memory verse';
+      defaultPoints = 10;
       break;
     case 'first-post':
       defaultTitle = 'First Post!';

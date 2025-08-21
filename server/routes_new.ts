@@ -5129,53 +5129,32 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Insert default achievement types
         const defaultTypes = [
           {
-            type: "food-streak-3",
-            name: "Food Streak - 3 Days",
-            description: "Posted food for 3 consecutive days",
+            type: "food-streak-6",
+            name: "Food Streak - 6 Days",
+            description: "Posted food for 6 consecutive days",
             iconPath: "/achievements/food-streak.svg",
-            pointValue: 5
+            pointValue: 54
           },
           {
-            type: "food-streak-7",
-            name: "Food Streak - 7 Days",
-            description: "Posted food for 7 consecutive days",
-            iconPath: "/achievements/food-streak.svg",
-            pointValue: 10
-          },
-          {
-            type: "workout-streak-3",
-            name: "Workout Streak - 3 Days",
-            description: "Posted workout for 3 consecutive days",
+            type: "workout-streak-5",
+            name: "Workout Streak - 5 Days",
+            description: "Posted workout for 5 consecutive days",
             iconPath: "/achievements/workout-streak.svg",
-            pointValue: 5
-          },
-          {
-            type: "workout-streak-7",
-            name: "Workout Streak - 7 Days",
-            description: "Posted workout for 7 consecutive days",
-            iconPath: "/achievements/workout-streak.svg",
-            pointValue: 10
-          },
-          {
-            type: "scripture-streak-3",
-            name: "Scripture Streak - 3 Days",
-            description: "Posted scripture for 3 consecutive days",
-            iconPath: "/achievements/scripture-streak.svg",
-            pointValue: 5
+            pointValue: 15
           },
           {
             type: "scripture-streak-7",
             name: "Scripture Streak - 7 Days",
             description: "Posted scripture for 7 consecutive days",
             iconPath: "/achievements/scripture-streak.svg",
-            pointValue: 10
+            pointValue: 21
           },
           {
             type: "memory-verse-streak-4",
             name: "Memory Verse Streak - 4 Weeks",
             description: "Posted memory verse for 4 consecutive weeks",
             iconPath: "/achievements/memory-verse.svg",
-            pointValue: 15
+            pointValue: 10
           }
         ];
         
@@ -5288,12 +5267,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       
       // Award achievements based on streak length
-      if (maxStreak >= 3 && !earnedTypes.has('food-streak-3')) {
-        await awardAchievement(userId, 'food-streak-3', allAchievements);
-      }
-      
-      if (maxStreak >= 6 && !earnedTypes.has('food-streak-7')) {
-        await awardAchievement(userId, 'food-streak-7', allAchievements);
+      if (maxStreak >= 6 && !earnedTypes.has('food-streak-6')) {
+        await awardAchievement(userId, 'food-streak-6', allAchievements);
       }
     } catch (error) {
       logger.error("Error checking food streak:", error);
@@ -5339,12 +5314,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       
       // Award achievements based on streak length
-      if (maxStreak >= 3 && !earnedTypes.has('workout-streak-3')) {
-        await awardAchievement(userId, 'workout-streak-3', allAchievements);
-      }
-      
-      if (maxStreak >= 5 && !earnedTypes.has('workout-streak-7')) {
-        await awardAchievement(userId, 'workout-streak-7', allAchievements);
+      if (maxStreak >= 5 && !earnedTypes.has('workout-streak-5')) {
+        await awardAchievement(userId, 'workout-streak-5', allAchievements);
       }
     } catch (error) {
       logger.error("Error checking workout streak:", error);
@@ -5390,10 +5361,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
       
       // Award achievements based on streak length
-      if (maxStreak >= 3 && !earnedTypes.has('scripture-streak-3')) {
-        await awardAchievement(userId, 'scripture-streak-3', allAchievements);
-      }
-      
       if (maxStreak >= 7 && !earnedTypes.has('scripture-streak-7')) {
         await awardAchievement(userId, 'scripture-streak-7', allAchievements);
       }
