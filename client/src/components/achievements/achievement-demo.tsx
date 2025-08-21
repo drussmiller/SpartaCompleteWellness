@@ -16,11 +16,8 @@ export function AchievementDemo() {
   } = useAchievements();
 
   const achievementTypes: AchievementType[] = [
-    'food-streak-3',
     'food-streak-7',
-    'workout-streak-3',
     'workout-streak-7',
-    'scripture-streak-3',
     'scripture-streak-7',
     'memory-verse-streak-4',
     'first-post',
@@ -56,16 +53,27 @@ export function AchievementDemo() {
       </p>
       
       <div className="grid grid-cols-2 gap-2">
-        {achievementTypes.map(type => (
-          <Button 
-            key={type}
-            variant="outline"
-            size="sm"
-            onClick={() => handleShowAchievement(type)}
-          >
-            {type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-          </Button>
-        ))}
+        {achievementTypes.map(type => {
+          let displayText = type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+          
+          // Update display text for new streak requirements
+          if (type === 'food-streak-7') {
+            displayText = 'Food Streak 6';
+          } else if (type === 'workout-streak-7') {
+            displayText = 'Workout Streak 5';
+          }
+          
+          return (
+            <Button 
+              key={type}
+              variant="outline"
+              size="sm"
+              onClick={() => handleShowAchievement(type)}
+            >
+              {displayText}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
