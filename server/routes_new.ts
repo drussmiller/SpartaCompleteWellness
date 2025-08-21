@@ -5292,7 +5292,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         await awardAchievement(userId, 'food-streak-3', allAchievements);
       }
       
-      if (maxStreak >= 7 && !earnedTypes.has('food-streak-7')) {
+      if (maxStreak >= 6 && !earnedTypes.has('food-streak-7')) {
         await awardAchievement(userId, 'food-streak-7', allAchievements);
       }
     } catch (error) {
@@ -5343,7 +5343,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         await awardAchievement(userId, 'workout-streak-3', allAchievements);
       }
       
-      if (maxStreak >= 7 && !earnedTypes.has('workout-streak-7')) {
+      if (maxStreak >= 5 && !earnedTypes.has('workout-streak-7')) {
         await awardAchievement(userId, 'workout-streak-7', allAchievements);
       }
     } catch (error) {

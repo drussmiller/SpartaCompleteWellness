@@ -4282,8 +4282,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           },
           {
             type: "food-streak-7",
-            name: "Food Streak - 7 Days",
-            description: "Posted food for 7 consecutive days",
+            name: "Food Streak - 6 Days",
+            description: "Posted food for 6 consecutive days",
             iconPath: "/achievements/food-streak.svg",
             pointValue: 10
           },
@@ -4296,8 +4296,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           },
           {
             type: "workout-streak-7",
-            name: "Workout Streak - 7 Days",
-            description: "Posted workout for 7 consecutive days",
+            name: "Workout Streak - 5 Days",
+            description: "Posted workout for 5 consecutive days",
             iconPath: "/achievements/workout-streak.svg",
             pointValue: 10
           },
@@ -4437,7 +4437,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         await awardAchievement(userId, 'food-streak-3', allAchievements);
       }
       
-      if (maxStreak >= 7 && !earnedTypes.has('food-streak-7')) {
+      if (maxStreak >= 6 && !earnedTypes.has('food-streak-7')) {
         await awardAchievement(userId, 'food-streak-7', allAchievements);
       }
     } catch (error) {
@@ -4488,7 +4488,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         await awardAchievement(userId, 'workout-streak-3', allAchievements);
       }
       
-      if (maxStreak >= 7 && !earnedTypes.has('workout-streak-7')) {
+      if (maxStreak >= 5 && !earnedTypes.has('workout-streak-7')) {
         await awardAchievement(userId, 'workout-streak-7', allAchievements);
       }
     } catch (error) {
