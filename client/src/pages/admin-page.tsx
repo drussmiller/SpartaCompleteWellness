@@ -298,24 +298,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         }
         throw new Error(errorMessage);
       }
-      // Don't try to parse JSON if there's no content or if it's not JSON
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return res.json();
-      } else {
-        return { success: true };
-      }
+      // Always return success for 200 responses
+      return { success: true };
     },
     onSuccess: () => {
-      console.log("Password reset success callback triggered");
+      console.log("Password reset success - closing dialog");
       toast({
         title: "Success",
         description: "Password reset successfully",
       });
-      // Close dialog and reset form
-      setResetPasswordOpen(false);
-      setNewPassword("");
-      setSelectedUserId(null);
+      // Force close dialog and reset form
+      setTimeout(() => {
+        setResetPasswordOpen(false);
+        setNewPassword("");
+        setSelectedUserId(null);
+      }, 100);
     },
     onError: (error: Error) => {
       console.error("Reset password error:", error);
@@ -324,7 +321,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message || "Failed to reset password",
         variant: "destructive",
       });
-      // Don't close dialog on error, but clear password field
+      // Clear password field on error but keep dialog open
       setNewPassword("");
     },
   });
