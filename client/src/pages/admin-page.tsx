@@ -298,9 +298,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         }
         throw new Error(errorMessage);
       }
-      return res.json();
+      // Don't try to parse JSON if there's no content or if it's not JSON
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return res.json();
+      } else {
+        return { success: true };
+      }
     },
     onSuccess: () => {
+      console.log("Password reset success callback triggered");
       toast({
         title: "Success",
         description: "Password reset successfully",
