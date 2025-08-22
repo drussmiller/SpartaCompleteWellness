@@ -288,8 +288,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     mutationFn: async ({ userId, newPassword }: { userId: number; newPassword: string }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}/password`, { newPassword });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to reset password");
+        const errorText = await res.text();
+        let errorMessage;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || "Failed to reset password";
+        } catch {
+          errorMessage = errorText || "Failed to reset password";
+        }
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -298,16 +305,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Password reset successfully",
       });
+      // Close dialog and reset form
       setResetPasswordOpen(false);
       setNewPassword("");
       setSelectedUserId(null);
     },
     onError: (error: Error) => {
+      console.error("Reset password error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to reset password",
         variant: "destructive",
       });
+      // Don't close dialog on error, but clear password field
+      setNewPassword("");
     },
   });
 
