@@ -284,6 +284,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: number; newPassword: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}/password`, { newPassword });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to reset password");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password reset successfully",
+      });
+      setResetPasswordOpen(false);
+      setNewPassword("");
+      setSelectedUserId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const isLoading = teamsLoading || usersLoading;
   const error = teamsError || usersError;
 
@@ -742,9 +769,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <form onSubmit={(e) => {
               e.preventDefault();
               if (selectedUserId && newPassword) {
-                // Handle password reset
-                setResetPasswordOpen(false);
-                setNewPassword("");
+                resetPasswordMutation.mutate({ userId: selectedUserId, newPassword });
               }
             }}>
               <div className="space-y-4 mt-2">
@@ -757,8 +782,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     required
                   />
                 </div>
-                <Button type="submit">
-                  Reset Password
+                <Button type="submit" disabled={resetPasswordMutation.isPending}>
+                  {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
                 </Button>
               </div>
             </form>
