@@ -7,10 +7,17 @@ import {
   createAchievement,
   type AchievementType,
 } from "@/hooks/use-achievements";
+import { useAuth } from "@/hooks/use-auth";
 
 export function AchievementDemo() {
+  const { user } = useAuth();
   const { showAchievement, notificationsEnabled, setNotificationsEnabled } =
     useAchievements();
+
+  // Only show to admin users
+  if (!user?.isAdmin) {
+    return null;
+  }
 
   const achievementTypes: AchievementType[] = [
     "food-streak-6",
