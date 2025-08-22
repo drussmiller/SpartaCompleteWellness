@@ -147,6 +147,7 @@ Changelog:
 - July 03, 2025. Fixed memory verse video thumbnail rendering in development environment - Added missing `ne` function import for API filtering, updated video display conditions to include memory verse posts alongside is_video flag, resolved React Query caching issues that prevented posts from appearing in dev environment while working correctly in deployment.
 - July 03, 2025. Fixed mobile video loading issue in comment pages - VideoPlayer was navigating to separate video player page that wasn't using createMediaUrl. Added createMediaUrl import to video player page for proper Object Storage URL formatting and updated video source handling for consistent mobile playback.
 - July 03, 2025. Fixed admin page "can't find variable Users" error - Added missing Users and FileText icon imports from lucide-react to resolve undefined variable errors in admin page components.
+- August 22, 2025. Fixed critical password change functionality - Added missing server endpoints /api/user/change-password for user password changes and /api/users/:userId/password for admin password resets. Created updateUser function in storage.ts to handle password updates. Both user profile password change and admin dashboard password reset now work properly with proper authentication and validation.
 ```
 
 ## User Preferences

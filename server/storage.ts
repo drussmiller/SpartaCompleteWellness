@@ -113,6 +113,20 @@ export const storage = {
     }
   },
 
+  async updateUser(id: number, data: Partial<Omit<User, "id" | "createdAt">>): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set(data)
+        .where(eq(users.id, id))
+        .returning();
+      return user;
+    } catch (error) {
+      logger.error(`Failed to update user ${id}: ${error}`);
+      throw error;
+    }
+  },
+
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
