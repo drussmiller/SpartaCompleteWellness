@@ -244,4 +244,93 @@ export function setupAuth(app: Express) {
     console.log('Authenticated user:', req.user?.id);
     res.json(req.user);
   });
+
+  // Password change endpoint for authenticated users
+  app.post("/api/user/change-password", authenticate, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!req.user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters long" });
+      }
+
+      // Get current user from database
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await comparePasswords(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash new password
+      const hashedNewPassword = await hashPassword(newPassword);
+
+      // Update password in database
+      await storage.updateUser(user.id, { password: hashedNewPassword });
+
+      console.log(`Password changed successfully for user: ${user.username}`);
+      res.json({ message: "Password changed successfully" });
+      
+    } catch (error) {
+      console.error('Error changing password:', error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Admin password reset endpoint
+  app.patch("/api/users/:userId/password", authenticate, async (req, res) => {
+    try {
+      const { newPassword } = req.body;
+      const targetUserId = parseInt(req.params.userId);
+      
+      if (!req.user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if user is admin
+      const adminUser = await storage.getUser(req.user.id);
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      if (!newPassword) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters long" });
+      }
+
+      // Get target user
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash new password
+      const hashedNewPassword = await hashPassword(newPassword);
+
+      // Update password in database
+      await storage.updateUser(targetUserId, { password: hashedNewPassword });
+
+      console.log(`Password reset by admin ${adminUser.username} for user: ${targetUser.username}`);
+      res.json({ message: "Password reset successfully" });
+      
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
 }
