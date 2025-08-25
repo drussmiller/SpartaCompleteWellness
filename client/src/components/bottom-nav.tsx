@@ -44,8 +44,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   ];
 
   const teamMemberNavItems = [
-    { icon: Activity, label: "Activity", path: "/activity" },
-    { icon: Bell, label: "Notifications", path: "/notifications" },
+    { icon: Bell, label: "Notifications", path: "/notifications", count: unreadCount },
   ];
 
   // Show all navigation items but disable team-required ones for users without teams
@@ -100,19 +99,17 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
                   : "text-muted-foreground hover:text-primary transition-colors"
               )}
               title={isDisabled ? "Requires team assignment" : undefined}
-            ></div>
+            >
+              <Icon className="h-7 w-7" />
+              <span className="text-xs">{label}</span>
+              {count && count > 0 && (
+                <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {count}
+                </span>
+              )}
+            </div>
           );
         })}
-            <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
-            <span className="text-xs">{label}</span>
-            {count > 0 && (
-              <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                {count}
-              </span>
-            )}
-          </div>
-        ))}
-        {/* The Menu item is now conditionally rendered as part of navItems */}
       </div>
     </nav>
   );
