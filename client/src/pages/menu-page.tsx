@@ -11,8 +11,6 @@ import { SupportSpartaPage } from "./support-sparta-page";
 import { NotificationSettings } from "@/components/notification-settings";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
-import { Link } from "wouter";
 
 export default function MenuPage() {
   const { user } = useAuth();
@@ -22,65 +20,6 @@ export default function MenuPage() {
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [, navigate] = useLocation();
-
-  const menuItems = [
-    {
-      title: "My Profile",
-      description: "View and edit your profile",
-      href: "/profile",
-      icon: "👤",
-      action: () => setProfileOpen(true)
-    },
-    {
-      title: "Activity",
-      description: "Track your daily activities",
-      href: "/activity",
-      icon: "📊",
-      requiresTeam: true
-    },
-    {
-      title: "Leaderboard",
-      description: "See team rankings and points",
-      href: "/leaderboard",
-      icon: "🏆",
-      requiresTeam: true,
-      action: () => setLeaderboardOpen(true)
-    },
-    {
-      title: "Prayer Requests",
-      description: "Share and view prayer requests",
-      href: "/prayer-requests",
-      icon: "🙏",
-      requiresTeam: true
-    },
-    {
-      title: "Notifications",
-      description: "Manage your notifications",
-      href: "/notifications",
-      icon: "🔔",
-      requiresTeam: true
-    },
-    {
-      title: "Notification Settings",
-      description: "Configure notification preferences",
-      icon: "⚙️",
-      requiresTeam: true,
-      action: () => setNotificationSettingsOpen(true)
-    },
-    {
-      title: "Help",
-      description: "Get help and support",
-      href: "/help",
-      icon: "❓"
-    },
-    {
-      title: "Support Sparta",
-      description: "Support our community",
-      href: "/support-sparta",
-      icon: "💝",
-      action: () => setSupportSpartaOpen(true)
-    }
-  ];
 
   if (!user) return null;
 
@@ -96,94 +35,86 @@ export default function MenuPage() {
           </div>
         </div>
 
-        
+        {/* Navigation Section */}
+        <div className="w-full space-y-2">
+          {/* Profile Sheet */}
+          <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start py-6" size="lg">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
+                      alt={user.username}
+                    />
+                    <AvatarFallback>
+                      {user.username?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left">
+                    <div className="font-medium">{user.preferredName || user.username}</div>
+                  </div>
+                </div>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
+            </SheetContent>
+          </Sheet>
 
-        <div className="space-y-6">
-          {/* User Profile */}
-          <Button
-            variant="outline"
-            className="w-full h-20 justify-start text-left p-6"
-            onClick={() => setProfileOpen(true)}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="text-2xl">👤</div>
-              <div>
-                <div className="font-semibold">My Profile</div>
-                <div className="text-sm text-muted-foreground">View and edit your profile</div>
-              </div>
-            </div>
-          </Button>
+          {/* Notification Settings */}
+          <Sheet open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Bell className="mr-2 h-5 w-5" />
+                Notification Settings
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
+            </SheetContent>
+          </Sheet>
 
+          {/* Leaderboard - Changed to slide in from right */}
+          <Sheet open={leaderboardOpen} onOpenChange={setLeaderboardOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Trophy className="mr-2 h-5 w-5" />
+                Leaderboard
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+          
           {/* Support Sparta */}
-          <Button
-            variant="outline"
-            className="w-full h-20 justify-start text-left p-6"
-            onClick={() => setSupportSpartaOpen(true)}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="text-2xl">💝</div>
-              <div>
-                <div className="font-semibold">Support Sparta</div>
-                <div className="text-sm text-muted-foreground">Support our community</div>
-              </div>
-            </div>
-          </Button>
+          <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Heart className="mr-2 h-5 w-5" />
+                Support Sparta
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
+            </SheetContent>
+          </Sheet>
 
-          {/* Notifications - Disabled for users without team */}
-          <Button
-            variant="outline"
-            className={`w-full h-20 justify-start text-left p-6 ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!user?.teamId}
-            title={!user?.teamId ? "Requires team assignment" : undefined}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="text-2xl">🔔</div>
-              <div>
-                <div className="font-semibold">Notifications</div>
-                <div className="text-sm text-muted-foreground">
-                  {!user?.teamId ? "Requires team assignment" : "Manage your notifications"}
-                </div>
-              </div>
-            </div>
-          </Button>
-
-          {/* Settings - Disabled for users without team */}
-          <Button
-            variant="outline"
-            className={`w-full h-20 justify-start text-left p-6 ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!user?.teamId}
-            onClick={user?.teamId ? () => setNotificationSettingsOpen(true) : undefined}
-            title={!user?.teamId ? "Requires team assignment" : undefined}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="text-2xl">⚙️</div>
-              <div>
-                <div className="font-semibold">Notification Settings</div>
-                <div className="text-sm text-muted-foreground">
-                  {!user?.teamId ? "Requires team assignment" : "Configure notification preferences"}
-                </div>
-              </div>
-            </div>
-          </Button>
-
-          {/* Leaderboard - Disabled for users without team */}
-          <Button
-            variant="outline"
-            className={`w-full h-20 justify-start text-left p-6 ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!user?.teamId}
-            onClick={user?.teamId ? () => setLeaderboardOpen(true) : undefined}
-            title={!user?.teamId ? "Requires team assignment" : undefined}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="text-2xl">🏆</div>
-              <div>
-                <div className="font-semibold">Leaderboard</div>
-                <div className="text-sm text-muted-foreground">
-                  {!user?.teamId ? "Requires team assignment" : "See team rankings and points"}
-                </div>
-              </div>
-            </div>
-          </Button>
+          {/* Admin Sheet - Only shown for admin users */}
+          {user.isAdmin && (
+            <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="w-full justify-start" size="lg">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Admin Dashboard
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+                {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </AppLayout>
