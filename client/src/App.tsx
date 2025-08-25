@@ -90,6 +90,21 @@ function MainContent() {
     return <AuthPage />;
   }
 
+  // Check if user needs to sign waiver first
+  if (user && !user.waiverSigned && window.location.pathname !== '/waiver') {
+    return (
+      <div className="min-h-screen">
+        <Switch>
+          <Route path="/waiver" component={lazy(() => import('./pages/waiver-page'))} />
+          <Route component={() => {
+            window.location.href = '/waiver';
+            return null;
+          }} />
+        </Switch>
+      </div>
+    );
+  }
+
   // If authenticated, show the app with routes
   return (
     <div className="min-h-screen">

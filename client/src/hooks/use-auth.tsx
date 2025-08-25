@@ -94,6 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: SelectUser) => {
       console.log('Registration successful:', user);
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Check if user needs to sign waiver and redirect
+      if (!user.waiverSigned) {
+        console.log('User needs to sign waiver, redirecting...');
+        window.location.href = '/waiver';
+      }
     },
     onError: (error: Error) => {
       console.error('Registration error:', error);
