@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import Link from "next/link";
+import { Link } from "wouter";
 
 export default function MenuPage() {
   const { user } = useAuth();
