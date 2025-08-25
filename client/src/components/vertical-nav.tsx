@@ -130,7 +130,6 @@ export const VerticalNav = () => {
           </TooltipProvider>
         );
       })}
-      ))}
     </div>
   );
 };
