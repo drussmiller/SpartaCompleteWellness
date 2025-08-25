@@ -63,11 +63,17 @@ export default function HomePage() {
   } = useQuery({
     queryKey: ["/api/posts", "team-posts"],
     queryFn: async () => {
+      // If user is not in a team, return empty array
+      if (!user?.teamId) {
+        console.log("User not in team, returning empty posts array");
+        return [];
+      }
+
       // Make sure to exclude prayer posts from Team page
       console.log("Fetching posts...");
       const response = await apiRequest(
         "GET",
-        `/api/posts?page=1&limit=50&exclude=prayer`,
+        `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
       );
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -289,19 +295,14 @@ export default function HomePage() {
                   ))
                 ) : !isLoading ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No posts yet. Be the first to share!
-                    <div className="mt-8 space-y-4">
-                      {/* Add content to test scrolling behavior */}
-                      {Array.from({ length: 20 }, (_, i) => (
-                        <div
-                          key={i}
-                          className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 text-lg font-bold"
-                        >
-                          Test Content Block {i + 1} - Scroll Position:{" "}
-                          {scrollOffset}px
-                        </div>
-                      ))}
-                    </div>
+                    {!user?.teamId ? (
+                      <div>
+                        <p className="text-lg font-medium mb-2">Join a team to see posts!</p>
+                        <p className="text-sm">You need to be part of a team to view and interact with team posts.</p>
+                      </div>
+                    ) : (
+                      "No posts yet. Be the first to share!"
+                    )}
                   </div>
                 ) : null}
 
