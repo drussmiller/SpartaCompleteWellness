@@ -12,7 +12,7 @@ import { NotificationSettings } from "@/components/notification-settings";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
+import { Link } from "wouter";
 
 export default function MenuPage() {
   const { user } = useAuth();
