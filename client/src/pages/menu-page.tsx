@@ -98,68 +98,92 @@ export default function MenuPage() {
 
         
 
-        {/* Home Page Section */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Home</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {menuItems.map((item) => {
-              const isDisabled = item.requiresTeam && !user?.teamId;
-              const key = item.href || item.title;
+        <div className="space-y-6">
+          {/* User Profile */}
+          <Button
+            variant="outline"
+            className="w-full h-20 justify-start text-left p-6"
+            onClick={() => setProfileOpen(true)}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl">👤</div>
+              <div>
+                <div className="font-semibold">My Profile</div>
+                <div className="text-sm text-muted-foreground">View and edit your profile</div>
+              </div>
+            </div>
+          </Button>
 
-              if (isDisabled) {
-                return (
-                  <div key={key}>
-                    <Card className="h-full opacity-50 cursor-not-allowed">
-                      <CardContent className="p-6">
-                        <div className="flex items-start space-x-4">
-                          <div className="text-2xl">{item.icon}</div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
-                            <p className="text-muted-foreground text-sm">{item.description}</p>
-                            <p className="text-xs text-red-500 mt-1">Requires team assignment</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                );
-              }
+          {/* Support Sparta */}
+          <Button
+            variant="outline"
+            className="w-full h-20 justify-start text-left p-6"
+            onClick={() => setSupportSpartaOpen(true)}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl">💝</div>
+              <div>
+                <div className="font-semibold">Support Sparta</div>
+                <div className="text-sm text-muted-foreground">Support our community</div>
+              </div>
+            </div>
+          </Button>
 
-              if (item.action) {
-                return (
-                  <div key={key} onClick={item.action}>
-                    <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-                      <CardContent className="p-6">
-                        <div className="flex items-start space-x-4">
-                          <div className="text-2xl">{item.icon}</div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
-                            <p className="text-muted-foreground text-sm">{item.description}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                );
-              }
+          {/* Notifications - Disabled for users without team */}
+          <Button
+            variant="outline"
+            className={`w-full h-20 justify-start text-left p-6 ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!user?.teamId}
+            title={!user?.teamId ? "Requires team assignment" : undefined}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl">🔔</div>
+              <div>
+                <div className="font-semibold">Notifications</div>
+                <div className="text-sm text-muted-foreground">
+                  {!user?.teamId ? "Requires team assignment" : "Manage your notifications"}
+                </div>
+              </div>
+            </div>
+          </Button>
 
-              return (
-                <Link key={key} href={item.href!}>
-                  <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="text-2xl">{item.icon}</div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
-                          <p className="text-muted-foreground text-sm">{item.description}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+          {/* Settings - Disabled for users without team */}
+          <Button
+            variant="outline"
+            className={`w-full h-20 justify-start text-left p-6 ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!user?.teamId}
+            onClick={user?.teamId ? () => setNotificationSettingsOpen(true) : undefined}
+            title={!user?.teamId ? "Requires team assignment" : undefined}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl">⚙️</div>
+              <div>
+                <div className="font-semibold">Notification Settings</div>
+                <div className="text-sm text-muted-foreground">
+                  {!user?.teamId ? "Requires team assignment" : "Configure notification preferences"}
+                </div>
+              </div>
+            </div>
+          </Button>
+
+          {/* Leaderboard - Disabled for users without team */}
+          <Button
+            variant="outline"
+            className={`w-full h-20 justify-start text-left p-6 ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!user?.teamId}
+            onClick={user?.teamId ? () => setLeaderboardOpen(true) : undefined}
+            title={!user?.teamId ? "Requires team assignment" : undefined}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl">🏆</div>
+              <div>
+                <div className="font-semibold">Leaderboard</div>
+                <div className="text-sm text-muted-foreground">
+                  {!user?.teamId ? "Requires team assignment" : "See team rankings and points"}
+                </div>
+              </div>
+            </div>
+          </Button>
         </div>
       </div>
     </AppLayout>
