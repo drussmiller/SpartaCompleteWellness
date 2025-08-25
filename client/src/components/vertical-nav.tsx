@@ -27,17 +27,18 @@ interface NavItem {
   path: string;
   status?: string | null;
   count?: number;
+  requiresTeam?: boolean;
 }
 
 export const VerticalNav = () => {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const { connectionStatus } = useNotifications();
   const { unreadCount: prayerRequestCount } = usePrayerRequests();
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Home", path: "/" },
-    { icon: Activity, label: "Activity", path: "/activity" },
+    { icon: Activity, label: "Activity", path: "/activity", requiresTeam: true },
     { icon: HelpCircle, label: "Help", path: "/help" },
     { 
       icon: Bell, 
@@ -45,54 +46,55 @@ export const VerticalNav = () => {
       path: "/notifications",
       status: connectionStatus !== "connected" ? "offline" : null 
     },
-
-
-    { icon: Menu, label: "Menu", path: "/menu" },
+    { icon: Menu, label: "Menu", path: "/menu", requiresTeam: true },
   ];
 
   return (
     <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[100]">
-      {navItems.map((item) => (
-        <TooltipProvider key={item.path}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AnchorLink
-                href={item.path}
-                className={cn(
-                  "flex flex-col items-center justify-center w-16 h-16 mb-2 rounded-md relative",
-                  location === item.path
-                    ? "bg-primary/10 text-primary"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="relative">
-                  <item.icon size={20} />
-                  {item.status === "offline" && (
-                    <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-red-500 border border-background">
-                      <WifiOff className="h-2 w-2 text-white" />
+      {navItems.map(({ icon: Icon, label, path, status, count, requiresTeam }) => {
+          const isActive = location === path;
+          const isDisabled = requiresTeam && !user?.teamId;
+
+          return (
+            <TooltipProvider key={path}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    onClick={() => !isDisabled && setLocation(path)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                      isDisabled 
+                        ? "opacity-50 cursor-not-allowed" 
+                        : "cursor-pointer",
+                      isActive && !isDisabled
+                        ? "bg-accent text-accent-foreground"
+                        : !isDisabled 
+                          ? "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                          : "text-muted-foreground"
+                    )}
+                    title={isDisabled ? "Requires team assignment" : undefined}
+                  >
+                    <div className="relative">
+                      <Icon className="h-5 w-5" />
+                      {count && count > 0 && !isDisabled && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                          {count > 99 ? "99+" : count}
+                        </span>
+                      )}
+                      {status === "offline" && !isDisabled && (
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                      )}
                     </div>
-                  )}
-                  {item.count && item.count > 0 && (
-                    <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 border border-background flex items-center justify-center">
-                      <span className="text-white text-[8px] font-bold">{item.count > 99 ? '99+' : item.count}</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-xs mt-1">{item.label}</span>
-              </AnchorLink>
-            </TooltipTrigger>
-            <TooltipContent>
-              {item.status === "offline" ? (
-                <p>Notification service offline - click to manage</p>
-              ) : item.count && item.count > 0 ? (
-                <p>{item.count} new prayer request{item.count !== 1 ? 's' : ''}</p>
-              ) : (
-                <p>{item.label}</p>
-              )}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ))}
+                    <span className="text-sm font-medium">{label}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{isDisabled ? "Requires team assignment" : label}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })}
     </div>
   );
 };

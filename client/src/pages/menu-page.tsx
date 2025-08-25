@@ -11,6 +11,8 @@ import { SupportSpartaPage } from "./support-sparta-page";
 import { NotificationSettings } from "@/components/notification-settings";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 
 export default function MenuPage() {
   const { user } = useAuth();
@@ -20,6 +22,55 @@ export default function MenuPage() {
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [, navigate] = useLocation();
+
+  const menuItems = [
+    {
+      title: "My Profile",
+      description: "View and edit your profile",
+      href: "/profile",
+      icon: "👤"
+    },
+    {
+      title: "Activity",
+      description: "Track your daily activities",
+      href: "/activity",
+      icon: "📊",
+      requiresTeam: true
+    },
+    {
+      title: "Leaderboard",
+      description: "See team rankings and points",
+      href: "/leaderboard",
+      icon: "🏆",
+      requiresTeam: true
+    },
+    {
+      title: "Prayer Requests",
+      description: "Share and view prayer requests",
+      href: "/prayer-requests",
+      icon: "🙏",
+      requiresTeam: true
+    },
+    {
+      title: "Notifications",
+      description: "Manage your notifications",
+      href: "/notifications",
+      icon: "🔔",
+      requiresTeam: true
+    },
+    {
+      title: "Help",
+      description: "Get help and support",
+      href: "/help",
+      icon: "❓"
+    },
+    {
+      title: "Support Sparta",
+      description: "Support our community",
+      href: "/support-sparta",
+      icon: "💝"
+    }
+  ];
 
   if (!user) return null;
 
@@ -87,7 +138,7 @@ export default function MenuPage() {
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
             </SheetContent>
           </Sheet>
-          
+
           {/* Support Sparta */}
           <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
             <SheetTrigger asChild>
@@ -115,6 +166,51 @@ export default function MenuPage() {
               </SheetContent>
             </Sheet>
           )}
+        </div>
+
+        {/* Home Page Section */}
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Home</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {menuItems.map((item) => {
+              const isDisabled = item.requiresTeam && !user?.teamId;
+
+              if (isDisabled) {
+                return (
+                  <div key={item.href}>
+                    <Card className="h-full opacity-50 cursor-not-allowed">
+                      <CardContent className="p-6">
+                        <div className="flex items-start space-x-4">
+                          <div className="text-2xl">{item.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
+                            <p className="text-muted-foreground text-sm">{item.description}</p>
+                            <p className="text-xs text-red-500 mt-1">Requires team assignment</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              }
+
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className="flex items-start space-x-4">
+                        <div className="text-2xl">{item.icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
+                          <p className="text-muted-foreground text-sm">{item.description}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
     </AppLayout>

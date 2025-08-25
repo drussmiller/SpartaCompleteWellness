@@ -37,14 +37,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   });
 
   const items = [
-    { icon: Home, label: "Home", href: "/" },
-    { icon: Calendar, label: "Activity", href: "/activity" },
-    { icon: HelpCircle, label: "Help", href: "/help" },
+    { icon: Home, label: "Home", href: "/", requiresTeam: false },
+    { icon: Calendar, label: "Activity", href: "/activity", requiresTeam: true },
+    { icon: HelpCircle, label: "Help", href: "/help", requiresTeam: false },
     { 
       icon: Bell, 
       label: "Notifications", 
       href: "/notifications",
-      count: unreadCount 
+      count: unreadCount,
+      requiresTeam: true
     },
   ];
 
@@ -71,29 +72,40 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map(({ icon: Icon, label, href, count }) => (
-          <div
-            key={href}
-            onClick={() => setLocation(href)}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
-              // Size styles
-              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
-              // Text styles
-              location === href
-                ? "text-primary"
-                : "text-muted-foreground hover:text-primary transition-colors"
-            )}
-          >
-            <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
-            <span className="text-xs">{label}</span>
-            {count > 0 && (
-              <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                {count}
-              </span>
-            )}
-          </div>
-        ))}
+        {items.map(({ icon: Icon, label, href, count, requiresTeam }) => {
+          const isDisabled = requiresTeam && !user?.teamId;
+
+          return (
+            <div
+              key={href}
+              onClick={() => !isDisabled && setLocation(href)}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 relative",
+                // Size styles
+                orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+                // Disabled styles
+                isDisabled 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "cursor-pointer",
+                // Text styles
+                location === href && !isDisabled
+                  ? "text-primary"
+                  : !isDisabled 
+                    ? "text-muted-foreground hover:text-primary transition-colors"
+                    : "text-muted-foreground"
+              )}
+              title={isDisabled ? "Requires team assignment" : undefined}
+            >
+              <Icon className="h-7 w-7" />
+              <span className="text-xs">{label}</span>
+              {count && count > 0 && !isDisabled && (
+                <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {count}
+                </span>
+              )}
+            </div>
+          );
+        })}
         <div
           onClick={() => setLocation("/menu")}
           className={cn(
