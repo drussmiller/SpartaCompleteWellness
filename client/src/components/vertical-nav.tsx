@@ -35,20 +35,27 @@ export const VerticalNav = () => {
   const { connectionStatus } = useNotifications();
   const { unreadCount: prayerRequestCount } = usePrayerRequests();
 
-  const navItems: NavItem[] = [
+  // Filter navigation items based on team membership
+  const baseNavItems: NavItem[] = [
     { icon: Home, label: "Home", path: "/" },
-    { icon: Activity, label: "Activity", path: "/activity" },
     { icon: HelpCircle, label: "Help", path: "/help" },
+    { icon: Menu, label: "Menu", path: "/menu" },
+  ];
+
+  const teamMemberNavItems: NavItem[] = [
+    { icon: Activity, label: "Activity", path: "/activity" },
     { 
       icon: Bell, 
       label: "Notifications", 
       path: "/notifications",
       status: connectionStatus !== "connected" ? "offline" : null 
     },
-
-
-    { icon: Menu, label: "Menu", path: "/menu" },
   ];
+
+  // Only show basic navigation if user has no team
+  const navItems: NavItem[] = user?.teamId 
+    ? [...baseNavItems.slice(0, 1), ...teamMemberNavItems, ...baseNavItems.slice(1)]
+    : baseNavItems;
 
   return (
     <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[100]">

@@ -36,20 +36,25 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     refetchInterval: 30000 // Refetch every 30 seconds
   });
 
-  const items = [
-    { icon: Home, label: "Home", href: "/" },
-    { icon: Calendar, label: "Activity", href: "/activity" },
-    { icon: HelpCircle, label: "Help", href: "/help" },
-    { 
-      icon: Bell, 
-      label: "Notifications", 
-      href: "/notifications",
-      count: unreadCount 
-    },
+  // Filter navigation items based on team membership
+  const baseNavItems = [
+    { icon: Home, label: "Home", path: "/" },
+    { icon: HelpCircle, label: "Help", path: "/help" },
+    { icon: Menu, label: "Menu", path: "/menu" },
   ];
 
+  const teamMemberNavItems = [
+    { icon: Activity, label: "Activity", path: "/activity" },
+    { icon: Bell, label: "Notifications", path: "/notifications" },
+  ];
+
+  // Only show basic navigation if user has no team
+  const navItems = user?.teamId
+    ? [...baseNavItems.slice(0, 1), ...teamMemberNavItems, ...baseNavItems.slice(1)]
+    : baseNavItems;
+
   return (
-    <nav 
+    <nav
       className={cn(
         // Base styles
         "bg-background shadow-lg",
@@ -71,16 +76,16 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map(({ icon: Icon, label, href, count }) => (
+        {navItems.map(({ icon: Icon, label, path, count }) => (
           <div
-            key={href}
-            onClick={() => setLocation(href)}
+            key={path}
+            onClick={() => setLocation(path)}
             className={cn(
               "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
               // Size styles
               orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
               // Text styles
-              location === href
+              location === path
                 ? "text-primary"
                 : "text-muted-foreground hover:text-primary transition-colors"
             )}
@@ -94,21 +99,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             )}
           </div>
         ))}
-        <div
-          onClick={() => setLocation("/menu")}
-          className={cn(
-            "flex flex-col items-center justify-center gap-1 cursor-pointer",
-            // Size styles
-            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
-            // Text styles
-            location === "/menu"
-              ? "text-primary"
-              : "text-muted-foreground hover:text-primary transition-colors"
-          )}
-        >
-          <Menu className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
-          <span className="text-xs">Menu</span>
-        </div>
+        {/* The Menu item is now conditionally rendered as part of navItems */}
       </div>
     </nav>
   );
