@@ -288,33 +288,21 @@ export default function HomePage() {
                     </div>
                   ))
                 ) : !isLoading ? (
-                  user?.teamId ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      No posts yet. Be the first to share!
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 space-y-6">
-                      <div className="max-w-md mx-auto">
-                        <h2 className="text-2xl font-bold text-foreground mb-4">
-                          Welcome to Sparta Complete Wellness!
-                        </h2>
-                        <p className="text-muted-foreground mb-6">
-                          To get started, please create an entrance video telling us why you want to join and a little about yourself. This will help us match you with the right team!
-                        </p>
-                        <div className="bg-muted/30 p-4 rounded-lg">
-                          <p className="text-sm text-muted-foreground">
-                            <strong>What to include in your video:</strong>
-                            <br />• Why you want to join Sparta Complete Wellness
-                            <br />• A little about yourself and your goals
-                            <br />• What you hope to achieve in the program
-                          </p>
+                  <div className="text-center text-muted-foreground py-8">
+                    No posts yet. Be the first to share!
+                    <div className="mt-8 space-y-4">
+                      {/* Add content to test scrolling behavior */}
+                      {Array.from({ length: 20 }, (_, i) => (
+                        <div
+                          key={i}
+                          className="h-40 bg-gray-100 rounded flex items-center justify-center text-gray-600 text-lg font-bold"
+                        >
+                          Test Content Block {i + 1} - Scroll Position:{" "}
+                          {scrollOffset}px
                         </div>
-                        <div className="mt-6">
-                          <CreatePostDialog remaining={remaining} initialType="miscellaneous" />
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  )
+                  </div>
                 ) : null}
 
                 {/* Loading indicator */}

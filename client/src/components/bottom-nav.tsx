@@ -36,23 +36,20 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     refetchInterval: 30000 // Refetch every 30 seconds
   });
 
-  // Filter navigation items based on team membership
-  const baseNavItems = [
-    { icon: Home, label: "Home", path: "/" },
-    { icon: HelpCircle, label: "Help", path: "/help" },
-    { icon: Menu, label: "Menu", path: "/menu" },
+  const items = [
+    { icon: Home, label: "Home", href: "/" },
+    { icon: Calendar, label: "Activity", href: "/activity" },
+    { icon: HelpCircle, label: "Help", href: "/help" },
+    { 
+      icon: Bell, 
+      label: "Notifications", 
+      href: "/notifications",
+      count: unreadCount 
+    },
   ];
-
-  const teamMemberNavItems = [
-    { icon: Bell, label: "Notifications", path: "/notifications", count: unreadCount },
-  ];
-
-  // Show all navigation items but disable team-required ones for users without teams
-  const allNavItems = [...baseNavItems.slice(0, 1), ...teamMemberNavItems, ...baseNavItems.slice(1)];
-  const navItems = allNavItems;
 
   return (
-    <nav
+    <nav 
       className={cn(
         // Base styles
         "bg-background shadow-lg",
@@ -74,42 +71,44 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {navItems.map(({ icon: Icon, label, path, count }) => {
-          const isTeamRequired = ["/activity", "/notifications"].includes(path);
-          const isDisabled = isTeamRequired && !user?.teamId;
-          
-          return (
-            <div
-              key={path}
-              onClick={() => {
-                if (!isDisabled) {
-                  setLocation(path);
-                }
-              }}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 relative",
-                // Size styles
-                orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
-                // Cursor and interaction styles
-                isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-                // Text styles
-                isDisabled ? "text-muted-foreground/50" :
-                location === path
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary transition-colors"
-              )}
-              title={isDisabled ? "Requires team assignment" : undefined}
-            >
-              <Icon className="h-7 w-7" />
-              <span className="text-xs">{label}</span>
-              {count && count > 0 && (
-                <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                  {count}
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {items.map(({ icon: Icon, label, href, count }) => (
+          <div
+            key={href}
+            onClick={() => setLocation(href)}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
+              // Size styles
+              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+              // Text styles
+              location === href
+                ? "text-primary"
+                : "text-muted-foreground hover:text-primary transition-colors"
+            )}
+          >
+            <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
+            <span className="text-xs">{label}</span>
+            {count > 0 && (
+              <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {count}
+              </span>
+            )}
+          </div>
+        ))}
+        <div
+          onClick={() => setLocation("/menu")}
+          className={cn(
+            "flex flex-col items-center justify-center gap-1 cursor-pointer",
+            // Size styles
+            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+            // Text styles
+            location === "/menu"
+              ? "text-primary"
+              : "text-muted-foreground hover:text-primary transition-colors"
+          )}
+        >
+          <Menu className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
+          <span className="text-xs">Menu</span>
+        </div>
       </div>
     </nav>
   );

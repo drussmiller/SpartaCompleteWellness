@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy, Heart, User, Shield, Bug, LogOut } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
@@ -11,10 +11,6 @@ import { SupportSpartaPage } from "./support-sparta-page";
 import { NotificationSettings } from "@/components/notification-settings";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Link } from "wouter";
 
 export default function MenuPage() {
   const { user } = useAuth();
@@ -24,17 +20,6 @@ export default function MenuPage() {
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [, navigate] = useLocation();
-
-  // Placeholder for userTeam, assuming it's fetched elsewhere or derived from user object
-  // For this example, we'll use a mock value or derive it from user.teamId
-  const userTeam = user?.teamId ? { name: "Your Team Name" } : null; // Replace with actual team fetching logic if needed
-
-  const handleSignOut = () => {
-    // Implement sign out logic here
-    console.log("Signing out...");
-    // Example: Call an auth signOut function
-    // signOut();
-  };
 
   if (!user) return null;
 
@@ -51,116 +36,85 @@ export default function MenuPage() {
         </div>
 
         {/* Navigation Section */}
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-4">
-                <Avatar className="w-16 h-16">
-                  <AvatarImage src={user?.imageUrl || ""} />
-                  <AvatarFallback className="text-xl">
-                    {user?.username?.charAt(0)?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold">{user?.username}</h2>
-                  <p className="text-muted-foreground">{user?.email}</p>
-                  {userTeam ? (
-                    <p className="text-sm font-medium text-primary mt-1">
-                      Team: {userTeam.name}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      No team assigned yet
-                    </p>
-                  )}
+        <div className="w-full space-y-2">
+          {/* Profile Sheet */}
+          <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start py-6" size="lg">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
+                      alt={user.username}
+                    />
+                    <AvatarFallback>
+                      {user.username?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left">
+                    <div className="font-medium">{user.preferredName || user.username}</div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
+            </SheetContent>
+          </Sheet>
 
-          <div className="grid gap-2">
-            <Link
-              href="/profile"
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                "justify-start h-12"
-              )}
-            >
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </Link>
+          {/* Notification Settings */}
+          <Sheet open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Bell className="mr-2 h-5 w-5" />
+                Notification Settings
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
+            </SheetContent>
+          </Sheet>
 
-            <Link
-              href="/support-sparta"
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                "justify-start h-12"
-              )}
-            >
-              <Heart className="mr-2 h-4 w-4" />
-              Support Sparta
-            </Link>
+          {/* Leaderboard - Changed to slide in from right */}
+          <Sheet open={leaderboardOpen} onOpenChange={setLeaderboardOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Trophy className="mr-2 h-5 w-5" />
+                Leaderboard
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+          
+          {/* Support Sparta */}
+          <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Heart className="mr-2 h-5 w-5" />
+                Support Sparta
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
+            </SheetContent>
+          </Sheet>
 
-            {/* Only show team-related features if user has a team */}
-            {user?.teamId && (
-              <>
-                <Link
-                  href="/leaderboard"
-                  className={cn(
-                    buttonVariants({ variant: "ghost" }),
-                    "justify-start h-12"
-                  )}
-                >
-                  <Trophy className="mr-2 h-4 w-4" />
-                  Leaderboard
-                </Link>
-
-                <Link
-                  href="/notification-settings"
-                  className={cn(
-                    buttonVariants({ variant: "ghost" }),
-                    "justify-start h-12"
-                  )}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Notification Settings
-                </Link>
-              </>
-            )}
-
-            {user?.isAdmin && (
-              <Link
-                href="/admin"
-                className={cn(
-                  buttonVariants({ variant: "ghost" }),
-                  "justify-start h-12"
-                )}
-              >
-                <Shield className="mr-2 h-4 w-4" />
-                Admin Panel
-              </Link>
-            )}
-
-            <Link
-              href="/debug"
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                "justify-start h-12"
-              )}
-            >
-              <Bug className="mr-2 h-4 w-4" />
-              Debug API
-            </Link>
-
-            <Button
-              variant="ghost"
-              onClick={handleSignOut}
-              className="justify-start h-12 text-destructive hover:text-destructive"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
+          {/* Admin Sheet - Only shown for admin users */}
+          {user.isAdmin && (
+            <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="w-full justify-start" size="lg">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Admin Dashboard
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+                {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </AppLayout>

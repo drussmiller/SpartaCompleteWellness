@@ -112,44 +112,24 @@ function MainContent() {
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/waiver" component={WaiverPage} />
+          <Route path="/activity" component={ActivityPage} />
+          <Route path="/activity-management" component={ActivityManagementPage} />
+          <Route path="/notification-settings" component={NotificationSettingsPage} />
+          {/* Keep for backward compatibility */}
+          <Route path="/notification-schedule" component={NotificationSettingsPage} />
+          <Route path="/notifications" component={NotificationsPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
-          <Route path="/profile" component={ProfilePage} />
-          <Route path="/support-sparta" component={() => <div>Support Sparta page coming soon</div>} />
+          <Route path="/leaderboard" component={() => <LeaderboardPage />} />
+          <Route path="/prayer-requests" component={PrayerRequestsPage} />
           <Route path="/debug" component={() => <DebugApi />} />
-          
-          {/* Team-required routes */}
-          {user.teamId && (
-            <>
-              <Route path="/activity" component={ActivityPage} />
-              <Route path="/activity-management" component={ActivityManagementPage} />
-              <Route path="/notification-settings" component={NotificationSettingsPage} />
-              {/* Keep for backward compatibility */}
-              <Route path="/notification-schedule" component={NotificationSettingsPage} />
-              <Route path="/notifications" component={NotificationsPage} />
-              <Route path="/leaderboard" component={() => <LeaderboardPage />} />
-              <Route path="/prayer-requests" component={PrayerRequestsPage} />
-              <Route path="/video-player" component={() => <VideoPlayerPage />} />
-              <Route path="/comments/:postId">
-                <CommentsPage />
-              </Route>
-            </>
-          )}
 
-          {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
-          <Route path="*">
-            {user.teamId ? (
-              <div>Not found</div>
-            ) : (
-              <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold">Access Restricted</h1>
-                  <p className="mt-2">You need to be assigned to a team to access this page.</p>
-                  <p className="mt-2">Please contact an administrator or create an entrance video on the home page.</p>
-                </div>
-              </div>
-            )}
+          <Route path="/video-player" component={() => <VideoPlayerPage />} />
+          <Route path="/comments/:postId">
+            <CommentsPage />
           </Route>
+          {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
+          <Route path="*">Not found</Route>
         </Switch>
       </div>
     </div>
