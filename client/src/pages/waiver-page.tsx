@@ -61,7 +61,7 @@ export default function WaiverPage() {
           title: "Waiver signed successfully",
           description: "Welcome to Sparta Complete Wellness!",
         });
-        setLocation('/');
+        setLocation('/menu');
       } else {
         throw new Error('Failed to submit waiver');
       }
