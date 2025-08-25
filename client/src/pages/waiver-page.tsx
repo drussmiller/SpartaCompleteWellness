@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { SignaturePad } from '@/components/signature-pad';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { queryClient } from '@/lib/queryClient';
 
 export default function WaiverPage() {
   const { user } = useAuth();
@@ -57,6 +58,10 @@ export default function WaiverPage() {
       });
 
       if (response.ok) {
+        // Update the cached user data to reflect waiver has been signed
+        const updatedUser = { ...user, waiverSigned: true };
+        queryClient.setQueryData(["/api/user"], updatedUser);
+        
         toast({
           title: "Waiver signed successfully",
           description: "Welcome to Sparta Complete Wellness!",
