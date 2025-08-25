@@ -31,7 +31,6 @@ import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
 import { lazy } from "react";
 import WaiverPage from "@/pages/waiver-page";
-import ProfilePage from "@/pages/profile-page";
 
 // Separate auth-dependent rendering
 function MainContent() {

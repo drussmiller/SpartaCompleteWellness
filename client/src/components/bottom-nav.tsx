@@ -48,10 +48,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     { icon: Bell, label: "Notifications", path: "/notifications" },
   ];
 
-  // Only show basic navigation if user has no team
-  const navItems = user?.teamId
-    ? [...baseNavItems.slice(0, 1), ...teamMemberNavItems, ...baseNavItems.slice(1)]
-    : baseNavItems;
+  // Show all navigation items but disable team-required ones for users without teams
+  const allNavItems = [...baseNavItems.slice(0, 1), ...teamMemberNavItems, ...baseNavItems.slice(1)];
+  const navItems = allNavItems;
 
   return (
     <nav
@@ -76,20 +75,34 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {navItems.map(({ icon: Icon, label, path, count }) => (
-          <div
-            key={path}
-            onClick={() => setLocation(path)}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
-              // Size styles
-              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
-              // Text styles
-              location === path
-                ? "text-primary"
-                : "text-muted-foreground hover:text-primary transition-colors"
-            )}
-          >
+        {navItems.map(({ icon: Icon, label, path, count }) => {
+          const isTeamRequired = ["/activity", "/notifications"].includes(path);
+          const isDisabled = isTeamRequired && !user?.teamId;
+          
+          return (
+            <div
+              key={path}
+              onClick={() => {
+                if (!isDisabled) {
+                  setLocation(path);
+                }
+              }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 relative",
+                // Size styles
+                orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+                // Cursor and interaction styles
+                isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+                // Text styles
+                isDisabled ? "text-muted-foreground/50" :
+                location === path
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary transition-colors"
+              )}
+              title={isDisabled ? "Requires team assignment" : undefined}
+            ></div>
+          );
+        })}
             <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
             <span className="text-xs">{label}</span>
             {count > 0 && (
