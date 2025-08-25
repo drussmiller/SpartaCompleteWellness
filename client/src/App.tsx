@@ -29,6 +29,7 @@ import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the pra
 
 import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
+import { lazy } from "react";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -40,11 +41,11 @@ function MainContent() {
     const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       const veryLeftEdge = touch.clientX < 15; // Very narrow edge for browser navigation
-      
+
       // Only block browser navigation swipes from the very edge on pages without swipe handlers
       if (veryLeftEdge) {
         const hasSwipeEnabled = document.querySelector('[data-swipe-enabled="true"]');
-        
+
         if (!hasSwipeEnabled) {
           console.log('Blocking browser navigation swipe from edge');
           e.preventDefault();
@@ -56,7 +57,7 @@ function MainContent() {
 
     // Only intercept the very edge to prevent browser navigation
     document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart, true);
     };
@@ -96,6 +97,7 @@ function MainContent() {
       <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain'}}> {/* Prevent horizontal overscroll */}
         <Switch>
           <Route path="/" component={HomePage} />
+          <Route path="/waiver" component={lazy(() => import('./pages/waiver-page'))} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/notification-settings" component={NotificationSettingsPage} />
@@ -131,7 +133,7 @@ function App() {
     if ('Notification' in window) {
       console.log("Notification permission:", Notification.permission);
 
-      // We'll let the notification code request permission when a notification 
+      // We'll let the notification code request permission when a notification
       // arrives rather than asking immediately on app load
       if (Notification.permission === 'granted') {
         console.log("Notification permission already granted");

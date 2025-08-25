@@ -3706,6 +3706,44 @@ export const registerRoutes = async (
     }
   });
 
+  // Submit waiver signature
+  router.post("/api/users/waiver", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { signature, agreedAt } = req.body;
+
+      if (!signature) {
+        return res.status(400).json({ message: "Signature is required" });
+      }
+
+      // Update user's waiver status
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          waiverSigned: true,
+          waiverSignedAt: new Date(agreedAt),
+          waiverSignature: signature,
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      logger.info(`User ${req.user.id} signed waiver at ${agreedAt}`);
+
+      res.json({ 
+        message: "Waiver signed successfully",
+        waiverSigned: true,
+        waiverSignedAt: updatedUser.waiverSignedAt 
+      });
+    } catch (error) {
+      logger.error("Error submitting waiver:", error);
+      res.status(500).json({
+        message: "Failed to submit waiver",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   router.post(
     "/api/users/notification-schedule",
     authenticate,

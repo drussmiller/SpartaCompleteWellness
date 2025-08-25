@@ -23,6 +23,9 @@ export const users = pgTable("users", {
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
   lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
+  waiverSigned: boolean("waiver_signed").default(false),
+  waiverSignedAt: timestamp("waiver_signed_at"),
+  waiverSignature: text("waiver_signature"),
 });
 
 export const teams = pgTable("teams", {
@@ -203,7 +206,9 @@ export const insertUserSchema = createInsertSchema(users)
   .extend({
     username: z.string().min(1, "Username is required"),
     email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters")
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    waiverSigned: z.boolean().default(false),
+    waiverSignature: z.string().optional(),
   });
 
 export const insertMeasurementSchema = createInsertSchema(measurements);
