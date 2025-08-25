@@ -30,6 +30,7 @@ import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the pra
 import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
 import { lazy } from "react";
+import WaiverPage from "@/pages/waiver-page";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -92,15 +93,13 @@ function MainContent() {
 
   // Check if user needs to sign waiver first
   if (user && !user.waiverSigned && window.location.pathname !== '/waiver') {
+    // Immediately redirect to waiver page
+    window.location.href = '/waiver';
     return (
-      <div className="min-h-screen">
-        <Switch>
-          <Route path="/waiver" component={lazy(() => import('./pages/waiver-page'))} />
-          <Route component={() => {
-            window.location.href = '/waiver';
-            return null;
-          }} />
-        </Switch>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Redirecting to waiver...</h1>
+        </div>
       </div>
     );
   }
@@ -112,7 +111,7 @@ function MainContent() {
       <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain'}}> {/* Prevent horizontal overscroll */}
         <Switch>
           <Route path="/" component={HomePage} />
-          <Route path="/waiver" component={lazy(() => import('./pages/waiver-page'))} />
+          <Route path="/waiver" component={WaiverPage} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/notification-settings" component={NotificationSettingsPage} />
