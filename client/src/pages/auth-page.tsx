@@ -17,6 +17,18 @@ type LoginForm = {
   password: string;
 };
 
+// Define the register schema with password confirmation
+const registerSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [_, setLocation] = useLocation();
@@ -36,18 +48,13 @@ export default function AuthPage() {
     },
   });
 
-  const registerForm = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
+  const registerForm = useForm<z.infer<typeof registerSchema>>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
       email: "",
       password: "",
-      preferredName: null,
-      isAdmin: false,
-      isTeamLead: false,
-      teamId: null,
-      points: 0,
-      currentDay: 1,
+      confirmPassword: "",
     },
   });
 
@@ -139,6 +146,18 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm Password</FormLabel>
                           <FormControl>
                             <Input type="password" {...field} />
                           </FormControl>
