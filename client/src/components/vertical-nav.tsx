@@ -52,18 +52,24 @@ export const VerticalNav = () => {
 
   return (
     <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[100]">
-      {navItems.map((item) => (
+      {navItems.map((item) => {
+        const isDisabled = !user?.teamId && (item.path === "/activity" || item.path === "/notifications");
+        
+        return (
         <TooltipProvider key={item.path}>
           <Tooltip>
             <TooltipTrigger asChild>
               <AnchorLink
-                href={item.path}
+                href={isDisabled ? "#" : item.path}
                 className={cn(
                   "flex flex-col items-center justify-center w-16 h-16 mb-2 rounded-md relative",
-                  location === item.path
-                    ? "bg-primary/10 text-primary"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  isDisabled 
+                    ? "opacity-50 cursor-not-allowed text-muted-foreground"
+                    : location === item.path
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 )}
+                onClick={isDisabled ? (e) => e.preventDefault() : undefined}
               >
                 <div className="relative">
                   <item.icon size={20} />
@@ -82,7 +88,9 @@ export const VerticalNav = () => {
               </AnchorLink>
             </TooltipTrigger>
             <TooltipContent>
-              {item.status === "offline" ? (
+              {isDisabled ? (
+                <p>Team Required - {item.label}</p>
+              ) : item.status === "offline" ? (
                 <p>Notification service offline - click to manage</p>
               ) : item.count && item.count > 0 ? (
                 <p>{item.count} new prayer request{item.count !== 1 ? 's' : ''}</p>
@@ -92,7 +100,8 @@ export const VerticalNav = () => {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      ))}
+        );
+      })}
     </div>
   );
 };

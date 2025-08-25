@@ -71,18 +71,25 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map(({ icon: Icon, label, href, count }) => (
+        {items.map(({ icon: Icon, label, href, count }) => {
+          const isDisabled = !user?.teamId && (href === "/activity" || href === "/notifications");
+          
+          return (
           <div
             key={href}
-            onClick={() => setLocation(href)}
+            onClick={isDisabled ? undefined : () => setLocation(href)}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
+              "flex flex-col items-center justify-center gap-1 relative",
               // Size styles
               orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+              // Disabled or enabled cursor
+              isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               // Text styles
-              location === href
-                ? "text-primary"
-                : "text-muted-foreground hover:text-primary transition-colors"
+              isDisabled 
+                ? "text-muted-foreground"
+                : location === href
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary transition-colors"
             )}
           >
             <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
@@ -93,7 +100,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
               </span>
             )}
           </div>
-        ))}
+          );
+        })}
         <div
           onClick={() => setLocation("/menu")}
           className={cn(
