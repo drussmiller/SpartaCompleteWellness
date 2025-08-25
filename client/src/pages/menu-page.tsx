@@ -65,9 +65,15 @@ export default function MenuPage() {
           {/* Notification Settings */}
           <Sheet open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button 
+                variant="outline" 
+                className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                size="lg"
+                disabled={!user?.teamId}
+              >
                 <Bell className="mr-2 h-5 w-5" />
                 Notification Settings
+                {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
@@ -78,9 +84,15 @@ export default function MenuPage() {
           {/* Leaderboard - Changed to slide in from right */}
           <Sheet open={leaderboardOpen} onOpenChange={setLeaderboardOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button 
+                variant="outline" 
+                className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                size="lg"
+                disabled={!user?.teamId}
+              >
                 <Trophy className="mr-2 h-5 w-5" />
                 Leaderboard
+                {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
