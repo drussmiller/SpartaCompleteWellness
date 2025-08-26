@@ -47,6 +47,22 @@ export function CreatePostDialog({
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
 
+  // Check if user has posted an introduction (for users not in a team)
+  const { data: hasPostedIntroduction = false } = useQuery({
+    queryKey: ["/api/posts/has-introduction", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const response = await fetch(`/api/posts/has-introduction`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return false;
+      const result = await response.json();
+      return result.hasIntroduction || false;
+    },
+    enabled: !!user && !user.teamId, // Only check for users not in a team
+    staleTime: 300000, // 5 minutes
+  });
+
   // Define the type for memory verse video objects
   type MemoryVerseVideo = {
     id: number;
