@@ -652,7 +652,19 @@ export function CreatePostDialog({
                 <Label className="text-sm font-medium">
                   {user?.teamId ? "Post Type" : "Introduction Type"}
                 </Label>
-                <div className="grid grid-cols-1 gap-2">
+                <RadioGroup 
+                  value={selectedType} 
+                  onValueChange={(value: PostType) => {
+                    setSelectedType(value);
+                    // Reset media and preview when type changes
+                    setPreviewImage(null);
+                    setImage(null);
+                    setVideoThumbnail(null);
+                    setSelectedMediaType(null);
+                    form.setValue("mediaUrl", null); // Clear the form's mediaUrl field
+                  }}
+                  className="grid grid-cols-1 gap-2"
+                >
                   {postTypes.map((type) => {
                     const isDisabled = !canCreatePost() || !remaining[type.value as keyof typeof remaining] || (!user?.teamId && hasPostedIntroduction);
 
@@ -660,23 +672,12 @@ export function CreatePostDialog({
                       <div
                         key={type.value}
                         className={cn(
-                          "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                          "flex items-center space-x-3 p-3 rounded-lg border transition-colors",
                           selectedType === type.value
                             ? "border-violet-500 bg-violet-50"
                             : "border-gray-200 hover:border-gray-300",
                           isDisabled && "opacity-50 cursor-not-allowed"
                         )}
-                        onClick={() => {
-                          if (!isDisabled) {
-                            setSelectedType(type.value);
-                            // Reset media and preview when type changes
-                            setImagePreview(null);
-                            setImage(null);
-                            setVideoThumbnail(null);
-                            setSelectedMediaType(null);
-                            form.setValue("mediaUrl", null); // Clear the form's mediaUrl field
-                          }
-                        }}
                       >
                         <RadioGroupItem
                           value={type.value}
@@ -700,7 +701,7 @@ export function CreatePostDialog({
                       </div>
                     );
                   })}
-                </div>
+                </RadioGroup>
               </div>
             </div>
 
