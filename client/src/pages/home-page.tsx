@@ -299,7 +299,7 @@ export default function HomePage() {
                   <div className="text-center text-muted-foreground py-8">
                     {!user?.teamId ? (
                       <div>
-                        <p className="text-lg font-medium mb-2">Join a team to see posts!</p>
+                        <p className="text-lg font-medium mb-2">When you're in a team you'll see posts!</p>
                         <p className="text-sm">You need to be part of a team to view and interact with team posts.</p>
                       </div>
                     ) : (
