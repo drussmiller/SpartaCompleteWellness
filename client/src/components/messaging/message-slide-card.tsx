@@ -14,6 +14,7 @@ import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import { Badge } from "@/components/ui/badge"; // Assuming Badge component is available
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -56,7 +57,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  
+
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
@@ -414,7 +415,7 @@ export function MessageSlideCard() {
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
       document.addEventListener('mousedown', handleClickOutside);
-      
+
       return () => {
         // Restore body scrolling when overlay is closed
         document.body.style.overflow = '';
@@ -434,6 +435,8 @@ export function MessageSlideCard() {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
         }}
+        disabled={!user?.teamId} // Disable button if user has no teamId
+        style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}} // Visual indication
       >
         <MessageCircle className="h-4 w-4 text-black font-extrabold" />
         {unreadCount > 0 && (
@@ -449,7 +452,7 @@ export function MessageSlideCard() {
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000] overflow-hidden`}
-        style={{ 
+        style={{
           height: '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
@@ -486,9 +489,9 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea 
+            <ScrollArea
               className="h-[calc(100vh-5rem)] bg-white"
-              style={{ 
+              style={{
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain'
               }}
@@ -532,9 +535,9 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col h-[calc(100vh-5rem)] bg-white">
               {/* Messages List */}
-              <ScrollArea 
-                className="flex-1 bg-white" 
-                style={{ 
+              <ScrollArea
+                className="flex-1 bg-white"
+                style={{
                   paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))',
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
@@ -567,15 +570,15 @@ export function MessageSlideCard() {
                         }`}
                       >
                         {message.content && (
-                          <p 
+                          <p
                             className="break-words"
-                            dangerouslySetInnerHTML={{ 
-                              __html: convertUrlsToLinks(message.content || '') 
+                            dangerouslySetInnerHTML={{
+                              __html: convertUrlsToLinks(message.content || '')
                             }}
                           />
                         )}
-                        
-                        {(message.imageUrl || message.mediaUrl) && 
+
+                        {(message.imageUrl || message.mediaUrl) &&
                          (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                          (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                           message.is_video ? (
@@ -606,7 +609,7 @@ export function MessageSlideCard() {
               {/* Message Input */}
               <div className="p-4 border-t bg-white border-gray-200 fixed bottom-0 left-0 right-0 z-[100000]" style={{ marginBottom: 'calc(5rem + env(safe-area-inset-bottom))', backgroundColor: '#ffffff' }}>
                 {/* Use the MessageForm component instead of the Input + Button */}
-                <MessageForm 
+                <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
                     // Instead of setting state and then calling handleSendMessage separately,
                     // which causes the first Enter to clear the field but not submit,
@@ -627,11 +630,11 @@ export function MessageSlideCard() {
                         // Check if we have a saved video file to use
                         if ((isVideo || isVideoFile) && window._SPARTA_ORIGINAL_VIDEO_FILE) {
                           // Use the original video file we saved
-                          console.log('MessageForm using original video file for upload with type:', 
+                          console.log('MessageForm using original video file for upload with type:',
                                      window._SPARTA_ORIGINAL_VIDEO_FILE.type);
 
                           // Determine appropriate extension based on MIME type
-                          const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' : 
+                          const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' :
                                         window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
 
                           // Attach the video with proper extension

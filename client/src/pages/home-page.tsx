@@ -254,12 +254,14 @@ export default function HomePage() {
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 ml-2 h-10 text-sm font-medium md:hidden"
+                className={`flex-1 ml-2 h-10 text-sm font-medium md:hidden ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!user?.teamId}
                 onClick={handlePrayerRequestsClick}
               >
                 <div className="relative">
                   Prayer Requests
-                  {prayerRequestCount > 0 && (
+                  {!user?.teamId && <span className="ml-1 text-xs text-muted-foreground">(Team Required)</span>}
+                  {user?.teamId && prayerRequestCount > 0 && (
                     <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
                     </div>
