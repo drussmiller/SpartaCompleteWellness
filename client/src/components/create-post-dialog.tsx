@@ -55,8 +55,9 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
-  // Use defaultType if provided, otherwise use initialType
-  const actualType = defaultType || initialType;
+  // For users not in a team who haven't posted, default to miscellaneous
+  const shouldDefaultToMiscellaneous = !user?.teamId && !hasPostedIntroduction;
+  const actualType = shouldDefaultToMiscellaneous ? "miscellaneous" : (defaultType || initialType);
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -509,16 +510,16 @@ export function CreatePostDialog({
                           setVideoThumbnail(null);
                         }}
                       >
-                        <option value="food" disabled={isPostTypeDisabled('food')}>
+                        <option value="food" disabled={isPostTypeDisabled('food') || (!user?.teamId && !hasPostedIntroduction)}>
                           Food {getRemainingMessage('food')}
                         </option>
-                        <option value="workout" disabled={isPostTypeDisabled('workout')}>
+                        <option value="workout" disabled={isPostTypeDisabled('workout') || (!user?.teamId && !hasPostedIntroduction)}>
                           Workout {getRemainingMessage('workout')}
                         </option>
-                        <option value="scripture" disabled={isPostTypeDisabled('scripture')}>
+                        <option value="scripture" disabled={isPostTypeDisabled('scripture') || (!user?.teamId && !hasPostedIntroduction)}>
                           Scripture {getRemainingMessage('scripture')}
                         </option>
-                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
+                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || (!user?.teamId && !hasPostedIntroduction)}>
                           Memory Verse {getRemainingMessage('memory_verse')}
                         </option>
                         {/* Remove Prayer Request option entirely - will be handled on its own page */}
