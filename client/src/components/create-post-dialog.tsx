@@ -41,10 +41,6 @@ export function CreatePostDialog({
 }: CreatePostDialogProps) {
   const { user } = useAuth();
   
-  // Early return if user is not loaded yet
-  if (!user) {
-    return null;
-  }
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<PostType>(
     initialType || (user?.teamId ? "food" : "miscellaneous")
@@ -52,9 +48,17 @@ export function CreatePostDialog({
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Early return if user is not loaded yet - moved after state initialization
+  if (!user) {
+    return null;
+  }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  
+  // Define imagePreview state that was missing but referenced later
+  const imagePreview = previewImage;
 
   // Check if user has already posted an introduction (miscellaneous post)
   const { data: userIntroductionPosts } = useQuery({
@@ -416,7 +420,7 @@ export function CreatePostDialog({
       // Clear all form state and close the dialog
       form.reset();
       setOpen(false);
-      setImagePreview(null);
+      setPreviewImage(null);
       setVideoThumbnail(null);
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
@@ -591,12 +595,20 @@ export function CreatePostDialog({
       setOpen(isOpen);
       if (!isOpen) {
         form.reset();
-        setImagePreview(null);
+        setPreviewImage(null);
         setVideoThumbnail(null);
         setSelectedMediaType(null);
         setSelectedExistingVideo(null);
-        setContent(""); // Clear content as well
-        setImage(null); // Clear the image file state
+        setContent("");
+        setImage(null);
+        
+        // Clear file inputs
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        if (videoInputRef.current) {
+          videoInputRef.current.value = "";
+        }
       }
     }}>
       <DialogTrigger asChild>
