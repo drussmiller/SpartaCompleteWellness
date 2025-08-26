@@ -717,7 +717,6 @@ export function CreatePostDialog({
                                   }}
                                   variant="outline"
                                   className="w-full"
-                                  disabled={!user?.teamId && !hasPostedIntroduction}
                                 >
                                   Select Video
                                 </Button>
