@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
