@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Plus, CalendarIcon, Loader2, Video, Upload, Utensils, Dumbbell, Book, Heart, MessageSquare } from "lucide-react";
+import { Plus, CalendarIcon, Loader2, Video } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -19,107 +18,32 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
-
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
 };
 
-type PostType = "food" | "workout" | "scripture" | "memory_verse" | "miscellaneous" | "prayer" | "comment";
-
-interface CreatePostDialogProps {
-  remaining: Record<string, number>;
-  initialType?: PostType;
-}
-
 export function CreatePostDialog({ 
   remaining: propRemaining, 
   initialType = "food",
-}: CreatePostDialogProps) {
-  const { user } = useAuth();
-  
+  defaultType = null,
+  hideTypeField = false
+}: { 
+  remaining: Record<string, number>;
+  initialType?: string;
+  defaultType?: string | null;
+  hideTypeField?: boolean;
+}) {
   const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<PostType>(
-    initialType || (user?.teamId ? "food" : "miscellaneous")
-  );
-  const [content, setContent] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-
-  // Early return if user is not loaded yet - moved after state initialization
-  if (!user) {
-    return null;
-  }
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
-  
-  // Define imagePreview state that was missing but referenced later
-  const imagePreview = previewImage;
-
-  // Check if user has already posted an introduction (miscellaneous post)
-  const { data: userIntroductionPosts } = useQuery({
-    queryKey: ["/api/posts/user-introduction", user?.id],
-    queryFn: async () => {
-      if (!user?.id || user?.teamId) return [];
-      const response = await apiRequest("GET", `/api/posts?userId=${user.id}&type=miscellaneous`);
-      if (!response.ok) throw new Error("Failed to fetch user posts");
-      return response.json();
-    },
-    enabled: !!user?.id && !user?.teamId,
-  });
-
-  const hasPostedIntroduction = userIntroductionPosts && userIntroductionPosts.length > 0;
-
-  const postTypes: { value: PostType; label: string; icon: React.ReactNode; description: string }[] = user?.teamId ? [
-    {
-      value: "food",
-      label: "Food",
-      icon: <Utensils className="h-4 w-4" />,
-      description: "Share your meals and nutrition"
-    },
-    {
-      value: "workout",
-      label: "Workout",
-      icon: <Dumbbell className="h-4 w-4" />,
-      description: "Post your exercise routine"
-    },
-    {
-      value: "scripture",
-      label: "Scripture",
-      icon: <Book className="h-4 w-4" />,
-      description: "Share Bible verses and reflections"
-    },
-    {
-      value: "memory_verse",
-      label: "Memory Verse",
-      icon: <Heart className="h-4 w-4" />,
-      description: "Recite a memorized Bible verse"
-    },
-    {
-      value: "miscellaneous",
-      label: "Miscellaneous",
-      icon: <MessageSquare className="h-4 w-4" />,
-      description: "General posts and updates"
-    }
-  ] : [
-    {
-      value: "miscellaneous",
-      label: "Introduction",
-      icon: <MessageSquare className="h-4 w-4" />,
-      description: "Post an introduction video of why you want to join and about yourself"
-    }
-  ];
-
   const { toast } = useToast();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null); 
+  const queryClient = useQueryClient();
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
 
@@ -131,13 +55,16 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
+  // Use defaultType if provided, otherwise use initialType
+  const actualType = defaultType || initialType;
+
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
-      type: selectedType,
+      type: actualType,
       content: "",
       mediaUrl: null,
-      points: selectedType === "prayer" ? 0 : selectedType === "memory_verse" ? 10 : 3,
+      points: actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
       postDate: selectedDate
     }
   });
@@ -193,7 +120,7 @@ export function CreatePostDialog({
   }
 
   // Add a function to check if a post type should be disabled
-  function isPostTypeDisabled(type: PostType) {
+  function isPostTypeDisabled(type: string) {
     // Use the canPost values directly from the usePostLimits hook
     // This ensures consistency between the dropdown display and button status
     switch (type) {
@@ -420,7 +347,7 @@ export function CreatePostDialog({
       // Clear all form state and close the dialog
       form.reset();
       setOpen(false);
-      setPreviewImage(null);
+      setImagePreview(null);
       setVideoThumbnail(null);
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
@@ -494,133 +421,23 @@ export function CreatePostDialog({
     createPostMutation.mutate(data);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Determine the expected file type based on the selected post type
-    const isVideoPost = selectedType === "memory_verse" || (!user?.teamId && selectedType === "miscellaneous");
-    const expectedFileType = isVideoPost ? "video" : "image";
-    const maxSize = isVideoPost ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB for video, 10MB for image
-
-    if (file.size > maxSize) {
-      toast({
-        title: "File too large",
-        description: `Please upload a file smaller than ${isVideoPost ? '100MB' : '10MB'}.`,
-        variant: "destructive",
-      });
-      e.target.value = ""; // Clear the input
-      return;
-    }
-
-    if (isVideoPost && !file.type.startsWith("video/")) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a video file.",
-        variant: "destructive",
-      });
-      e.target.value = ""; // Clear the input
-      return;
-    } else if (!isVideoPost && !file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload an image file.",
-        variant: "destructive",
-      });
-      e.target.value = ""; // Clear the input
-      return;
-    }
-
-    // Handle video file selection
-    if (isVideoPost) {
-      const videoUrl = URL.createObjectURL(file);
-      setPreviewImage(videoUrl);
-      setImage(file); // Store the file itself
-      setSelectedMediaType("video");
-
-      // Generate a thumbnail for the video
-      console.log("Starting thumbnail generation for video:", file.name, file.type);
-      setVideoThumbnail(null); // Reset thumbnail state
-      generateVideoThumbnail(file).then(thumbnailUrl => {
-        console.log("Thumbnail generation result:", thumbnailUrl ? "SUCCESS" : "FAILED");
-        if (thumbnailUrl) {
-          setVideoThumbnail(thumbnailUrl);
-          console.log("Generated video thumbnail successfully:", thumbnailUrl.substring(0, 50) + "...");
-        } else {
-          console.log("Failed to generate video thumbnail");
-        }
-      }).catch(error => {
-        console.error("Error in thumbnail generation promise:", error);
-      });
-
-      // Set the form field value to a marker indicating a video file is attached
-      form.setValue("mediaUrl", "VIDEO_FILE_ATTACHED");
-      console.log(`Video file selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
-    } else {
-      // Handle image file selection
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const compressed = await compressImage(reader.result as string);
-          setPreviewImage(compressed);
-          setImage(file); // Store the file itself
-          setSelectedMediaType("image");
-          form.setValue("mediaUrl", compressed); // Set form value to the compressed image data URL
-          console.log(`Image file selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
-        } catch (error) {
-          console.error('Error compressing image:', error);
-          toast({
-            title: "Error",
-            description: "Failed to process image. Please try again.",
-            variant: "destructive",
-          });
-          e.target.value = ""; // Clear the input
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Helper function to determine if the submit button should be enabled
-  const canCreatePost = () => {
-    if (!content.trim()) return false;
-    if (selectedType === "memory_verse" && !image && !selectedExistingVideo) return false;
-    if ((selectedType === "food" || selectedType === "workout") && !image) return false;
-    if (!user?.teamId && selectedType === "miscellaneous" && !image) return false; // Introduction video required
-    return true;
-  };
-
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
       if (!isOpen) {
         form.reset();
-        setPreviewImage(null);
+        setImagePreview(null);
         setVideoThumbnail(null);
         setSelectedMediaType(null);
         setSelectedExistingVideo(null);
-        setContent("");
-        setImage(null);
-        
-        // Clear file inputs
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-        if (videoInputRef.current) {
-          videoInputRef.current.value = "";
-        }
       }
     }}>
       <DialogTrigger asChild>
-        <Button 
-          size="sm" 
-          className="rounded-full bg-violet-700 hover:bg-violet-800 text-white border-0 shadow-lg"
-          disabled={!user || (!user?.teamId && hasPostedIntroduction)}
-        >
-          <Plus className="h-4 w-4" />
+        <Button size="icon" className="h-10 w-10 bg-gray-200 hover:bg-gray-300">
+          <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="h-screen max-h-[90vh] overflow-y-auto pb-32 sm:pb-28 pt-8">
+      <DialogContent className="h-screen overflow-y-auto pb-32 sm:pb-28 pt-8">
         <div className="flex justify-between items-center mb-4 px-2">
           <Button 
             onClick={() => setOpen(false)} 
@@ -630,166 +447,407 @@ export function CreatePostDialog({
           >
             <span className="text-2xl font-bold">×</span>
           </Button>
-          <DialogTitle className="text-xl font-bold text-center">
-            {user?.teamId ? "Create Post" : "Create Introduction"}
-          </DialogTitle>
+          <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
         </div>
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex flex-col">
-            
-            <div className="space-y-6">
-              {/* Show introduction restriction message for users without teams */}
-              {!user?.teamId && hasPostedIntroduction && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    You have already posted your introduction. You can post more content once you join a team.
-                  </p>
-                </div>
+            <FormField
+              control={form.control}
+              name="postDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Post Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                        >
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSelectedDate(date);
+                            field.onChange(date);
+                          }
+                        }}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
               )}
+            />
 
-              {/* Post Type Selection */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">
-                  {user?.teamId ? "Post Type" : "Introduction Type"}
-                </Label>
-                <RadioGroup 
-                  value={selectedType} 
-                  onValueChange={(value: PostType) => {
-                    setSelectedType(value);
-                    // Reset media and preview when type changes
-                    setPreviewImage(null);
-                    setImage(null);
-                    setVideoThumbnail(null);
-                    setSelectedMediaType(null);
-                    form.setValue("mediaUrl", null); // Clear the form's mediaUrl field
-                  }}
-                  className="grid grid-cols-1 gap-2"
-                >
-                  {postTypes.map((type) => {
-                    const isDisabled = !canCreatePost() || !remaining[type.value as keyof typeof remaining] || (!user?.teamId && hasPostedIntroduction);
-
-                    return (
-                      <div
-                        key={type.value}
-                        className={cn(
-                          "flex items-center space-x-3 p-3 rounded-lg border transition-colors",
-                          selectedType === type.value
-                            ? "border-violet-500 bg-violet-50"
-                            : "border-gray-200 hover:border-gray-300",
-                          isDisabled && "opacity-50 cursor-not-allowed"
-                        )}
+            {/* Only show Type field if hideTypeField is false */}
+            {!hideTypeField && (
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 h-12"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset selected media type when changing post type
+                          setSelectedMediaType(null);
+                          setImagePreview(null);
+                          setVideoThumbnail(null);
+                        }}
                       >
-                        <RadioGroupItem
-                          value={type.value}
-                          id={type.value}
-                          disabled={isDisabled}
-                        />
-                        <div className="flex items-center space-x-2 flex-1">
-                          {type.icon}
-                          <div>
-                            <Label htmlFor={type.value} className="font-medium cursor-pointer">
-                              {type.label}
-                            </Label>
-                            <p className="text-xs text-gray-500 mt-1">{type.description}</p>
-                          </div>
-                        </div>
-                        {remaining[type.value as keyof typeof remaining] !== null && type.value !== "miscellaneous" && (
-                          <span className="text-xs text-gray-500 ml-auto">
-                            {remaining[type.value as keyof typeof remaining]} left
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </RadioGroup>
-              </div>
-            </div>
-
-            {/* Content Input */}
-            <div className="space-y-2">
-              <Label htmlFor="content" className="text-sm font-medium">
-                Content
-              </Label>
-              <Textarea
-                id="content"
-                placeholder={!user?.teamId ? "Tell us why you want to join and a little about yourself..." : "What's on your mind?"}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[100px] resize-none"
-              />
-            </div>
-
-            {/* Media Upload */}
-            {(selectedType === "food" || selectedType === "workout" || selectedType === "miscellaneous" || selectedType === "memory_verse") && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  {selectedType === "memory_verse" || (!user?.teamId && selectedType === "miscellaneous") ? "Video" : "Image"}
-                  {(selectedType === "memory_verse" || (!user?.teamId && selectedType === "miscellaneous")) && <span className="text-red-500 ml-1">*</span>}
-                </Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    accept={selectedType === "memory_verse" || (!user?.teamId && selectedType === "miscellaneous") ? "video/*" : "image/*"}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <Label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600">
-                      Click to upload {selectedType === "memory_verse" || (!user?.teamId && selectedType === "miscellaneous") ? "a video" : "an image"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {selectedType === "memory_verse" || (!user?.teamId && selectedType === "miscellaneous")
-                        ? "MP4, MOV, AVI up to 100MB" 
-                        : "PNG, JPG, GIF up to 10MB"
-                      }
-                    </p>
-                    {!user?.teamId && selectedType === "miscellaneous" && (
-                      <p className="text-xs text-blue-600 mt-1 font-medium">
-                        Video required for introduction
-                      </p>
-                    )}
-                  </Label>
-                </div>
-                {previewImage && (
-                  <div className="mt-2">
-                    <img
-                      src={previewImage}
-                      alt="Preview"
-                      className="max-w-full h-48 object-cover rounded-lg"
-                    />
-                  </div>
+                        <option value="food" disabled={isPostTypeDisabled('food')}>
+                          Food {getRemainingMessage('food')}
+                        </option>
+                        <option value="workout" disabled={isPostTypeDisabled('workout')}>
+                          Workout {getRemainingMessage('workout')}
+                        </option>
+                        <option value="scripture" disabled={isPostTypeDisabled('scripture')}>
+                          Scripture {getRemainingMessage('scripture')}
+                        </option>
+                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
+                          Memory Verse {getRemainingMessage('memory_verse')}
+                        </option>
+                        {/* Remove Prayer Request option entirely - will be handled on its own page */}
+                        <option value="miscellaneous">
+                          Miscellaneous {getRemainingMessage('miscellaneous')}
+                        </option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
             )}
-            
-            <DialogFooter>
-              <div className="flex gap-2 w-full">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!user || isSubmitting || !canCreatePost() || (!user?.teamId && hasPostedIntroduction) || (!user?.teamId && selectedType === "miscellaneous" && !image)}
-                  className="flex-1 bg-violet-700 hover:bg-violet-800 text-white"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {!user?.teamId ? "Submitting..." : "Posting..."}
-                    </>
-                  ) : (
-                    !user?.teamId ? "Submit Introduction" : "Post"
-                  )}
-                </Button>
-              </div>
-            </DialogFooter>
+
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer") && (
+              <FormField
+                control={form.control}
+                name="mediaUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {(form.watch("type") === "memory_verse") ? "Video" : 
+                       (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
+                    </FormLabel>
+                    <div className="space-y-4">
+                      {form.watch("type") === "memory_verse" && (
+                        <div className="space-y-4">
+                          {/* Simplified upload button for memory verse */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full py-8"
+                            onClick={() => {
+                              if (videoInputRef.current) {
+                                videoInputRef.current.click();
+                              }
+                            }}
+                          >
+                            <div className="flex flex-col items-center justify-center text-center">                              
+                              <span>Select video</span>
+                            </div>
+                          </Button>
+
+                          {/* Hidden video input file */}
+                          <Input
+                            type="file"
+                            accept="video/*"
+                            ref={videoInputRef}
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                                  toast({
+                                    title: "Error",
+                                    description: "Video file is too large. Maximum size is 100MB.",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+
+                                // For video, create a preview and store the file reference
+                                const videoUrl = URL.createObjectURL(file);
+                                setImagePreview(videoUrl);
+
+                                // Generate a thumbnail for the video
+                                console.log("Starting thumbnail generation for video:", file.name, file.type);
+                                setVideoThumbnail(null); // Reset thumbnail state
+                                generateVideoThumbnail(file).then(thumbnailUrl => {
+                                  console.log("Thumbnail generation result:", thumbnailUrl ? "SUCCESS" : "FAILED");
+                                  if (thumbnailUrl) {
+                                    setVideoThumbnail(thumbnailUrl);
+                                    console.log("Generated video thumbnail successfully:", thumbnailUrl.substring(0, 50) + "...");
+                                  } else {
+                                    console.log("Failed to generate video thumbnail");
+                                  }
+                                }).catch(error => {
+                                  console.error("Error in thumbnail generation promise:", error);
+                                });
+
+                                // Important: we need to set the field value to a marker so we know to use the video file
+                                const marker = "VIDEO_FILE_UPLOAD";
+                                field.onChange(marker);
+
+                                // Log detailed information about the selected file
+                                console.log("Memory verse video file selected:", {
+                                  name: file.name,
+                                  type: file.type,
+                                  size: file.size,
+                                  sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
+                                  fieldValue: marker
+                                });
+
+                                // Log video selection without showing toast
+                                console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <FormControl>
+                        {form.watch("type") !== "memory_verse" && (
+                          <>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                // If Miscellaneous post and video already selected, show warning
+                                if (form.watch("type") === "miscellaneous" && selectedMediaType === "video") {
+                                  toast({
+                                    title: "Cannot select both image and video",
+                                    description: "Please remove the video first before selecting an image.",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                fileInputRef.current?.click();
+                              }}
+                              variant="outline"
+                              className="w-full"
+                            >
+                              Select Image
+                            </Button>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              ref={fileInputRef}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = async () => {
+                                    try {
+                                      if (file.type.startsWith("video/")) {
+                                        setImagePreview(reader.result as string);
+                                      } else {
+                                        const compressed = await compressImage(reader.result as string);
+                                        setImagePreview(compressed);
+                                        field.onChange(compressed);
+
+                                        // Set media type to image
+                                        if (form.watch("type") === "miscellaneous") {
+                                          setSelectedMediaType("image");
+                                        }
+                                      }
+                                    } catch (error) {
+                                      console.error('Error compressing image:', error);
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to process image. Please try again.",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                            />
+
+                            {/* Add Select Video button for Miscellaneous and Prayer Request post types */}
+                            {(form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
+                              <div className="mt-3">
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    // If Miscellaneous post and image already selected, show warning
+                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image") {
+                                      toast({
+                                        title: "Cannot select both image and video",
+                                        description: "Please remove the image first before selecting a video.",
+                                        variant: "destructive"
+                                      });
+                                      return;
+                                    }
+                                    videoInputRef.current?.click();
+                                  }}
+                                  variant="outline"
+                                  className="w-full"
+                                >
+                                  Select Video
+                                </Button>
+
+                                {/* Hidden video input field for miscellaneous posts */}
+                                <Input
+                                  type="file"
+                                  accept="video/*"
+                                  ref={videoInputRef}
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      // Apply the same file size limit as memory verse videos
+                                      if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                                        toast({
+                                          title: "Error",
+                                          description: "Video file is too large. Maximum size is 100MB.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+
+                                      // For video, create a preview and set media type
+                                      const videoUrl = URL.createObjectURL(file);
+                                      setImagePreview(videoUrl);
+                                      setSelectedMediaType("video");
+
+                                      // Generate a thumbnail for the video
+                                      generateVideoThumbnail(file).then(thumbnailUrl => {
+                                        if (thumbnailUrl) {
+                                          setVideoThumbnail(thumbnailUrl);
+                                          console.log("Generated video thumbnail for miscellaneous post");
+                                        }
+                                      });
+
+                                      // Set the field value to a marker so we know to use the video file
+                                      const marker = "VIDEO_FILE_UPLOAD";
+                                      field.onChange(marker);
+
+                                      // Log detailed information about the selected file
+                                      console.log("Miscellaneous video file selected:", {
+                                        name: file.name,
+                                        type: file.type,
+                                        size: file.size,
+                                        sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
+                                        selectedMediaType: "video",
+                                        fieldValue: marker
+                                      });
+
+                                      // Log video selection without showing toast
+                                      console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
+                                    }
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </FormControl>
+                      {(imagePreview || videoThumbnail) && (
+                        <div className="mt-2">
+                          {/* Display video thumbnails for memory verse posts or miscellaneous video posts */}
+                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && (
+                            <div className="mt-2">
+                              {videoThumbnail ? (
+                                <div>
+                                  <img 
+                                    src={videoThumbnail}
+                                    alt="Video Thumbnail"
+                                    className="max-h-40 rounded-md border border-gray-300"
+                                  />
+                                  <p className="text-sm text-gray-600 mt-1">Video thumbnail preview</p>
+                                </div>
+                              ) : (
+                                <div className="max-h-40 flex items-center justify-center border border-gray-300 rounded-md bg-gray-50 p-8">
+                                  <p className="text-sm text-gray-500">Generating thumbnail...</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Display regular images for other post types or miscellaneous image posts */}
+                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous") || 
+                            (form.watch("type") === "miscellaneous" && selectedMediaType === "image")) && imagePreview && (
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="max-h-40 rounded-md"
+                            />
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => {
+                              setImagePreview(null);
+                              setVideoThumbnail(null);
+                              field.onChange(null);
+                              // Reset media type for miscellaneous posts
+                              if (form.watch("type") === "miscellaneous") {
+                                setSelectedMediaType(null);
+                              }
+                            }}
+                          >
+                            Remove {form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && videoThumbnail) ? "Video" : "Image"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="content"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      placeholder="Enter post content"
+                      value={field.value || ''}
+                      className="min-h-[30px]"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-center mt-6 mb-20">
+              <Button
+                type="submit"
+                form="create-post-form"
+                variant="default"
+                className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
+                disabled={createPostMutation.isPending || (form.watch("type") !== "prayer" && !canPost[form.watch("type") as keyof typeof canPost])}
+              >
+                {createPostMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Post
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
