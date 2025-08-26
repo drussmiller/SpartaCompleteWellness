@@ -40,8 +40,15 @@ export function CreatePostDialog({
   initialType = "food",
 }: CreatePostDialogProps) {
   const { user } = useAuth();
+  
+  // Early return if user is not loaded yet
+  if (!user) {
+    return null;
+  }
   const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<PostType>(initialType || (user?.teamId ? "food" : "miscellaneous"));
+  const [selectedType, setSelectedType] = useState<PostType>(
+    initialType || (user?.teamId ? "food" : "miscellaneous")
+  );
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -596,7 +603,7 @@ export function CreatePostDialog({
         <Button 
           size="sm" 
           className="rounded-full bg-violet-700 hover:bg-violet-800 text-white border-0 shadow-lg"
-          disabled={!canCreatePost() || (!user?.teamId && hasPostedIntroduction)}
+          disabled={!user || !canCreatePost() || (!user?.teamId && hasPostedIntroduction)}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -756,7 +763,7 @@ export function CreatePostDialog({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !canCreatePost() || (!user?.teamId && hasPostedIntroduction) || (!user?.teamId && selectedType === "miscellaneous" && !image)}
+                  disabled={!user || isSubmitting || !canCreatePost() || (!user?.teamId && hasPostedIntroduction) || (!user?.teamId && selectedType === "miscellaneous" && !image)}
                   className="flex-1 bg-violet-700 hover:bg-violet-800 text-white"
                 >
                   {isSubmitting ? (
