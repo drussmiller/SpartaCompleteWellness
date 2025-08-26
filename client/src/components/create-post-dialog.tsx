@@ -540,7 +540,7 @@ export function CreatePostDialog({
                         </option>
                         {/* Remove Prayer Request option entirely - will be handled on its own page */}
                         <option value="miscellaneous">
-                          Miscellaneous {getRemainingMessage('miscellaneous')}
+                          {(!user?.teamId && !hasPostedIntroduction) ? "Introduction" : "Miscellaneous"} {getRemainingMessage('miscellaneous')}
                         </option>
                       </select>
                     </FormControl>
