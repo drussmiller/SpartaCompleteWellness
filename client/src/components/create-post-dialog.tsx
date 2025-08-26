@@ -615,7 +615,7 @@ export function CreatePostDialog({
         <Button 
           size="sm" 
           className="rounded-full bg-violet-700 hover:bg-violet-800 text-white border-0 shadow-lg"
-          disabled={!user || !canCreatePost() || (!user?.teamId && hasPostedIntroduction)}
+          disabled={!user || (!user?.teamId && hasPostedIntroduction)}
         >
           <Plus className="h-4 w-4" />
         </Button>
