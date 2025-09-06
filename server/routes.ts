@@ -1707,7 +1707,9 @@ export const registerRoutes = async (
     },
   );
 
-  // Add this endpoint before the return httpServer statement with improved error handling
+  // Add this endpoint before the app.use(router) line
+  // This endpoint has been moved to line ~3116 to support achievement_notifications_enabled
+
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
@@ -2181,52 +2183,53 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Program start date (2/24/2025)
-      const programStart = new Date("2025-02-24T00:00:00.000Z");
-
       // Get current time in user's timezone
       const utcNow = new Date();
       const userLocalNow = toUserLocalTime(utcNow);
 
-      // Get start of day in user's timezone
-      const userStartOfDay = new Date(userLocalNow);
-      userStartOfDay.setHours(0, 0, 0, 0);
+      // Calculate user's progress based on when they joined their team (in their local time)
+      const teamJoinLocalTime = toUserLocalTime(new Date(user.teamJoinedAt));
 
-      // Calculate days since program start in user's timezone
-      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
-      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+      // Get start of day for team join date in user's timezone
+      const teamJoinStartOfDay = new Date(teamJoinLocalTime);
+      teamJoinStartOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate current week and day in user's timezone
-      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      // Get start of current day in user's timezone
+      const currentStartOfDay = new Date(userLocalNow);
+      currentStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since user joined team (0 = same day they joined)
+      const daysSinceJoin = Math.floor(
+        (currentStartOfDay.getTime() - teamJoinStartOfDay.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Calculate current week and day based on user's progress
+      // Week starts at 1, day starts at 1 (Monday)
+      const weekNumber = Math.floor(daysSinceJoin / 7) + 1;
       const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
-
-      // Calculate user's progress based on their local time
-      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
-      const progressDays = Math.floor(
-        (userLocalNow.getTime() - progressStart.getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
 
       // Debug info
       console.log("Date Calculations:", {
         timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
         utcNow: utcNow.toISOString(),
         userLocalNow: userLocalNow.toLocaleString(),
-        daysSinceStart,
+        teamJoinedAt: user.teamJoinedAt,
+        teamJoinLocalTime: teamJoinLocalTime.toLocaleString(),
+        daysSinceJoin,
         weekNumber,
         dayNumber,
-        progressDays,
       });
 
       res.json({
         currentWeek: weekNumber,
         currentDay: dayNumber,
-        daysSinceStart,
-        progressDays,
+        daysSinceStart: daysSinceJoin, // Renamed for clarity
+        progressDays: daysSinceJoin,
         debug: {
           timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
           localTime: userLocalNow.toLocaleString(),
+          teamJoinedLocal: teamJoinLocalTime.toLocaleString(),
         },
       });
     } catch (error) {
@@ -2946,52 +2949,53 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User has no team join date" });
       }
 
-      // Program start date (2/24/2025)
-      const programStart = new Date("2025-02-24T00:00:00.000Z");
-
       // Get current time in user's timezone
       const utcNow = new Date();
       const userLocalNow = toUserLocalTime(utcNow);
 
-      // Get start of day in user's timezone
-      const userStartOfDay = new Date(userLocalNow);
-      userStartOfDay.setHours(0, 0, 0, 0);
+      // Calculate user's progress based on when they joined their team (in their local time)
+      const teamJoinLocalTime = toUserLocalTime(new Date(user.teamJoinedAt));
 
-      // Calculate days since program start in user's timezone
-      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
-      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+      // Get start of day for team join date in user's timezone
+      const teamJoinStartOfDay = new Date(teamJoinLocalTime);
+      teamJoinStartOfDay.setHours(0, 0, 0, 0);
 
-      // Calculate current week and day in user's timezone
-      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      // Get start of current day in user's timezone
+      const currentStartOfDay = new Date(userLocalNow);
+      currentStartOfDay.setHours(0, 0, 0, 0);
+
+      // Calculate days since user joined team (0 = same day they joined)
+      const daysSinceJoin = Math.floor(
+        (currentStartOfDay.getTime() - teamJoinStartOfDay.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Calculate current week and day based on user's progress
+      // Week starts at 1, day starts at 1 (Monday)
+      const weekNumber = Math.floor(daysSinceJoin / 7) + 1;
       const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
-
-      // Calculate user's progress based on their local time
-      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
-      const progressDays = Math.floor(
-        (userLocalNow.getTime() - progressStart.getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
 
       // Debug info
       console.log("Date Calculations:", {
         timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
         utcNow: utcNow.toISOString(),
         userLocalNow: userLocalNow.toLocaleString(),
-        daysSinceStart,
+        teamJoinedAt: user.teamJoinedAt,
+        teamJoinLocalTime: teamJoinLocalTime.toLocaleString(),
+        daysSinceJoin,
         weekNumber,
         dayNumber,
-        progressDays,
       });
 
       res.json({
         currentWeek: weekNumber,
         currentDay: dayNumber,
-        daysSinceStart,
-        progressDays,
+        daysSinceStart: daysSinceJoin, // Renamed for clarity
+        progressDays: daysSinceJoin,
         debug: {
           timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
           localTime: userLocalNow.toLocaleString(),
+          teamJoinedLocal: teamJoinLocalTime.toLocaleString(),
         },
       });
     } catch (error) {
@@ -3730,10 +3734,10 @@ export const registerRoutes = async (
 
       logger.info(`User ${req.user.id} signed waiver at ${agreedAt}`);
 
-      res.json({ 
+      res.json({
         message: "Waiver signed successfully",
         waiverSigned: true,
-        waiverSignedAt: updatedUser.waiverSignedAt 
+        waiverSignedAt: updatedUser.waiverSignedAt,
       });
     } catch (error) {
       logger.error("Error submitting waiver:", error);
@@ -5178,10 +5182,6 @@ export const registerRoutes = async (
             ? Object.keys(result)
             : undefined,
         valueIsArray:
-          result && typeof result === "object" && "value" in result
-            ? Array.isArray(result.value)
-            : undefined,
-        valueArrayLength:
           result &&
           typeof result === "object" &&
           "value" in result &&
