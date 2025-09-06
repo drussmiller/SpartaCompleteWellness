@@ -1,10 +1,9 @@
 import { useLocation } from "wouter";
-import { Home, Calendar, HelpCircle, Bell, Menu } from "lucide-react";
+import { Home, Calendar, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -36,20 +35,26 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     refetchInterval: 30000 // Refetch every 30 seconds
   });
 
+  // Check if user's program has started
+  const { data: activityStatus } = useQuery({
+    queryKey: ["/api/activities/current"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/activities/current?tzOffset=" + new Date().getTimezoneOffset());
+      if (!response.ok) throw new Error("Failed to fetch activity status");
+      return response.json();
+    },
+    enabled: !!user?.teamId,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+
   const items = [
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
-    { icon: HelpCircle, label: "Help", href: "/help" },
-    { 
-      icon: Bell, 
-      label: "Notifications", 
-      href: "/notifications",
-      count: unreadCount 
-    },
+    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount },
   ];
 
   return (
-    <nav 
+    <nav
       className={cn(
         // Base styles
         "bg-background shadow-lg",
@@ -72,8 +77,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
         {items.map(({ icon: Icon, label, href, count }) => {
-          const isDisabled = !user?.teamId && (href === "/activity" || href === "/notifications");
-          
+          const isActivityLink = href === "/activity";
+          const isDisabled = !user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted);
+
           return (
           <div
             key={href}
@@ -85,7 +91,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
               // Disabled or enabled cursor
               isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               // Text styles
-              isDisabled 
+              isDisabled
                 ? "text-muted-foreground"
                 : location === href
                   ? "text-primary"
@@ -93,7 +99,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             )}
           >
             <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
-            <span className="text-xs">{label}</span>
+            <span className="text-xs">
+              {label}
+              {isActivityLink && !user?.teamId && (
+                <span className="block text-[10px] text-muted-foreground">(Team Required)</span>
+              )}
+              {isActivityLink && user?.teamId && activityStatus && !activityStatus.programHasStarted && (
+                <span className="block text-[10px] text-muted-foreground">(Starts Next Monday)</span>
+              )}
+            </span>
             {count > 0 && (
               <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                 {count}
