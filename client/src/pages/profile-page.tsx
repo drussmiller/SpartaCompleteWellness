@@ -63,8 +63,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    onSuccess: async () => {
+      // Invalidate and refetch user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await refetchUser();
       setIsEditingPreferredName(false);
       toast({
         title: "Success",
@@ -333,12 +335,15 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Preferred Name: {user?.preferredName || "Not set"}
+                        Preferred Name: {user?.preferredName || preferredNameValue || "Not set"}
                       </span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setIsEditingPreferredName(true)}
+                        onClick={() => {
+                          setPreferredNameValue(user?.preferredName || "");
+                          setIsEditingPreferredName(true);
+                        }}
                         className="h-6 px-2 text-xs"
                       >
                         Edit
