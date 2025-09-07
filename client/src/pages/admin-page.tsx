@@ -10,7 +10,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { insertTeamSchema, type Team, type User } from "@shared/schema";
+import { insertTeamSchema, insertOrganizationSchema, insertGroupSchema, type Team, type User, type Organization, type Group } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +40,8 @@ import {
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
+type OrganizationFormData = z.infer<typeof insertOrganizationSchema>;
+type GroupFormData = z.infer<typeof insertGroupSchema>;
 
 interface AdminPageProps {
   onClose?: () => void;
@@ -53,6 +55,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [newPassword, setNewPassword] = useState("");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [, setLocation] = useLocation();
   const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
 
@@ -71,6 +75,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
+  });
+
+  const { data: organizations, isLoading: organizationsLoading, error: organizationsError } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
+  const { data: groups, isLoading: groupsLoading, error: groupsError } = useQuery<Group[]>({
+    queryKey: ["/api/groups"],
   });
 
   const { data: users, isLoading: usersLoading, error: usersError } = useQuery<User[]>({
@@ -159,6 +171,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
+  // Keep this for backward compatibility but it won't be used in the new UI
   const updateUserTeamMutation = useMutation({
     mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, { teamId });
@@ -326,8 +339,154 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
-  const isLoading = teamsLoading || usersLoading;
-  const error = teamsError || usersError;
+  // Organization mutations
+  const organizationForm = useForm<OrganizationFormData>({
+    resolver: zodResolver(insertOrganizationSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+
+  const createOrganizationMutation = useMutation({
+    mutationFn: async (data: OrganizationFormData) => {
+      const res = await apiRequest("POST", "/api/organizations", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization created successfully",
+      });
+      organizationForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteOrganizationMutation = useMutation({
+    mutationFn: async (organizationId: number) => {
+      const res = await apiRequest("DELETE", `/api/organizations/${organizationId}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Group mutations
+  const groupForm = useForm<GroupFormData>({
+    resolver: zodResolver(insertGroupSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      organizationId: 0,
+    },
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (data: GroupFormData) => {
+      const res = await apiRequest("POST", "/api/groups", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Group created successfully",
+      });
+      groupForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Group deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserGroupMutation = useMutation({
+    mutationFn: async ({ userId, groupId }: { userId: number; groupId: number | null }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, { groupId });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update user's group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User's group updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isLoading = teamsLoading || usersLoading || organizationsLoading || groupsLoading;
+  const error = teamsError || usersError || organizationsError || groupsError;
 
   if (isLoading) {
     return (
@@ -377,6 +536,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   }
 
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   const isMobile = window.innerWidth <= 768;
@@ -549,9 +710,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 <AlertDialogTitle>Delete Team?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to delete the team "{team.name}"? This action cannot be undone.
-                                  {sortedUsers?.filter((u) => u.teamId === team.id).length > 0 && (
+                                  {sortedUsers?.filter((u) => {
+                                    const teamGroup = sortedGroups?.find(g => g.id === u.groupId);
+                                    return teamGroup && sortedTeams?.find(t => t.id === team.id && t.groupId === teamGroup.id);
+                                  }).length > 0 && (
                                     <p className="mt-2 text-amber-600 font-medium">
-                                      Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members.
+                                      Warning: This team has {sortedUsers?.filter((u) => {
+                                        const teamGroup = sortedGroups?.find(g => g.id === u.groupId);
+                                        return teamGroup && sortedTeams?.find(t => t.id === team.id && t.groupId === teamGroup.id);
+                                      }).length} members.
                                       Deleting it will remove these users from the team.
                                     </p>
                                   )}
@@ -573,7 +740,181 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       <CardContent>
                         <p className="text-sm">
                           <span className="font-medium">Members: </span>
-                          {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
+                          {sortedUsers?.filter((u) => {
+                            const teamGroup = sortedGroups?.find(g => g.id === u.groupId);
+                            return teamGroup && sortedTeams?.find(t => t.id === team.id && t.groupId === teamGroup.id);
+                          }).length || 0}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Organizations Section */}
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-semibold">Organizations</h2>
+                </div>
+                
+                <Form {...organizationForm}>
+                  <form onSubmit={organizationForm.handleSubmit((data) => createOrganizationMutation.mutate(data))} className="space-y-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={organizationForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Organization Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter organization name" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={organizationForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter description" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={createOrganizationMutation.isPending}>
+                      {createOrganizationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Organization
+                    </Button>
+                  </form>
+                </Form>
+
+                <div className="space-y-4">
+                  {sortedOrganizations?.map((organization) => (
+                    <Card key={organization.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle>{organization.name}</CardTitle>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteOrganizationMutation.mutate(organization.id)}
+                            disabled={deleteOrganizationMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <CardDescription>{organization.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm">
+                          <span className="font-medium">Groups: </span>
+                          {sortedGroups?.filter((g) => g.organizationId === organization.id).length || 0}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Groups Section */}
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-semibold">Groups</h2>
+                </div>
+                
+                <Form {...groupForm}>
+                  <form onSubmit={groupForm.handleSubmit((data) => createGroupMutation.mutate(data))} className="space-y-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={groupForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter group name" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={groupForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter description" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={groupForm.control}
+                        name="organizationId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Organization</FormLabel>
+                            <FormControl>
+                              <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select organization" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {sortedOrganizations?.map((org) => (
+                                    <SelectItem key={org.id} value={org.id.toString()}>
+                                      {org.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={createGroupMutation.isPending}>
+                      {createGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Group
+                    </Button>
+                  </form>
+                </Form>
+
+                <div className="space-y-4">
+                  {sortedGroups?.map((group) => (
+                    <Card key={group.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle>{group.name}</CardTitle>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteGroupMutation.mutate(group.id)}
+                            disabled={deleteGroupMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <CardDescription>{group.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm">
+                          <span className="font-medium">Organization: </span>
+                          {sortedOrganizations?.find((o) => o.id === group.organizationId)?.name || "Unknown"}
+                        </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Members: </span>
+                          {sortedUsers?.filter((u) => u.groupId === group.id).length || 0}
+                        </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Teams: </span>
+                          {sortedTeams?.filter((t) => t.groupId === group.id).length || 0}
                         </p>
                       </CardContent>
                     </Card>
@@ -689,22 +1030,22 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Team Assignment</p>
+                          <p className="text-sm font-medium">Group Assignment</p>
                           <Select
-                            defaultValue={user.teamId?.toString() || "none"}
+                            defaultValue={user.groupId?.toString() || "none"}
                             onValueChange={(value) => {
-                              const teamId = value === "none" ? null : parseInt(value);
-                              updateUserTeamMutation.mutate({ userId: user.id, teamId });
+                              const groupId = value === "none" ? null : parseInt(value);
+                              updateUserGroupMutation.mutate({ userId: user.id, groupId });
                             }}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a team" />
+                              <SelectValue placeholder="Select a group" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">No Team</SelectItem>
-                              {sortedTeams?.map((team) => (
-                                <SelectItem key={team.id} value={team.id.toString()}>
-                                  {team.name}
+                              <SelectItem value="none">No Group</SelectItem>
+                              {sortedGroups?.map((group) => (
+                                <SelectItem key={group.id} value={group.id.toString()}>
+                                  {group.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
