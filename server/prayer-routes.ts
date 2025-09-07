@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "./db";
-import { users, posts, groups, organizations } from "@shared/schema";
+import { users, posts, groups, organizations, teams } from "@shared/schema";
 import { authenticate } from "./auth";
 import { and, eq, gt, not, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -13,12 +13,12 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-    // Get the user's last prayer request view timestamp and group info
+    // Get the user's last prayer request view timestamp and team info
     logger.info(`Fetching prayer request view timestamp for user ${req.user.id}`);
     const [user] = await db
       .select({ 
         lastPrayerRequestView: users.lastPrayerRequestView,
-        groupId: users.groupId
+        teamId: users.teamId
       })
       .from(users)
       .where(eq(users.id, req.user.id));
@@ -26,21 +26,25 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
     // If user has never viewed prayer requests, count all prayer requests
     const lastViewTime = user?.lastPrayerRequestView || new Date(0); // Use epoch if null
 
-    // If user is not in a group, return 0 (no organization context)
-    if (!user?.groupId) {
-      logger.info(`User ${req.user.id} is not in a group, returning 0 prayer requests`);
+    // If user is not in a team, return 0 (no organization context)
+    if (!user?.teamId) {
+      logger.info(`User ${req.user.id} is not in a team, returning 0 prayer requests`);
       res.json({ unreadCount: 0 });
       return;
     }
 
-    // Find the organization for the user's group
-    const [userGroup] = await db
-      .select({ organizationId: groups.organizationId })
-      .from(groups)
-      .where(eq(groups.id, user.groupId));
+    // Find the organization for the user's team (team -> group -> organization)
+    const [userTeamData] = await db
+      .select({ 
+        groupId: teams.groupId,
+        organizationId: groups.organizationId 
+      })
+      .from(teams)
+      .innerJoin(groups, eq(teams.groupId, groups.id))
+      .where(eq(teams.id, user.teamId));
 
-    if (!userGroup?.organizationId) {
-      logger.info(`User ${req.user.id}'s group has no organization, returning 0 prayer requests`);
+    if (!userTeamData?.organizationId) {
+      logger.info(`User ${req.user.id}'s team has no organization, returning 0 prayer requests`);
       res.json({ unreadCount: 0 });
       return;
     }
@@ -49,15 +53,23 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
     const organizationGroups = await db
       .select({ id: groups.id })
       .from(groups)
-      .where(eq(groups.organizationId, userGroup.organizationId));
+      .where(eq(groups.organizationId, userTeamData.organizationId));
 
     const groupIds = organizationGroups.map(g => g.id);
 
-    // Find all users in those groups
+    // Find all teams in those groups
+    const organizationTeams = await db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(inArray(teams.groupId, groupIds));
+
+    const teamIds = organizationTeams.map(t => t.id);
+
+    // Find all users in those teams
     const organizationUsers = await db
       .select({ id: users.id })
       .from(users)
-      .where(inArray(users.groupId, groupIds));
+      .where(inArray(users.teamId, teamIds));
 
     const userIds = organizationUsers.map(u => u.id);
 
@@ -76,7 +88,7 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
         )
       );
 
-    logger.info(`Unread prayer requests for user ${req.user.id} (organization ${userGroup.organizationId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
+    logger.info(`Unread prayer requests for user ${req.user.id} (organization ${userTeamData.organizationId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
     res.json({ unreadCount: newPrayerRequests[0].count });
   } catch (error) {
     logger.error('Error fetching unread prayer requests:', error);
