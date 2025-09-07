@@ -3,6 +3,8 @@ import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
 import {
   posts,
   teams,
+  groups,
+  organizations,
   users,
   activities,
   reactions,
@@ -11,12 +13,17 @@ import {
   workoutVideos,
   type Post,
   type Team,
+  type Group,
+  type Organization,
   type User,
   type Activity,
   type Reaction,
   type Notification,
   type Measurement,
-  type WorkoutVideo
+  type WorkoutVideo,
+  type InsertTeam,
+  type InsertGroup,
+  type InsertOrganization
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
@@ -252,7 +259,7 @@ export const storage = {
             username: users.username,
             imageUrl: users.imageUrl,
             preferredName: users.preferredName,
-            teamId: users.teamId
+            groupId: users.groupId
           }
         })
         .from(posts)
@@ -662,6 +669,89 @@ export const storage = {
       await db.delete(teams).where(eq(teams.id, id));
     } catch (error) {
       logger.error(`Failed to delete team ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  // Organizations
+  async getOrganizations(): Promise<Organization[]> {
+    try {
+      return await db.select().from(organizations);
+    } catch (error) {
+      logger.error(`Failed to get organizations: ${error}`);
+      throw error;
+    }
+  },
+
+  async createOrganization(data: InsertOrganization): Promise<Organization> {
+    try {
+      const [organization] = await db
+        .insert(organizations)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return organization;
+    } catch (error) {
+      logger.error(`Failed to create organization: ${error}`);
+      throw error;
+    }
+  },
+
+  async deleteOrganization(id: number): Promise<void> {
+    try {
+      await db.delete(organizations).where(eq(organizations.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete organization ${id}: ${error}`);
+      throw error;
+    }
+  },
+
+  // Groups
+  async getGroups(): Promise<Group[]> {
+    try {
+      return await db.select().from(groups);
+    } catch (error) {
+      logger.error(`Failed to get groups: ${error}`);
+      throw error;
+    }
+  },
+
+  async getGroupsByOrganization(organizationId: number): Promise<Group[]> {
+    try {
+      return await db.select().from(groups).where(eq(groups.organizationId, organizationId));
+    } catch (error) {
+      logger.error(`Failed to get groups for organization ${organizationId}: ${error}`);
+      throw error;
+    }
+  },
+
+  async createGroup(data: InsertGroup): Promise<Group> {
+    try {
+      const [group] = await db
+        .insert(groups)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return group;
+    } catch (error) {
+      logger.error(`Failed to create group: ${error}`);
+      throw error;
+    }
+  },
+
+  async deleteGroup(id: number): Promise<void> {
+    try {
+      await db.delete(groups).where(eq(groups.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete group ${id}: ${error}`);
+      throw error;
+    }
+  },
+
+  // Update team functions to work with groupId
+  async getTeamsByGroup(groupId: number): Promise<Team[]> {
+    try {
+      return await db.select().from(teams).where(eq(teams.groupId, groupId));
+    } catch (error) {
+      logger.error(`Failed to get teams for group ${groupId}: ${error}`);
       throw error;
     }
   }
