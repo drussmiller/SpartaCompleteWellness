@@ -57,13 +57,17 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
   const updatePreferredNameMutation = useMutation({
     mutationFn: async (preferredName: string) => {
+      console.log("Updating preferred name to:", preferredName);
       const res = await apiRequest("PATCH", "/api/user/preferred-name", { preferredName });
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to update preferred name:", errorText);
         throw new Error("Failed to update preferred name");
       }
       return res.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      console.log("Preferred name update successful:", data);
       // Invalidate and refetch user data
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       await refetchUser();
@@ -74,6 +78,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       });
     },
     onError: (error: any) => {
+      console.error("Preferred name update error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update preferred name",

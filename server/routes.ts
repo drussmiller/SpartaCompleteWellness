@@ -1841,6 +1841,40 @@ export const registerRoutes = async (
     }
   });
 
+  // Update user's preferred name
+  router.patch("/api/user/preferred-name", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { preferredName } = req.body;
+      console.log(`Updating preferred name for user ${req.user.id} to:`, preferredName);
+
+      // Update the user's preferred name
+      const [updatedUser] = await db
+        .update(users)
+        .set({ preferredName: preferredName || null })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log("User preferred name updated successfully:", updatedUser.preferredName);
+      
+      res.json({
+        message: "Preferred name updated successfully",
+        preferredName: updatedUser.preferredName
+      });
+    } catch (error) {
+      logger.error("Error updating preferred name:", error);
+      res.status(500).json({
+        message: "Failed to update preferred name",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Update daily score check endpoint
   // Added a GET endpoint for testing as well as the main POST endpoint
   router.get("/api/check-daily-scores", async (req, res) => {
