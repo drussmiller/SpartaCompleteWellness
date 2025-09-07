@@ -117,6 +117,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
+      groupId: 0,
     },
   });
 
@@ -618,6 +619,32 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="groupId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group</FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value?.toString() || ""}
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a group" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {sortedGroups?.map((group) => (
+                                    <SelectItem key={group.id} value={group.id.toString()}>
+                                      {group.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                       <Button type="submit" disabled={createTeamMutation.isPending}>
                         {createTeamMutation.isPending ? "Creating..." : "Create Team"}
                       </Button>
@@ -652,6 +679,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     name: formData.get('name') as string,
                                     description: formData.get('description') as string,
+                                    groupId: parseInt(formData.get('groupId') as string),
                                   }
                                 });
                               }}>
@@ -666,6 +694,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     defaultValue={team.description || ''}
                                     className="text-sm"
                                   />
+                                  <Select name="groupId" defaultValue={team.groupId?.toString() || ""}>
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select a group" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {sortedGroups?.map((group) => (
+                                        <SelectItem key={group.id} value={group.id.toString()}>
+                                          {group.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
@@ -710,15 +750,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 <AlertDialogTitle>Delete Team?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to delete the team "{team.name}"? This action cannot be undone.
-                                  {sortedUsers?.filter((u) => {
-                                    const teamGroup = sortedGroups?.find(g => g.id === u.groupId);
-                                    return teamGroup && sortedTeams?.find(t => t.id === team.id && t.groupId === teamGroup.id);
-                                  }).length > 0 && (
+                                  {sortedUsers?.filter((u) => u.teamId === team.id).length > 0 && (
                                     <p className="mt-2 text-amber-600 font-medium">
-                                      Warning: This team has {sortedUsers?.filter((u) => {
-                                        const teamGroup = sortedGroups?.find(g => g.id === u.groupId);
-                                        return teamGroup && sortedTeams?.find(t => t.id === team.id && t.groupId === teamGroup.id);
-                                      }).length} members.
+                                      Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members.
                                       Deleting it will remove these users from the team.
                                     </p>
                                   )}
@@ -739,11 +773,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm">
+                          <span className="font-medium">Group: </span>
+                          {sortedGroups?.find((g) => g.id === team.groupId)?.name || "No Group"}
+                        </p>
+                        <p className="text-sm">
                           <span className="font-medium">Members: </span>
-                          {sortedUsers?.filter((u) => {
-                            const teamGroup = sortedGroups?.find(g => g.id === u.groupId);
-                            return teamGroup && sortedTeams?.find(t => t.id === team.id && t.groupId === teamGroup.id);
-                          }).length || 0}
+                          {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
                         </p>
                       </CardContent>
                     </Card>
@@ -910,7 +945,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </p>
                         <p className="text-sm">
                           <span className="font-medium">Members: </span>
-                          {sortedUsers?.filter((u) => u.groupId === group.id).length || 0}
+                          {sortedUsers?.filter((u) => {
+                            const userTeam = sortedTeams?.find(t => t.id === u.teamId);
+                            return userTeam && userTeam.groupId === group.id;
+                          }).length || 0}
                         </p>
                         <p className="text-sm">
                           <span className="font-medium">Teams: </span>
