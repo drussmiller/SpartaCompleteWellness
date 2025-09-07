@@ -611,6 +611,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     name="email"
                                     defaultValue={user.email}
                                     type="email"
+                                  />"
+                                    defaultValue={user.email}
+                                    type="email"
                                     className="text-sm"
                                   />
                                   <div className="flex gap-2">
