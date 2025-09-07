@@ -10,6 +10,14 @@ import { SignaturePad } from '@/components/signature-pad';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { queryClient } from '@/lib/queryClient';
 
+// Add Google Fonts link for Dancing Script
+if (!document.querySelector('link[href*="Dancing+Script"]')) {
+  const link = document.createElement('link');
+  link.href = 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap';
+  link.rel = 'stylesheet';
+  document.head.appendChild(link);
+}
+
 export default function WaiverPage() {
   const { user } = useAuth();
   const [_, setLocation] = useLocation();
@@ -18,6 +26,8 @@ export default function WaiverPage() {
   const [hasReadWaiver, setHasReadWaiver] = useState(false);
   const [hasAgreed, setHasAgreed] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
+  const [signatureType, setSignatureType] = useState<'draw' | 'type'>('draw');
+  const [typedSignature, setTypedSignature] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignatureSave = (dataURL: string) => {
@@ -30,10 +40,36 @@ export default function WaiverPage() {
 
   const handleSignatureClear = () => {
     setSignature(null);
+    setTypedSignature('');
+  };
+
+  const generateTypedSignature = async (name: string): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    
+    canvas.width = 400;
+    canvas.height = 100;
+    
+    // Fill with white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Set font and style for cursive signature
+    ctx.font = '32px "Dancing Script", "Brush Script MT", cursive';
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Draw the typed signature
+    ctx.fillText(name, canvas.width / 2, canvas.height / 2);
+    
+    return canvas.toDataURL('image/png');
   };
 
   const handleSubmit = async () => {
-    if (!hasReadWaiver || !hasAgreed || !signature) {
+    const hasValidSignature = signatureType === 'draw' ? signature : typedSignature.trim();
+    
+    if (!hasReadWaiver || !hasAgreed || !hasValidSignature) {
       toast({
         title: "Incomplete waiver",
         description: "Please read the waiver, agree to the terms, and provide your signature.",
@@ -52,7 +88,7 @@ export default function WaiverPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          signature,
+          signature: signatureType === 'draw' ? signature : await generateTypedSignature(typedSignature),
           agreedAt: new Date().toISOString(),
         }),
       });
@@ -184,15 +220,85 @@ export default function WaiverPage() {
           {/* Signature Section */}
           <div className="space-y-4">
             <h3 className="font-semibold">Electronic Signature</h3>
-            <SignaturePad 
-              onSave={handleSignatureSave}
-              onClear={handleSignatureClear}
-            />
             
-            {signature && (
-              <div className="space-y-2">
-                <p className="text-sm text-green-600 font-medium">✓ Signature captured</p>
-                <img src={signature} alt="Your signature" className="border rounded max-h-20" />
+            {/* Signature Type Selector */}
+            <div className="flex gap-2 mb-4">
+              <Button
+                type="button"
+                variant={signatureType === 'draw' ? 'default' : 'outline'}
+                onClick={() => {
+                  setSignatureType('draw');
+                  setTypedSignature('');
+                }}
+                className="flex-1"
+              >
+                Draw Signature
+              </Button>
+              <Button
+                type="button"
+                variant={signatureType === 'type' ? 'default' : 'outline'}
+                onClick={() => {
+                  setSignatureType('type');
+                  setSignature(null);
+                }}
+                className="flex-1"
+              >
+                Type Name
+              </Button>
+            </div>
+
+            {signatureType === 'draw' ? (
+              <div className="space-y-4">
+                <SignaturePad 
+                  onSave={handleSignatureSave}
+                  onClear={handleSignatureClear}
+                />
+                
+                {signature && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-green-600 font-medium">✓ Signature captured</p>
+                    <img src={signature} alt="Your signature" className="border rounded max-h-20" />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="typed-signature" className="text-sm font-medium">
+                    Type your full legal name
+                  </label>
+                  <input
+                    id="typed-signature"
+                    type="text"
+                    value={typedSignature}
+                    onChange={(e) => setTypedSignature(e.target.value)}
+                    placeholder="Enter your full legal name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                
+                {typedSignature.trim() && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-green-600 font-medium">✓ Signature preview:</p>
+                    <div 
+                      className="border rounded p-4 bg-white text-center"
+                      style={{ 
+                        fontFamily: '"Dancing Script", "Brush Script MT", cursive',
+                        fontSize: '32px',
+                        minHeight: '80px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {typedSignature}
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-sm text-gray-600">
+                  Your typed name will be converted to a cursive signature style
+                </p>
               </div>
             )}
           </div>
@@ -201,7 +307,7 @@ export default function WaiverPage() {
           <div className="flex justify-center">
             <Button 
               onClick={handleSubmit}
-              disabled={!hasReadWaiver || !hasAgreed || !signature || isSubmitting}
+              disabled={!hasReadWaiver || !hasAgreed || !(signatureType === 'draw' ? signature : typedSignature.trim()) || isSubmitting}
               className="w-full max-w-md"
               size="lg"
             >
