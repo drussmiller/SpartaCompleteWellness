@@ -47,6 +47,38 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     staleTime: 0,
     enabled: !!authUser,
   });
+
+  const [isEditingPreferredName, setIsEditingPreferredName] = useState(false);
+  const [preferredNameValue, setPreferredNameValue] = useState(user?.preferredName || "");
+
+  useEffect(() => {
+    setPreferredNameValue(user?.preferredName || "");
+  }, [user?.preferredName]);
+
+  const updatePreferredNameMutation = useMutation({
+    mutationFn: async (preferredName: string) => {
+      const res = await apiRequest("PATCH", "/api/user/preferred-name", { preferredName });
+      if (!res.ok) {
+        throw new Error("Failed to update preferred name");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setIsEditingPreferredName(false);
+      toast({
+        title: "Success",
+        description: "Preferred name updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update preferred name",
+        variant: "destructive",
+      });
+    },
+  });
   
   // Add user stats query with timezone offset
   const tzOffset = new Date().getTimezoneOffset();
@@ -261,7 +293,58 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               </div>
               <div className="flex-1">
                 <h2 className="text-xl font-semibold">{user?.username}</h2>
-                <p className="text-lg text-muted-foreground">{user?.email}</p>
+                <div className="mt-2">
+                  {isEditingPreferredName ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={preferredNameValue}
+                        onChange={(e) => setPreferredNameValue(e.target.value)}
+                        placeholder="Enter preferred name"
+                        className="text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updatePreferredNameMutation.mutate(preferredNameValue);
+                          } else if (e.key === 'Escape') {
+                            setPreferredNameValue(user?.preferredName || "");
+                            setIsEditingPreferredName(false);
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => updatePreferredNameMutation.mutate(preferredNameValue)}
+                        disabled={updatePreferredNameMutation.isPending}
+                      >
+                        {updatePreferredNameMutation.isPending ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setPreferredNameValue(user?.preferredName || "");
+                          setIsEditingPreferredName(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Preferred Name: {user?.preferredName || "Not set"}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingPreferredName(true)}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-lg text-muted-foreground mt-1">{user?.email}</p>
               </div>
             </CardContent>
           </Card>
