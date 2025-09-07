@@ -667,6 +667,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </AlertDialog>
                                   </div>
                                 </div>
+                                <div className="text-sm text-muted-foreground">
+                                  <span className="font-medium">Username:</span> {user.username}
+                                </div>
                                 <CardDescription>{user.email}</CardDescription>
                                 <div className="mt-1 text-sm text-muted-foreground">
                                   Start Date: {new Date(user.createdAt!).toLocaleDateString()}
