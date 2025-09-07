@@ -11,13 +11,13 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
   isTeamLead: boolean("is_team_lead").default(false),
-  groupId: integer("group_id"), // Changed from teamId to groupId
+  teamId: integer("team_id"), // Users belong to teams
   points: integer("points").default(0),
   weight: integer("weight"),
   waist: integer("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
-  groupJoinedAt: timestamp("group_joined_at"), // Changed from teamJoinedAt
+  teamJoinedAt: timestamp("team_joined_at"), // When user joined their team
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
@@ -133,7 +133,7 @@ export const videos = pgTable("videos", {
   thumbnail: text("thumbnail"),
   category: text("category").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  groupId: integer("group_id"), // Changed from teamId to groupId
+  teamId: integer("team_id"), // Videos belong to teams
 });
 
 export const activities = pgTable("activities", {
@@ -195,20 +195,20 @@ export const groupRelations = relations(groups, ({ one, many }) => ({
     references: [organizations.id],
   }),
   teams: many(teams),
-  users: many(users),
 }));
 
-export const teamRelations = relations(teams, ({ one }) => ({
+export const teamRelations = relations(teams, ({ one, many }) => ({
   group: one(groups, {
     fields: [teams.groupId],
     references: [groups.id],
   }),
+  users: many(users),
 }));
 
 export const userRelations = relations(users, ({ one }) => ({
-  group: one(groups, {
-    fields: [users.groupId],
-    references: [groups.id],
+  team: one(teams, {
+    fields: [users.teamId],
+    references: [teams.id],
   }),
 }));
 
