@@ -1030,22 +1030,22 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Group Assignment</p>
+                          <p className="text-sm font-medium">Team Assignment</p>
                           <Select
-                            defaultValue={user.groupId?.toString() || "none"}
+                            defaultValue={user.teamId?.toString() || "none"}
                             onValueChange={(value) => {
-                              const groupId = value === "none" ? null : parseInt(value);
-                              updateUserGroupMutation.mutate({ userId: user.id, groupId });
+                              const teamId = value === "none" ? null : parseInt(value);
+                              updateUserTeamMutation.mutate({ userId: user.id, teamId });
                             }}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a group" />
+                              <SelectValue placeholder="Select a team" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">No Group</SelectItem>
-                              {sortedGroups?.map((group) => (
-                                <SelectItem key={group.id} value={group.id.toString()}>
-                                  {group.name}
+                              <SelectItem value="none">No Team</SelectItem>
+                              {sortedTeams?.map((team) => (
+                                <SelectItem key={team.id} value={team.id.toString()}>
+                                  {team.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>

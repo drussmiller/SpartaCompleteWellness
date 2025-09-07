@@ -259,7 +259,7 @@ export const storage = {
             username: users.username,
             imageUrl: users.imageUrl,
             preferredName: users.preferredName,
-            groupId: users.groupId
+            teamId: users.teamId
           }
         })
         .from(posts)
