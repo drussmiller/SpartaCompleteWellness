@@ -295,12 +295,12 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 <h2 className="text-xl font-semibold">{user?.username}</h2>
                 <div className="mt-2">
                   {isEditingPreferredName ? (
-                    <div className="flex items-center gap-2">
+                    <div className="space-y-2">
                       <Input
                         value={preferredNameValue}
                         onChange={(e) => setPreferredNameValue(e.target.value)}
                         placeholder="Enter preferred name"
-                        className="text-sm"
+                        className="text-base w-full"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             updatePreferredNameMutation.mutate(preferredNameValue);
@@ -310,23 +310,25 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           }
                         }}
                       />
-                      <Button
-                        size="sm"
-                        onClick={() => updatePreferredNameMutation.mutate(preferredNameValue)}
-                        disabled={updatePreferredNameMutation.isPending}
-                      >
-                        {updatePreferredNameMutation.isPending ? "Saving..." : "Save"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setPreferredNameValue(user?.preferredName || "");
-                          setIsEditingPreferredName(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => updatePreferredNameMutation.mutate(preferredNameValue)}
+                          disabled={updatePreferredNameMutation.isPending}
+                        >
+                          {updatePreferredNameMutation.isPending ? "Saving..." : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setPreferredNameValue(user?.preferredName || "");
+                            setIsEditingPreferredName(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
