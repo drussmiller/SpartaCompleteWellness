@@ -22,6 +22,8 @@ import {
   notifications,
   users,
   teams,
+  groups,
+  organizations,
   activities,
   workoutVideos,
   measurements,
@@ -29,6 +31,8 @@ import {
   achievementTypes,
   userAchievements,
   insertTeamSchema,
+  insertGroupSchema,
+  insertOrganizationSchema,
   insertPostSchema,
   insertMeasurementSchema,
   insertNotificationSchema,
@@ -1352,6 +1356,133 @@ export const registerRoutes = async (
       logger.error(`Error deleting team ${req.params.id}:`, error);
       res.status(500).json({
         message: "Failed to delete team",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Organizations endpoints
+  router.get("/api/organizations", authenticate, async (req, res) => {
+    try {
+      const organizations = await storage.getOrganizations();
+      res.json(organizations);
+    } catch (error) {
+      logger.error("Error fetching organizations:", error);
+      res.status(500).json({ message: "Failed to fetch organizations" });
+    }
+  });
+
+  router.post("/api/organizations", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const parsedData = insertOrganizationSchema.safeParse(req.body);
+      if (!parsedData.success) {
+        return res.status(400).json({
+          message: "Invalid organization data",
+          errors: parsedData.error.errors,
+        });
+      }
+
+      const organization = await storage.createOrganization(parsedData.data);
+      logger.info(`Created organization: ${organization.name} by user ${req.user.id}`);
+      res.status(201).json(organization);
+    } catch (error) {
+      logger.error("Error creating organization:", error);
+      res.status(500).json({
+        message: "Failed to create organization",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  router.delete("/api/organizations/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const organizationId = parseInt(req.params.id);
+      if (isNaN(organizationId)) {
+        return res.status(400).json({ message: "Invalid organization ID" });
+      }
+
+      await storage.deleteOrganization(organizationId);
+      logger.info(`Deleted organization ${organizationId} by user ${req.user.id}`);
+      res.status(200).json({ message: "Organization deleted successfully" });
+    } catch (error) {
+      logger.error(`Error deleting organization ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to delete organization",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Groups endpoints
+  router.get("/api/groups", authenticate, async (req, res) => {
+    try {
+      const { organizationId } = req.query;
+      
+      if (organizationId) {
+        const groups = await storage.getGroupsByOrganization(parseInt(organizationId as string));
+        res.json(groups);
+      } else {
+        const groups = await storage.getGroups();
+        res.json(groups);
+      }
+    } catch (error) {
+      logger.error("Error fetching groups:", error);
+      res.status(500).json({ message: "Failed to fetch groups" });
+    }
+  });
+
+  router.post("/api/groups", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const parsedData = insertGroupSchema.safeParse(req.body);
+      if (!parsedData.success) {
+        return res.status(400).json({
+          message: "Invalid group data",
+          errors: parsedData.error.errors,
+        });
+      }
+
+      const group = await storage.createGroup(parsedData.data);
+      logger.info(`Created group: ${group.name} by user ${req.user.id}`);
+      res.status(201).json(group);
+    } catch (error) {
+      logger.error("Error creating group:", error);
+      res.status(500).json({
+        message: "Failed to create group",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  router.delete("/api/groups/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      await storage.deleteGroup(groupId);
+      logger.info(`Deleted group ${groupId} by user ${req.user.id}`);
+      res.status(200).json({ message: "Group deleted successfully" });
+    } catch (error) {
+      logger.error(`Error deleting group ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to delete group",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
