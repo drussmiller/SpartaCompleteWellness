@@ -74,13 +74,20 @@ export function MessageSlideCard() {
     queryKey: ["/api/users", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
-        throw new Error("No team assigned");
+        return []; // Return empty array instead of throwing error
       }
       try {
         const response = await apiRequest("GET", "/api/users");
 
+        // If user is not authorized (not admin), return empty array
+        if (response.status === 403) {
+          console.log("User not authorized to fetch all users, returning empty team members list");
+          return [];
+        }
+
         if (!response.ok) {
-          throw new Error("Failed to fetch users");
+          console.log("Failed to fetch users, returning empty array");
+          return [];
         }
 
         const users = await response.json();
@@ -93,7 +100,8 @@ export function MessageSlideCard() {
         return filteredUsers;
       } catch (error) {
         console.error("Error fetching users:", error);
-        throw error instanceof Error ? error : new Error("Failed to fetch users");
+        // Return empty array instead of throwing error
+        return [];
       }
     },
     enabled: isOpen && !!user?.teamId,
@@ -497,11 +505,7 @@ export function MessageSlideCard() {
               }}
             >
               <div className="space-y-2 p-4 pb-16 bg-white">
-                {teamError ? (
-                  <div className="text-center text-gray-500 py-8 bg-white">
-                    {teamError instanceof Error ? teamError.message : "Failed to load team members"}
-                  </div>
-                ) : teamMembers.length === 0 ? (
+                {teamMembers.length === 0 ? (
                   <div className="text-center text-gray-500 py-8 bg-white">
                     No team members available
                   </div>
