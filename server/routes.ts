@@ -16,6 +16,7 @@ import {
   not,
   lt,
   ne,
+  inArray,
 } from "drizzle-orm";
 import {
   posts,
@@ -1012,9 +1013,36 @@ export const registerRoutes = async (
         : undefined;
       const postType = req.query.type as string;
       const excludeType = req.query.exclude as string;
+      const teamOnly = req.query.teamOnly === "true";
 
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+
+      // Add team-only filter if specified
+      if (teamOnly) {
+        if (!req.user.teamId) {
+          // If user has no team, return empty array
+          logger.info(`User ${req.user.id} has no team, returning empty posts array for team-only query`);
+          return res.json([]);
+        }
+        
+        // Get all users in the same team
+        const teamMemberIds = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.teamId, req.user.teamId));
+
+        const memberIds = teamMemberIds.map(member => member.id);
+        
+        if (memberIds.length === 0) {
+          logger.info(`No team members found for team ${req.user.teamId}, returning empty posts array`);
+          return res.json([]);
+        }
+
+        // Filter posts to only show posts from team members
+        conditions.push(sql`${posts.userId} = ANY(${memberIds})`);
+        logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members: ${memberIds.join(', ')}`);
+      }
 
       // Add user filter if specified
       if (userId) {
@@ -1075,7 +1103,7 @@ export const registerRoutes = async (
       const result = await query;
 
       logger.info(
-        `Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}`,
+        `Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}, teamOnly=${teamOnly}`,
       );
       res.json(result);
     } catch (error) {
