@@ -710,6 +710,20 @@ export const storage = {
     }
   },
 
+  async updateOrganization(id: number, data: Partial<Omit<Organization, "id" | "createdAt">>): Promise<Organization> {
+    try {
+      const [organization] = await db
+        .update(organizations)
+        .set(data)
+        .where(eq(organizations.id, id))
+        .returning();
+      return organization;
+    } catch (error) {
+      logger.error('Database error updating organization:', error);
+      throw error;
+    }
+  },
+
   async deleteOrganization(id: number): Promise<void> {
     try {
       await db.delete(organizations).where(eq(organizations.id, id));
@@ -747,6 +761,20 @@ export const storage = {
       return group;
     } catch (error) {
       logger.error(`Failed to create group: ${error}`);
+      throw error;
+    }
+  },
+
+  async updateGroup(id: number, data: Partial<Omit<Group, "id" | "createdAt">>): Promise<Group> {
+    try {
+      const [group] = await db
+        .update(groups)
+        .set(data)
+        .where(eq(groups.id, id))
+        .returning();
+      return group;
+    } catch (error) {
+      logger.error('Database error updating group:', error);
       throw error;
     }
   },
