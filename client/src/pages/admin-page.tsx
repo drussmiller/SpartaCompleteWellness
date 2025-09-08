@@ -238,6 +238,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Team updated successfully",
       });
       setEditingTeam(null);
+      setSelectedGroupId("");
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
     onError: (error: Error) => {
@@ -675,12 +676,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <form onSubmit={(e) => {
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
+                                const name = formData.get('name') as string;
+                                const description = formData.get('description') as string;
+                                const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
+                                
+                                console.log('Form submission:', { name, description, groupId, selectedGroupId });
+                                
+                                if (!name || !selectedGroupId) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Please fill in all required fields",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                
                                 updateTeamMutation.mutate({
                                   teamId: team.id,
                                   data: {
-                                    name: formData.get('name') as string,
-                                    description: formData.get('description') as string,
-                                    groupId: parseInt(selectedGroupId),
+                                    name,
+                                    description,
+                                    groupId,
                                   }
                                 });
                               }}>
