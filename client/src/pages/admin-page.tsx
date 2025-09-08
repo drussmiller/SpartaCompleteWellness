@@ -680,8 +680,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const description = formData.get('description') as string;
                                 const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
                                 
-                                console.log('Form submission:', { name, description, groupId, selectedGroupId });
-                                
                                 if (!name || !selectedGroupId) {
                                   toast({
                                     title: "Error",

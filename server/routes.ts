@@ -1361,6 +1361,37 @@ export const registerRoutes = async (
     }
   });
 
+  // Update team endpoint  
+  router.patch("/api/teams/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      logger.info(`Updating team ${teamId} with data:`, req.body);
+
+      // Validate the data using a partial team schema
+      const updateData = req.body;
+      
+      // Update the team in the database
+      const updatedTeam = await storage.updateTeam(teamId, updateData);
+
+      logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
+      res.status(200).json(updatedTeam);
+    } catch (error) {
+      logger.error(`Error updating team ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to update team",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Organizations endpoints
   router.get("/api/organizations", authenticate, async (req, res) => {
     try {

@@ -663,6 +663,20 @@ export const storage = {
       throw error;
     }
   },
+
+  async updateTeam(id: number, data: Partial<Omit<Team, "id" | "createdAt">>): Promise<Team> {
+    try {
+      const [team] = await db
+        .update(teams)
+        .set(data)
+        .where(eq(teams.id, id))
+        .returning();
+      return team;
+    } catch (error) {
+      logger.error('Database error updating team:', error);
+      throw error;
+    }
+  },
   
   async deleteTeam(id: number): Promise<void> {
     try {
