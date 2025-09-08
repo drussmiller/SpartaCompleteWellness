@@ -1531,6 +1531,34 @@ export const registerRoutes = async (
     }
   });
 
+  // Update organization endpoint  
+  router.patch("/api/organizations/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const organizationId = parseInt(req.params.id);
+      if (isNaN(organizationId)) {
+        return res.status(400).json({ message: "Invalid organization ID" });
+      }
+
+      logger.info(`Updating organization ${organizationId} with data:`, req.body);
+
+      // Update the organization in the database
+      const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
+
+      logger.info(`Organization ${organizationId} updated successfully by user ${req.user.id}`);
+      res.status(200).json(updatedOrganization);
+    } catch (error) {
+      logger.error(`Error updating organization ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to update organization",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Groups endpoints
   router.get("/api/groups", authenticate, async (req, res) => {
     try {
@@ -1593,6 +1621,34 @@ export const registerRoutes = async (
       logger.error(`Error deleting group ${req.params.id}:`, error);
       res.status(500).json({
         message: "Failed to delete group",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Update group endpoint  
+  router.patch("/api/groups/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      logger.info(`Updating group ${groupId} with data:`, req.body);
+
+      // Update the group in the database
+      const updatedGroup = await storage.updateGroup(groupId, req.body);
+
+      logger.info(`Group ${groupId} updated successfully by user ${req.user.id}`);
+      res.status(200).json(updatedGroup);
+    } catch (error) {
+      logger.error(`Error updating group ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to update group",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
