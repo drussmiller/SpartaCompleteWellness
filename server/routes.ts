@@ -1040,7 +1040,7 @@ export const registerRoutes = async (
         }
 
         // Filter posts to only show posts from team members
-        conditions.push(sql`${posts.userId} = ANY(${memberIds})`);
+        conditions.push(inArray(posts.userId, memberIds));
         logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members: ${memberIds.join(', ')}`);
       }
 
