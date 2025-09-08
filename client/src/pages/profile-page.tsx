@@ -100,6 +100,29 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     enabled: !!authUser,
   });
 
+  // Add activity progress query to get current week and day
+  const { data: activityProgress } = useQuery({
+    queryKey: ["/api/activities/current", tzOffset],
+    queryFn: async () => {
+      const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      if (!response.ok) throw new Error('Failed to fetch activity progress');
+      return response.json();
+    },
+    staleTime: 60000, // 1 minute
+    enabled: !!authUser && !!user?.teamId,
+  });
+
+  // Add teams query to get team information
+  const { data: teams } = useQuery({
+    queryKey: ["/api/teams"],
+    queryFn: async () => {
+      const response = await fetch("/api/teams");
+      if (!response.ok) throw new Error('Failed to fetch teams');
+      return response.json();
+    },
+    enabled: !!authUser && !!user?.teamId,
+  });
+
   // Add measurements query
   const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements", user?.id],
@@ -367,31 +390,33 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               <div className="space-y-3">
                 {user?.teamId ? (
                   <>
-                    {user.programStart ? (
+                    {user.teamJoinedAt && (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-lg text-muted-foreground">Program Start (Day One)</span>
+                          <span className="text-lg text-muted-foreground">Team</span>
                           <span className="text-sm font-medium">
-                            {format(new Date(user.programStart), 'PPP')}
+                            {teams?.find(t => t.id === user.teamId)?.name || 'Loading...'}
                           </span>
                         </div>
-                        {user.weekInfo && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg text-muted-foreground">Team Joined</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(user.teamJoinedAt), 'PPP')}
+                          </span>
+                        </div>
+                        {activityProgress && activityProgress.currentWeek && activityProgress.currentDay && (
                           <>
                             <div className="flex justify-between items-center">
                               <span className="text-lg text-muted-foreground">Current Week</span>
-                              <span className="text-lg font-medium">Week {user.weekInfo.week}</span>
+                              <span className="text-lg font-medium">Week {activityProgress.currentWeek}</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-lg text-muted-foreground">Current Day</span>
-                              <span className="text-lg font-medium">Day {user.weekInfo.day}</span>
+                              <span className="text-lg font-medium">Day {activityProgress.currentDay}</span>
                             </div>
                           </>
                         )}
                       </>
-                    ) : (
-                      <p className="text-lg text-muted-foreground">
-                        Your program will start on the first Monday after joining a team
-                      </p>
                     )}
                   </>
                 ) : (
