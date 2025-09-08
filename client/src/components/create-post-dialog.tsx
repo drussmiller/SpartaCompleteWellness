@@ -387,7 +387,10 @@ export function CreatePostDialog({
       }
 
       // Only invalidate the specific posts query we're using
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", "team-posts"] });
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts", "team-posts"], 
+        exact: false // This will match all variations including different teamIds
+      });
 
       // Invalidate post limits only once with specific key
       const today = new Date();
