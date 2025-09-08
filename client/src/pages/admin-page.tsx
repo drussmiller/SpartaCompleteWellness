@@ -55,6 +55,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [newPassword, setNewPassword] = useState("");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [, setLocation] = useLocation();
@@ -679,7 +680,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     name: formData.get('name') as string,
                                     description: formData.get('description') as string,
-                                    groupId: parseInt(formData.get('groupId') as string),
+                                    groupId: parseInt(selectedGroupId),
                                   }
                                 });
                               }}>
@@ -694,7 +695,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     defaultValue={team.description || ''}
                                     className="text-sm"
                                   />
-                                  <Select name="groupId" defaultValue={team.groupId?.toString() || ""}>
+                                  <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
                                     <SelectTrigger className="w-full">
                                       <SelectValue placeholder="Select a group" />
                                     </SelectTrigger>
@@ -712,7 +713,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => setEditingTeam(null)}
+                                      onClick={() => {
+                                        setEditingTeam(null);
+                                        setSelectedGroupId("");
+                                      }}
                                     >
                                       Cancel
                                     </Button>
@@ -732,7 +736,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setEditingTeam(team)}
+                              onClick={() => {
+                                setEditingTeam(team);
+                                setSelectedGroupId(team.groupId?.toString() || "");
+                              }}
                             >
                               Edit
                             </Button>
