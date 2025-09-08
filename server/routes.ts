@@ -1044,6 +1044,57 @@ export const registerRoutes = async (
         logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members: ${memberIds.join(', ')}`);
       }
 
+      // Special handling for prayer posts - filter by group instead of team
+      if (postType === "prayer") {
+        if (!req.user.teamId) {
+          logger.info(`User ${req.user.id} has no team, returning empty prayer posts array`);
+          return res.json([]);
+        }
+
+        // Get the user's group through their team
+        const [userTeamData] = await db
+          .select({ groupId: teams.groupId })
+          .from(teams)
+          .where(eq(teams.id, req.user.teamId));
+
+        if (!userTeamData?.groupId) {
+          logger.info(`User ${req.user.id}'s team has no group, returning empty prayer posts array`);
+          return res.json([]);
+        }
+
+        // Find all teams in the same group
+        const groupTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.groupId, userTeamData.groupId));
+
+        const teamIds = groupTeams.map(t => t.id);
+
+        // Find all users in those teams
+        const groupUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.teamId, teamIds));
+
+        const userIds = groupUsers.map(u => u.id);
+
+        if (userIds.length === 0) {
+          logger.info(`No users found in group ${userTeamData.groupId}, returning empty prayer posts array`);
+          return res.json([]);
+        }
+
+        // Override any existing user filter for prayer posts to use group-level filtering
+        conditions = conditions.filter(condition => {
+          // Remove any existing userId conditions
+          const conditionStr = condition.toString();
+          return !conditionStr.includes('user_id') && !conditionStr.includes('userId');
+        });
+
+        // Add group-level user filtering for prayer posts
+        conditions.push(inArray(posts.userId, userIds));
+        logger.info(`Filtering prayer posts for group ${userTeamData.groupId} with ${userIds.length} users from ${teamIds.length} teams`);
+      }
+
       // Add user filter if specified
       if (userId) {
         conditions.push(eq(posts.userId, userId));

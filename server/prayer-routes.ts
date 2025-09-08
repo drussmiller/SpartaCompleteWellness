@@ -33,47 +33,37 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
       return;
     }
 
-    // Find the organization for the user's team (team -> group -> organization)
+    // Find the group for the user's team (team -> group)
     const [userTeamData] = await db
       .select({ 
-        groupId: teams.groupId,
-        organizationId: groups.organizationId 
+        groupId: teams.groupId
       })
       .from(teams)
-      .innerJoin(groups, eq(teams.groupId, groups.id))
       .where(eq(teams.id, user.teamId));
 
-    if (!userTeamData?.organizationId) {
-      logger.info(`User ${req.user.id}'s team has no organization, returning 0 prayer requests`);
+    if (!userTeamData?.groupId) {
+      logger.info(`User ${req.user.id}'s team has no group, returning 0 prayer requests`);
       res.json({ unreadCount: 0 });
       return;
     }
 
-    // Find all groups in the same organization
-    const organizationGroups = await db
-      .select({ id: groups.id })
-      .from(groups)
-      .where(eq(groups.organizationId, userTeamData.organizationId));
-
-    const groupIds = organizationGroups.map(g => g.id);
-
-    // Find all teams in those groups
-    const organizationTeams = await db
+    // Find all teams in the same group
+    const groupTeams = await db
       .select({ id: teams.id })
       .from(teams)
-      .where(inArray(teams.groupId, groupIds));
+      .where(eq(teams.groupId, userTeamData.groupId));
 
-    const teamIds = organizationTeams.map(t => t.id);
+    const teamIds = groupTeams.map(t => t.id);
 
     // Find all users in those teams
-    const organizationUsers = await db
+    const groupUsers = await db
       .select({ id: users.id })
       .from(users)
       .where(inArray(users.teamId, teamIds));
 
-    const userIds = organizationUsers.map(u => u.id);
+    const userIds = groupUsers.map(u => u.id);
 
-    // Count prayer request posts since last view time from users in the same organization
+    // Count prayer request posts since last view time from users in the same group
     const newPrayerRequests = await db
       .select({ count: sql<number>`count(*)::integer` })
       .from(posts)
@@ -81,14 +71,14 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
         and(
           eq(posts.type, 'prayer'),
           gt(posts.createdAt, lastViewTime),
-          // Only count prayer requests from users in the same organization
+          // Only count prayer requests from users in the same group
           inArray(posts.userId, userIds),
           // Don't count user's own prayer requests as "new"
           not(eq(posts.userId, req.user.id))
         )
       );
 
-    logger.info(`Unread prayer requests for user ${req.user.id} (organization ${userTeamData.organizationId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
+    logger.info(`Unread prayer requests for user ${req.user.id} (group ${userTeamData.groupId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
     res.json({ unreadCount: newPrayerRequests[0].count });
   } catch (error) {
     logger.error('Error fetching unread prayer requests:', error);
