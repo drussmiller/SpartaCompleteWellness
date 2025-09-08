@@ -250,6 +250,32 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
+  const updateOrganizationMutation = useMutation({
+    mutationFn: async ({ organizationId, data }: { organizationId: number; data: Partial<Organization> }) => {
+      const res = await apiRequest("PATCH", `/api/organizations/${organizationId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization updated successfully",
+      });
+      setEditingOrganization(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }: { userId: number; data: Partial<User> }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
@@ -853,18 +879,85 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   {sortedOrganizations?.map((organization) => (
                     <Card key={organization.id}>
                       <CardHeader className="pb-2">
-                        <div className="flex justify-between items-center">
-                          <CardTitle>{organization.name}</CardTitle>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => deleteOrganizationMutation.mutate(organization.id)}
-                            disabled={deleteOrganizationMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            {editingOrganization?.id === organization.id ? (
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                const name = formData.get('name') as string;
+                                const description = formData.get('description') as string;
+                                
+                                if (!name) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Please fill in all required fields",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                
+                                updateOrganizationMutation.mutate({
+                                  organizationId: organization.id,
+                                  data: {
+                                    name,
+                                    description: description || undefined
+                                  }
+                                });
+                              }} className="space-y-2">
+                                <Input
+                                  name="name"
+                                  defaultValue={organization.name}
+                                  placeholder="Organization name"
+                                  required
+                                />
+                                <Input
+                                  name="description"
+                                  defaultValue={organization.description || ''}
+                                  placeholder="Description"
+                                />
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm" disabled={updateOrganizationMutation.isPending}>
+                                    {updateOrganizationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingOrganization(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div>
+                                <CardTitle>{organization.name}</CardTitle>
+                                <CardDescription>{organization.description}</CardDescription>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {editingOrganization?.id !== organization.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingOrganization(organization)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteOrganizationMutation.mutate(organization.id)}
+                              disabled={deleteOrganizationMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <CardDescription>{organization.description}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm">
