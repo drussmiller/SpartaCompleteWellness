@@ -276,6 +276,32 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
+  const updateGroupMutation = useMutation({
+    mutationFn: async ({ groupId, data }: { groupId: number; data: Partial<Group> }) => {
+      const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Group updated successfully",
+      });
+      setEditingGroup(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }: { userId: number; data: Partial<User> }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
@@ -1039,18 +1065,99 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   {sortedGroups?.map((group) => (
                     <Card key={group.id}>
                       <CardHeader className="pb-2">
-                        <div className="flex justify-between items-center">
-                          <CardTitle>{group.name}</CardTitle>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => deleteGroupMutation.mutate(group.id)}
-                            disabled={deleteGroupMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            {editingGroup?.id === group.id ? (
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                const name = formData.get('name') as string;
+                                const description = formData.get('description') as string;
+                                const organizationId = parseInt(formData.get('organizationId') as string);
+                                
+                                if (!name || !organizationId) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Please fill in all required fields",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                
+                                updateGroupMutation.mutate({
+                                  groupId: group.id,
+                                  data: {
+                                    name,
+                                    description: description || undefined,
+                                    organizationId
+                                  }
+                                });
+                              }} className="space-y-2">
+                                <Input
+                                  name="name"
+                                  defaultValue={group.name}
+                                  placeholder="Group name"
+                                  required
+                                />
+                                <Input
+                                  name="description"
+                                  defaultValue={group.description || ''}
+                                  placeholder="Description"
+                                />
+                                <Select name="organizationId" defaultValue={group.organizationId.toString()}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select organization" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {sortedOrganizations?.map((org) => (
+                                      <SelectItem key={org.id} value={org.id.toString()}>
+                                        {org.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm" disabled={updateGroupMutation.isPending}>
+                                    {updateGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingGroup(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div>
+                                <CardTitle>{group.name}</CardTitle>
+                                <CardDescription>{group.description}</CardDescription>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {editingGroup?.id !== group.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingGroup(group)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteGroupMutation.mutate(group.id)}
+                              disabled={deleteGroupMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <CardDescription>{group.description}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm">
