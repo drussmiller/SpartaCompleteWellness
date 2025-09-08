@@ -800,21 +800,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </div>
                           <div className="flex gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => {
                                 setEditingTeam(team);
                                 setSelectedGroupId(team.groupId?.toString() || "");
                               }}
                             >
-                              Edit
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  className="bg-white hover:bg-red-50 text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1232,18 +1231,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <CardTitle>{user.preferredName || user.username}</CardTitle>
                                   <div className="flex gap-2">
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => setEditingUser(user)}
                                     >
-                                      Edit
+                                      <Edit className="h-4 w-4" />
                                     </Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button
                                           variant="destructive"
                                           size="sm"
-                                          className="bg-white hover:bg-red-50 text-red-600"
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
