@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: SelectUser) => {
       console.log('Registration successful:', user);
       queryClient.setQueryData(["/api/user"], user);
-      
+
       // Check if user needs to sign waiver and redirect
       if (!user.waiverSigned) {
         console.log('User needs to sign waiver, redirecting...');
@@ -119,6 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       console.log('Logout successful');
       queryClient.setQueryData(["/api/user"], null);
+      // Clear all React Query cache when user logs out
+      queryClient.clear();
     },
     onError: (error: Error) => {
       console.error('Logout error:', error);

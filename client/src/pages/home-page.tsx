@@ -61,7 +61,7 @@ export default function HomePage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["/api/posts", "team-posts", user?.teamId],
+    queryKey: ["/api/posts", "team-posts", user?.teamId, user?.id],
     queryFn: async () => {
       // If user is not in a team, return empty array
       if (!user?.teamId) {
