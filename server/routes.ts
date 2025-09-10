@@ -1025,7 +1025,7 @@ export const registerRoutes = async (
           logger.info(`User ${req.user.id} has no team, returning empty posts array for team-only query`);
           return res.json([]);
         }
-        
+
         // Get all users in the same team
         const teamMemberIds = await db
           .select({ id: users.id })
@@ -1033,7 +1033,7 @@ export const registerRoutes = async (
           .where(eq(users.teamId, req.user.teamId));
 
         const memberIds = teamMemberIds.map(member => member.id);
-        
+
         if (memberIds.length === 0) {
           logger.info(`No team members found for team ${req.user.teamId}, returning empty posts array`);
           return res.json([]);
@@ -1456,7 +1456,7 @@ export const registerRoutes = async (
 
       // Validate the data using a partial team schema
       const updateData = req.body;
-      
+
       // Update the team in the database
       const updatedTeam = await storage.updateTeam(teamId, updateData);
 
@@ -1563,7 +1563,7 @@ export const registerRoutes = async (
   router.get("/api/groups", authenticate, async (req, res) => {
     try {
       const { organizationId } = req.query;
-      
+
       if (organizationId) {
         const groups = await storage.getGroupsByOrganization(parseInt(organizationId as string));
         res.json(groups);
@@ -2158,7 +2158,7 @@ export const registerRoutes = async (
       }
 
       console.log("User preferred name updated successfully:", updatedUser.preferredName);
-      
+
       res.json({
         message: "Preferred name updated successfully",
         preferredName: updatedUser.preferredName
@@ -4972,6 +4972,45 @@ export const registerRoutes = async (
       });
     }
   });
+
+  // Add document upload endpoint for activities
+  router.post(
+    "/api/activities/upload-doc",
+    authenticate,
+    multer({ storage: multer.memoryStorage() }).single("document"),
+    async (req, res) => {
+      try {
+        // Set content type early to ensure JSON response
+        res.setHeader("Content-Type", "application/json");
+
+        if (!req.user?.isAdmin) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ message: "No document uploaded" });
+        }
+
+        // Validate file type
+        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+          return res.status(400).json({ message: "Only .docx files are supported" });
+        }
+
+        const docxBuffer = req.file.buffer;
+        const result = await mammoth.convertToHtml({ buffer: docxBuffer });
+
+        res.json({ content: result.value });
+      } catch (error) {
+        logger.error("Error processing document:", error);
+        // Ensure we still return JSON on error
+        res.setHeader("Content-Type", "application/json");
+        res.status(500).json({ 
+          message: "Failed to process document",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  );
 
   return httpServer;
 };
