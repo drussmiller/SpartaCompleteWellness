@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ChevronLeft, Plus, Lock, Trash2, Loader2 } from "lucide-react";
+import { ChevronLeft, Plus, Lock, Trash2, Loader2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -10,7 +10,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { insertTeamSchema, type Team, type User } from "@shared/schema";
+import { insertTeamSchema, insertOrganizationSchema, insertGroupSchema, type Team, type User, type Organization, type Group } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,8 @@ import {
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
+type OrganizationFormData = z.infer<typeof insertOrganizationSchema>;
+type GroupFormData = z.infer<typeof insertGroupSchema>;
 
 interface AdminPageProps {
   onClose?: () => void;
@@ -52,14 +55,35 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [newPassword, setNewPassword] = useState("");
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [editingOrganization, setEditingOrganization] = useState<Organization | null>(null);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [, setLocation] = useLocation();
   const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
+
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation("/menu");
+      }
+    }
+  });
 
   // Get timezone offset for current user (in minutes)
   const tzOffset = new Date().getTimezoneOffset();
 
   const { data: teams, isLoading: teamsLoading, error: teamsError } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
+  });
+
+  const { data: organizations, isLoading: organizationsLoading, error: organizationsError } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
+  const { data: groups, isLoading: groupsLoading, error: groupsError } = useQuery<Group[]>({
+    queryKey: ["/api/groups"],
   });
 
   const { data: users, isLoading: usersLoading, error: usersError } = useQuery<User[]>({
@@ -94,6 +118,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
+      groupId: 0,
     },
   });
 
@@ -148,6 +173,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
+  // Keep this for backward compatibility but it won't be used in the new UI
   const updateUserTeamMutation = useMutation({
     mutationFn: async ({ userId, teamId }: { userId: number; teamId: number | null }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, { teamId });
@@ -212,7 +238,60 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Team updated successfully",
       });
       setEditingTeam(null);
+      setSelectedGroupId("");
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateOrganizationMutation = useMutation({
+    mutationFn: async ({ organizationId, data }: { organizationId: number; data: Partial<Organization> }) => {
+      const res = await apiRequest("PATCH", `/api/organizations/${organizationId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization updated successfully",
+      });
+      setEditingOrganization(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateGroupMutation = useMutation({
+    mutationFn: async ({ groupId, data }: { groupId: number; data: Partial<Group> }) => {
+      const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Group updated successfully",
+      });
+      setEditingGroup(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
     onError: (error: Error) => {
       toast({
@@ -273,8 +352,196 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
-  const isLoading = teamsLoading || usersLoading;
-  const error = teamsError || usersError;
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: number; newPassword: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}/password`, { newPassword });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || "Failed to reset password";
+        } catch {
+          errorMessage = errorText || "Failed to reset password";
+        }
+        throw new Error(errorMessage);
+      }
+      // Always return success for 200 responses
+      return { success: true };
+    },
+    onSuccess: () => {
+      console.log("Password reset success - closing dialog");
+      toast({
+        title: "Success",
+        description: "Password reset successfully",
+      });
+      // Force close dialog and reset form
+      setTimeout(() => {
+        setResetPasswordOpen(false);
+        setNewPassword("");
+        setSelectedUserId(null);
+      }, 100);
+    },
+    onError: (error: Error) => {
+      console.error("Reset password error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset password",
+        variant: "destructive",
+      });
+      // Clear password field on error but keep dialog open
+      setNewPassword("");
+    },
+  });
+
+  // Organization mutations
+  const organizationForm = useForm<OrganizationFormData>({
+    resolver: zodResolver(insertOrganizationSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+
+  const createOrganizationMutation = useMutation({
+    mutationFn: async (data: OrganizationFormData) => {
+      const res = await apiRequest("POST", "/api/organizations", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization created successfully",
+      });
+      organizationForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteOrganizationMutation = useMutation({
+    mutationFn: async (organizationId: number) => {
+      const res = await apiRequest("DELETE", `/api/organizations/${organizationId}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Group mutations
+  const groupForm = useForm<GroupFormData>({
+    resolver: zodResolver(insertGroupSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      organizationId: 0,
+    },
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (data: GroupFormData) => {
+      const res = await apiRequest("POST", "/api/groups", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Group created successfully",
+      });
+      groupForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Group deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserGroupMutation = useMutation({
+    mutationFn: async ({ userId, groupId }: { userId: number; groupId: number | null }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, { groupId });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update user's group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User's group updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isLoading = teamsLoading || usersLoading || organizationsLoading || groupsLoading;
+  const error = teamsError || usersError || organizationsError || groupsError;
 
   if (isLoading) {
     return (
@@ -324,16 +591,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   }
 
   const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   const isMobile = window.innerWidth <= 768;
 
   return (
     <AppLayout sidebarWidth="80">
-      <div className="flex flex-col h-screen pb-20">
+      <div 
+        className="flex flex-col h-screen pb-20"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Fixed title bar */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
-          <div className="p-4 flex items-center">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+          <div className="p-4 pt-16 flex items-center">
             {onClose && (
               <Button
                 variant="ghost"
@@ -341,7 +615,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 onClick={onClose}
                 className="mr-2 scale-125"
               >
-                <ChevronLeft className="h-10 w-10 scale-125" />
+                <ChevronLeft className="h-8 w-8 scale-125" />
               </Button>
             )}
             <h1 className="text-xl font-bold">Admin Dashboard</h1>
@@ -349,7 +623,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 overflow-y-auto pt-16 pb-20">
+        <div className="flex-1 overflow-y-auto pt-20 pb-20">
           <div className="container p-4 md:px-8">
             <div className="flex gap-2 mt-4 justify-center">
               <Dialog>
@@ -399,6 +673,32 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="groupId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group</FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value?.toString() || ""}
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a group" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {sortedGroups?.map((group) => (
+                                    <SelectItem key={group.id} value={group.id.toString()}>
+                                      {group.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                       <Button type="submit" disabled={createTeamMutation.isPending}>
                         {createTeamMutation.isPending ? "Creating..." : "Create Team"}
                       </Button>
@@ -428,11 +728,25 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <form onSubmit={(e) => {
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
+                                const name = formData.get('name') as string;
+                                const description = formData.get('description') as string;
+                                const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
+                                
+                                if (!name || !selectedGroupId) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Please fill in all required fields",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                
                                 updateTeamMutation.mutate({
                                   teamId: team.id,
                                   data: {
-                                    name: formData.get('name') as string,
-                                    description: formData.get('description') as string,
+                                    name,
+                                    description,
+                                    groupId,
                                   }
                                 });
                               }}>
@@ -447,13 +761,28 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     defaultValue={team.description || ''}
                                     className="text-sm"
                                   />
+                                  <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select a group" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {sortedGroups?.map((group) => (
+                                        <SelectItem key={group.id} value={group.id.toString()}>
+                                          {group.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => setEditingTeam(null)}
+                                      onClick={() => {
+                                        setEditingTeam(null);
+                                        setSelectedGroupId("");
+                                      }}
                                     >
                                       Cancel
                                     </Button>
@@ -471,18 +800,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </div>
                           <div className="flex gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={() => setEditingTeam(team)}
+                              onClick={() => {
+                                setEditingTeam(team);
+                                setSelectedGroupId(team.groupId?.toString() || "");
+                              }}
                             >
-                              Edit
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  className="bg-white hover:bg-red-50 text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -514,8 +845,334 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm">
+                          <span className="font-medium">Group: </span>
+                          {sortedGroups?.find((g) => g.id === team.groupId)?.name || "No Group"}
+                        </p>
+                        <p className="text-sm">
                           <span className="font-medium">Members: </span>
                           {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Organizations Section */}
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-semibold">Organizations</h2>
+                </div>
+                
+                <Form {...organizationForm}>
+                  <form onSubmit={organizationForm.handleSubmit((data) => createOrganizationMutation.mutate(data))} className="space-y-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={organizationForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Organization Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter organization name" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={organizationForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter description" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={createOrganizationMutation.isPending}>
+                      {createOrganizationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Organization
+                    </Button>
+                  </form>
+                </Form>
+
+                <div className="space-y-4">
+                  {sortedOrganizations?.map((organization) => (
+                    <Card key={organization.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            {editingOrganization?.id === organization.id ? (
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                const name = formData.get('name') as string;
+                                const description = formData.get('description') as string;
+                                
+                                if (!name) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Please fill in all required fields",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                
+                                updateOrganizationMutation.mutate({
+                                  organizationId: organization.id,
+                                  data: {
+                                    name,
+                                    description: description || undefined
+                                  }
+                                });
+                              }} className="space-y-2">
+                                <Input
+                                  name="name"
+                                  defaultValue={organization.name}
+                                  placeholder="Organization name"
+                                  required
+                                />
+                                <Input
+                                  name="description"
+                                  defaultValue={organization.description || ''}
+                                  placeholder="Description"
+                                />
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm" disabled={updateOrganizationMutation.isPending}>
+                                    {updateOrganizationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingOrganization(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div>
+                                <CardTitle>{organization.name}</CardTitle>
+                                <CardDescription>{organization.description}</CardDescription>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {editingOrganization?.id !== organization.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingOrganization(organization)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteOrganizationMutation.mutate(organization.id)}
+                              disabled={deleteOrganizationMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm">
+                          <span className="font-medium">Groups: </span>
+                          {sortedGroups?.filter((g) => g.organizationId === organization.id).length || 0}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Groups Section */}
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-semibold">Groups</h2>
+                </div>
+                
+                <Form {...groupForm}>
+                  <form onSubmit={groupForm.handleSubmit((data) => createGroupMutation.mutate(data))} className="space-y-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={groupForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Group Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter group name" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={groupForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter description" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={groupForm.control}
+                        name="organizationId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Organization</FormLabel>
+                            <FormControl>
+                              <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select organization" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {sortedOrganizations?.map((org) => (
+                                    <SelectItem key={org.id} value={org.id.toString()}>
+                                      {org.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={createGroupMutation.isPending}>
+                      {createGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Group
+                    </Button>
+                  </form>
+                </Form>
+
+                <div className="space-y-4">
+                  {sortedGroups?.map((group) => (
+                    <Card key={group.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            {editingGroup?.id === group.id ? (
+                              <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.currentTarget);
+                                const name = formData.get('name') as string;
+                                const description = formData.get('description') as string;
+                                const organizationId = parseInt(formData.get('organizationId') as string);
+                                
+                                if (!name || !organizationId) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Please fill in all required fields",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                
+                                updateGroupMutation.mutate({
+                                  groupId: group.id,
+                                  data: {
+                                    name,
+                                    description: description || undefined,
+                                    organizationId
+                                  }
+                                });
+                              }} className="space-y-2">
+                                <Input
+                                  name="name"
+                                  defaultValue={group.name}
+                                  placeholder="Group name"
+                                  required
+                                />
+                                <Input
+                                  name="description"
+                                  defaultValue={group.description || ''}
+                                  placeholder="Description"
+                                />
+                                <Select name="organizationId" defaultValue={group.organizationId.toString()}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select organization" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {sortedOrganizations?.map((org) => (
+                                      <SelectItem key={org.id} value={org.id.toString()}>
+                                        {org.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm" disabled={updateGroupMutation.isPending}>
+                                    {updateGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingGroup(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div>
+                                <CardTitle>{group.name}</CardTitle>
+                                <CardDescription>{group.description}</CardDescription>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {editingGroup?.id !== group.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingGroup(group)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteGroupMutation.mutate(group.id)}
+                              disabled={deleteGroupMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm">
+                          <span className="font-medium">Organization: </span>
+                          {sortedOrganizations?.find((o) => o.id === group.organizationId)?.name || "Unknown"}
+                        </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Members: </span>
+                          {sortedUsers?.filter((u) => {
+                            const userTeam = sortedTeams?.find(t => t.id === u.teamId);
+                            return userTeam && userTeam.groupId === group.id;
+                          }).length || 0}
+                        </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Teams: </span>
+                          {sortedTeams?.filter((t) => t.groupId === group.id).length || 0}
                         </p>
                       </CardContent>
                     </Card>
@@ -574,18 +1231,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <CardTitle>{user.preferredName || user.username}</CardTitle>
                                   <div className="flex gap-2">
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => setEditingUser(user)}
                                     >
-                                      Edit
+                                      <Edit className="h-4 w-4" />
                                     </Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button
                                           variant="destructive"
                                           size="sm"
-                                          className="bg-white hover:bg-red-50 text-red-600"
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -608,6 +1264,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       </AlertDialogContent>
                                     </AlertDialog>
                                   </div>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  <span className="font-medium">Username:</span> {user.username}
                                 </div>
                                 <CardDescription>{user.email}</CardDescription>
                                 <div className="mt-1 text-sm text-muted-foreground">
@@ -632,15 +1291,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Select
                             defaultValue={user.teamId?.toString() || "none"}
                             onValueChange={(value) => {
-                              const teamId = value === "none" ? null : parseInt(value, 10);
-                              if (value !== "none" && isNaN(teamId)) {
-                                toast({
-                                  title: "Error",
-                                  description: "Invalid team ID",
-                                  variant: "destructive",
-                                });
-                                return;
-                              }
+                              const teamId = value === "none" ? null : parseInt(value);
                               updateUserTeamMutation.mutate({ userId: user.id, teamId });
                             }}
                           >
@@ -734,9 +1385,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <form onSubmit={(e) => {
               e.preventDefault();
               if (selectedUserId && newPassword) {
-                // Handle password reset
-                setResetPasswordOpen(false);
-                setNewPassword("");
+                resetPasswordMutation.mutate({ userId: selectedUserId, newPassword });
               }
             }}>
               <div className="space-y-4 mt-2">
@@ -749,8 +1398,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     required
                   />
                 </div>
-                <Button type="submit">
-                  Reset Password
+                <Button type="submit" disabled={resetPasswordMutation.isPending}>
+                  {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
                 </Button>
               </div>
             </form>

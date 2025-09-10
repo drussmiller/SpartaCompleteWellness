@@ -23,7 +23,17 @@ type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
 };
 
-export function CreatePostDialog({ remaining: propRemaining }: { remaining: Record<string, number> }) {
+export function CreatePostDialog({ 
+  remaining: propRemaining, 
+  initialType = "food",
+  defaultType = null,
+  hideTypeField = false
+}: { 
+  remaining: Record<string, number>;
+  initialType?: string;
+  defaultType?: string | null;
+  hideTypeField?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -36,7 +46,23 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
   const queryClient = useQueryClient();
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
-  
+
+  // Check if user has posted an introduction (for users not in a team)
+  const { data: hasPostedIntroduction = false } = useQuery({
+    queryKey: ["/api/posts/has-introduction", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const response = await fetch(`/api/posts/has-introduction`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return false;
+      const result = await response.json();
+      return result.hasIntroduction || false;
+    },
+    enabled: !!user && !user.teamId, // Only check for users not in a team
+    staleTime: 300000, // 5 minutes
+  });
+
   // Define the type for memory verse video objects
   type MemoryVerseVideo = {
     id: number;
@@ -45,17 +71,21 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
     createdAt: string;
   };
 
+  // For users not in a team who haven't posted, default to miscellaneous
+  const shouldDefaultToMiscellaneous = !user?.teamId && !hasPostedIntroduction;
+  const actualType = shouldDefaultToMiscellaneous ? "miscellaneous" : (defaultType || initialType);
+
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
     defaultValues: {
-      type: "food",
+      type: actualType,
       content: "",
       mediaUrl: null,
-      points: 3,
+      points: actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
       postDate: selectedDate
     }
   });
-  
+
   // Fetch existing memory verse videos for reuse
   const { data: existingMemoryVerseVideos, isLoading: loadingVideos } = useQuery<MemoryVerseVideo[]>({
     queryKey: ['/api/memory-verse-videos'],
@@ -148,10 +178,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           // Extract the existing video ID
           const existingVideoId = data.mediaUrl.replace('EXISTING_VIDEO:', '');
           console.log("Using existing memory verse video:", { id: existingVideoId });
-          
+
           // Include a special field in the post data to indicate we're using an existing video
           formData.append("existing_video_id", existingVideoId);
-          
+
           // We don't need to append any image/video file since we're using an existing one
         } 
         // Handle regular media uploads
@@ -161,26 +191,53 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
             mediaUrlLength: data.mediaUrl.length,
             urlPreview: data.mediaUrl.substring(0, 30) + "..."
           });
-          
+
           try {
             // Handle memory verse and miscellaneous post video uploads
             if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video')) && 
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
-              
-              // Simply append the file to the formData with the 'image' field name
+
+              // Append the video file to the formData with the 'image' field name
               // The server will detect the post type based on the data.type field
               formData.append("image", videoFile);
-              
+
               // Explicitly set is_video flag for miscellaneous posts
               formData.append("is_video", "true");
               formData.append("selected_media_type", "video");
-              
+
+              // Attach the generated thumbnail if we have one
+              if (videoThumbnail) {
+                console.log("Attaching video thumbnail to the form data");
+
+                // Convert the data URL to a Blob that we can send to the server
+                const thumbnailBlob = dataURLToBlob(videoThumbnail);
+
+                // Create a clean filename without any special characters
+                const cleanFilename = videoFile.name.replace(/[^a-zA-Z0-9.]/g, '-');
+
+                // Add the main poster thumbnail
+                formData.append("thumbnail", thumbnailBlob, `${cleanFilename}.poster.jpg`);
+                console.log(`Added poster thumbnail as: ${cleanFilename}.poster.jpg`);
+
+                // Also add JPG version with thumb- prefix for consistent naming
+                formData.append("thumbnail_alt", thumbnailBlob, `thumb-${cleanFilename}`);
+                console.log(`Added thumb- prefixed thumbnail`);
+
+                // Add a plain JPG version with the same basename for direct access
+                const baseFilename = cleanFilename.replace(/\.mov$/i, '.jpg');
+                formData.append("thumbnail_jpg", thumbnailBlob, baseFilename);
+                console.log(`Added pure JPG thumbnail: ${baseFilename}`);
+              } else {
+                console.warn("No video thumbnail available when uploading video");
+              }
+
               console.log(`Uploading ${data.type} video file:`, {
                 fileName: videoFile.name,
                 fileType: videoFile.type, 
                 fileSize: videoFile.size,
                 fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB",
+                hasThumbnail: !!videoThumbnail,
                 postType: data.type
               });
             } 
@@ -210,7 +267,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 
         // Use the content as-is without adding a [VIDEO] marker
         let content = data.content?.trim() || '';
-        
+
         const postData = {
           type: data.type,
           content: content,
@@ -227,21 +284,21 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         // Add special identifier for miscellaneous post type if it has video
         if (data.type === 'miscellaneous' && selectedMediaType) {
           formData.append("selected_media_type", selectedMediaType);
-          
+
           // Explicitly add an is_video flag to ensure server-side detection works correctly
           if (selectedMediaType === "video") {
             formData.append("is_video", "true");
           }
-          
+
           console.log("Added media type marker for miscellaneous post:", {
             selectedMediaType,
             isVideo: selectedMediaType === "video",
             contentWithVideoMarker: postData.content
           });
         }
-        
+
         formData.append("data", JSON.stringify(postData));
-        
+
         console.log("FormData ready for submission", {
           formDataKeys: Array.from(formData.keys()),
           hasImageKey: formData.has('image'),
@@ -249,16 +306,16 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         });
 
         console.log("Sending POST request to /api/posts");
-        
+
         const response = await fetch("/api/posts", {
           method: "POST",
           body: formData,
           credentials: "include",
         });
-        
+
         // Add more detailed logging of response
         console.log(`Response status: ${response.status} ${response.statusText}`);
-        
+
         // Log the full response headers for debugging
         const responseHeaders: Record<string, string> = {};
         response.headers.forEach((value, key) => {
@@ -299,7 +356,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         is_video: data.type === "memory_verse" || (data.type === "miscellaneous" && selectedMediaType === "video")
       };
 
-      queryClient.setQueryData(["/api/posts"], (old: any[] = []) => [optimisticPost, ...old]);
+      queryClient.setQueryData(["/api/posts", "team-posts"], (old: any[] = []) => [optimisticPost, ...old]);
 
       return { previousPosts };
     },
@@ -311,7 +368,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       setVideoThumbnail(null);
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
-      
+
       // Clear any file inputs
       if (videoInputRef.current) {
         videoInputRef.current.value = "";
@@ -320,15 +377,45 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
         fileInputRef.current.value = "";
       }
 
-      // Update the post data in the cache
-      queryClient.setQueryData(["/api/posts"], (old: any[] = []) => {
-        return old.map(post => post.id === Date.now() ? newPost : post);
+      console.log("Post created successfully, invalidating queries to update UI");
+
+      // Also update prayer requests cache if this is a prayer post
+      if (newPost.type === "prayer") {
+        queryClient.setQueryData(["/api/posts/prayer-requests"], (old: any[] = []) => {
+          return [newPost, ...old];
+        });
+      }
+
+      // Only invalidate the specific posts query we're using
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts", "team-posts"], 
+        exact: false // This will match all variations including different teamIds
       });
 
-      // Invalidate related queries to refresh counts and stats
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
-      
+      // Invalidate post limits only once with specific key
+      const today = new Date();
+      const tzOffset = today.getTimezoneOffset();
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/counts", today.toISOString(), tzOffset],
+        exact: true 
+      });
+
+      // If this was a prayer post, also invalidate the prayer requests cache
+      if (newPost.type === "prayer") {
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
+      }
+
+      // Then use predicate for any other post-related queries we might have missed
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey as (string | number)[];
+          if (queryKey[0] === "/api/posts") {
+            return true;
+          }
+          return false;
+        }
+      });
+
       // Display success toast
       toast({
         title: "Post Created",
@@ -336,7 +423,10 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
       });
     },
     onError: (error: any, _: any, context: any) => {
-      queryClient.setQueryData(["/api/posts"], context?.previousPosts);
+      // Restore previous posts data if we have it
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["/api/posts", "team-posts"], context.previousPosts);
+      }
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
@@ -379,10 +469,6 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
           </Button>
           <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
         </div>
-        <DialogDescription className="text-center">
-          Share your wellness journey with your team
-        </DialogDescription>
-
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex flex-col">
             <FormField
@@ -423,47 +509,51 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <FormControl>
-                    <select
-                      {...field}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2"
-                      onChange={(e) => {
-                        field.onChange(e);
-                        // Reset selected media type when changing post type
-                        setSelectedMediaType(null);
-                        setImagePreview(null);
-                        setVideoThumbnail(null);
-                      }}
-                    >
-                      <option value="food" disabled={isPostTypeDisabled('food')}>
-                        Food {getRemainingMessage('food')}
-                      </option>
-                      <option value="workout" disabled={isPostTypeDisabled('workout')}>
-                        Workout {getRemainingMessage('workout')}
-                      </option>
-                      <option value="scripture" disabled={isPostTypeDisabled('scripture')}>
-                        Scripture {getRemainingMessage('scripture')}
-                      </option>
-                      <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse')}>
-                        Memory Verse {getRemainingMessage('memory_verse')}
-                      </option>
-                      <option value="miscellaneous">
-                        Miscellaneous {getRemainingMessage('miscellaneous')}
-                      </option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Only show Type field if hideTypeField is false */}
+            {!hideTypeField && (
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 h-12"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset selected media type when changing post type
+                          setSelectedMediaType(null);
+                          setImagePreview(null);
+                          setVideoThumbnail(null);
+                        }}
+                      >
+                        <option value="food" disabled={isPostTypeDisabled('food') || (!user?.teamId && !hasPostedIntroduction)}>
+                          Food {getRemainingMessage('food')}
+                        </option>
+                        <option value="workout" disabled={isPostTypeDisabled('workout') || (!user?.teamId && !hasPostedIntroduction)}>
+                          Workout {getRemainingMessage('workout')}
+                        </option>
+                        <option value="scripture" disabled={isPostTypeDisabled('scripture') || (!user?.teamId && !hasPostedIntroduction)}>
+                          Scripture {getRemainingMessage('scripture')}
+                        </option>
+                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || (!user?.teamId && !hasPostedIntroduction)}>
+                          Memory Verse {getRemainingMessage('memory_verse')}
+                        </option>
+                        {/* Remove Prayer Request option entirely - will be handled on its own page */}
+                        <option value="miscellaneous">
+                          {(!user?.teamId && !hasPostedIntroduction) ? "Introduction" : "Miscellaneous"} {getRemainingMessage('miscellaneous')}
+                        </option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse") && (
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer") && (
               <FormField
                 control={form.control}
                 name="mediaUrl"
@@ -471,7 +561,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                   <FormItem>
                     <FormLabel>
                       {(form.watch("type") === "memory_verse") ? "Video" : 
-                       (form.watch("type") === "miscellaneous") ? "Media" : "Image"}
+                       (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
                     </FormLabel>
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
@@ -491,7 +581,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               <span>Select video</span>
                             </div>
                           </Button>
-                          
+
                           {/* Hidden video input file */}
                           <Input
                             type="file"
@@ -513,19 +603,26 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 // For video, create a preview and store the file reference
                                 const videoUrl = URL.createObjectURL(file);
                                 setImagePreview(videoUrl);
-                                
+
                                 // Generate a thumbnail for the video
+                                console.log("Starting thumbnail generation for video:", file.name, file.type);
+                                setVideoThumbnail(null); // Reset thumbnail state
                                 generateVideoThumbnail(file).then(thumbnailUrl => {
+                                  console.log("Thumbnail generation result:", thumbnailUrl ? "SUCCESS" : "FAILED");
                                   if (thumbnailUrl) {
                                     setVideoThumbnail(thumbnailUrl);
-                                    console.log("Generated video thumbnail");
+                                    console.log("Generated video thumbnail successfully:", thumbnailUrl.substring(0, 50) + "...");
+                                  } else {
+                                    console.log("Failed to generate video thumbnail");
                                   }
+                                }).catch(error => {
+                                  console.error("Error in thumbnail generation promise:", error);
                                 });
-                                
+
                                 // Important: we need to set the field value to a marker so we know to use the video file
                                 const marker = "VIDEO_FILE_UPLOAD";
                                 field.onChange(marker);
-                                
+
                                 // Log detailed information about the selected file
                                 console.log("Memory verse video file selected:", {
                                   name: file.name,
@@ -534,12 +631,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                   sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
                                   fieldValue: marker
                                 });
-                                
-                                // Show a success toast to confirm selection
-                                toast({
-                                  title: "Video Selected",
-                                  description: `Selected video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`,
-                                });
+
+                                // Log video selection without showing toast
+                                console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
                               }
                             }}
                           />
@@ -566,6 +660,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               }}
                               variant="outline"
                               className="w-full"
+                              disabled={!user?.teamId && !hasPostedIntroduction}
                             >
                               Select Image
                             </Button>
@@ -585,7 +680,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                         const compressed = await compressImage(reader.result as string);
                                         setImagePreview(compressed);
                                         field.onChange(compressed);
-                                        
+
                                         // Set media type to image
                                         if (form.watch("type") === "miscellaneous") {
                                           setSelectedMediaType("image");
@@ -605,9 +700,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                               }}
                               className="hidden"
                             />
-                            
-                            {/* Add Select Video button for Miscellaneous post type */}
-                            {form.watch("type") === "miscellaneous" && (
+
+                            {/* Add Select Video button for Miscellaneous and Prayer Request post types */}
+                            {(form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
                               <div className="mt-3">
                                 <Button
                                   type="button"
@@ -628,7 +723,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                 >
                                   Select Video
                                 </Button>
-                                
+
                                 {/* Hidden video input field for miscellaneous posts */}
                                 <Input
                                   type="file"
@@ -647,12 +742,12 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                         });
                                         return;
                                       }
-                                      
+
                                       // For video, create a preview and set media type
                                       const videoUrl = URL.createObjectURL(file);
                                       setImagePreview(videoUrl);
                                       setSelectedMediaType("video");
-                                      
+
                                       // Generate a thumbnail for the video
                                       generateVideoThumbnail(file).then(thumbnailUrl => {
                                         if (thumbnailUrl) {
@@ -660,11 +755,11 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                           console.log("Generated video thumbnail for miscellaneous post");
                                         }
                                       });
-                                      
+
                                       // Set the field value to a marker so we know to use the video file
                                       const marker = "VIDEO_FILE_UPLOAD";
                                       field.onChange(marker);
-                                      
+
                                       // Log detailed information about the selected file
                                       console.log("Miscellaneous video file selected:", {
                                         name: file.name,
@@ -674,12 +769,9 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                                         selectedMediaType: "video",
                                         fieldValue: marker
                                       });
-                                      
-                                      // Show a success toast to confirm selection
-                                      toast({
-                                        title: "Video Selected",
-                                        description: `Selected video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`,
-                                      });
+
+                                      // Log video selection without showing toast
+                                      console.log(`Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`);
                                     }
                                   }}
                                 />
@@ -688,16 +780,25 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                           </>
                         )}
                       </FormControl>
-                      {imagePreview && (
+                      {(imagePreview || videoThumbnail) && (
                         <div className="mt-2">
                           {/* Display video thumbnails for memory verse posts or miscellaneous video posts */}
-                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && videoThumbnail && (
+                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && (
                             <div className="mt-2">
-                              <img 
-                                src={videoThumbnail}
-                                alt="Video Thumbnail"
-                                className="max-h-40 rounded-md border border-gray-300"
-                              />
+                              {videoThumbnail ? (
+                                <div>
+                                  <img 
+                                    src={videoThumbnail}
+                                    alt="Video Thumbnail"
+                                    className="max-h-40 rounded-md border border-gray-300"
+                                  />
+                                  <p className="text-sm text-gray-600 mt-1">Video thumbnail preview</p>
+                                </div>
+                              ) : (
+                                <div className="max-h-40 flex items-center justify-center border border-gray-300 rounded-md bg-gray-50 p-8">
+                                  <p className="text-sm text-gray-500">Generating thumbnail...</p>
+                                </div>
+                              )}
                             </div>
                           )}
                           {/* Display regular images for other post types or miscellaneous image posts */}
@@ -760,7 +861,7 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
                 form="create-post-form"
                 variant="default"
                 className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
-                disabled={createPostMutation.isPending || !canPost[form.watch("type") as keyof typeof canPost]}
+                disabled={createPostMutation.isPending || (form.watch("type") !== "prayer" && !canPost[form.watch("type") as keyof typeof canPost])}
               >
                 {createPostMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -776,68 +877,171 @@ export function CreatePostDialog({ remaining: propRemaining }: { remaining: Reco
 }
 
 // Generate a thumbnail from a video file
+// Convert a data URL to a Blob object
+function dataURLToBlob(dataURL: string): Blob {
+  // Split the data URL to get the content type and base64 data
+  const parts = dataURL.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+
+  // Create an array buffer with the binary data
+  const uInt8Array = new Uint8Array(rawLength);
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+
+  // Create a Blob from the array buffer
+  return new Blob([uInt8Array], { type: contentType });
+}
+
 async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
   return new Promise((resolve) => {
     try {
+      console.log('🎬 Starting video thumbnail generation for:', videoFile.name, videoFile.type);
+
       // Create a video element
       const video = document.createElement('video');
-      video.preload = 'metadata';
+      video.preload = 'auto';
       video.muted = true;
       video.playsInline = true;
-      
+      video.autoplay = false;
+
+      let hasResolved = false;
+
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        if (!hasResolved) {
+          console.warn('⏰ Video thumbnail generation timed out after 15 seconds');
+          hasResolved = true;
+          URL.revokeObjectURL(video.src);
+          resolve(null);
+        }
+      }, 15000); // 15 second timeout
+
       // Create a URL for the video file
       const videoUrl = URL.createObjectURL(videoFile);
-      video.src = videoUrl;
-      
-      // When video metadata is loaded, seek to the middle point
-      video.onloadedmetadata = () => {
-        // Set the current time to 1 second or the middle of the video (whichever is less)
-        video.currentTime = Math.min(1, video.duration / 2);
-      };
-      
-      // When seeking completes, capture the thumbnail
-      video.onseeked = () => {
+
+      // Function to generate thumbnail from current frame
+      const generateThumbnailFromCurrentFrame = () => {
+        if (hasResolved) return false;
+
         try {
-          // Create a canvas with video dimensions
+          console.log('📸 Attempting to capture frame at currentTime:', video.currentTime);
+
+          // Ensure video has valid dimensions
+          if (!video.videoWidth || !video.videoHeight) {
+            console.warn('⚠️ Video dimensions not available yet');
+            return false;
+          }
+
           const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          
-          // Draw the current frame to the canvas
+          const targetWidth = 400; // Fixed width for consistency
+          const aspectRatio = video.videoHeight / video.videoWidth;
+          canvas.width = targetWidth;
+          canvas.height = Math.round(targetWidth * aspectRatio);
+
           const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Convert canvas to data URL
-            const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
-            
-            // Clean up
+          if (!ctx) {
+            console.error('❌ Failed to get canvas context');
+            return false;
+          }
+
+          // Clear canvas and draw the current frame
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          // Convert canvas to data URL with higher quality
+          const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+          if (thumbnailUrl && thumbnailUrl.length > 1000) { // More stringent validation
+            console.log('✅ Video thumbnail generated successfully! Size:', thumbnailUrl.length, 'chars');
+            hasResolved = true;
+            clearTimeout(timeout);
             URL.revokeObjectURL(videoUrl);
-            
-            // Return the thumbnail
             resolve(thumbnailUrl);
+            return true;
           } else {
-            console.error('Failed to get canvas context');
-            resolve(null);
+            console.warn('⚠️ Generated thumbnail seems invalid, size:', thumbnailUrl?.length);
+            return false;
           }
         } catch (error) {
-          console.error('Error generating thumbnail:', error);
+          console.error('❌ Error generating thumbnail:', error);
+          return false;
+        }
+      };
+
+      // When video can play through, try multiple methods
+      video.oncanplaythrough = () => {
+        console.log('🎥 Video can play through - attempting thumbnail generation');
+
+        // Try generating thumbnail immediately
+        if (generateThumbnailFromCurrentFrame()) return;
+
+        // If immediate capture failed, try seeking to a specific time
+        setTimeout(() => {
+          if (hasResolved) return;
+
+          // For memory verse videos, try to seek to a better position
+          const seekTime = video.duration > 0 
+            ? Math.min(video.duration * 0.15, 3) // 15% into video or 3 seconds max
+            : 1;
+          console.log(`🔍 Seeking to ${seekTime} seconds for thumbnail (duration: ${video.duration}s)`);
+          video.currentTime = seekTime;
+
+          // Try again after seeking
+          setTimeout(() => {
+            if (!hasResolved) {
+              generateThumbnailFromCurrentFrame();
+            }
+          }, 100);
+        }, 100);
+      };
+
+      // When seeking completes
+      video.onseeked = () => {
+        console.log('✨ Video seeking completed');
+        if (!hasResolved) {
+          generateThumbnailFromCurrentFrame();
+        }
+      };
+
+      // When video loads enough data
+      video.onloadeddata = () => {
+        console.log('📊 Video data loaded - trying thumbnail generation');
+        if (!hasResolved) {
+          generateThumbnailFromCurrentFrame();
+        }
+      };
+
+      // When metadata is loaded
+      video.onloadedmetadata = () => {
+        console.log('📋 Video metadata loaded:', {
+          duration: video.duration,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          readyState: video.readyState
+        });
+      };
+
+      // Handle errors
+      video.onerror = (e) => {
+        console.error('❌ Error loading video for thumbnail:', e);
+        if (!hasResolved) {
+          hasResolved = true;
+          clearTimeout(timeout);
+          URL.revokeObjectURL(videoUrl);
           resolve(null);
         }
       };
-      
-      // Handle errors
-      video.onerror = () => {
-        console.error('Error loading video for thumbnail');
-        URL.revokeObjectURL(videoUrl);
-        resolve(null);
-      };
-      
-      // Start loading the video
+
+      // Set the video source and start loading
+      console.log('🚀 Setting video source and starting load');
+      video.src = videoUrl;
       video.load();
-      
+
     } catch (error) {
-      console.error('Error generating thumbnail:', error);
+      console.error('💥 Error setting up video thumbnail generation:', error);
       resolve(null);
     }
   });

@@ -3,6 +3,8 @@ import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
 import {
   posts,
   teams,
+  groups,
+  organizations,
   users,
   activities,
   reactions,
@@ -11,12 +13,17 @@ import {
   workoutVideos,
   type Post,
   type Team,
+  type Group,
+  type Organization,
   type User,
   type Activity,
   type Reaction,
   type Notification,
   type Measurement,
-  type WorkoutVideo
+  type WorkoutVideo,
+  type InsertTeam,
+  type InsertGroup,
+  type InsertOrganization
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
@@ -113,6 +120,20 @@ export const storage = {
     }
   },
 
+  async updateUser(id: number, data: Partial<Omit<User, "id" | "createdAt">>): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set(data)
+        .where(eq(users.id, id))
+        .returning();
+      return user;
+    } catch (error) {
+      logger.error(`Failed to update user ${id}: ${error}`);
+      throw error;
+    }
+  },
+
   // Notifications
   async createNotification(data: Omit<Notification, "id">): Promise<Notification> {
     try {
@@ -176,6 +197,23 @@ export const storage = {
       return await query.orderBy(activities.week, activities.day);
     } catch (error) {
       logger.error(`Failed to get activities: ${error}`);
+      throw error;
+    }
+  },
+
+  async getActivitiesForWeeks(weekNumbers: number[]): Promise<Activity[]> {
+    try {
+      if (weekNumbers.length === 0) {
+        return [];
+      }
+
+      const query = db.select().from(activities).where(
+        or(...weekNumbers.map(week => eq(activities.week, week)))
+      );
+
+      return await query.orderBy(activities.week, activities.day);
+    } catch (error) {
+      logger.error(`Failed to get activities for weeks: ${error}`);
       throw error;
     }
   },
@@ -286,7 +324,82 @@ export const storage = {
 
   async deletePost(id: number): Promise<void> {
     try {
+      logger.info(`Starting deletion of post ${id}`);
+      
+      // First, get the post to check if it has media that needs to be deleted
+      const postToDelete = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl,
+          is_video: posts.is_video
+        })
+        .from(posts)
+        .where(eq(posts.id, id))
+        .limit(1);
+      
+      logger.debug(`Post data for deletion:`, postToDelete[0]);
+      
+      // Delete the post record from the database
       await db.delete(posts).where(eq(posts.id, id));
+      logger.info(`Deleted post ${id} from database`);
+      
+      // If the post had media, delete the media files from Object Storage
+      if (postToDelete.length > 0 && postToDelete[0].mediaUrl) {
+        const mediaUrl = postToDelete[0].mediaUrl;
+        const isVideo = postToDelete[0].is_video;
+        
+        logger.info(`Deleting media files for post ${id}, mediaUrl: ${mediaUrl}, isVideo: ${isVideo}`);
+        
+        try {
+          // Import the SpartaObjectStorage utility
+          const { spartaStorage } = await import('./sparta-object-storage');
+          
+          // Extract clean filename from mediaUrl
+          let filename = '';
+          if (mediaUrl.includes('filename=')) {
+            // Handle serve-file URLs like /api/serve-file?filename=...
+            const urlParams = new URLSearchParams(mediaUrl.split('?')[1]);
+            filename = urlParams.get('filename') || '';
+          } else {
+            // Handle direct paths
+            filename = mediaUrl.split('/').pop() || '';
+          }
+          
+          logger.debug(`Extracted filename: ${filename}`);
+          
+          if (filename) {
+            // Build the actual Object Storage path
+            const filePath = `shared/uploads/${filename}`;
+            
+            // Delete the main media file
+            try {
+              await spartaStorage.deleteFile(filePath);
+              logger.info(`Deleted main media file: ${filePath}`);
+            } catch (err) {
+              logger.warn(`Could not delete main media file ${filePath}: ${err}`);
+            }
+            
+            // If it's a video, also delete the thumbnail
+            if (isVideo) {
+              // With the new compact naming, thumbnails have the same base name but .jpg extension
+              const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+              
+              try {
+                await spartaStorage.deleteFile(thumbnailPath);
+                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
+              } catch (err) {
+                logger.debug(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
+              }
+            }
+          }
+        } catch (mediaError) {
+          // Log but don't throw - we want to continue even if media deletion fails
+          logger.error(`Error deleting media for post ${id}: ${mediaError}`);
+        }
+      }
+      
+      logger.info(`Successfully completed deletion of post ${id}`);
     } catch (error) {
       logger.error(`Failed to delete post ${id}: ${error}`);
       throw error;
@@ -335,9 +448,28 @@ export const storage = {
       throw error;
     }
   },
-  // Add deleteUser method to storage adapter
+  // Delete a user and all their associated data
   async deleteUser(userId: number): Promise<void> {
     try {
+      // Import the SpartaObjectStorage utility for media deletion
+      const { spartaStorage } = await import('./sparta-object-storage');
+
+      // First, get all posts by this user that have media to delete
+      const postsWithMedia = await db
+        .select({
+          id: posts.id, 
+          mediaUrl: posts.mediaUrl,
+          is_video: posts.is_video
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            sql`${posts.mediaUrl} IS NOT NULL`
+          )
+        );
+
+      // Now delete everything in a transaction
       await db.transaction(async (tx) => {
         // Delete all reactions by this user
         await tx
@@ -367,6 +499,56 @@ export const storage = {
           .delete(users)
           .where(eq(users.id, userId));
       });
+
+      // After the transaction completes successfully, clean up the media files
+      for (const post of postsWithMedia) {
+        if (post.mediaUrl) {
+          try {
+            // Delete the main media file
+            await spartaStorage.deleteFile(post.mediaUrl);
+            logger.debug(`Deleted media file for post ${post.id}: ${post.mediaUrl}`);
+
+            // If it's a video, also try to delete associated files (poster, thumbnails)
+            if (post.is_video) {
+              // Delete the poster image if it exists
+              const filename = post.mediaUrl.split('/').pop() || '';
+              const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const posterUrl = post.mediaUrl.replace(filename, `${baseName}.poster.jpg`);
+              
+              try {
+                await spartaStorage.deleteFile(posterUrl);
+                logger.debug(`Deleted poster image for post ${post.id}: ${posterUrl}`);
+              } catch (err) {
+                // Ignore errors for poster deletion - it might not exist
+                logger.debug(`Could not delete poster image for post ${post.id}: ${posterUrl}`);
+              }
+              
+              // Delete thumbnails (both formats - with and without thumb- prefix)
+              const thumbPath = post.mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
+              const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
+              
+              try {
+                await spartaStorage.deleteFile(thumbPath);
+                logger.debug(`Deleted thumbnail for post ${post.id}: ${thumbPath}`);
+              } catch (err) {
+                // Ignore errors for thumbnail deletion - it might not exist
+                logger.debug(`Could not delete thumbnail for post ${post.id}: ${thumbPath}`);
+              }
+              
+              try {
+                await spartaStorage.deleteFile(prefixedThumbPath);
+                logger.debug(`Deleted prefixed thumbnail for post ${post.id}: ${prefixedThumbPath}`);
+              } catch (err) {
+                // Ignore errors for prefixed thumbnail deletion - it might not exist
+                logger.debug(`Could not delete prefixed thumbnail for post ${post.id}: ${prefixedThumbPath}`);
+              }
+            }
+          } catch (mediaError) {
+            // Log but don't throw - we want to continue even if some media deletion fails
+            logger.error(`Error deleting media for post ${post.id}: ${mediaError}`);
+          }
+        }
+      }
     } catch (error) {
       logger.error(`Failed to delete user ${userId}: ${error}`);
       throw error;
@@ -431,6 +613,25 @@ export const storage = {
       if (!data.userId || !data.content || !data.parentId) {
         throw new Error("Missing required fields for comment");
       }
+      
+      // Check for potentially problematic parent ID values (like JS timestamps)
+      let safeParentId = data.parentId;
+      
+      // Handle potential integer overflow from JavaScript timestamps
+      if (safeParentId && typeof safeParentId === 'number' && safeParentId > 2147483647) {
+        // PostgreSQL integer type range is -2,147,483,648 to 2,147,483,647
+        // If we have a JavaScript timestamp (13 digits), convert it to a safe integer
+        const parentIdStr = String(safeParentId);
+        if (parentIdStr.length > 10) {
+          safeParentId = parseInt(parentIdStr.substring(0, 9));
+          logger.debug(`Converted large parentId ${data.parentId} to safe value ${safeParentId}`);
+        }
+      }
+
+      // Log the conversion for debugging
+      if (safeParentId !== data.parentId) {
+        logger.info(`Converted parentId from ${data.parentId} to ${safeParentId} to prevent integer overflow`);
+      }
 
       const [comment] = await db
         .insert(posts)
@@ -438,11 +639,11 @@ export const storage = {
           userId: data.userId,
           type: "comment",
           content: data.content,
-          parentId: data.parentId,
+          parentId: safeParentId, // Use the safe parentId
           mediaUrl: data.mediaUrl || null, // Added mediaUrl field
           is_video: data.is_video || false, // Added is_video field with default false
           depth: data.depth || 0,
-          points: 1,
+          points: data.points !== undefined ? data.points : 0, // Use provided points or default to 0
           createdAt: new Date()
         })
         .returning();
@@ -462,12 +663,137 @@ export const storage = {
       throw error;
     }
   },
+
+  async updateTeam(id: number, data: Partial<Omit<Team, "id" | "createdAt">>): Promise<Team> {
+    try {
+      const [team] = await db
+        .update(teams)
+        .set(data)
+        .where(eq(teams.id, id))
+        .returning();
+      return team;
+    } catch (error) {
+      logger.error('Database error updating team:', error);
+      throw error;
+    }
+  },
   
   async deleteTeam(id: number): Promise<void> {
     try {
       await db.delete(teams).where(eq(teams.id, id));
     } catch (error) {
       logger.error(`Failed to delete team ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  // Organizations
+  async getOrganizations(): Promise<Organization[]> {
+    try {
+      return await db.select().from(organizations);
+    } catch (error) {
+      logger.error(`Failed to get organizations: ${error}`);
+      throw error;
+    }
+  },
+
+  async createOrganization(data: InsertOrganization): Promise<Organization> {
+    try {
+      const [organization] = await db
+        .insert(organizations)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return organization;
+    } catch (error) {
+      logger.error(`Failed to create organization: ${error}`);
+      throw error;
+    }
+  },
+
+  async updateOrganization(id: number, data: Partial<Omit<Organization, "id" | "createdAt">>): Promise<Organization> {
+    try {
+      const [organization] = await db
+        .update(organizations)
+        .set(data)
+        .where(eq(organizations.id, id))
+        .returning();
+      return organization;
+    } catch (error) {
+      logger.error('Database error updating organization:', error);
+      throw error;
+    }
+  },
+
+  async deleteOrganization(id: number): Promise<void> {
+    try {
+      await db.delete(organizations).where(eq(organizations.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete organization ${id}: ${error}`);
+      throw error;
+    }
+  },
+
+  // Groups
+  async getGroups(): Promise<Group[]> {
+    try {
+      return await db.select().from(groups);
+    } catch (error) {
+      logger.error(`Failed to get groups: ${error}`);
+      throw error;
+    }
+  },
+
+  async getGroupsByOrganization(organizationId: number): Promise<Group[]> {
+    try {
+      return await db.select().from(groups).where(eq(groups.organizationId, organizationId));
+    } catch (error) {
+      logger.error(`Failed to get groups for organization ${organizationId}: ${error}`);
+      throw error;
+    }
+  },
+
+  async createGroup(data: InsertGroup): Promise<Group> {
+    try {
+      const [group] = await db
+        .insert(groups)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return group;
+    } catch (error) {
+      logger.error(`Failed to create group: ${error}`);
+      throw error;
+    }
+  },
+
+  async updateGroup(id: number, data: Partial<Omit<Group, "id" | "createdAt">>): Promise<Group> {
+    try {
+      const [group] = await db
+        .update(groups)
+        .set(data)
+        .where(eq(groups.id, id))
+        .returning();
+      return group;
+    } catch (error) {
+      logger.error('Database error updating group:', error);
+      throw error;
+    }
+  },
+
+  async deleteGroup(id: number): Promise<void> {
+    try {
+      await db.delete(groups).where(eq(groups.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete group ${id}: ${error}`);
+      throw error;
+    }
+  },
+
+  // Update team functions to work with groupId
+  async getTeamsByGroup(groupId: number): Promise<Team[]> {
+    try {
+      return await db.select().from(teams).where(eq(teams.groupId, groupId));
+    } catch (error) {
+      logger.error(`Failed to get teams for group ${groupId}: ${error}`);
       throw error;
     }
   }

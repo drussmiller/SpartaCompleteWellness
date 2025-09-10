@@ -3,7 +3,7 @@ import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
 import { Post, User } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft } from "lucide-react";
@@ -19,7 +19,7 @@ interface CommentDrawerProps {
   onClose: () => void;
 }
 
-export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
+export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): JSX.Element {
   const { toast } = useToast();
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -161,91 +161,67 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       try {
         console.log(`Manually fetching comments for post ${postId}...`);
 
-        // Use XMLHttpRequest instead of fetch to better handle content type issues
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', `/api/posts/comments/${postId}`);
-        xhr.setRequestHeader('Accept', 'application/json');
-        xhr.withCredentials = true;
+        // Use fetch instead of XMLHttpRequest to ensure cookie-based authentication works
+        const response = await fetch(`/api/posts/comments/${postId}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include' // This is crucial for sending the session cookie
+        });
 
-        xhr.onload = function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const contentType = xhr.getResponseHeader('Content-Type');
-            console.log(`Response Content-Type for comments: ${contentType}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Comments fetch error (${response.status}):`, errorText);
+          throw new Error(`Failed to fetch comments: ${response.status}`);
+        }
 
-            // Check if we actually got JSON back
-            if (contentType && contentType.includes('application/json')) {
-              try {
-                const data = JSON.parse(xhr.responseText);
-                console.log("Comments data retrieved:", data);
+        const data = await response.json();
+        console.log("Comments data retrieved:", data);
 
-                // Make sure each comment has is_video property if it has mediaUrl
-                if (Array.isArray(data)) {
-                  // Process video detection more thoroughly for comments
-                  const processedData = data.map(comment => {
-                    if (comment.mediaUrl && !('is_video' in comment)) {
-                      // Memory verse comments should always be displayed as videos
-                      if (comment.type === 'memory_verse') {
-                        return {...comment, is_video: true};
-                      } 
-                      // For miscellaneous comments, check for video indicators
-                      else if (comment.type === 'miscellaneous') {
-                        const mediaUrl = comment.mediaUrl.toLowerCase();
-                        const isVideo = 
-                          // Check file extensions
-                          mediaUrl.endsWith('.mp4') || 
-                          mediaUrl.endsWith('.mov') || 
-                          mediaUrl.endsWith('.webm') || 
-                          mediaUrl.endsWith('.avi') || 
-                          mediaUrl.endsWith('.mkv') ||
-                          // Check for video paths
-                          mediaUrl.includes('/videos/') || 
-                          mediaUrl.includes('/video/') ||
-                          mediaUrl.includes('/memory_verse/') ||
-                          mediaUrl.includes('/miscellaneous/') ||
-                          // Check content for [VIDEO] marker
-                          (comment.content && comment.content.includes('[VIDEO]'));
+        // Make sure each comment has is_video property if it has mediaUrl
+        if (Array.isArray(data)) {
+          // Process video detection more thoroughly for comments
+          const processedData = data.map(comment => {
+            if (comment.mediaUrl && !('is_video' in comment)) {
+              // Memory verse comments should always be displayed as videos
+              if (comment.type === 'memory_verse') {
+                return {...comment, is_video: true};
+              } 
+              // For miscellaneous comments, check for video indicators
+              else if (comment.type === 'miscellaneous') {
+                const mediaUrl = comment.mediaUrl.toLowerCase();
+                const isVideo = 
+                  // Check file extensions
+                  mediaUrl.endsWith('.mp4') || 
+                  mediaUrl.endsWith('.mov') || 
+                  mediaUrl.endsWith('.webm') || 
+                  mediaUrl.endsWith('.avi') || 
+                  mediaUrl.endsWith('.mkv') ||
+                  // Check for video paths
+                  mediaUrl.includes('/videos/') || 
+                  mediaUrl.includes('/video/') ||
+                  mediaUrl.includes('/memory_verse/') ||
+                  mediaUrl.includes('/miscellaneous/') ||
+                  // Check content for [VIDEO] marker
+                  (comment.content && comment.content.includes('[VIDEO]'));
 
-                        return {...comment, is_video: isVideo};
-                      } else {
-                        return {...comment, is_video: false};
-                      }
-                    }
-                    return comment;
-                  });
-                  setComments(processedData);
-                } else {
-                  console.error("Comments response is not an array:", data);
-                  setComments([]);
-                }
-              } catch (e) {
-                console.error("Error parsing JSON comments:", e);
-                console.error("First 200 chars of response:", xhr.responseText.substring(0, 200));
-                setCommentsError(new Error("Invalid comment data format"));
-                setComments([]);
+                return {...comment, is_video: isVideo};
+              } else {
+                return {...comment, is_video: false};
               }
-            } else {
-              // Got HTML or something else instead of JSON
-              console.error("Received HTML instead of JSON:", xhr.responseText.substring(0, 100));
-              setCommentsError(new Error("Server returned HTML instead of JSON"));
-              setComments([]);
             }
-          } else {
-            console.error(`XHR Error (${xhr.status}):`, xhr.statusText);
-            setCommentsError(new Error(`Failed to fetch comments: ${xhr.status}`));
-            setComments([]);
-          }
-
-          setAreCommentsLoading(false);
-        };
-
-        xhr.onerror = function() {
-          console.error("Network error when fetching comments");
-          setCommentsError(new Error("Network error when fetching comments"));
+            return comment;
+          });
+          setComments(processedData);
+        } else {
+          console.error("Comments response is not an array:", data);
           setComments([]);
-          setAreCommentsLoading(false);
-        };
+        }
 
-        xhr.send();
+        // We're done loading
+        setAreCommentsLoading(false);
       } catch (error) {
         console.error("Error in comments fetch:", error);
         setCommentsError(error instanceof Error ? error : new Error("Unknown error"));
@@ -258,24 +234,30 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   }, [isOpen, postId]);
 
   const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const data = {
-        type: "comment",
-        content: content.trim(),
-        parentId: postId,
-        points: 1
-      };
+    mutationFn: async ({ content, file }: { content: string, file?: File }) => {
+      if (!content.trim()) {
+        throw new Error("Comment content cannot be empty");
+      }
 
-      console.log(`Creating comment for post ${postId}...`, data);
+      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file });
+
+      // Use FormData to handle both text and file uploads
+      const formData = new FormData();
+      formData.append('type', 'comment');
+      formData.append('content', content.trim());
+      formData.append('parentId', postId.toString());
+      formData.append('points', '1');
+
+      // Append file if provided
+      if (file) {
+        console.log("Appending file to comment:", file.name, file.type);
+        formData.append('image', file); // Using 'image' instead of 'file' to match the server's multer config
+      }
 
       try {
         const res = await fetch('/api/posts', {
           method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data),
+          body: formData,
           credentials: 'include'
         });
 
@@ -296,8 +278,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         throw error;
       }
     },
-    onSuccess: () => {
-      // Manually reload comments
+    onSuccess: (newComment) => {
+      console.log('Comment created successfully:', newComment);
+
+      // 1. Update local comments state immediately
       if (isOpen && postId) {
         setAreCommentsLoading(true);
         fetch(`/api/posts/comments/${postId}`, {
@@ -308,6 +292,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
+            console.log(`Fetched ${data.length} comments after creating new one`);
             // Process video detection more thoroughly for comments
             const processedData = data.map(comment => {
               if (comment.mediaUrl && !('is_video' in comment)) {
@@ -345,6 +330,54 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         })
         .catch(err => console.error("Error reloading comments:", err))
         .finally(() => setAreCommentsLoading(false));
+      }
+
+      // 2. Use the QueryClient to update comment counts and invalidate ALL related queries
+      if (postId) {
+        // Dispatch a global event to update comment counts in all components
+        window.dispatchEvent(new CustomEvent('commentCountUpdate', {
+          detail: { 
+            postId,
+            increment: true
+          }
+        }));
+
+        console.log(`Dispatched commentCountUpdate event for post ${postId}`);
+
+        // Define the list of queries to invalidate immediately
+        const queryKeysToInvalidate = [
+          // Comments list query - used in the drawer itself
+          [`/api/posts/comments/${postId}`],
+
+          // Post details query - used when viewing post details
+          [`/api/posts/${postId}`],
+
+          // All posts queries that might show this post
+          ['/api/posts', 'team-posts'],
+          ['/api/posts/prayer-requests']
+        ];
+
+        // Invalidate each query individually
+        queryKeysToInvalidate.forEach(queryKey => {
+          console.log(`Invalidating query: ${queryKey.join('/')}`);
+          queryClient.invalidateQueries({ queryKey, exact: false });
+        });
+
+        // Schedule a delayed full invalidation for consistency
+        setTimeout(() => {
+          // Also invalidate all posts-related queries using a more general approach
+          queryClient.invalidateQueries({
+            predicate: (query) => {
+              const queryKeyString = Array.isArray(query.queryKey) ? query.queryKey.join('/') : String(query.queryKey);
+              // Match any queries related to posts
+              return queryKeyString.includes('/api/posts');
+            },
+          });
+
+          console.log(`Delayed full cache invalidation completed for post ${postId}`);
+        }, 500);  // 500ms delay to ensure the UI is updated first
+
+        console.log(`All comment-related queries invalidated for post ${postId}`);
       }
 
       toast({
@@ -438,8 +471,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           {isCommentBoxVisible && (
             <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
-                onSubmit={async (content) => {
-                  await createCommentMutation.mutateAsync(content);
+                onSubmit={async (content, file) => {
+                  await createCommentMutation.mutateAsync({ content, file });
                 }}
                 isSubmitting={createCommentMutation.isPending}
                 inputRef={commentInputRef}

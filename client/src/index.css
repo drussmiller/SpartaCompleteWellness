@@ -2,6 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent browser navigation gestures */
+html, body {
+  overscroll-behavior-x: none !important;
+  overflow-x: hidden !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: pan-y pinch-zoom !important;
+  position: relative !important;
+}
+
+/* Aggressive prevention on all elements */
+*, *::before, *::after {
+  overscroll-behavior-x: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Base container styles */
+.post-content,
+.post-card {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Base image styles - mobile first */
+.post-content img,
+.post-card img,
+article img,
+main img {
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+}
+
+/* Desktop image constraints with proper padding */
+@media (min-width: 768px) {
+  .post-content,
+  .post-card {
+    padding: 0 2rem;
+  }
+  
+  /* Target the image container div specifically */
+  .post-content > div,
+  .post-card > div {
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 0 2rem !important;
+  }
+  
+  /* Force image width constraints on desktop */
+  .post-content img,
+  .post-card img,
+  .post-content > div img,
+  .post-card > div img {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* Fix for video player controls being cut off */
+.video-container {
+  position: relative;
+  overflow: visible !important;
+}
+
+video {
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  margin-bottom: 36px !important;
+}
+
+/* Ensure custom CSS has higher priority */
+div[data-post-id] .video-container {
+  overflow: visible !important;
+  margin-bottom: 0px !important;
+}
+
+/* Hide scrollbar but maintain scroll functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 @layer base {
   * {
     @apply border-border;

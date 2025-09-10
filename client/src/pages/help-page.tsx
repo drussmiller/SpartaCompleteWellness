@@ -7,13 +7,16 @@ export default function HelpPage() {
   return (
     <AppLayout>
       {/* Fixed title bar */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border pt-0">
-        <div className="px-6 py-4">
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <div className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
+        <div className="p-4">
           <h1 className="text-xl font-bold">Help</h1>
         </div>
       </div>
 
-      <main className="p-4 pb-24 space-y-4 max-w-3xl mx-auto w-full">
+      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

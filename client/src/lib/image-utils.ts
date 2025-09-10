@@ -1,189 +1,64 @@
+import { createMediaUrl, createThumbnailUrl } from './media-utils';
 
 /**
- * Get the thumbnail URL for an image with size optimization
+ * Production server URL for cross-environment access
  */
-export function getThumbnailUrl(originalUrl: string | null, size: 'small' | 'medium' | 'large' = 'medium'): string {
-  if (!originalUrl) {
-    return '';
-  }
+export const PROD_URL = "https://sparta.replit.app";
+
+/**
+ * Get an image URL with direct Object Storage access
+ * This is used for most media files in the app
+ * @param originalUrl The original URL of the image
+ * @returns A URL that works with Object Storage
+ */
+export function getImageUrl(originalUrl: string | null): string {
+  return createMediaUrl(originalUrl);
+}
+
+/**
+ * Get a thumbnail URL for an image or video
+ * @param originalUrl The original URL of the media file
+ * @param size Optional size parameter (ignored for now, kept for compatibility)
+ * @returns A thumbnail URL
+ */
+export function getThumbnailUrl(originalUrl: string | null, size?: string): string {
+  // For images, try the thumbnail first, but fallback to original if needed
+  if (!originalUrl) return '';
   
-  // Handle SVG files - use them directly without thumbnailing
-  if (originalUrl.endsWith('.svg')) {
+  // If this is already a serve-file URL, return as-is
+  if (originalUrl.includes('/api/serve-file')) {
     return originalUrl;
   }
   
-  // Handle regular images that need thumbnailing
-  if (originalUrl.startsWith('/uploads/')) {
+  // Check if this is an image file
+  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(originalUrl);
+  
+  if (isImage) {
+    // For images, try to use the original file directly via serve-file
     const filename = originalUrl.split('/').pop() || '';
-    
-    // Check if this is a special video type (memory verse or miscellaneous)
-    const isMemoryVerse = filename.toLowerCase().includes('memory_verse');
-    const isMiscellaneousVideo = filename.toLowerCase().includes('miscellaneous');
-    
-    // Handle video files differently
-    const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
-    const isVideoExtension = videoExtensions.some(ext => originalUrl.toLowerCase().endsWith(ext));
-    const isVideo = isVideoExtension || isMemoryVerse || isMiscellaneousVideo;
-    
-    // For videos, check for poster image first, then thumbnails
-    if (isVideo) {
-      // First try looking for a poster image (most reliable)
-      const baseName = filename.substring(0, filename.lastIndexOf('.'));
-      const posterPath = `/uploads/${baseName}.poster.jpg`;
-      
-      // For thumbnails, try both with and without the thumb- prefix
-      const thumbFilename = `thumb-${filename}`;
-      const normalThumbPath = `/uploads/thumbnails/${filename}`;
-      const prefixedThumbPath = `/uploads/thumbnails/${thumbFilename}`;
-      
-      // Return in order of preference: poster image, thumbs, or original
-      if (size === 'medium' || size === 'large') {
-        // For medium/large, prioritize the poster image since it's higher quality
-        return posterPath;
-      } else if (size === 'small') {
-        // For small, try thumbnail first, then poster
-        return prefixedThumbPath;
-      } else {
-        // Default fallback
-        return posterPath;
-      }
-    }
-    
-    // For regular images
-    if (size === 'small') {
-      // Check if this is an older image (before April 2025) or a newer one
-      // Older image format: 1742695590858-649008714-image.jpeg (uses timestamp-random-name format)
-      // Newer image format: 1743773848580-c2def441.jpeg (uses timestamp-hash format)
-      
-      const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
-      
-      if (isOldFormatImage) {
-        // Old format - no "thumb-" prefix
-        return `/uploads/thumbnails/${filename}`;
-      } else {
-        // New format - with "thumb-" prefix
-        return `/uploads/thumbnails/thumb-${filename}`;
-      }
-    } else {
-      // For medium/large sizes or when size isn't specified, use original
-      return originalUrl;
-    }
+    const timestamp = Date.now();
+    return `/api/serve-file?filename=${encodeURIComponent(filename)}&v=${timestamp}`;
   }
   
-  // For any other URLs, return as is
-  return originalUrl;
+  // For videos, use the thumbnail creation logic
+  return createThumbnailUrl(originalUrl);
 }
 
 /**
- * Check if image is in viewport for lazy loading
+ * Get a fallback image URL - returns empty string since we only use real media
+ * @param originalUrl The original URL (unused)
+ * @returns Empty string - no fallback images per data integrity policy
  */
-export function isInViewport(element: HTMLElement): boolean {
-  const rect = element.getBoundingClientRect();
-  return (
-    rect.top >= 0 &&
-    rect.left >= 0 &&
-    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-  );
+export function getFallbackImageUrl(originalUrl: string | null): string {
+  return '';
 }
 
 /**
- * Get a fallback image URL
- * This will return a generic image URL for different post types
+ * Check if an image exists - simplified for clean media handling
+ * @param imageUrl The URL to check
+ * @returns Promise<boolean> Always returns true to avoid complexity
  */
-export function getFallbackImageUrl(postType: string): string {
-  let type = postType;
-  
-  // Normalize type (in case we get variations)
-  if (type === 'memory_verse' || type === 'verse') {
-    type = 'verse';
-  } else if (type === 'miscellaneous') {
-    type = 'post'; // Use post fallback for miscellaneous
-  } else if (!['food', 'workout', 'scripture'].includes(type)) {
-    type = 'post'; // Default fallback for any unrecognized type
-  }
-  
-  // Return the appropriate SVG
-  return `/uploads/default-${type}.svg`;
-}
-
-/**
- * Check if an image exists locally
- * This is used to validate if a fallback is needed
- */
-export function checkImageExists(url: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    // For SVG files and non-uploads, assume they exist
-    if (url.endsWith('.svg') || !url.startsWith('/uploads/')) {
-      resolve(true);
-      return;
-    }
-    
-    // For regular images, do a HEAD request
-    fetch(url, { method: 'HEAD' })
-      .then(response => resolve(response.ok))
-      .catch(() => resolve(false));
-  });
-}
-
-/**
- * Preload an image to ensure it's cached
- */
-export function preloadImage(url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-/**
- * Optimize image loading for a list of posts
- * This will preload images for the visible posts
- */
-export function optimizeImageLoading(posts: any[], visibleCount: number = 5): void {
-  // Preload thumbnails for visible posts first
-  const visiblePosts = posts.slice(0, visibleCount);
-  
-  // Preload thumbnails immediately
-  visiblePosts.forEach(post => {
-    if (post.mediaUrl) {
-      preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
-        // If thumbnail fails, try original
-        preloadImage(post.mediaUrl).catch(() => {
-          // If original fails, try the fallback
-          if (post.type) {
-            preloadImage(getFallbackImageUrl(post.type)).catch(() => {
-              console.error('Failed to preload all image options:', post.mediaUrl);
-            });
-          } else {
-            console.error('Failed to preload image:', post.mediaUrl);
-          }
-        });
-      });
-    }
-  });
-  
-  // Then preload the rest with a delay to not block the UI
-  setTimeout(() => {
-    posts.slice(visibleCount).forEach((post, index) => {
-      if (post.mediaUrl) {
-        // Stagger loading to prevent network congestion
-        setTimeout(() => {
-          preloadImage(getThumbnailUrl(post.mediaUrl)).catch(() => {
-            // Try original next
-            preloadImage(post.mediaUrl).catch(() => {
-              // Silently try the fallback
-              if (post.type) {
-                preloadImage(getFallbackImageUrl(post.type)).catch(() => {
-                  // Silent failure for non-visible posts
-                });
-              }
-            });
-          });
-        }, index * 100);
-      }
-    });
-  }, 1000);
+export async function checkImageExists(imageUrl: string): Promise<boolean> {
+  // Simplified - let the browser handle loading errors naturally
+  return true;
 }

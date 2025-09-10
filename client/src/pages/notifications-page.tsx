@@ -128,7 +128,7 @@ export default function NotificationsPage() {
     return (
       <AppLayout>
         {/* Fixed title bar */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="sticky top-0 z-50 bg-background border-b border-border text-lg">
           <div className="px-6 py-4">
             <h1 className="text-xl font-bold">Notifications</h1>
           </div>
@@ -143,30 +143,33 @@ export default function NotificationsPage() {
   return (
     <AppLayout>
       {/* Fixed title bar */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="px-6 py-4">
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
+        <div className="p-4">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </div>
 
-      <main className="p-4 pb-24 space-y-4 max-w-3xl mx-auto w-full">
+      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
             <p className="mt-4 text-lg font-medium">No new notifications</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2 p-2">
             {notifications.map((notification) => (
               <Card key={notification.id} className="relative">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
+                <CardContent className="p-2">
+                  <div className="flex items-start justify-between gap-1">
                     <div className="flex-1">
                       <h3 className="font-medium">{notification.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-lg text-muted-foreground mt-1">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-sm text-muted-foreground mt-2">
                         {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number' 
   ? new Date(notification.createdAt).toLocaleString() 
   : 'Unknown date'}

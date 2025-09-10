@@ -82,12 +82,16 @@ export async function processPosterBatch(batchSize = 20, maxRunTime = 60000): Pr
   skipped: number;
   failed: number;
 }> {
+  // DISABLED: This function creates duplicate .poster.jpg files
+  // The clean thumbnail system in mov-frame-extractor-new.ts handles thumbnails now
   const stats = {
     processed: 0,
     succeeded: 0,
     skipped: 0,
     failed: 0
   };
+  
+  return stats; // Exit early without processing
   
   const startTime = Date.now();
   logger.info(`Starting video poster batch processing (batch size: ${batchSize}, max run time: ${maxRunTime}ms)`);

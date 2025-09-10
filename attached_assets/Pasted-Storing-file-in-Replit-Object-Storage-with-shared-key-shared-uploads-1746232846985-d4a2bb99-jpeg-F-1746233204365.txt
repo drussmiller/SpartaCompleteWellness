@@ -1,0 +1,33 @@
+Storing file in Replit Object Storage with shared key: shared/uploads/1746232846985-d4a2bb99.jpeg
+File stored successfully in Replit Object Storage with shared key
+Skipping local file storage to save space, using Object Storage only
+Preparing to create thumbnail: thumb-1746232846985-d4a2bb99.jpeg {
+  thumbnailPath: '/home/runner/workspace/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg',
+  thumbnailDirPath: '/home/runner/workspace/uploads/thumbnails',
+  originalDir: '/home/runner/workspace/uploads/thumbnails'
+}
+Processing image thumbnail for 1746232846985-d4a2bb99.jpeg
+Attempting to create thumbnail from /home/runner/workspace/uploads/1746232846985-d4a2bb99.jpeg to /home/runner/workspace/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg
+Source file not found locally: /home/runner/workspace/uploads/1746232846985-d4a2bb99.jpeg. Attempting to retrieve from Object Storage.
+Checking if file exists in Object Storage with key: uploads/1746232846985-d4a2bb99.jpeg
+Found file in Object Storage with key: uploads/1746232846985-d4a2bb99.jpeg
+Downloading file from Object Storage with key: uploads/1746232846985-d4a2bb99.jpeg
+Checking if file exists in Object Storage with key: shared/uploads/1746232846985-d4a2bb99.jpeg
+Found file in Object Storage with key: shared/uploads/1746232846985-d4a2bb99.jpeg
+Downloading file from Object Storage with key: shared/uploads/1746232846985-d4a2bb99.jpeg
+Successfully downloaded file from Object Storage (180883 bytes)
+Successfully downloaded and cached file from Object Storage to /home/runner/workspace/uploads/1746232846985-d4a2bb99.jpeg
+Successfully created thumbnail at /home/runner/workspace/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg
+Uploading thumbnail to Object Storage with shared key: shared/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg
+12:40:48 AM [express] GET /api/posts/1746232845891/reactions 500 in 157ms :: {"message":"Failed to ge…
+New database client connected
+Successfully uploaded thumbnail to Object Storage with shared key
+Image thumbnail created at /home/runner/workspace/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg
+Uploading thumbnail to Object Storage with shared key: shared/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg
+Successfully uploaded thumbnail to Object Storage with shared key
+New database client connected
+12:40:52 AM [express] GET /api/posts/516/reactions 200 in 296ms :: []
+Found file at path: /home/runner/workspace/uploads/1746232846985-d4a2bb99.jpeg
+Got stats for file at /home/runner/workspace/uploads/1746232846985-d4a2bb99.jpeg: size = 180883 bytes
+Found thumbnail at: /home/runner/workspace/uploads/thumbnails/thumb-1746232846985-d4a2bb99.jpeg
+12:40:53 AM [express] GET /api/object-storage/direct-download 404 in 77ms :: {"success":false,"messag…

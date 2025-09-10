@@ -1,11 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageCircle } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { getThumbnailUrl } from "@/lib/image-utils";
+import { VideoPlayer } from "@/components/ui/video-player";
+import { createMediaUrl } from "@/lib/media-utils";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -25,34 +28,39 @@ export function PostView({ post }: PostViewProps) {
             </div>
             <div className="mt-2 border-t border-gray-200"></div>
           </div>
-          <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
-          
+          <p 
+              className="mt-2 whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ 
+                __html: convertUrlsToLinks(post.content || '') 
+              }}
+            />
+
           {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
             <div className="mt-3 mb-3 flex justify-center">
               <img
-                src={post.mediaUrl}
+                src={getThumbnailUrl(post.mediaUrl, 'medium')}
                 alt={post.type}
                 className="max-w-full h-auto object-contain rounded-md"
               />
             </div>
           )}
-          
-          {/* Show video if present */}
+
+          {/* Show video if present - using improved VideoPlayer component */}
           {post.mediaUrl && post.is_video && (
-            <div className="mt-3 mb-3 flex justify-center">
-              <video
-                src={post.mediaUrl}
+            <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
+              <VideoPlayer
+                src={createMediaUrl(post.mediaUrl)}
                 poster={getThumbnailUrl(post.mediaUrl, 'medium')}
-                controls
+                className="w-full video-player-container rounded-md"
                 preload="metadata"
-                className="max-w-full h-auto object-contain rounded-md"
                 playsInline
-                onLoadStart={() => {
-                  console.log(`Comment view: Video loading with poster: ${getThumbnailUrl(post.mediaUrl, 'medium')}`);
+                controlsList="nodownload"
+                onLoad={() => {
+                  console.log(`Comment view: Video loaded successfully for post ${post.id}`);
                 }}
-                onError={(e) => {
-                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`);
+                onError={(error) => {
+                  console.error(`Failed to load video in comment view: ${post.mediaUrl}`, error);
                   // Try to trigger poster generation
                   fetch('/api/video/generate-posters', {
                     method: 'POST',
@@ -69,9 +77,9 @@ export function PostView({ post }: PostViewProps) {
               />
             </div>
           )}
-          
+
           <div className="border-t border-gray-200 mt-2"></div>
-          
+
           <div className="flex items-center gap-2 py-2">
             <ReactionButton postId={post.id} />
             <Button

@@ -5,10 +5,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LogOut, ChevronLeft } from "lucide-react";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import ChangePasswordForm from "@/components/change-password-form";
 import { insertMeasurementSchema } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,10 +32,59 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
 
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation(-1);
+      }
+    }
+  });
+
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
     staleTime: 0,
     enabled: !!authUser,
+  });
+
+  const [isEditingPreferredName, setIsEditingPreferredName] = useState(false);
+  const [preferredNameValue, setPreferredNameValue] = useState(user?.preferredName || "");
+
+  useEffect(() => {
+    setPreferredNameValue(user?.preferredName || "");
+  }, [user?.preferredName]);
+
+  const updatePreferredNameMutation = useMutation({
+    mutationFn: async (preferredName: string) => {
+      console.log("Updating preferred name to:", preferredName);
+      const res = await apiRequest("PATCH", "/api/user/preferred-name", { preferredName });
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to update preferred name:", errorText);
+        throw new Error("Failed to update preferred name");
+      }
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      console.log("Preferred name update successful:", data);
+      // Invalidate and refetch user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await refetchUser();
+      setIsEditingPreferredName(false);
+      toast({
+        title: "Success",
+        description: "Preferred name updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Preferred name update error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update preferred name",
+        variant: "destructive",
+      });
+    },
   });
   
   // Add user stats query with timezone offset
@@ -47,6 +98,29 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     },
     staleTime: 60000, // 1 minute
     enabled: !!authUser,
+  });
+
+  // Add activity progress query to get current week and day
+  const { data: activityProgress } = useQuery({
+    queryKey: ["/api/activities/current", tzOffset],
+    queryFn: async () => {
+      const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      if (!response.ok) throw new Error('Failed to fetch activity progress');
+      return response.json();
+    },
+    staleTime: 60000, // 1 minute
+    enabled: !!authUser && !!user?.teamId,
+  });
+
+  // Add teams query to get team information
+  const { data: teams } = useQuery({
+    queryKey: ["/api/teams"],
+    queryFn: async () => {
+      const response = await fetch("/api/teams");
+      if (!response.ok) throw new Error('Failed to fetch teams');
+      return response.json();
+    },
+    enabled: !!authUser && !!user?.teamId,
   });
 
   // Add measurements query
@@ -150,7 +224,12 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   });
 
   return (
-    <div className="flex flex-col h-screen">
+    <div 
+      className="flex flex-col h-screen"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
         <div className="p-4 flex items-center">
           {onClose && (
@@ -244,46 +323,104 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               </div>
               <div className="flex-1">
                 <h2 className="text-xl font-semibold">{user?.username}</h2>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <div className="mt-2">
+                  {isEditingPreferredName ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={preferredNameValue}
+                        onChange={(e) => setPreferredNameValue(e.target.value)}
+                        placeholder="Enter preferred name"
+                        className="text-base w-full"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updatePreferredNameMutation.mutate(preferredNameValue);
+                          } else if (e.key === 'Escape') {
+                            setPreferredNameValue(user?.preferredName || "");
+                            setIsEditingPreferredName(false);
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => updatePreferredNameMutation.mutate(preferredNameValue)}
+                          disabled={updatePreferredNameMutation.isPending}
+                        >
+                          {updatePreferredNameMutation.isPending ? "Saving..." : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setPreferredNameValue(user?.preferredName || "");
+                            setIsEditingPreferredName(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Preferred Name: {user?.preferredName || preferredNameValue || "Not set"}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setPreferredNameValue(user?.preferredName || "");
+                          setIsEditingPreferredName(true);
+                        }}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-lg text-muted-foreground mt-1">{user?.email}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent>
-              <h3 className="text-lg font-semibold mb-4">Program Details</h3>
+              <h3 className="text-xl font-semibold mb-4">Program Details</h3>
               <div className="space-y-3">
                 {user?.teamId ? (
                   <>
-                    {user.programStart ? (
+                    {user.teamJoinedAt && (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Program Start (Day One)</span>
+                          <span className="text-lg text-muted-foreground">Team</span>
                           <span className="text-sm font-medium">
-                            {format(new Date(user.programStart), 'PPP')}
+                            {teams?.find(t => t.id === user.teamId)?.name || 'Loading...'}
                           </span>
                         </div>
-                        {user.weekInfo && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg text-muted-foreground">Team Joined</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(user.teamJoinedAt), 'PPP')}
+                          </span>
+                        </div>
+                        {activityProgress && activityProgress.currentWeek && activityProgress.currentDay && (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">Current Week</span>
-                              <span className="text-sm font-medium">Week {user.weekInfo.week}</span>
+                              <span className="text-lg text-muted-foreground">Current Week</span>
+                              <span className="text-lg font-medium">Week {activityProgress.currentWeek}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">Current Day</span>
-                              <span className="text-sm font-medium">Day {user.weekInfo.day}</span>
+                              <span className="text-lg text-muted-foreground">Current Day</span>
+                              <span className="text-lg font-medium">Day {activityProgress.currentDay}</span>
                             </div>
                           </>
                         )}
                       </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Your program will start on the first Monday after joining a team
-                      </p>
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-lg text-muted-foreground">
                     Join a team to start your program
                   </p>
                 )}
@@ -294,10 +431,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           <Card>
             <CardContent>
               <h3 className="text-lg font-semibold mb-4">My Stats</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground">Daily Total</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-base text-muted-foreground">Daily Total</div>
+                  <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -307,8 +444,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 </div>
                 
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground">Week Total</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-base text-muted-foreground">Week Total</div>
+                  <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -318,8 +455,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 </div>
                 
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground">Monthly Avg</div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-base text-muted-foreground">Monthly Avg</div>
+                  <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -343,9 +480,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       name="weight"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Weight (lbs)</FormLabel>
+                          <FormLabel className="text-lg">Weight (lbs)</FormLabel>
                           <FormControl>
                             <Input
+                              className="text-base"
                               type="number"
                               placeholder="Enter weight"
                               value={field.value || ''}
@@ -360,9 +498,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       name="waist"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Waist (inches)</FormLabel>
+                          <FormLabel className="text-lg">Waist (inches)</FormLabel>
                           <FormControl>
                             <Input
+                              className="text-base"
                               type="number"
                               placeholder="Enter waist"
                               value={field.value || ''}
@@ -391,8 +530,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 <p className="text-sm text-destructive">Failed to load measurements</p>
               ) : !measurements?.length ? (
                 <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground">No measurements recorded yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Record your measurements to track your progress</p>
+                  <p className="text-base text-muted-foreground">No measurements recorded yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Record your measurements to track your progress</p>
                 </div>
               ) : (
                 <>
@@ -475,6 +614,16 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">Account Security</h3>
+              <div className="mb-4">
+                {/* Import and render the change password form */}
+                <ChangePasswordForm />
+              </div>
             </CardContent>
           </Card>
 

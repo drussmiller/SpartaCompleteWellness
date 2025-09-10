@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Ale
 import { useEffect, useState, useRef } from 'react';
 
 // Define API URL for the backend - replace with your server URL when deployed
-const API_URL = 'http://localhost:5000';
+const API_URL = 'https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev';
 
 // Connection status types
 const ConnectionStatus = {

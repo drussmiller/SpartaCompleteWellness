@@ -25,12 +25,44 @@ import NotificationSchedulePage from "@/pages/notification-schedule-page"; // Ke
 import { LeaderboardPage } from "@/pages/leaderboard-page"; // Import the leaderboard page
 import { DebugApi } from "./debug-api"; // Import our debug component
 import { AchievementsContainer } from "@/components/achievements/achievements-container";
+import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the prayer requests page
 
+import { VideoPlayerPage } from "./pages/video-player-page";
+import CommentsPage from "@/pages/comments-page";
+import { lazy } from "react";
+import WaiverPage from "@/pages/waiver-page";
 
 // Separate auth-dependent rendering
 function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
+
+  // Minimal browser navigation prevention - only block very edge browser swipes
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const veryLeftEdge = touch.clientX < 15; // Very narrow edge for browser navigation
+
+      // Only block browser navigation swipes from the very edge on pages without swipe handlers
+      if (veryLeftEdge) {
+        const hasSwipeEnabled = document.querySelector('[data-swipe-enabled="true"]');
+
+        if (!hasSwipeEnabled) {
+          console.log('Blocking browser navigation swipe from edge');
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+    };
+
+    // Only intercept the very edge to prevent browser navigation
+    document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart, true);
+    };
+  }, []);
 
   if (error) {
     return (
@@ -59,13 +91,27 @@ function MainContent() {
     return <AuthPage />;
   }
 
+  // Check if user needs to sign waiver first
+  if (user && !user.waiverSigned && window.location.pathname !== '/waiver') {
+    // Immediately redirect to waiver page
+    window.location.href = '/waiver';
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Redirecting to waiver...</h1>
+        </div>
+      </div>
+    );
+  }
+
   // If authenticated, show the app with routes
   return (
     <div className="min-h-screen">
-      {user && <div className="fixed left-0 top-0 z-[51]"><VerticalNav /></div>}
-      <div className="md:pl-20" style={{overflowX: 'hidden'}}> {/* Adjusted padding to match new nav width */}
+      {user && <div className="fixed left-0 top-0 z-[100]"><VerticalNav /></div>}
+      <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain'}}> {/* Prevent horizontal overscroll */}
         <Switch>
           <Route path="/" component={HomePage} />
+          <Route path="/waiver" component={WaiverPage} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
           <Route path="/notification-settings" component={NotificationSettingsPage} />
@@ -75,19 +121,24 @@ function MainContent() {
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
           <Route path="/leaderboard" component={() => <LeaderboardPage />} />
+          <Route path="/prayer-requests" component={PrayerRequestsPage} />
           <Route path="/debug" component={() => <DebugApi />} />
+
+          <Route path="/video-player" component={() => <VideoPlayerPage />} />
+          <Route path="/comments/:postId">
+            <CommentsPage />
+          </Route>
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>
       </div>
-      <BottomNav />
     </div>
   );
 }
 
 function App() {
   console.log('App component rendering');
-  
+
   // Check for notification permission when app loads
   // This needs to be called from a user interaction (e.g., button click)
   // but we can check if it's already been granted
@@ -95,15 +146,15 @@ function App() {
     // Check if the browser supports notifications
     if ('Notification' in window) {
       console.log("Notification permission:", Notification.permission);
-      
-      // We'll let the notification code request permission when a notification 
+
+      // We'll let the notification code request permission when a notification
       // arrives rather than asking immediately on app load
       if (Notification.permission === 'granted') {
         console.log("Notification permission already granted");
       }
     }
   }, []);
-  
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
 import { Link } from "wouter";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 type TeamMember = {
   id: number;
@@ -51,6 +52,16 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose); // If onClose is provided, we're in sheet mode
 
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (isSheetMode && onClose) {
+        onClose();
+      } else {
+        navigate("/menu");
+      }
+    }
+  });
+
   const { data, isLoading, error } = useQuery<LeaderboardData>({
     queryKey: ["/api/leaderboard"],
     refetchInterval: 60000, // Refresh every minute
@@ -78,8 +89,13 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-16 md:pb-0">
-      <header className="sticky top-0 z-50 border-b border-border bg-background">
+    <div 
+      className="flex flex-col h-screen pb-16 md:pb-0"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <header className="sticky top-0 z-50 border-b border-border bg-background flex-shrink-0">
         <div className="container flex items-center p-4 pt-16">
           <Button
             variant="ghost"
@@ -93,7 +109,8 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         </div>
       </header>
 
-      <div className="container py-4 max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto">
+        <div className="container py-4 max-w-4xl mx-auto">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <p>Loading leaderboard data...</p>
@@ -106,8 +123,8 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         ) : (
           <Tabs defaultValue="team" className="w-full">
             <TabsList className="w-full mb-4">
-              <TabsTrigger value="team" className="flex-1">My Team</TabsTrigger>
-              <TabsTrigger value="all" className="flex-1">All Teams</TabsTrigger>
+              <TabsTrigger value="team" className="flex-1 text-base">My Team</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1 text-base">All Teams</TabsTrigger>
             </TabsList>
 
             <TabsContent value="team">
@@ -180,6 +197,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
             </TabsContent>
           </Tabs>
         )}
+        </div>
       </div>
       <BottomNav />
     </div>

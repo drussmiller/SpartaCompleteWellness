@@ -13,9 +13,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 
 type LoginForm = {
-  username: string;
+  username: string; // Will be used for either username or email
   password: string;
 };
+
+// Define the register schema with password confirmation
+const registerSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -36,18 +48,13 @@ export default function AuthPage() {
     },
   });
 
-  const registerForm = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
+  const registerForm = useForm<z.infer<typeof registerSchema>>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
       email: "",
       password: "",
-      preferredName: null,
-      isAdmin: false,
-      isTeamLead: false,
-      teamId: null,
-      points: 0,
-      currentDay: 1,
+      confirmPassword: "",
     },
   });
 
@@ -72,9 +79,13 @@ export default function AuthPage() {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel>Username or Email</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field} 
+                              placeholder="Enter your username or email" 
+                              autoComplete="username"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -93,7 +104,7 @@ export default function AuthPage() {
                     />
                     {loginMutation.error && (
                       <p className="text-red-500 text-sm mb-2">
-                        Please check your username and password and try again.
+                        Please check your username/email and password and try again.
                       </p>
                     )}
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
@@ -135,6 +146,18 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm Password</FormLabel>
                           <FormControl>
                             <Input type="password" {...field} />
                           </FormControl>

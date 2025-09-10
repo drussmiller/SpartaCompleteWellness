@@ -3,7 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { Server as HttpServer } from "http";
+import { Server as HttpServer, createServer } from "http";
 import { db } from "./db";
 import { promisify } from "util";
 import { exec } from "child_process";
@@ -13,6 +13,12 @@ import path from "path";
 const execAsync = promisify(exec);
 
 const app = express();
+
+// Define initial port and server vars
+let port: number = 5000;
+
+// Declare scheduleDailyScoreCheck function
+let scheduleDailyScoreCheck: () => void;
 
 // Increase timeouts and add keep-alive
 const serverTimeout = 14400000; // 4 hours
@@ -80,111 +86,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Update the scheduleDailyScoreCheck function
-const scheduleDailyScoreCheck = () => {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 1, 0, 0); // 00:01 AM tomorrow
-
-  const timeUntilCheck = tomorrow.getTime() - now.getTime();
-
-  logger.info('Scheduling next daily score check for:', { timestamp: tomorrow.toISOString() });
-
-  // Run an immediate check if it hasn't been run today
-  const runDailyCheck = async () => {
-    try {
-      logger.info('Running daily score check');
-
-      // Use relative URL to avoid port binding issues
-      const baseUrl = 'http://localhost:5000';
-
-      // Run checks for each hour to ensure notifications go out for all users
-      // based on their preferred notification times
-      for (let hour = 0; hour < 24; hour++) {
-        logger.info(`Running check for hour ${hour}`);
-
-        const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            currentHour: hour,
-            // Use current minute for testing
-            currentMinute: now.getMinutes()
-          })
-        });
-
-        if (!response.ok) {
-          logger.error(`Failed to run daily score check for hour ${hour}: ${response.statusText}`);
-          continue; // Try next hour
-        }
-
-        const result = await response.json();
-        logger.info(`Daily score check completed for hour ${hour}:`, result);
-      }
-
-      logger.info('Completed daily checks for all hours');
-    } catch (error) {
-      logger.error('Error running daily score check:', error instanceof Error ? error : new Error(String(error)));
-      // Schedule a retry in 5 minutes if there's an error
-      setTimeout(runDailyCheck, 5 * 60 * 1000);
-    }
-  };
-
-  // Run an immediate check during startup for debugging purposes
-  // This helps us verify the notification system quickly
-  setTimeout(() => {
-    logger.info('Running immediate daily score check for debugging...');
-    runDailyCheck();
-
-    // Schedule next check for tomorrow
-    setTimeout(() => {
-      runDailyCheck();
-      // Schedule subsequent checks every 24 hours
-      setInterval(runDailyCheck, 24 * 60 * 60 * 1000);
-    }, timeUntilCheck);
-  }, 10 * 1000); // Reduced to 10 seconds to check sooner
-
-  // Also run a check every hour to catch notifications throughout the day
-  const runHourlyCheck = async () => {
-    try {
-      const currentHour = new Date().getHours();
-      logger.info(`Running hourly check for hour ${currentHour}`);
-
-      const baseUrl = 'http://localhost:5000';
-      const response = await fetch(`${baseUrl}/api/check-daily-scores`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          currentHour,
-          currentMinute: new Date().getMinutes()
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to run hourly check: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      logger.info(`Hourly check completed for hour ${currentHour}:`, result);
-    } catch (error) {
-      logger.error('Error running hourly check:', error instanceof Error ? error : new Error(String(error)));
-    }
-  };
-
-  // Start the hourly check after 60 seconds, then run every hour
-  setTimeout(() => {
-    runHourlyCheck();
-    setInterval(runHourlyCheck, 60 * 60 * 1000); // Every hour
-  }, 60 * 1000);
-
-  // Log the schedule
-  logger.info(`Daily score check scheduled to run in ${Math.round(timeUntilCheck / 1000 / 60)} minutes and immediate check in 10 seconds`);
-  logger.info('Hourly checks will also run to ensure notifications go out at the correct times');
+// Define the scheduleDailyScoreCheck function (disabled automatic scheduling to prevent server overload)
+scheduleDailyScoreCheck = () => {
+  logger.info('Daily score check scheduling is disabled to prevent server overload');
+  logger.info('Use the admin panel or API endpoints to manually trigger daily score checks');
 };
 
 // Ensure API requests respond with JSON
@@ -200,13 +105,20 @@ app.use('/api', (req, res, next) => {
 (async () => {
   try {
     console.log("[Startup] Beginning server initialization...");
+    console.log("[Debug] Environment variables:", {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? '***configured***' : 'missing',
+      REPLIT_OBJECT_STORAGE_TOKEN: process.env.REPLIT_OBJECT_STORAGE_TOKEN ? '***configured***' : 'missing',
+      ENABLE_CONSOLE_LOGGING: process.env.ENABLE_CONSOLE_LOGGING
+    });
     const startTime = Date.now();
 
     // Verify database connection
     console.log("[Startup] Verifying database connection...");
     try {
-      await db.execute(sql`SELECT 1`);
+      const testQuery = await db.execute(sql`SELECT 1`);
       console.log("[Startup] Database connection verified", Date.now() - startTime, "ms");
+      console.log("[Debug] Database test query result:", testQuery);
     } catch (error) {
       console.error("[Startup] Database connection failed:", error);
       throw error;
@@ -233,17 +145,159 @@ app.use('/api', (req, res, next) => {
     });
 
 
-    // Serve uploads directory as static files
-    const uploadsPath = path.join(process.cwd(), 'uploads');
-    console.log("[Startup] Setting up static uploads directory:", uploadsPath);
-    app.use('/uploads', express.static(uploadsPath, {
-      // Set maximum cache age to 1 day
-      maxAge: '1d',
-      // Don't transform paths
-      fallthrough: false,
-      // Return 404 if file not found
-      redirect: false
-    }));
+    // Setup route for shared files from object storage
+    console.log("[Startup] Setting up shared files path handler for cross-environment compatibility");
+    app.use('/shared/uploads', async (req, res, next) => {
+      try {
+        const filePath = req.path;
+        console.log(`Processing shared file request: ${filePath}`);
+
+        // Import required modules
+        const { Client } = require('@replit/object-storage');
+        const fs = require('fs');
+
+        // Check if Replit Object Storage is available
+        if (!process.env.REPLIT_DB_ID) {
+          console.log(`Object Storage not available, redirecting to local path`);
+          return res.redirect(`/uploads${filePath}`);
+        }
+
+        // Initialize Object Storage client
+        const objectStorage = new Client();
+        console.log(`Object Storage client initialized`);
+
+        // Define all possible key formats to try
+        const keysToCheck = [
+          `shared/uploads${filePath}`,
+          `uploads${filePath}`,
+          `shared${filePath}`,
+          filePath.startsWith('/') ? filePath.substring(1) : filePath
+        ];
+
+        // Try to find the file with any of the keys
+        console.log(`Attempting to download file using the following keys: ${JSON.stringify(keysToCheck)}`);
+        let fileBuffer = null;
+        let usedKey = null;
+
+        // Try each key directly with downloadAsBytes without checking existence first
+        for (const key of keysToCheck) {
+          try {
+            console.log(`Trying to download ${key} directly...`);
+            const result = await objectStorage.downloadAsBytes(key);
+            console.log(`[serve-file] Object Storage result:`, {
+              type: typeof result,
+              hasOk: result && typeof result === 'object' && 'ok' in result,
+              hasValue: result && typeof result === 'object' && 'value' in result,
+              ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
+            });
+
+            // Handle the Object Storage response format
+            let fileBuffer: Buffer;
+
+            if (Buffer.isBuffer(result)) {
+              fileBuffer = result;
+            } else if (result && typeof result === 'object') {
+              // Handle the actual Replit Object Storage response format
+              // Check for 'value' property which contains the actual file data
+              if ('value' in result && result.value) {
+                if (Buffer.isBuffer(result.value)) {
+                  fileBuffer = result.value;
+                } else if (typeof result.value === 'string') {
+                  fileBuffer = Buffer.from(result.value, 'base64');
+                } else if (Array.isArray(result.value)) {
+                  // Handle array of bytes
+                  fileBuffer = Buffer.from(result.value);
+                } else {
+                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
+                  continue; // Try next key
+                }
+              } else if ('ok' in result && result.ok === true && result.value) {
+                // Legacy format check
+                if (Buffer.isBuffer(result.value)) {
+                  fileBuffer = result.value;
+                } else if (typeof result.value === 'string') {
+                  fileBuffer = Buffer.from(result.value, 'base64');
+                } else if (Array.isArray(result.value)) {
+                  fileBuffer = Buffer.from(result.value);
+                } else {
+                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
+                  continue; // Try next key
+                }
+              } else {
+                console.log(`[serve-file] File not found in Object Storage for ${usedKey}:`, result);
+                continue; // Try next key
+              }
+            } else {
+              console.error(`[serve-file] Invalid response format from Object Storage for ${usedKey}:`, typeof result);
+              continue; // Try next key
+            }
+
+            // If we found and downloaded a file, serve it
+            if (fileBuffer && fileBuffer.length > 0) {
+              // Determine content type based on file extension
+              const fileExtension = path.extname(filePath).toLowerCase();
+              let contentType = 'application/octet-stream'; // default
+
+              if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+                contentType = 'image/jpeg';
+              } else if (fileExtension === '.png') {
+                contentType = 'image/png';
+              } else if (fileExtension === '.gif') {
+                contentType = 'image/gif';
+              } else if (fileExtension === '.mp4') {
+                contentType = 'video/mp4';
+              } else if (fileExtension === '.mov') {
+                contentType = 'video/quicktime';
+              } else if (fileExtension === '.svg') {
+                contentType = 'image/svg+xml';
+              } else if (fileExtension === '.webp') {
+                contentType = 'image/webp';
+              }
+
+              console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
+
+              // Set headers and send the file
+              res.setHeader('Content-Type', contentType);
+              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+              return res.send(fileBuffer);
+            }
+          } catch (error) {
+            console.error(`[serve-file] FAILED to download ${key}:`, error.message);
+            console.error(`[serve-file] Error details:`, error);
+            // Continue to next key
+          }
+        }
+
+        // No longer check filesystem as requested - Object Storage only
+        // Return a proper 404 response
+        console.error(`[serve-file] FILE NOT FOUND: ${filePath} not found in Object Storage and no filesystem fallback as configured`);
+        console.error(`[serve-file] Attempted keys:`, keysToCheck);
+        return res.status(404).json({
+          success: false,
+          message: 'File not found in Object Storage',
+          path: filePath
+        });
+
+      } catch (error) {
+        console.error('Error serving shared file:', error);
+        next();
+      }
+    });
+
+    // Replace static file serving with an Object Storage middleware
+    // This ensures we never serve files from the filesystem directly
+    console.log("[Startup] Setting up Object Storage-only uploads handler");
+    app.use('/uploads', (req, res) => {
+      // Return 404 with JSON response and redirect to Object Storage
+      const filePath = req.path;
+      console.log(`[Object Storage Only] Redirecting filesystem request to Object Storage: ${filePath}`);
+
+      // Create the appropriate Object Storage URL
+      const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${filePath}`;
+
+      // Send a 302 redirect to the Object Storage endpoint
+      return res.redirect(302, objectStorageUrl);
+    });
 
     // Setup Vite or static files AFTER API routes
     if (app.get("env") === "development") {
@@ -256,143 +310,12 @@ app.use('/api', (req, res, next) => {
 
     await runMigrations();
 
-    // ALWAYS serve the app on port 5000
-    const port = 5000;
-
-    // Disable console logging
-    logger.setConsoleOutputEnabled(false);
-
-    // Enhanced port cleanup function with detailed logging
-    const killPort = async (port: number): Promise<void> => {
-      try {
-        // Disabled console output
-        // console.log(`[Port Cleanup] Attempting to kill process on port ${port}...`);
-
-        if (process.platform === "win32") {
-          const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
-          console.log(`[Port Cleanup] Windows netstat output:`, stdout);
-          const pidMatch = stdout.match(/\s+(\d+)\s*$/m);
-          if (pidMatch && pidMatch[1]) {
-            console.log(`[Port Cleanup] Found PID ${pidMatch[1]}, attempting to kill...`);
-            await execAsync(`taskkill /F /PID ${pidMatch[1]}`);
-          }
-        } else {
-          // Unix/Linux specific commands with error handling
-          try {
-            console.log(`[Port Cleanup] Attempting lsof cleanup...`);
-            const { stdout: lsofOutput } = await execAsync(`lsof -i :${port}`);
-            console.log(`[Port Cleanup] Current port status:`, lsofOutput);
-            await execAsync(`lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs -r kill -9`);
-          } catch (lsofError) {
-            console.log(`[Port Cleanup] lsof failed, trying netstat...`, lsofError);
-            try {
-              await execAsync(`netstat -ltnp | grep -w ':${port}' | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9`);
-            } catch (netstatError) {
-              console.log(`[Port Cleanup] netstat failed, trying fuser...`, netstatError);
-              await execAsync(`fuser -k ${port}/tcp`);
-            }
-          }
-        }
-
-        // Verify port is free
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const { stdout: verifyOutput } = await execAsync(
-          process.platform === "win32"
-            ? `netstat -ano | findstr :${port}`
-            : `lsof -i :${port}`
-        );
-        console.log(`[Port Cleanup] Port status after cleanup:`, verifyOutput || 'Port is free');
-
-      } catch (error) {
-        console.log(`[Port Cleanup] No active process found on port ${port}`);
-      }
-    };
-
-    // Enhanced server cleanup and startup mechanism
-    let currentServer: HttpServer | null = null;
-    const cleanupAndStartServer = async (retries = 5, delay = 3000): Promise<HttpServer> => {
-      try {
-        console.log(`[Server Startup] Attempt ${6-retries} of 5`);
-
-        // First kill any existing process on the port
-        await killPort(port);
-
-        // Add delay after killing port
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Close existing server if any
-        if (currentServer) {
-          console.log('[Server Startup] Closing existing server...');
-          try {
-            await new Promise<void>((resolve, reject) => {
-              currentServer?.close((err) => {
-                if (err) {
-                  console.error('[Server Startup] Error closing server:', err);
-                  reject(err);
-                } else {
-                  console.log('[Server Startup] Existing server closed');
-                  resolve();
-                }
-              });
-              // Force close after 5 seconds
-              setTimeout(() => {
-                console.log('[Server Startup] Force closing server after timeout');
-                resolve();
-              }, 5000);
-            });
-          } catch (err) {
-            console.error('[Server Startup] Failed to close server gracefully:', err);
-          }
-          currentServer = null;
-        }
-
-        console.log('[Server Startup] Starting new server...');
-        currentServer = server.listen({
-          port,
-          host: "0.0.0.0",
-        }, () => {
-          log(`[Server Startup] Server listening on port ${port}`);
-          // Schedule daily checks after server is ready
-          scheduleDailyScoreCheck();
-        });
-
-        return currentServer;
-      } catch (error) {
-        console.error('[Server Error] Error during startup:', error);
-        if (retries > 0) {
-          console.log(`[Server Startup] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return cleanupAndStartServer(retries - 1, delay * 2);
-        }
-        throw error;
-      }
-    };
-
-    // Handle graceful shutdown
-    const gracefulShutdown = () => {
-      console.log('[Server Shutdown] Received shutdown signal. Closing HTTP server...');
-      if (currentServer) {
-        currentServer.close(() => {
-          console.log('[Server Shutdown] HTTP server closed');
-          process.exit(0);
-        });
-
-        // Force close after 5s
-        setTimeout(() => {
-          console.error('[Server Shutdown] Could not close connections in time, forcefully shutting down');
-          process.exit(1);
-        }, 5000);
-      } else {
-        process.exit(0);
-      }
-    };
-
-    // Handle various shutdown signals
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
-
-    // Start server with enhanced cleanup and retry mechanism
-    await cleanupAndStartServer();
+    // Simple server startup on port 5000
+    port = 5000;
+    console.log(`[Server Startup] Starting server on port ${port}...`);
+    server.listen(port, "0.0.0.0", () => {
+      log(`[Server Startup] Server listening on port ${port}`);
+    });
 
   } catch (error) {
     console.error("[Server Fatal] Failed to start server:", error);

@@ -7,15 +7,17 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, FileText, Calendar, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { YouTubePlayer } from "@/components/ui/youtube-player";
 
 type ContentField = {
   id: string;
@@ -34,6 +36,7 @@ export default function ActivityManagementPage() {
   const [editingContentFields, setEditingContentFields] = useState<ContentField[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
@@ -79,7 +82,7 @@ export default function ActivityManagementPage() {
       const previousActivities = queryClient.getQueryData<Activity[]>(["/api/activities"]);
 
       // Optimistically update to the new value
-      queryClient.setQueryData<Activity[]>(["/api/activities"], (old) => 
+      queryClient.setQueryData<Activity[]>(["/api/activities"], (old) =>
         old?.filter(activity => activity.id !== deletedActivityId) || []
       );
 
@@ -166,7 +169,8 @@ export default function ActivityManagementPage() {
     setEditingContentFields(editingContentFields.filter(f => f.id !== id));
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleWeekFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !file.name.endsWith('.docx')) {
       toast({
@@ -181,7 +185,6 @@ export default function ActivityManagementPage() {
     formData.append('document', file);
 
     try {
-      console.log('Uploading document:', file.name);
       const res = await fetch('/api/activities/upload-doc', {
         method: 'POST',
         body: formData,
@@ -193,16 +196,25 @@ export default function ActivityManagementPage() {
       }
 
       const data = await res.json();
-      console.log('Processed document content:', data.content);
+      let title = file.name.replace('.docx', '');
 
-      const newField = {
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      let content = data.content;
+
+      // Replace URLs with iframes directly in their original position
+      content = content.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      });
+
+      // Create single content field with embedded videos in correct positions
+      const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
         type: 'text',
-        content: data.content,
-        title: file.name.replace('.docx', '')
-      };
+        content: content.trim(),
+        title: title
+      }];
 
-      setContentFields([newField]);
+      setContentFields(newFields);
 
       toast({
         title: "Success",
@@ -218,6 +230,72 @@ export default function ActivityManagementPage() {
     }
   };
 
+  const handleDailyFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.name.endsWith('.docx')) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a Word document (.docx)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('document', file);
+
+    try {
+      const res = await fetch('/api/activities/upload-doc', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to process document');
+      }
+
+      const data = await res.json();
+      let title = file.name.replace('.docx', '');
+
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      let content = data.content;
+
+      // Replace URLs with iframes directly in their original position
+      content = content.replace(youtubeRegex, (match, videoId) => {
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      });
+
+      // Create single content field with embedded videos in correct positions
+      const newFields: ContentField[] = [{
+        id: Math.random().toString(36).substring(7),
+        type: 'text',
+        content: content.trim(),
+        title: title
+      }];
+
+      setContentFields(newFields);
+
+      toast({
+        title: "Success",
+        description: "Document processed successfully"
+      });
+    } catch (error) {
+      console.error('Error processing document:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process document",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleWeekChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const week = parseInt(event.target.value);
+    if (!isNaN(week) && week > 0) {
+      setSelectedWeek(week);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -269,20 +347,140 @@ export default function ActivityManagementPage() {
   return (
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="flex items-center mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => window.history.back()}
-            className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-          >
-            <ChevronLeft className="h-8 w-8" />
-            <span className="sr-only">Back</span>
-          </Button>
-          <h1 className="text-2xl font-bold">Activity Management</h1>
-        </div>
+          <div className="flex items-center mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => window.history.back()}
+              className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            >
+              <ChevronLeft className="h-8 w-8" />
+              <span className="sr-only">Back</span>
+            </Button>
+            <h1 className="text-2xl font-bold">Activity Management</h1>
+          </div>
+          <div className="mb-8">
+            <Label htmlFor="docUpload">Upload Word Document</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="docUpload"
+                type="file"
+                accept=".docx"
+                onChange={async (event) => {
+                  setContentFields([]);
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    await handleDailyFileUpload(event);
+                  }
+                }}
+                className="flex-1"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload a Word document to automatically create content with embedded videos
+            </p>
+          </div>
+
+          {contentFields.length > 0 && (
+            <div className="mb-8 p-4 border rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <Label>Content</Label>
+              </div>
+              <RichTextEditor
+                content={contentFields[0].content}
+                onChange={(newContent) => updateContentField(contentFields[0].id, 'content', newContent)}
+              />
+            </div>
+          )}
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <span>Week Information Management</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-4 mb-4">
+              <Label htmlFor="week-number" className="flex-shrink-0">Week Number</Label>
+              <Input
+                id="week-number"
+                type="number"
+                min="1"
+                className="w-24"
+                value={selectedWeek}
+                onChange={handleWeekChange}
+              />
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+
+              // Format a title that includes "Week X" format for week content
+              const weekTitle = `Week ${selectedWeek} Overview`;
+
+              // Update content fields to include week number in title if they don't already
+              const updatedContentFields = contentFields.map(field => ({
+                ...field,
+                title: field.title || weekTitle
+              }));
+
+              const data = {
+                week: selectedWeek,
+                day: 0, // Use day 0 to indicate week-only content
+                contentFields: updatedContentFields
+              };
+
+              try {
+                console.log('Submitting activity data:', data);
+                const res = await apiRequest("POST", "/api/activities", data);
+                if (!res.ok) {
+                  const errorData = await res.json();
+                  throw new Error(errorData.message || 'Failed to create activity');
+                }
+
+                toast({
+                  title: "Success",
+                  description: `Week ${selectedWeek} information created successfully`
+                });
+
+                queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+                setContentFields([]);
+                (e.target as HTMLFormElement).reset();
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: error instanceof Error ? error.message : "Failed to create activity",
+                  variant: "destructive"
+                });
+              }
+            }} className="space-y-4">
+              {contentFields.length > 0 && (
+                <div className="space-y-4">
+                  <Input
+                    type="text"
+                    placeholder={`Week ${selectedWeek} Information`}
+                    value={contentFields[0].title}
+                    onChange={(e) => updateContentField(contentFields[0].id, 'title', e.target.value)}
+                  />
+                </div>
+              )}
+
+
+              <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">
+                Add Week Information
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
         <Card>
-          <CardContent className="space-y-6 pt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <span>Daily Activity Management</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
@@ -327,73 +525,16 @@ export default function ActivityManagementPage() {
                 </div>
               </div>
 
-              <div className="mb-4">
-                <Label htmlFor="docUpload">Upload Word Document</Label>
-                <div className="flex items-center gap-2">
+              {contentFields.length > 0 && (
+                <div className="space-y-4">
                   <Input
-                    id="docUpload"
-                    type="file"
-                    accept=".docx"
-                    onChange={handleFileUpload}
-                    className="flex-1"
+                    type="text"
+                    placeholder="Title"
+                    value={contentFields[0].title}
+                    onChange={(e) => updateContentField(contentFields[0].id, 'title', e.target.value)}
                   />
-                  <Button type="button" variant="outline" onClick={() => document.getElementById('docUpload')?.click()}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upload a Word document to automatically create content with embedded videos
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {contentFields.map((field) => (
-                  <div key={field.id} className="space-y-2 p-4 border rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeContentField(field.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="Title"
-                      value={field.title}
-                      onChange={(e) => updateContentField(field.id, 'title', e.target.value)}
-                    />
-                    {field.type === 'video' ? (
-                      <Input
-                        type="text"
-                        placeholder="YouTube Video URL"
-                        value={field.content}
-                        onChange={(e) => updateContentField(field.id, 'content', e.target.value)}
-                      />
-                    ) : (
-                      <RichTextEditor
-                        content={field.content}
-                        onChange={(newContent) => updateContentField(field.id, 'content', newContent)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => addContentField('text')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Text
-                </Button>
-                <Button type="button" variant="outline" onClick={() => addContentField('video')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Video
-                </Button>
-              </div>
+              )}
 
               <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">Add Activity</Button>
             </form>
@@ -410,7 +551,9 @@ export default function ActivityManagementPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">
-                              Week {activity.week} - Day {activity.day}
+                              {activity.day === 0
+                                ? `Week ${activity.week} Information`
+                                : `Week ${activity.week} - Day ${activity.day}`}
                             </p>
                           </div>
                           <div className="flex gap-2">
@@ -445,94 +588,94 @@ export default function ActivityManagementPage() {
               <DialogTitle>Edit Activity</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4 mb-20">
-              <Form>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
-                  const data = {
-                    week: parseInt(formData.get('week') as string),
-                    day: parseInt(formData.get('day') as string),
-                    contentFields: editingContentFields
-                  };
-                  updateActivityMutation.mutate(data);
-                }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="week">Week</Label>
-                      <Input
-                        type="number"
-                        name="week"
-                        defaultValue={editingActivity?.week}
-                        required
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="day">Day</Label>
-                      <Input
-                        type="number"
-                        name="day"
-                        defaultValue={editingActivity?.day}
-                        required
-                        min="1"
-                        max="7"
-                      />
-                    </div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target as HTMLFormElement);
+                const data = {
+                  week: parseInt(formData.get('week') as string),
+                  day: parseInt(formData.get('day') as string),
+                  contentFields: editingContentFields
+                };
+                updateActivityMutation.mutate(data);
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="week">Week</Label>
+                    <Input
+                      type="number"
+                      name="week"
+                      defaultValue={editingActivity?.week}
+                      required
+                      min="1"
+                    />
                   </div>
+                  <div>
+                    <Label htmlFor="day">Day</Label>
+                    <Input
+                      type="number"
+                      name="day"
+                      defaultValue={editingActivity?.day}
+                      required
+                      min="0" // Allow 0 for week-only information
+                      max="7"
+                    />
+                    {editingActivity?.day === 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Day 0 indicates week-only information
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-                  <div className="space-y-4">
-                    {editingContentFields.map((field) => (
-                      <div key={field.id} className="space-y-2 p-4 border rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeEditingContentField(field.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Input
-                          type="text"
-                          placeholder="Title"
-                          value={field.title}
-                          onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
-                        />
-                        {field.type === 'video' ? (
+                <div className="space-y-4">
+                  {editingContentFields.map((field) => (
+                    <div key={field.id} className="space-y-2 p-4 border rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label>{field.type === 'video' ? 'Video' : 'Text Content'}</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEditingContentField(field.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Title"
+                        value={field.title}
+                        onChange={(e) => updateEditingContentField(field.id, 'title', e.target.value)}
+                      />
+                      {field.type === 'video' ? (
+                        <div className="space-y-2">
                           <Input
                             type="text"
                             placeholder="YouTube Video URL"
                             value={field.content}
                             onChange={(e) => updateEditingContentField(field.id, 'content', e.target.value)}
                           />
-                        ) : (
-                          <RichTextEditor
-                            content={field.content}
-                            onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                          {field.content && (
+                            <div className="mt-4 bg-black/5 rounded-md p-2">
+                              <Label className="mb-2 block text-sm font-medium">Video Preview</Label>
+                              <YouTubePlayer videoId={field.content} />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <RichTextEditor
+                          content={field.content}
+                          onChange={(newContent) => updateEditingContentField(field.id, 'content', newContent)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => addEditingContentField('text')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Text
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => addEditingContentField('video')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Video
-                    </Button>
-                  </div>
-
-                  <Button type="submit" disabled={updateActivityMutation.isPending}>
-                    {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
-                  </Button>
-                </form>
-              </Form>
+                <Button type="submit" disabled={updateActivityMutation.isPending}>
+                  {updateActivityMutation.isPending ? "Updating..." : "Update Activity"}
+                </Button>
+              </form>
             </ScrollArea>
           </DialogContent>
         </Dialog>

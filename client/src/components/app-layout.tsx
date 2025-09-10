@@ -8,28 +8,33 @@ interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
   sidebarWidth?: string;
+  isBottomNavVisible?: boolean;
+  scrollOffset?: number;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "320" }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true, scrollOffset = 0 }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
+  // Debug logging
+  console.log('AppLayout render - isBottomNavVisible:', isBottomNavVisible, 'isMobile:', isMobile);
+
   return (
-    <div className="flex h-full">
+    <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom' }}>
       <div className={cn(
         "flex flex-col flex-1 min-h-screen"
       )}>
         {title && (
-          <header className="sticky top-0 z-50 border-b border-border bg-background md:pl-20">
-            <div className="container py-3">
+          <header className="sticky top-0 z-50 border-b border-border bg-background">
+            <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'container'} py-3`}>
               <h1 className="text-lg font-semibold">{title}</h1>
             </div>
           </header>
         )}
-        <div className={`flex-1 md:pl-20 ${isMobile ? 'pt-20' : ''}`}>
+        <main className={`flex-1 ${isMobile ? 'pt-20' : ''} min-h-0`} style={{ touchAction: 'pan-y pinch-zoom' }}>
           {children}
-        </div>
-        {isMobile && <BottomNav />}
+        </main>
+        {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}
       </div>
     </div>
   );

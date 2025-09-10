@@ -30,7 +30,7 @@ class Logger {
   private static instance: Logger;
   private logBuffer: string[] = [];
   private bufferTimeout: NodeJS.Timeout | null = null;
-  private consoleOutputEnabled: boolean = false;
+  private consoleOutputEnabled: boolean = true;
 
   private constructor() {
     this.setupLogRotation();

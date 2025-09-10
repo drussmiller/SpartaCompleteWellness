@@ -6,7 +6,88 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Loader2, 
+  ChevronDown, 
+  ChevronUp,
+  CalendarDays,
+  BookText,
+  Target
+} from "lucide-react";
+import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
+import { Activity } from "@shared/schema";
+import "@/components/ui/activity-content.css";
+import { DuplicateVideoDetector, FixWeek3WarmupVideo, FixWeek9WarmupVideo } from "@/components/ui/duplicate-video-detector";
+import "@/components/ui/fix-duplicate-video.css"; // Special CSS to handle duplicates
+
+// Define the interface for content fields
+interface ContentField {
+  id: string;
+  type: 'text' | 'video';
+  content: string;
+  title?: string;
+}
+
+// Function to extract YouTube video IDs from HTML content, but only for plain URLs
+// (not already embedded videos)
+function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
+  if (!content) return { id: null, url: null };
+
+  // Check if content already has embedded YouTube iframes
+  const hasEmbeddedVideos = content.includes('<iframe src="https://www.youtube.com/embed/');
+
+  // If the content already has embedded videos, don't extract additional videos
+  if (hasEmbeddedVideos) {
+    return { id: null, url: null };
+  }
+
+  // More comprehensive regex to find YouTube URLs in various formats
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+
+  // Extract all matches and use the first valid one
+  const matches = content.match(youtubeRegex);
+  if (matches && matches[1]) {
+    console.log('Found YouTube URL in content:', matches[0]);
+    return { id: matches[1], url: matches[0] };
+  }
+
+  // Also look for bare YouTube IDs surrounded by non-URL text
+  // Check if there's any text that might be a YouTube ID but not part of a biblical reference or other text
+  const youtubeSpecificIdPattern = /\b([A-Za-z0-9_-]{11})\b/;
+  const bareMatches = content.match(youtubeSpecificIdPattern);
+
+  if (bareMatches && bareMatches[1]) {
+    const possibleId = bareMatches[1];
+    // Make sure it's not a biblical reference or other common text
+    const notYouTubeIdPatterns = /(Corinthians|Testament|Scripture|Genesis|Exodus|Matthew|Chapter)/i;
+
+    if (possibleId.length === 11 && !notYouTubeIdPatterns.test(possibleId) && /[0-9]/.test(possibleId)) {
+      console.log('Found possible YouTube ID in content:', possibleId);
+      return { id: possibleId, url: null };
+    }
+  }
+
+  return { id: null, url: null };
+}
+
+// Define progress interface
+interface ActivityProgress {
+  currentWeek: number;
+  currentDay: number;
+  daysSinceStart: number;
+  progressDays: number;
+  debug?: {
+    timezone: string;
+    localTime: string;
+  };
+}
 
 export default function ActivityPage() {
   const { user } = useAuth();
@@ -24,7 +105,7 @@ export default function ActivityPage() {
   }, [tzOffset]);
 
   // Get current week and day from the server
-  const { data: currentProgress, isLoading: isProgressLoading } = useQuery({
+  const { data: currentProgress, isLoading: isProgressLoading } = useQuery<ActivityProgress>({
     queryKey: ["/api/activities/current", { tzOffset }],
     queryFn: async () => {
       const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
@@ -46,21 +127,100 @@ export default function ActivityPage() {
 
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [selectedDay, setSelectedDay] = useState(1);
+  const [loadedWeeks, setLoadedWeeks] = useState<Set<number>>(new Set());
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Calculate initial weeks to load (current week + previous 4)
+  const getInitialWeeks = (currentWeek: number) => {
+    const weeks = [];
+    for (let i = Math.max(1, currentWeek - 4); i <= currentWeek; i++) {
+      weeks.push(i);
+    }
+    return weeks;
+  };
 
-  const { data: activities, isLoading: isActivitiesLoading } = useQuery({
-    queryKey: ["/api/activities"]
+  // Initial load of ONLY current week for fastest loading
+  const { isLoading: isActivitiesLoading } = useQuery<Activity[]>({
+    queryKey: ["/api/activities", "current", currentProgress?.currentWeek],
+    queryFn: async () => {
+      if (!currentProgress) return [];
+
+      // Load only the current week initially
+      const currentWeek = currentProgress.currentWeek;
+      const response = await fetch(`/api/activities?weeks=${currentWeek}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
+
+      const data = await response.json();
+      setActivities(data);
+      setLoadedWeeks(new Set([currentWeek]));
+
+      console.log(`Loaded current week: ${currentWeek}`);
+      return data;
+    },
+    enabled: !!currentProgress,
   });
 
+  // Function to load additional weeks when needed
+  const loadWeek = async (week: number) => {
+    if (loadedWeeks.has(week) || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const response = await fetch(`/api/activities?weeks=${week}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch additional week');
+      }
+
+      const newActivities = await response.json();
+      setActivities(prev => [...prev, ...newActivities]);
+      setLoadedWeeks(prev => new Set([...prev, week]));
+
+      console.log(`Lazy loaded week: ${week}`);
+    } catch (error) {
+      console.error('Failed to load week:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Load week when user navigates to it
+  React.useEffect(() => {
+    if (selectedWeek && !loadedWeeks.has(selectedWeek)) {
+      loadWeek(selectedWeek);
+    }
+  }, [selectedWeek, loadedWeeks]);
+
+  // Get current activity for selected day
   const currentActivity = activities?.find(
-    (a) => a.week === selectedWeek && a.day === selectedDay
+    (a: Activity) => a.week === selectedWeek && a.day === selectedDay
   );
 
-  const navigatePrevDay = () => {
+  // Get week activities - all activities for the selected week
+  const weekActivities = activities?.filter(
+    (a: Activity) => a.week === selectedWeek
+  );
+
+  // Find the first activity of the week to use as the week overview
+  const weekOverviewActivity = weekActivities?.[0];
+
+  // State for collapsible section
+  const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
+
+  const navigatePrevDay = async () => {
     if (selectedDay > 1) {
       setSelectedDay(selectedDay - 1);
     } else if (selectedWeek > 1) {
       const prevWeek = selectedWeek - 1;
+      
+      // Load the previous week if it's not already loaded
+      if (!loadedWeeks.has(prevWeek)) {
+        await loadWeek(prevWeek);
+      }
+      
       setSelectedWeek(prevWeek);
       const maxDay = 7;
       setSelectedDay(maxDay);
@@ -91,15 +251,205 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 pt-16">
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="p-8">
+    <div className="min-h-screen pb-20 lg:pb-0 pt-28">
+      {/* Add our duplicate video detection components */}
+      <DuplicateVideoDetector />
+      {selectedWeek === 3 && <FixWeek3WarmupVideo />}
+      {selectedWeek === 9 && <FixWeek9WarmupVideo />}
+
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <header className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
+        <div className="p-4">
           <h1 className="text-xl font-bold pl-0">Daily Activity</h1>
         </div>
       </header>
+      <main className="p-4 max-w-[1000px] mx-auto w-full space-y-4 md:px-44 md:pl-56">
+        {/* Loading status for current week */}
+        {!loadedWeeks.has(selectedWeek) && (
+          <div className="text-center p-4 bg-muted/50 rounded-md">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading Week {selectedWeek}...</p>
+          </div>
+        )}
 
-      <main className="p-4 max-w-3xl mx-auto w-full space-y-4">
-        <div className="flex items-center justify-center gap-4">
+        {/* Week Content Collapsible Section */}
+        <Collapsible 
+          open={isWeekOverviewOpen} 
+          onOpenChange={setIsWeekOverviewOpen}
+          className="border rounded-md">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex w-full justify-between p-4">
+              <div className="flex items-center gap-2">
+                <BookText className="h-4 w-4" />
+                <span className="font-medium">Week {selectedWeek} Content</span>
+              </div>
+              {isWeekOverviewOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-4 bg-muted/20">
+            {weekOverviewActivity ? (
+              <div className="prose max-w-none">
+                {/* Process the content to eliminate duplicate videos in weekly content */}
+                {(() => {
+                  // Filter relevant content fields
+                  const relevantFields = weekOverviewActivity.contentFields?.filter((field: ContentField) => 
+                    // For week 0 entries or entries where day is 0, include them
+                    (field.title?.includes(`Week ${selectedWeek}`) || weekOverviewActivity.day === 0) && 
+                    !field.title?.includes('Day')
+                  );
+
+                  // Special handling for Week 3 warmup video
+                  if (selectedWeek === 3 && weekOverviewActivity.week === 3 && weekOverviewActivity.day === 0) {
+                    // Process each field to render only once
+                    return relevantFields.map((field: ContentField, index: number) => {
+                      // Clean embedded content of duplicate videos
+                      let processedContent = field.content;
+
+                      // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
+                      if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
+                        // First, extract all video iframes
+                        const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
+                        const matches = processedContent.match(iframeRegex);
+
+                        if (matches && matches.length > 1) {
+                          // We have multiple videos with the same ID
+                          console.log(`Found ${matches.length} instances of Week 3 warmup video`);
+
+                          // Remove all video wrappers
+                          processedContent = processedContent.replace(
+                            /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
+                            ''
+                          );
+
+                          // Add back just one video after "WARM UP VIDEO" text
+                          if (processedContent.includes('WARM UP VIDEO')) {
+                            processedContent = processedContent.replace(
+                              'WARM UP VIDEO',
+                              `WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div><p>`
+                            );
+                          } else {
+                            // If no "WARM UP VIDEO" text, just add at the beginning
+                            processedContent = `<div class="video-wrapper">${matches[0]}</div>${processedContent}`;
+                          }
+                        }
+                      }
+
+                      // Create unique rendered element
+                      return (
+                        <div key={index} className="mb-4">
+                          {field.title && (
+                            <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
+                          )}
+                          {field.type === 'video' ? (
+                            <div className="mt-4 mb-4">
+                              <YouTubePlayer videoId={field.content} />
+                            </div>
+                          ) : (
+                            <div 
+                              className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
+                              style={{ 
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word'
+                              }}
+                              dangerouslySetInnerHTML={{ 
+                                __html: processedContent 
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    });
+                  }
+
+                  // Standard rendering for other weeks
+                  return relevantFields.map((field: ContentField, index: number) => {
+                    // Process content for all weeks to prevent duplicate videos
+                    let processedContent = field.content;
+
+                    // General solution to prevent duplicate videos in any week's content
+                    if (processedContent && processedContent.includes('class="video-wrapper"')) {
+                      // Make sure we don't have duplicate video wrappers
+                      const uniqueVideos = new Set();
+                      // Extract all video IDs using a regex pattern
+                      const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
+                      let match;
+                      const videoIds = [];
+
+                      while ((match = videoRegex.exec(processedContent)) !== null) {
+                        videoIds.push(match[1]);
+                      }
+
+                      // For any duplicated videos, keep only the first instance
+                      videoIds.forEach(videoId => {
+                        if (uniqueVideos.has(videoId)) {
+                          // This is a duplicate - remove all instances after the first
+                          const videoPattern = new RegExp(
+                            `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
+                            'g'
+                          );
+                          let replacement = '';
+                          let found = false;
+
+                          // Replace the processedContent with each match replaced properly
+                          processedContent = processedContent.replace(videoPattern, (match) => {
+                            if (!found) {
+                              found = true;
+                              return match; // Keep the first instance
+                            }
+                            return ''; // Remove duplicates
+                          });
+                        } else {
+                          uniqueVideos.add(videoId);
+                        }
+                      });
+                    }
+
+                    return (
+                      <div key={index} className="mb-4">
+                        {field.title && (
+                          <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
+                        )}
+                        {field.type === 'video' ? (
+                          <div className="mt-4 mb-4">
+                            <YouTubePlayer videoId={field.content} />
+                          </div>
+                        ) : (
+                          <div 
+                            className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: processedContent 
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
+                  (field.title?.includes(`Week ${selectedWeek}`) || 
+                   weekOverviewActivity.day === 0) && 
+                  !field.title?.includes('Day')).length === 0 && (
+                  <p className="text-muted-foreground text-center py-2">No week content available</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-2">No week content available</p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Day Navigation */}
+        <div className="flex items-center justify-center gap-4 mt-2">
           <Button
             variant="outline"
             size="icon"
@@ -125,23 +475,78 @@ export default function ActivityPage() {
           </Button>
         </div>
 
+        {/* Daily Content Card */}
         {currentActivity ? (
           <Card>
             <CardContent className="p-6">
               <div className="prose max-w-none">
-                {currentActivity.contentFields?.map((field, index) => (
-                  <div key={index} className="mb-8">
-                    {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
-                      <h2 className="text-xl font-bold mb-4">{field.title}</h2>
-                    )}
-                    <div 
-                      className="rich-text-content prose-sm" 
-                      dangerouslySetInnerHTML={{ 
-                        __html: field.content 
-                      }}
-                    />
-                  </div>
-                ))}
+                {currentActivity.contentFields?.map((field: ContentField, index: number) => {
+                  // Process daily content to remove duplicate videos
+                  let processedContent = field.content;
+
+                  // Only process content with embedded videos
+                  if (processedContent && processedContent.includes('class="video-wrapper"')) {
+                    // Make sure we don't have duplicate video wrappers
+                    const uniqueVideos = new Set();
+                    // Extract all video IDs using a regex pattern
+                    const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
+                    let match;
+                    const videoIds = [];
+
+                    while ((match = videoRegex.exec(processedContent)) !== null) {
+                      videoIds.push(match[1]);
+                    }
+
+                    // Process each unique video ID
+                    videoIds.forEach(videoId => {
+                      if (uniqueVideos.has(videoId)) {
+                        // This is a duplicate - remove all instances after the first
+                        const videoPattern = new RegExp(
+                          `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
+                          'g'
+                        );
+                        let found = false;
+
+                        // Replace content keeping only the first instance
+                        processedContent = processedContent.replace(videoPattern, (match) => {
+                          if (!found) {
+                            found = true;
+                            return match; // Keep the first instance
+                          }
+                          return ''; // Remove duplicates
+                        });
+                      } else {
+                        uniqueVideos.add(videoId);
+                      }
+                    });
+                  }
+
+                  return (
+                    <div key={index} className="mb-8">
+                      {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
+                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                      )}
+                      {field.type === 'video' ? (
+                        <div className="mt-4 mb-6">
+                          <YouTubePlayer videoId={field.content} />
+                        </div>
+                      ) : (
+                        <>
+                          <div 
+                            className="rich-text-content prose-sm text-lg overflow-hidden daily-content" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: processedContent 
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

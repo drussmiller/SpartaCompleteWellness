@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { MessageCircle } from "lucide-react";
 import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
@@ -12,6 +13,9 @@ import { CommentActionsDrawer } from "./comment-actions-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
+import { VideoPlayer } from "@/components/ui/video-player";
+import { createMediaUrl } from "@/lib/media-utils";
+import { getThumbnailUrl } from "@/lib/image-utils";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -33,7 +37,14 @@ type CommentWithReplies = Post & {
 };
 
 export function CommentList({ comments: initialComments, postId, onVisibilityChange }: CommentListProps) {
-  const [comments, setComments] = useState(initialComments);
+  // Sort the initial comments by creation date (oldest first)
+  const sortedInitialComments = [...initialComments].sort((a, b) => {
+    const dateA = new Date(a.createdAt || 0);
+    const dateB = new Date(b.createdAt || 0);
+    return dateA.getTime() - dateB.getTime();
+  });
+
+  const [comments, setComments] = useState(sortedInitialComments);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [selectedComment, setSelectedComment] = useState<number | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
@@ -49,43 +60,100 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
   const createReplyMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (data: { content: string; file?: File }) => {
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      const res = await apiRequest("POST", "/api/posts", {
-        type: "comment",
-        content: content.trim(),
-        parentId: replyingTo,
-        depth: (replyingToComment?.depth ?? 0) + 1
-      });
+      if (data.file) {
+        // Send as FormData when there's a file
+        const formData = new FormData();
+        formData.append('data', JSON.stringify({
+          content: data.content.trim(),
+          parentId: replyingTo,
+          depth: (replyingToComment?.depth ?? 0) + 1
+        }));
+        formData.append('file', data.file);
 
-      if (!res.ok) {
-        throw new Error("Failed to post reply");
+        const res = await fetch("/api/posts/comments", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to post reply:", errorText);
+          throw new Error(`Failed to post reply: ${errorText}`);
+        }
+
+        return res.json();
+      } else {
+        // Send as JSON when there's no file
+        const res = await fetch("/api/posts/comments", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: data.content.trim(),
+            parentId: replyingTo,
+            depth: (replyingToComment?.depth ?? 0) + 1
+          }),
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to post reply:", errorText);
+          throw new Error(`Failed to post reply: ${errorText}`);
+        }
+
+        return res.json();
       }
-
-      return res.json();
     },
     onSuccess: (newReply) => {
-      // Find the parent comment and add the reply to its replies array
-      const updatedComments = comments.map(comment => {
-        if (comment.id === replyingTo) {
-          return {
-            ...comment,
-            replies: [
-              ...(comment.replies || []),
-              { ...newReply, author: user }
-            ]
-          };
-        }
-        return comment;
-      });
-
-      setComments(updatedComments);
-      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
+      const repliedToCommentId = replyingTo;
       setReplyingTo(null);
-      toast({
-        description: "Reply added successfully",
+
+      fetch(`/api/posts/comments/${postId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error refreshing comments: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(refreshedComments => {
+        if (Array.isArray(refreshedComments)) {
+          // Sort comments by creation date (oldest first)
+          const sortedComments = [...refreshedComments].sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateA.getTime() - dateB.getTime();
+          });
+          setComments(sortedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+          toast({
+            description: 
+              <div className="flex flex-col">
+                <div>Reply added successfully</div>
+                <button 
+                  className="text-xs text-primary hover:underline text-left mt-1"
+                  onClick={() => setReplyingTo(repliedToCommentId)}
+                >
+                  Reply again to this comment
+                </button>
+              </div>,
+            duration: 5000,
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Error refreshing comments after reply:", err);
       });
     },
     onError: (error: Error) => {
@@ -103,8 +171,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         throw new Error("Comment content cannot be empty");
       }
 
-      const res = await apiRequest("PATCH", `/api/posts/${id}`, {
-        content: content.trim()
+      const res = await fetch(`/api/posts/${id}`, {
+        method: "PATCH",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content.trim()
+        }),
+        credentials: 'include'
       });
 
       if (!res.ok) {
@@ -114,25 +189,33 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       return res.json();
     },
     onSuccess: (updatedComment) => {
-      // Update comments recursively including nested replies
-      const updateCommentsRecursively = (commentsList: (Post & { author: User; replies?: (Post & { author: User })[] })[]) => {
-        return commentsList.map(comment => {
-          if (comment.id === updatedComment.id) {
-            return { ...comment, ...updatedComment };
-          }
-          if (comment.replies) {
-            return {
-              ...comment,
-              replies: updateCommentsRecursively(comment.replies)
-            };
-          }
-          return comment;
-        });
-      };
+      fetch(`/api/posts/comments/${postId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error refreshing comments: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(refreshedComments => {
+        if (Array.isArray(refreshedComments)) {
+          // Sort comments by creation date (oldest first)
+          const sortedComments = [...refreshedComments].sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateA.getTime() - dateB.getTime();
+          });
+          setComments(sortedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
+        }
+      })
+      .catch(err => {
+        console.error("Error refreshing comments after edit:", err);
+      });
 
-      const updatedComments = updateCommentsRecursively(comments);
-      setComments(updatedComments);
-      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
       setEditingComment(null);
       toast({
         description: "Comment updated successfully",
@@ -150,7 +233,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: number) => {
       if (!user?.id) throw new Error("You must be logged in to delete a comment");
-      const res = await apiRequest("DELETE", `/api/posts/comments/${commentId}`);
+      const res = await fetch(`/api/posts/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(errorText || "Failed to delete comment");
@@ -158,16 +247,33 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       return res.json();
     },
     onSuccess: (data, commentId) => {
-      // Update UI immediately by removing the deleted comment from the state
-      const updatedComments = comments.filter(comment => comment.id !== commentId);
-      setComments(updatedComments);
-
-      // Also update the React Query cache to keep it in sync
-      queryClient.setQueryData(["/api/posts/comments", postId], updatedComments);
-
-      // Still invalidate the queries to ensure everything stays in sync with the server
-      queryClient.invalidateQueries({ queryKey: ["/api/posts/comments", postId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+      fetch(`/api/posts/comments/${postId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include'
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error refreshing comments: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(refreshedComments => {
+        if (Array.isArray(refreshedComments)) {
+          // Sort comments by creation date (oldest first)
+          const sortedComments = [...refreshedComments].sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateA.getTime() - dateB.getTime();
+          });
+          setComments(sortedComments);
+          queryClient.setQueryData(["/api/posts/comments", postId], sortedComments);
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}/count`] });
+        }
+      })
+      .catch(err => {
+        console.error("Error refreshing comments after delete:", err);
+      });
 
       toast({
         description: "Comment deleted successfully",
@@ -192,34 +298,27 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     });
   };
 
-  // Organize comments into threads more reliably
-  // First, separate top-level comments and replies
-  const topLevelComments: CommentWithReplies[] = [];
-  const repliesByParentId: Record<number, CommentWithReplies[]> = {};
-
-  // Process all comments first to ensure replies are properly categorized
+  const commentMap: Record<number, CommentWithReplies> = {};
   comments.forEach(comment => {
-    const commentWithReplies = { ...comment, replies: [] };
+    commentMap[comment.id] = { ...comment, replies: [] };
+  });
+
+  const topLevelComments: CommentWithReplies[] = [];
+
+  comments.forEach(comment => {
+    const commentWithReplies = commentMap[comment.id];
 
     if (comment.parentId === postId) {
-      // This is a top-level comment
       topLevelComments.push(commentWithReplies);
+    } else if (comment.parentId && commentMap[comment.parentId]) {
+      commentMap[comment.parentId].replies.push(commentWithReplies);
     } else if (comment.parentId) {
-      // This is a reply to another comment (ensure parentId is not null)
-      if (!repliesByParentId[comment.parentId]) {
-        repliesByParentId[comment.parentId] = [];
-      }
-      repliesByParentId[comment.parentId].push(commentWithReplies);
+      console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
+      topLevelComments.push(commentWithReplies);
     }
   });
 
-  // Now attach all replies to their parent comments
-  const threadedComments = topLevelComments.map(comment => {
-    if (repliesByParentId[comment.id]) {
-      comment.replies = repliesByParentId[comment.id];
-    }
-    return comment;
-  });
+  const threadedComments = topLevelComments;
 
   const formatTimeAgo = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
@@ -234,6 +333,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   const CommentCard = ({ comment, depth = 0 }: { comment: CommentWithReplies; depth?: number }) => {
     const isOwnComment = user?.id === comment.author?.id;
+    const isReplying = replyingTo === comment.id;
+    const [imageError, setImageError] = useState(false);
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
@@ -246,11 +347,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card
-              className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
-              onClick={() => {
-                setSelectedComment(comment.id);
-                setIsActionsOpen(true);
-              }}
+                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                onClick={(e) => {
+                  // Don't show menu if clicking on a link
+                  if (e.target instanceof HTMLElement && (
+                    e.target.tagName === 'A' || 
+                    e.target.closest('a')
+                  )) {
+                    return;
+                  }
+                  setSelectedComment(comment.id);
+                  setIsActionsOpen(true);
+                }}
             >
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
@@ -259,26 +367,49 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap">{comment.content}</p>
+                <p 
+                  className="mt-1 whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ 
+                    __html: convertUrlsToLinks(comment.content || '') 
+                  }}
+                />
 
                 {/* Display media if present */}
                 {comment.mediaUrl && !comment.is_video && (
                   <div className="mt-2">
-                    <img 
-                      src={comment.mediaUrl} 
-                      alt="Comment image" 
-                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                    />
+                    {imageError ? (
+                      <div className="w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded-md">
+                        <span>Failed to load image</span>
+                      </div>
+                    ) : (
+                      <img 
+                        src={getThumbnailUrl(comment.mediaUrl, 'medium')}
+                        alt="Comment image" 
+                        className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                        onLoad={(e) => {
+                          console.log("Comment image loaded successfully:", comment.mediaUrl);
+                          console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
+                          setImageError(false);
+                        }}
+                        onError={(e) => {
+                          console.error("Error loading comment image:", comment.mediaUrl);
+                          console.error("Full URL attempted:", e.target.src);
+                          setImageError(true);
+                        }}
+                        style={{
+                          minHeight: '50px',
+                          backgroundColor: '#f3f4f6'
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
                   <div className="mt-2">
-                    <video
-                      src={comment.mediaUrl}
-                      controls
-                      preload="metadata"
+                    <VideoPlayer
+                      src={createMediaUrl(comment.mediaUrl)}
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                      playsInline
+                      onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                     />
                   </div>
                 )}
@@ -299,19 +430,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               <Button
                 variant="ghost"
                 size="sm"
-                className="p-1 h-7 text-sm text-muted-foreground hover:text-foreground"
+                className={`p-1 h-7 text-sm ${isReplying ? 'bg-gray-200 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setReplyingTo(comment.id);
+                  setReplyingTo(isReplying ? null : comment.id);
                 }}
               >
-                Reply
+                {isReplying ? 'Cancel Reply' : 'Reply'}
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Show replies */}
         {comment.replies?.map((reply) => (
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
@@ -326,18 +456,24 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 variant="ghost"
                 size="sm"
                 className="ml-2"
-                onClick={() => setEditingComment(null)}
+                onClick={() => {
+                  setEditingComment(null);
+                  onVisibilityChange?.(false, replyingTo !== null);
+                }}
               >
                 Cancel
               </Button>
             </div>
             <CommentForm
-              onSubmit={async (content) => {
+              onSubmit={async (content, file) => {
                 await editCommentMutation.mutateAsync({ id: comment.id, content });
               }}
               isSubmitting={editCommentMutation.isPending}
               defaultValue={comment.content || ""}
-              onCancel={() => setEditingComment(null)}
+              onCancel={() => {
+                setEditingComment(null);
+                onVisibilityChange?.(false, replyingTo !== null);
+              }}
               inputRef={editInputRef}
             />
           </div>
@@ -346,7 +482,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     );
   };
 
-  // Find the selected comment data including nested replies
   const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
     for (const comment of comments) {
       if (comment.id === selectedComment) return comment;
@@ -388,19 +523,29 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               variant="ghost"
               size="sm"
               className="ml-2"
-              onClick={() => setReplyingTo(null)}
+              onClick={() => {
+                setReplyingTo(null);
+                onVisibilityChange?.(editingComment !== null, false);
+              }}
             >
               Cancel
             </Button>
           </div>
           <CommentForm
-            onSubmit={async (content) => {
-              await createReplyMutation.mutateAsync(content);
-            }}
+              onSubmit={async (content, file) => {
+                await createReplyMutation.mutateAsync({ content, file });
+                if (replyInputRef.current) {
+                  replyInputRef.current.value = '';
+                }
+              }}
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
-            onCancel={() => setReplyingTo(null)}
+            onCancel={() => {
+              setReplyingTo(null);
+              onVisibilityChange?.(editingComment !== null, false);
+            }}
+            key={`reply-form-${replyingTo}`}
           />
         </div>
       )}

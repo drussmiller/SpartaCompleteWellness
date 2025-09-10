@@ -11,40 +11,79 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
   isTeamLead: boolean("is_team_lead").default(false),
-  teamId: integer("team_id"),
+  teamId: integer("team_id"), // Users belong to teams
   points: integer("points").default(0),
   weight: integer("weight"),
   waist: integer("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
-  teamJoinedAt: timestamp("team_joined_at"),
+  teamJoinedAt: timestamp("team_joined_at"), // When user joined their team
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
+  lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
+  waiverSigned: boolean("waiver_signed").default(false),
+  waiverSignedAt: timestamp("waiver_signed_at"),
+  waiverSignature: text("waiver_signature"),
 });
 
-export const teams = pgTable("teams", {
+// Organizations table (top level)
+export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Create insert schema for teams with proper validation
-export const insertTeamSchema = createInsertSchema(teams).extend({
-  name: z.string().min(1, "Team name is required"),
+// Groups table (belongs to Organization)
+export const groups = pgTable("groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  organizationId: integer("organization_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Teams table (belongs to Group)
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  groupId: integer("group_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Create insert schemas for organizations, groups, and teams
+export const insertOrganizationSchema = createInsertSchema(organizations).extend({
+  name: z.string().min(1, "Organization name is required"),
   description: z.string().optional(),
 });
 
+export const insertGroupSchema = createInsertSchema(groups).extend({
+  name: z.string().min(1, "Group name is required"),
+  description: z.string().optional(),
+  organizationId: z.number().min(1, "Organization ID is required"),
+});
+
+export const insertTeamSchema = createInsertSchema(teams).extend({
+  name: z.string().min(1, "Team name is required"),
+  description: z.string().optional(),
+  groupId: z.number().min(1, "Group ID is required"),
+});
+
 // Types
+export type Organization = typeof organizations.$inferSelect;
+export type Group = typeof groups.$inferSelect;
 export type Team = typeof teams.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"] }).notNull(),
+  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"] }).notNull(),
   content: text("content"),
   mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
   is_video: boolean("is_video").default(false), // Flag to explicitly mark video content
@@ -94,7 +133,7 @@ export const videos = pgTable("videos", {
   thumbnail: text("thumbnail"),
   category: text("category").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  teamId: integer("team_id"),
+  teamId: integer("team_id"), // Videos belong to teams
 });
 
 export const activities = pgTable("activities", {
@@ -142,7 +181,36 @@ export const messages = pgTable("messages", {
   imageUrl: text("image_url"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  is_video: boolean("is_video").default(false),
 });
+
+// Relations for hierarchy
+export const organizationRelations = relations(organizations, ({ many }) => ({
+  groups: many(groups),
+}));
+
+export const groupRelations = relations(groups, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [groups.organizationId],
+    references: [organizations.id],
+  }),
+  teams: many(teams),
+}));
+
+export const teamRelations = relations(teams, ({ one, many }) => ({
+  group: one(groups, {
+    fields: [teams.groupId],
+    references: [groups.id],
+  }),
+  users: many(users),
+}));
+
+export const userRelations = relations(users, ({ one }) => ({
+  team: one(teams, {
+    fields: [users.teamId],
+    references: [teams.id],
+  }),
+}));
 
 // Add relations for messages
 export const messageRelations = relations(messages, ({ one }) => ({
@@ -166,6 +234,7 @@ export const insertMessageSchema = createInsertSchema(messages)
   .extend({
     content: z.string().optional(),
     imageUrl: z.string().optional(),
+    is_video: z.boolean().optional().default(false),
   });
 
 // Add types
@@ -183,7 +252,7 @@ export const insertPostSchema = createInsertSchema(posts)
   .extend({
     content: z.string().nullable(),
     mediaUrl: z.string().nullable(), // Updated from imageUrl to mediaUrl
-    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous"]),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),
@@ -200,7 +269,9 @@ export const insertUserSchema = createInsertSchema(users)
   .extend({
     username: z.string().min(1, "Username is required"),
     email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters")
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    waiverSigned: z.boolean().default(false),
+    waiverSignature: z.string().optional(),
   });
 
 export const insertMeasurementSchema = createInsertSchema(measurements);

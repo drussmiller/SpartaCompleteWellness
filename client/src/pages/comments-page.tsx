@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useRouter } from "wouter";
 import { Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -10,12 +10,57 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
+// Removed useSwipeToClose import - using custom full-page swipe detection
+
 
 export default function CommentsPage() {
   const { postId } = useParams<{ postId: string }>();
-  const [location] = useLocation();
+  const [, navigate] = useLocation();
+  const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Add swipe-to-close functionality - detect swipe right anywhere on the page
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      console.log('📱 Comments page - Touch start anywhere:', { startX, startY });
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      
+      const deltaX = endX - startX;
+      const deltaY = Math.abs(endY - startY);
+      
+      console.log('📱 Comments page - Touch end anywhere:', { deltaX, deltaY, startX, endX });
+      
+      // Right swipe detection: swipe right > 80px anywhere on screen, limited vertical movement
+      if (deltaX > 80 && deltaY < 120) {
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED ANYWHERE! Going back to home');
+        e.preventDefault();
+        e.stopPropagation();
+        navigate("/");
+      }
+    };
+
+    // Attach to document for full-page swipe detection
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    console.log('🔥 COMMENTS PAGE - Full-page touch event listeners attached');
+
+    return () => {
+      console.log('🔥 COMMENTS PAGE - Cleaning up full-page touch event listeners');
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [navigate]);
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
@@ -42,7 +87,7 @@ export default function CommentsPage() {
     staleTime: 60000, // Increase to 60 seconds
     refetchOnWindowFocus: false,
     refetchInterval: false, // Disable automatic periodic refetching
-    refetchOnMount: "if-stale", // Only refetch on mount if data is stale
+    refetchOnMount: true, // Only refetch on mount if data is stale
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", `/api/posts/comments/${postId}`);
@@ -150,13 +195,24 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="h-full w-full overflow-hidden">
-        <ScrollArea className="h-[calc(100vh-4rem)] w-full">
-          <div className="w-full max-w-none px-4 pb-48 space-y-6">
-            <PostView post={originalPost} />
-            <CommentList comments={comments} postId={parseInt(postId)} />
-            {/* Only show comment form when not replying */}
-            {!comments.some(comment => comment.id === comments.find(c => c.replies?.some(r => r.id === comment.id))?.id) && (
+      <div className="flex-1 bg-white min-h-screen w-full relative">
+        {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
+        
+        <ScrollArea className="h-[calc(100vh-6rem)]">
+          <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
+            <div className="bg-white">
+              <PostView post={originalPost} />
+            </div>
+            
+            {comments.length > 0 && (
+              <div className="border-t border-gray-200 pt-6 bg-white">
+                <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+                <CommentList comments={comments} postId={parseInt(postId)} />
+              </div>
+            )}
+            
+            <div className="border-t border-gray-200 pt-6 bg-white">
+              <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
               <CommentForm
                 onSubmit={async (content) => {
                   await createCommentMutation.mutateAsync({
@@ -166,7 +222,7 @@ export default function CommentsPage() {
                 }}
                 isSubmitting={createCommentMutation.isPending}
               />
-            )}
+            </div>
           </div>
         </ScrollArea>
       </div>

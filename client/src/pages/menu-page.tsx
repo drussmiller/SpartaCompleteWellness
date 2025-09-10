@@ -2,11 +2,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
 import { LeaderboardPage } from "./leaderboard-page";
+import { SupportSpartaPage } from "./support-sparta-page";
 import { NotificationSettings } from "@/components/notification-settings";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -17,14 +18,22 @@ export default function MenuPage() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [, navigate] = useLocation();
 
   if (!user) return null;
 
   return (
     <AppLayout>
-      <div className="flex flex-col p-6 space-y-6">
-        <h1 className="text-xl font-bold">Menu</h1>
+      <div className="flex flex-col p-6 md:px-44 md:pl-56">
+        <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+          {/* This div is an empty spacer, which you can style as necessary */}
+        </div>
+        <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
+          <div className="p-4">
+            <h1 className="text-xl font-bold">Menu</h1>
+          </div>
+        </div>
 
         {/* Navigation Section */}
         <div className="w-full space-y-2">
@@ -49,33 +58,58 @@ export default function MenuPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <ProfilePage onClose={() => setProfileOpen(false)} />
+              {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
             </SheetContent>
           </Sheet>
 
           {/* Notification Settings */}
           <Sheet open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button 
+                variant="outline" 
+                className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                size="lg"
+                disabled={!user?.teamId}
+              >
                 <Bell className="mr-2 h-5 w-5" />
                 Notification Settings
+                {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />
+              {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
             </SheetContent>
           </Sheet>
 
           {/* Leaderboard - Changed to slide in from right */}
           <Sheet open={leaderboardOpen} onOpenChange={setLeaderboardOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button 
+                variant="outline" 
+                className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                size="lg"
+                disabled={!user?.teamId}
+              >
                 <Trophy className="mr-2 h-5 w-5" />
                 Leaderboard
+                {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-              <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />
+              {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+          
+          {/* Support Sparta */}
+          <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Heart className="mr-2 h-5 w-5" />
+                Support Sparta
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
             </SheetContent>
           </Sheet>
 
@@ -89,7 +123,7 @@ export default function MenuPage() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[640px] p-0">
-                <AdminPage onClose={() => setAdminOpen(false)} />
+                {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
               </SheetContent>
             </Sheet>
           )}

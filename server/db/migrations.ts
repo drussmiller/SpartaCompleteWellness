@@ -116,15 +116,46 @@ export async function runMigrations() {
       )
     `);
 
-    // Add achievement_notifications_enabled column to users table
+    // Add achievement_notifications_enabled column if it doesn't exist
     try {
       await db.execute(sql`
         ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS achievement_notifications_enabled BOOLEAN DEFAULT false
+        ADD COLUMN IF NOT EXISTS achievement_notifications_enabled BOOLEAN DEFAULT true
       `);
       console.log('Added achievement_notifications_enabled column to users table');
-    } catch (columnError) {
-      console.error('Error adding achievement_notifications_enabled column:', columnError);
+    } catch (error) {
+      console.log('achievement_notifications_enabled column may already exist:', error);
+    }
+
+    // Add waiver fields if they don't exist
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS waiver_signed BOOLEAN DEFAULT false
+      `);
+      console.log('Added waiver_signed column to users table');
+    } catch (error) {
+      console.log('waiver_signed column may already exist:', error);
+    }
+
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS waiver_signed_at TIMESTAMP
+      `);
+      console.log('Added waiver_signed_at column to users table');
+    } catch (error) {
+      console.log('waiver_signed_at column may already exist:', error);
+    }
+
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS waiver_signature TEXT
+      `);
+      console.log('Added waiver_signature column to users table');
+    } catch (error) {
+      console.log('waiver_signature column may already exist:', error);
     }
 
     // Add notification_time column to users table if it doesn't exist yet
