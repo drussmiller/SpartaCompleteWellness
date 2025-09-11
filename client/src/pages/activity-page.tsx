@@ -302,20 +302,20 @@ export default function ActivityPage() {
                     !field.title?.includes('Day')
                   );
 
-                  // Process and deduplicate videos at content level
+                  // Process and deduplicate videos at content level - only remove TRUE duplicates
                   const processContentForVideos = (content: string): string => {
                     if (!content) return content;
                     
-                    // Extract all video IDs from content to track duplicates
+                    // Only remove duplicates within the SAME content field, not across different fields
                     const videoWrapperRegex = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
-                    const seenVideos = new Set<string>();
+                    const seenVideosInThisField = new Set<string>();
                     
                     return content.replace(videoWrapperRegex, (match, videoId) => {
-                      if (seenVideos.has(videoId)) {
-                        console.log(`Removing duplicate video: ${videoId}`);
-                        return ''; // Remove duplicate
+                      if (seenVideosInThisField.has(videoId)) {
+                        console.log(`Removing duplicate video within same field: ${videoId}`);
+                        return ''; // Remove duplicate within same content field only
                       }
-                      seenVideos.add(videoId);
+                      seenVideosInThisField.add(videoId);
                       return match; // Keep first instance
                     });
                   };
@@ -394,19 +394,19 @@ export default function ActivityPage() {
             <CardContent className="p-6">
               <div className="prose max-w-none">
                 {(() => {
-                  // Process daily content with same deduplication logic
+                  // Process daily content - only remove duplicates within same field
                   const processContentForVideos = (content: string): string => {
                     if (!content) return content;
                     
                     const videoWrapperRegex = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
-                    const seenVideos = new Set<string>();
+                    const seenVideosInThisField = new Set<string>();
                     
                     return content.replace(videoWrapperRegex, (match, videoId) => {
-                      if (seenVideos.has(videoId)) {
-                        console.log(`Removing duplicate video from daily content: ${videoId}`);
+                      if (seenVideosInThisField.has(videoId)) {
+                        console.log(`Removing duplicate video within same daily field: ${videoId}`);
                         return '';
                       }
-                      seenVideos.add(videoId);
+                      seenVideosInThisField.add(videoId);
                       return match;
                     });
                   };
