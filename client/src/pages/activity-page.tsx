@@ -374,43 +374,10 @@ export default function ActivityPage() {
                     // Process content for all weeks to prevent duplicate videos
                     let processedContent = field.content;
 
-                    // General solution to prevent duplicate videos in any week's content
-                    if (processedContent && processedContent.includes('class="video-wrapper"')) {
-                      // Make sure we don't have duplicate video wrappers
-                      const uniqueVideos = new Set();
-                      // Extract all video IDs using a regex pattern
-                      const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
-                      let match;
-                      const videoIds = [];
-
-                      while ((match = videoRegex.exec(processedContent)) !== null) {
-                        videoIds.push(match[1]);
+                    // Simply display all videos without duplicate removal
+                      if (processedContent && processedContent.includes('class="video-wrapper"')) {
+                        // Display content as-is without duplicate video filtering
                       }
-
-                      // For any duplicated videos, keep only the first instance
-                      videoIds.forEach(videoId => {
-                        if (uniqueVideos.has(videoId)) {
-                          // This is a duplicate - remove all instances after the first
-                          const videoPattern = new RegExp(
-                            `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
-                            'g'
-                          );
-                          let replacement = '';
-                          let found = false;
-
-                          // Replace the processedContent with each match replaced properly
-                          processedContent = processedContent.replace(videoPattern, (match) => {
-                            if (!found) {
-                              found = true;
-                              return match; // Keep the first instance
-                            }
-                            return ''; // Remove duplicates
-                          });
-                        } else {
-                          uniqueVideos.add(videoId);
-                        }
-                      });
-                    }
 
                     return (
                       <div key={index} className="mb-4">
