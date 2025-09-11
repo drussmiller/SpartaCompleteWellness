@@ -142,13 +142,14 @@ export default function ActivityPage() {
 
   // Initial load of ONLY current week for fastest loading
   const { isLoading: isActivitiesLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/activities", "current", currentProgress?.currentWeek],
+    queryKey: ["/api/activities", "current", currentProgress?.currentWeek, user?.preferredActivityTypeId],
     queryFn: async () => {
       if (!currentProgress) return [];
 
       // Load only the current week initially
       const currentWeek = currentProgress.currentWeek;
-      const response = await fetch(`/api/activities?weeks=${currentWeek}`);
+      const activityTypeParam = user?.preferredActivityTypeId ? `&activityTypeId=${user.preferredActivityTypeId}` : '';
+      const response = await fetch(`/api/activities?weeks=${currentWeek}${activityTypeParam}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch activities');
@@ -158,10 +159,10 @@ export default function ActivityPage() {
       setActivities(data);
       setLoadedWeeks(new Set([currentWeek]));
 
-      console.log(`Loaded current week: ${currentWeek}`);
+      console.log(`Loaded current week: ${currentWeek}${user?.preferredActivityTypeId ? ` with activity type: ${user.preferredActivityTypeId}` : ''}`);
       return data;
     },
-    enabled: !!currentProgress,
+    enabled: !!currentProgress && !!user,
   });
 
   // Function to load additional weeks when needed
@@ -170,7 +171,8 @@ export default function ActivityPage() {
 
     setIsLoadingMore(true);
     try {
-      const response = await fetch(`/api/activities?weeks=${week}`);
+      const activityTypeParam = user?.preferredActivityTypeId ? `&activityTypeId=${user.preferredActivityTypeId}` : '';
+      const response = await fetch(`/api/activities?weeks=${week}${activityTypeParam}`);
       if (!response.ok) {
         throw new Error('Failed to fetch additional week');
       }
@@ -179,7 +181,7 @@ export default function ActivityPage() {
       setActivities(prev => [...prev, ...newActivities]);
       setLoadedWeeks(prev => new Set([...prev, week]));
 
-      console.log(`Lazy loaded week: ${week}`);
+      console.log(`Lazy loaded week: ${week}${user?.preferredActivityTypeId ? ` with activity type: ${user.preferredActivityTypeId}` : ''}`);
     } catch (error) {
       console.error('Failed to load week:', error);
     } finally {

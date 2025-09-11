@@ -1745,16 +1745,18 @@ export const registerRoutes = async (
   // Activities endpoints
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
-      const { week, day, weeks } = req.query;
+      const { week, day, weeks, activityTypeId } = req.query;
+
+      const activityTypeIdNumber = activityTypeId ? parseInt(activityTypeId as string) : undefined;
 
       // If weeks parameter is provided, fetch multiple weeks efficiently
       if (weeks) {
         const weekNumbers = (weeks as string)
           .split(",")
           .map((w) => parseInt(w.trim()));
-        const activities = await storage.getActivitiesForWeeks(weekNumbers);
+        const activities = await storage.getActivitiesForWeeks(weekNumbers, activityTypeIdNumber);
         logger.info(
-          `Retrieved activities for weeks: ${weekNumbers.join(", ")}`,
+          `Retrieved activities for weeks: ${weekNumbers.join(", ")}${activityTypeIdNumber ? ` with activity type: ${activityTypeIdNumber}` : ''}`,
         );
         res.json(activities);
         return;
@@ -1763,8 +1765,9 @@ export const registerRoutes = async (
       const activities = await storage.getActivities(
         week ? parseInt(week as string) : undefined,
         day ? parseInt(day as string) : undefined,
+        activityTypeIdNumber,
       );
-      logger.info("Retrieved activities:", JSON.stringify(activities, null, 2));
+      logger.info(`Retrieved activities${activityTypeIdNumber ? ` with activity type: ${activityTypeIdNumber}` : ''}:`, JSON.stringify(activities, null, 2));
       res.json(activities);
     } catch (error) {
       logger.error("Error fetching activities:", error);

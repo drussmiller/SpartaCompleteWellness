@@ -185,16 +185,25 @@ export const storage = {
   },
 
   // Activities
-  async getActivities(week?: number, day?: number): Promise<Activity[]> {
+  async getActivities(week?: number, day?: number, activityTypeId?: number): Promise<Activity[]> {
     try {
       let query = db.select().from(activities);
+      const conditions = [];
 
       if (week !== undefined) {
-        query = query.where(eq(activities.week, week));
+        conditions.push(eq(activities.week, week));
       }
 
       if (day !== undefined) {
-        query = query.where(eq(activities.day, day));
+        conditions.push(eq(activities.day, day));
+      }
+
+      if (activityTypeId !== undefined) {
+        conditions.push(eq(activities.activityTypeId, activityTypeId));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
       }
 
       return await query.orderBy(activities.week, activities.day);
@@ -204,14 +213,22 @@ export const storage = {
     }
   },
 
-  async getActivitiesForWeeks(weekNumbers: number[]): Promise<Activity[]> {
+  async getActivitiesForWeeks(weekNumbers: number[], activityTypeId?: number): Promise<Activity[]> {
     try {
       if (weekNumbers.length === 0) {
         return [];
       }
 
-      const query = db.select().from(activities).where(
+      const conditions = [
         or(...weekNumbers.map(week => eq(activities.week, week)))
+      ];
+
+      if (activityTypeId !== undefined) {
+        conditions.push(eq(activities.activityTypeId, activityTypeId));
+      }
+
+      const query = db.select().from(activities).where(
+        and(...conditions)
       );
 
       return await query.orderBy(activities.week, activities.day);
