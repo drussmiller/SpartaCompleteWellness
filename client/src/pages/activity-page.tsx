@@ -217,12 +217,12 @@ export default function ActivityPage() {
       setSelectedDay(selectedDay - 1);
     } else if (selectedWeek > 1) {
       const prevWeek = selectedWeek - 1;
-      
+
       // Load the previous week if it's not already loaded
       if (!loadedWeeks.has(prevWeek)) {
         await loadWeek(prevWeek);
       }
-      
+
       setSelectedWeek(prevWeek);
       const maxDay = 7;
       setSelectedDay(maxDay);
@@ -360,7 +360,7 @@ export default function ActivityPage() {
                                 overflowWrap: 'break-word'
                               }}
                               dangerouslySetInnerHTML={{ 
-                                __html: processedContent 
+                                __html: removeDuplicateVideos(processedContent) 
                               }}
                             />
                           )}
@@ -429,7 +429,7 @@ export default function ActivityPage() {
                               overflowWrap: 'break-word'
                             }}
                             dangerouslySetInnerHTML={{ 
-                              __html: processedContent 
+                              __html: removeDuplicateVideos(processedContent) 
                             }}
                           />
                         )}
