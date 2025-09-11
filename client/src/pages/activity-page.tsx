@@ -360,7 +360,7 @@ export default function ActivityPage() {
                                 overflowWrap: 'break-word'
                               }}
                               dangerouslySetInnerHTML={{ 
-                                __html: removeDuplicateVideos(processedContent) 
+                                __html: processedContent 
                               }}
                             />
                           )}
@@ -396,7 +396,7 @@ export default function ActivityPage() {
                               overflowWrap: 'break-word'
                             }}
                             dangerouslySetInnerHTML={{ 
-                              __html: removeDuplicateVideos(processedContent) 
+                              __html: processedContent 
                             }}
                           />
                         )}
@@ -473,7 +473,7 @@ export default function ActivityPage() {
                               overflowWrap: 'break-word'
                             }}
                             dangerouslySetInnerHTML={{ 
-                              __html: removeDuplicateVideos(processedContent) 
+                              __html: processedContent 
                             }}
                           />
                         </>
