@@ -68,19 +68,37 @@ function removeDuplicateVideosFromLastField(content: string): string {
     if (occurrences.length > 1) {
       console.log(`Found ${occurrences.length} duplicates of video ${videoId} in last field, keeping best one`);
       
-      // Find the best iframe (longest one, most likely to have proper attributes)
+      // Find the best iframe (prefer ones with more attributes, then by position)
       const bestIframe = occurrences.reduce((best, current) => {
-        return current.fullMatch.length > best.fullMatch.length ? current : best;
+        // Prefer iframes with more attributes (more complete)
+        const bestScore = best.fullMatch.length + (best.fullMatch.includes('allowfullscreen') ? 100 : 0);
+        const currentScore = current.fullMatch.length + (current.fullMatch.includes('allowfullscreen') ? 100 : 0);
+        return currentScore > bestScore ? current : best;
       });
       
-      // Remove all occurrences except the best one
+      // Remove duplicates, but keep the best one
       occurrences.forEach(iframe => {
         if (iframe !== bestIframe) {
-          processedContent = processedContent.replace(iframe.fullMatch, '');
+          try {
+            processedContent = processedContent.replace(iframe.fullMatch, '');
+          } catch (error) {
+            console.warn('Error removing duplicate iframe:', error);
+          }
         }
       });
     }
   });
+  
+  // Final safety check - ensure we still have at least one iframe for each unique video
+  const finalIframeRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
+  const finalIframes = [];
+  let finalMatch;
+  
+  while ((finalMatch = finalIframeRegex.exec(processedContent)) !== null) {
+    finalIframes.push(finalMatch[1]);
+  }
+  
+  console.log(`After duplicate removal: ${finalIframes.length} videos remaining`);
   
   return processedContent;
 }
