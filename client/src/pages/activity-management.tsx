@@ -817,26 +817,28 @@ export default function ActivityManagementPage() {
               }
             }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="week">Week</Label>
+                <div className="flex items-center gap-4">
+                  <Label htmlFor="week" className="flex-shrink-0 w-12">Week</Label>
                   <Input 
                     type="number" 
                     name="week" 
                     required 
                     min="1"
+                    className="flex-1"
                     value={extractedWeek || ''}
                     onChange={(e) => setExtractedWeek(parseInt(e.target.value) || null)}
                     placeholder={extractedWeek ? `${extractedWeek}` : "Enter week number"}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="day">Day</Label>
+                <div className="flex items-center gap-4">
+                  <Label htmlFor="day" className="flex-shrink-0 w-12">Day</Label>
                   <Input 
                     type="number" 
                     name="day" 
                     required 
                     min="1" 
                     max="7"
+                    className="flex-1"
                     value={extractedDay || ''}
                     onChange={(e) => setExtractedDay(parseInt(e.target.value) || null)}
                     placeholder={extractedDay ? `${extractedDay}` : "Enter day number"}
@@ -844,13 +846,13 @@ export default function ActivityManagementPage() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="activityType">Activity Type</Label>
+              <div className="flex items-center gap-4">
+                <Label htmlFor="activityType" className="flex-shrink-0">Activity Type</Label>
                 <Select 
                   value={selectedActivityTypeId.toString()} 
                   onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Select activity type" />
                   </SelectTrigger>
                   <SelectContent>
