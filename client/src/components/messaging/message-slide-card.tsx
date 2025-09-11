@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { MessageCircle, ChevronLeft } from "lucide-react";
+import { MessagesSquare, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -446,7 +446,7 @@ export function MessageSlideCard() {
         disabled={!user?.teamId} // Disable button if user has no teamId
         style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}} // Visual indication
       >
-        <MessageCircle className="h-4 w-4 text-black font-extrabold" />
+        <MessagesSquare className="h-4 w-4 text-black font-extrabold" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
             {unreadCount}
