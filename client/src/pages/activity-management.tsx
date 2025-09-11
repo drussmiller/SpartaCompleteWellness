@@ -615,7 +615,7 @@ export default function ActivityManagementPage() {
           <CollapsibleContent className="p-4 bg-muted/20">
             <div className="space-y-6">
             <div className="mb-8">
-              <Label htmlFor="multiFileUpload">Upload Multiple Word Documents</Label>
+              <Label htmlFor="multiFileUpload">Upload Multiple Word Documents (Hold Ctrl/Cmd to select multiple)</Label>
               <div className="flex items-center gap-2">
                 <input
                   id="multiFileUpload"
@@ -626,6 +626,8 @@ export default function ActivityManagementPage() {
                   onChange={async (event) => {
                     const files = event.target.files;
                     if (!files || files.length === 0) return;
+                    
+                    console.log(`Selected ${files.length} files:`, Array.from(files).map(f => f.name));
 
                     toast({
                       title: "Processing Files",
