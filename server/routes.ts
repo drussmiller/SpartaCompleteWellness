@@ -5018,9 +5018,49 @@ export const registerRoutes = async (
           // Continue without saving the original file
         }
 
+        // Auto-save to database if filename contains week/day numbers
+        const filename = req.file.originalname.replace('.docx', '');
+        const numbers = filename.match(/\d+/g);
+        
+        let savedActivity = null;
+        if (numbers && numbers.length >= 2) {
+          const extractedWeek = parseInt(numbers[0]);
+          const extractedDay = parseInt(numbers[1]);
+          
+          if (!isNaN(extractedWeek) && !isNaN(extractedDay) && extractedWeek >= 1) {
+            try {
+              // Create activity data
+              const activityData = {
+                week: extractedWeek,
+                day: extractedDay,
+                contentFields: [{
+                  id: Math.random().toString(36).substring(7),
+                  type: 'text' as const,
+                  content: result.value.trim(),
+                  title: filename
+                }]
+              };
+
+              // Save to database
+              const [activity] = await db
+                .insert(activities)
+                .values(activityData)
+                .returning();
+              
+              savedActivity = activity;
+              logger.info(`Auto-saved activity: Week ${extractedWeek}, Day ${extractedDay}`);
+            } catch (dbError) {
+              logger.warn("Could not auto-save activity to database:", dbError);
+              // Continue without auto-saving
+            }
+          }
+        }
+
         res.json({ 
           content: result.value,
-          originalFileUrl: originalFileUrl
+          originalFileUrl: originalFileUrl,
+          autoSaved: savedActivity !== null,
+          savedActivity: savedActivity
         });
       } catch (error) {
         logger.error("Error processing document:", error);
