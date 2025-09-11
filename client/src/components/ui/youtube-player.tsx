@@ -8,9 +8,6 @@ interface YouTubePlayerProps {
   className?: string;
 }
 
-// Track which videos have been rendered to prevent duplicates
-const renderedVideos = new Set<string>();
-
 export function YouTubePlayer({
   videoId,
   autoPlay = false,
@@ -22,28 +19,6 @@ export function YouTubePlayer({
   
   // Handle different YouTube URL formats and extract the ID
   const extractedId = extractYouTubeId(videoId);
-  
-  useEffect(() => {
-    // Create special cleanup function for repeated renders
-    return () => {
-      // Check if this is a Week 3 warmup video (JT49h1zSD6I)
-      if (extractedId === 'JT49h1zSD6I') {
-        console.log('Cleaned up Week 3 warmup video from render tracking');
-        renderedVideos.delete('JT49h1zSD6I'); 
-      }
-    };
-  }, [extractedId]);
-  
-  // Prevent duplicate renders of the same video
-  if (extractedId === 'JT49h1zSD6I' && renderedVideos.has(extractedId)) {
-    console.log('Prevented duplicate render of Week 3 warmup video');
-    return null;
-  }
-  
-  if (extractedId === 'JT49h1zSD6I') {
-    renderedVideos.add(extractedId);
-    console.log('Added Week 3 warmup video to render tracking');
-  }
 
   return (
     <div 
@@ -90,10 +65,7 @@ function extractYouTubeId(url: string): string {
     return match[2];
   }
   
-  // Special case for Week 3 warmup video if ID is embedded in content
-  if (url.includes('JT49h1zSD6I')) {
-    return 'JT49h1zSD6I';
-  }
+  
   
   console.error('Invalid YouTube URL or ID:', url);
   return '';
