@@ -506,7 +506,7 @@ export default function ActivityPage() {
                               overflowWrap: 'break-word'
                             }}
                             dangerouslySetInnerHTML={{ 
-                              __html: processedContent 
+                              __html: removeDuplicateVideos(processedContent) 
                             }}
                           />
                         </>
