@@ -179,7 +179,7 @@ export default function ActivityPage() {
 
       const newActivities = await response.json();
       setActivities(prev => [...prev, ...newActivities]);
-      setLoadedWeeks(prev => new Set([...prev, week]));
+      setLoadedWeeks(prev => new Set([...Array.from(prev), week]));
 
       console.log(`Lazy loaded week: ${week}${user?.preferredActivityTypeId ? ` with activity type: ${user.preferredActivityTypeId}` : ''}`);
     } catch (error) {

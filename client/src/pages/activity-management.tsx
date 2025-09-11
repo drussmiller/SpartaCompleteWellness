@@ -542,6 +542,25 @@ export default function ActivityManagementPage() {
               />
             </div>
 
+            <div className="flex items-center space-x-4 mb-4">
+              <Label htmlFor="week-activity-type" className="flex-shrink-0">Activity Type</Label>
+              <Select
+                value={selectedActivityTypeId.toString()}
+                onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
+              >
+                <SelectTrigger className="w-48" data-testid="select-week-activity-type">
+                  <SelectValue placeholder="Select activity type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workoutTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.id.toString()}>
+                      {type.type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <form onSubmit={async (e) => {
               e.preventDefault();
 
@@ -557,6 +576,7 @@ export default function ActivityManagementPage() {
               const data = {
                 week: extractedWeek || selectedWeek,
                 day: extractedDay || 0, // Use extracted day or 0 for week-only content
+                activityTypeId: selectedActivityTypeId,
                 contentFields: updatedContentFields
               };
 
