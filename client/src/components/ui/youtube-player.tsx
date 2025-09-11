@@ -146,6 +146,12 @@ export function removeDuplicateVideos(content: string): string {
     }
   }
   
+  // Only proceed if we actually have videos
+  if (videoMatches.length === 0) {
+    console.log('No videos found in content');
+    return content;
+  }
+  
   // Sort by position (earliest first)
   videoMatches.sort((a, b) => a.startIndex - b.startIndex);
   
@@ -162,6 +168,12 @@ export function removeDuplicateVideos(content: string): string {
       console.log(`Keeping first instance of video: ${video.videoId}`);
     }
   });
+  
+  // Only modify content if we actually found duplicates
+  if (videosToRemove.length === 0) {
+    console.log('No duplicate videos found, returning original content');
+    return content;
+  }
   
   // Remove duplicates in reverse order (from end to start) to maintain correct indices
   videosToRemove.sort((a, b) => b.startIndex - a.startIndex);
