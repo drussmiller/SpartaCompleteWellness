@@ -34,6 +34,50 @@ interface ContentField {
   title?: string;
 }
 
+// Function to remove duplicate videos from the last content field only
+function removeDuplicateVideosFromLastField(content: string): string {
+  if (!content || !content.includes('iframe')) return content;
+  
+  // Extract all iframe elements with YouTube embeds
+  const iframeRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
+  const iframes = [];
+  let match;
+  
+  while ((match = iframeRegex.exec(content)) !== null) {
+    iframes.push({
+      fullMatch: match[0],
+      videoId: match[1],
+      index: match.index
+    });
+  }
+  
+  if (iframes.length <= 1) return content; // No duplicates to remove
+  
+  // Group by video ID
+  const videoGroups = new Map();
+  iframes.forEach(iframe => {
+    if (!videoGroups.has(iframe.videoId)) {
+      videoGroups.set(iframe.videoId, []);
+    }
+    videoGroups.get(iframe.videoId).push(iframe);
+  });
+  
+  // For each video ID that has duplicates, keep only the first occurrence
+  let processedContent = content;
+  videoGroups.forEach((occurrences, videoId) => {
+    if (occurrences.length > 1) {
+      console.log(`Found ${occurrences.length} duplicates of video ${videoId} in last field, keeping first`);
+      
+      // Remove all but the first occurrence
+      for (let i = 1; i < occurrences.length; i++) {
+        processedContent = processedContent.replace(occurrences[i].fullMatch, '');
+      }
+    }
+  });
+  
+  return processedContent;
+}
+
 // Function to extract YouTube video IDs from HTML content, but only for plain URLs
 // (not already embedded videos)
 function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
@@ -372,8 +416,14 @@ export default function ActivityPage() {
             <CardContent className="p-6">
               <div className="prose max-w-none">
                 {currentActivity.contentFields?.map((field: ContentField, index: number) => {
-                  // For daily content, don't remove any videos - display all content as-is
+                  // For daily content, process only the last field to handle duplicates
                   let processedContent = field.content;
+                  const isLastField = index === (currentActivity.contentFields?.length ?? 0) - 1;
+                  
+                  // Only process duplicates for the last content field
+                  if (isLastField && field.type === 'text' && processedContent.includes('iframe')) {
+                    processedContent = removeDuplicateVideosFromLastField(processedContent);
+                  }
 
                   return (
                     <div key={index} className="mb-8">
