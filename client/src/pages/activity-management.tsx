@@ -614,6 +614,131 @@ export default function ActivityManagementPage() {
           </CollapsibleTrigger>
           <CollapsibleContent className="p-4 bg-muted/20">
             <div className="space-y-6">
+            <div className="mb-8">
+              <Label htmlFor="multiFileUpload">Upload Multiple Word Documents</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="multiFileUpload"
+                  type="file"
+                  accept=".docx"
+                  multiple
+                  onChange={async (event) => {
+                    const files = event.target.files;
+                    if (!files || files.length === 0) return;
+
+                    toast({
+                      title: "Processing Files",
+                      description: `Processing ${files.length} files...`
+                    });
+
+                    // Process each file sequentially
+                    for (let i = 0; i < files.length; i++) {
+                      const file = files[i];
+                      
+                      try {
+                        // Extract week and day from filename
+                        const filename = file.name.replace('.docx', '');
+                        const numbers = filename.match(/\d+/g);
+                        
+                        if (!numbers || numbers.length < 2) {
+                          toast({
+                            title: `Skipping ${file.name}`,
+                            description: "Filename must contain at least 2 numbers (week and day)",
+                            variant: "destructive"
+                          });
+                          continue;
+                        }
+
+                        const extractedWeek = parseInt(numbers[0]);
+                        const extractedDay = parseInt(numbers[1]);
+
+                        if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 1 || extractedDay > 7) {
+                          toast({
+                            title: `Skipping ${file.name}`,
+                            description: "Week must be >= 1 and day must be between 1-7",
+                            variant: "destructive"
+                          });
+                          continue;
+                        }
+
+                        // Upload and process the document
+                        const formData = new FormData();
+                        formData.append('document', file);
+
+                        const uploadRes = await fetch('/api/activities/upload-doc', {
+                          method: 'POST',
+                          body: formData,
+                          credentials: 'include'
+                        });
+
+                        if (!uploadRes.ok) {
+                          throw new Error(`Failed to process ${file.name}`);
+                        }
+
+                        const uploadData = await uploadRes.json();
+                        let title = filename;
+
+                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+                        let content = uploadData.content;
+
+                        // Replace URLs with iframes directly in their original position
+                        content = content.replace(youtubeRegex, (match, videoId) => {
+                          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+                        });
+
+                        // Create activity data
+                        const activityData = {
+                          week: extractedWeek,
+                          day: extractedDay,
+                          contentFields: [{
+                            id: Math.random().toString(36).substring(7),
+                            type: 'text',
+                            content: content.trim(),
+                            title: title
+                          }]
+                        };
+
+                        // Create the activity
+                        const activityRes = await apiRequest("POST", "/api/activities", activityData);
+                        if (!activityRes.ok) {
+                          const errorData = await activityRes.json();
+                          throw new Error(errorData.message || `Failed to create activity for ${file.name}`);
+                        }
+
+                        toast({
+                          title: "Success",
+                          description: `Processed ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
+                        });
+
+                      } catch (error) {
+                        console.error(`Error processing ${file.name}:`, error);
+                        toast({
+                          title: "Error",
+                          description: `Failed to process ${file.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
+                          variant: "destructive"
+                        });
+                      }
+                    }
+
+                    // Refresh the activities list
+                    queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+                    
+                    // Clear the file input
+                    event.target.value = '';
+                    
+                    toast({
+                      title: "Batch Processing Complete",
+                      description: `Finished processing ${files.length} files`
+                    });
+                  }}
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Select multiple Word documents to process in batch. Each filename should contain week and day numbers (e.g., "Week1Day2.docx").
+              </p>
+            </div>
+
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
