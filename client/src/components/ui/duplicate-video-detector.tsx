@@ -80,8 +80,8 @@ export function DuplicateVideoDetector() {
         }
       }
       
-      // Get all weekly-content containers
-      const weeklyContents = document.querySelectorAll('.weekly-content');
+      // Get all weekly-content containers (but NOT daily-content)
+      const weeklyContents = document.querySelectorAll('.weekly-content:not(.daily-content)');
       
       weeklyContents.forEach(container => {
         // Get all iframes within this container

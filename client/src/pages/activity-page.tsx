@@ -254,7 +254,7 @@ export default function ActivityPage() {
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 pt-28">
-      {/* Add our duplicate video detection components */}
+      {/* Only apply duplicate video detection to weekly content, not daily */}
       <DuplicateVideoDetector />
       {selectedWeek === 3 && <FixWeek3WarmupVideo />}
       {selectedWeek === 9 && <FixWeek9WarmupVideo />}

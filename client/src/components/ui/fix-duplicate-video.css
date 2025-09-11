@@ -24,6 +24,16 @@ iframe[src*="JT49h1zSD6I"] {
   display: block !important;
 }
 
+/* Ensure daily content videos are NEVER hidden */
+.daily-content iframe,
+.daily-content .video-wrapper {
+  display: block !important;
+}
+
+.daily-content .video-wrapper[data-duplicate="true"] {
+  display: block !important;
+}
+
 /* Additional selector for brute force approach */
 .weekly-content div + div iframe[src*="JT49h1zSD6I"] {
   display: none !important;
