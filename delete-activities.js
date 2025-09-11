@@ -1,4 +1,12 @@
-import { pool } from './server/db.ts';
+
+import pg from 'pg';
+const { Pool } = pg;
+
+// Use the same DATABASE_URL from your environment
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: true
+});
 
 async function deleteActivities() {
   console.log('Connecting to database...');
@@ -27,17 +35,9 @@ async function deleteActivities() {
     console.error('Error deleting activities:', error);
     process.exit(1);
   } finally {
-    console.log('Deletion operation completed.');
+    await pool.end();
+    console.log('Database connection closed.');
   }
 }
 
-// Run the deletion
-deleteActivities()
-  .then(() => {
-    console.log('Deletion completed successfully');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('Deletion failed:', error);
-    process.exit(1);
-  });
+deleteActivities();
