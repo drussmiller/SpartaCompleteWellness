@@ -4999,73 +4999,7 @@ export const registerRoutes = async (
         const docxBuffer = req.file.buffer;
         const result = await mammoth.convertToHtml({ buffer: docxBuffer });
 
-        // Optionally save the original file to Object Storage
-        let originalFileUrl = null;
-        try {
-          const { Client } = await import("@replit/object-storage");
-          const objectStorage = new Client();
-          
-          const timestamp = Date.now();
-          const cleanFilename = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-          const storageKey = `shared/documents/${timestamp}-${cleanFilename}`;
-          
-          await objectStorage.uploadFromBytes(storageKey, docxBuffer);
-          originalFileUrl = `/api/object-storage/direct-download?storageKey=${storageKey}`;
-          
-          logger.info(`Original document saved to Object Storage: ${storageKey}`);
-        } catch (storageError) {
-          logger.warn("Could not save original document to storage:", storageError);
-          // Continue without saving the original file
-        }
-
-        // Auto-save to database if filename contains week/day numbers
-        const filename = req.file.originalname.replace('.docx', '');
-        const numbers = filename.match(/\d+/g);
-        
-        let savedActivity = null;
-        if (numbers && numbers.length >= 2) {
-          const extractedWeek = parseInt(numbers[0]);
-          const extractedDay = parseInt(numbers[1]);
-          
-          if (!isNaN(extractedWeek) && !isNaN(extractedDay) && extractedWeek >= 1) {
-            try {
-              // Create activity data with proper schema validation
-              const activityData = {
-                week: extractedWeek,
-                day: extractedDay,
-                contentFields: [{
-                  id: Math.random().toString(36).substring(7),
-                  type: 'text' as const,
-                  content: result.value.trim(),
-                  title: filename
-                }],
-                isComplete: false
-              };
-
-              // Validate with schema before inserting
-              const parsedData = insertActivitySchema.safeParse(activityData);
-              if (!parsedData.success) {
-                logger.error("Activity validation failed:", parsedData.error.errors);
-                throw new Error("Invalid activity data format");
-              }
-
-              // Save to database using the storage function
-              savedActivity = await storage.createActivity(parsedData.data);
-              
-              logger.info(`Auto-saved activity: Week ${extractedWeek}, Day ${extractedDay}, ID: ${savedActivity.id}`);
-            } catch (dbError) {
-              logger.error("Could not auto-save activity to database:", dbError);
-              // Continue without auto-saving but log the error details
-            }
-          }
-        }
-
-        res.json({ 
-          content: result.value,
-          originalFileUrl: originalFileUrl,
-          autoSaved: savedActivity !== null,
-          savedActivity: savedActivity
-        });
+        res.json({ content: result.value });
       } catch (error) {
         logger.error("Error processing document:", error);
         // Ensure we still return JSON on error
