@@ -1,4 +1,4 @@
-import { pool } from './server/db.js';
+import { pool } from './server/db.ts';
 
 async function deleteActivities() {
   console.log('Connecting to database...');
