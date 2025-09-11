@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, FileText, Calendar, PlayCircle } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, FileText, Calendar, PlayCircle, ChevronUp, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,6 +18,11 @@ import { AppLayout } from "@/components/app-layout";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
+import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type ContentField = {
   id: string;
@@ -39,6 +44,9 @@ export default function ActivityManagementPage() {
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [extractedWeek, setExtractedWeek] = useState<number | null>(null);
   const [extractedDay, setExtractedDay] = useState<number | null>(null);
+  const [isContentPanelOpen, setIsContentPanelOpen] = useState(true);
+  const [isWeekInfoPanelOpen, setIsWeekInfoPanelOpen] = useState(false);
+  const [isDailyActivityPanelOpen, setIsDailyActivityPanelOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
@@ -419,49 +427,80 @@ export default function ActivityManagementPage() {
             </Button>
             <h1 className="text-2xl font-bold">Activity Management</h1>
           </div>
-          <div className="mb-8">
-            <Label htmlFor="docUpload">Upload Word Document</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="docUpload"
-                type="file"
-                accept=".docx"
-                onChange={async (event) => {
-                  setContentFields([]);
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    await handleDailyFileUpload(event);
-                  }
-                }}
-                className="flex-1"
-              />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Upload a Word document to automatically create content with embedded videos. 
-              Filename should contain week and day numbers (e.g., "Week1Day2.docx" or "1-2-activity.docx")
-            </p>
-          </div>
-
-          {contentFields.length > 0 && (
-            <div className="mb-8 p-4 border rounded-lg">
-              <div className="flex justify-between items-center mb-4">
-                <Label>Content</Label>
+          <Collapsible 
+            open={isContentPanelOpen} 
+            onOpenChange={setIsContentPanelOpen}
+            className="border rounded-md mb-6">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">Content Management</span>
+                </div>
+                {isContentPanelOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-4 bg-muted/20">
+              <div className="mb-8">
+                <Label htmlFor="docUpload">Upload Word Document</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="docUpload"
+                    type="file"
+                    accept=".docx"
+                    onChange={async (event) => {
+                      setContentFields([]);
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        await handleDailyFileUpload(event);
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Upload a Word document to automatically create content with embedded videos. 
+                  Filename should contain week and day numbers (e.g., "Week1Day2.docx" or "1-2-activity.docx")
+                </p>
               </div>
-              <RichTextEditor
-                content={contentFields[0].content}
-                onChange={(newContent) => updateContentField(contentFields[0].id, 'content', newContent)}
-              />
-            </div>
-          )}
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <span>Week Information Management</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+              {contentFields.length > 0 && (
+                <div className="mb-8 p-4 border rounded-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <Label>Content</Label>
+                  </div>
+                  <RichTextEditor
+                    content={contentFields[0].content}
+                    onChange={(newContent) => updateContentField(contentFields[0].id, 'content', newContent)}
+                  />
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+
+        <Collapsible 
+          open={isWeekInfoPanelOpen} 
+          onOpenChange={setIsWeekInfoPanelOpen}
+          className="border rounded-md mb-6">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex w-full justify-between p-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span className="font-medium">Week Information Management</span>
+              </div>
+              {isWeekInfoPanelOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-4 bg-muted/20">
+            <div className="space-y-4">
             <div className="flex items-center space-x-4 mb-4">
               <Label htmlFor="week-number" className="flex-shrink-0">Week Number</Label>
               <Input
@@ -532,17 +571,29 @@ export default function ActivityManagementPage() {
                 Add Week Information
               </Button>
             </form>
-          </CardContent>
-        </Card>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <span>Daily Activity Management</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <Collapsible 
+          open={isDailyActivityPanelOpen} 
+          onOpenChange={setIsDailyActivityPanelOpen}
+          className="border rounded-md">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex w-full justify-between p-4">
+              <div className="flex items-center gap-2">
+                <PlayCircle className="h-4 w-4" />
+                <span className="font-medium">Daily Activity Management</span>
+              </div>
+              {isDailyActivityPanelOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-4 bg-muted/20">
+            <div className="space-y-6">
             <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
@@ -658,8 +709,9 @@ export default function ActivityManagementPage() {
                   ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
           <DialogContent className="max-h-[90vh]">
