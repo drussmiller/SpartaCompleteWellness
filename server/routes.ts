@@ -5029,7 +5029,7 @@ export const registerRoutes = async (
           
           if (!isNaN(extractedWeek) && !isNaN(extractedDay) && extractedWeek >= 1) {
             try {
-              // Create activity data
+              // Create activity data with proper schema validation
               const activityData = {
                 week: extractedWeek,
                 day: extractedDay,
@@ -5038,20 +5038,24 @@ export const registerRoutes = async (
                   type: 'text' as const,
                   content: result.value.trim(),
                   title: filename
-                }]
+                }],
+                isComplete: false
               };
 
-              // Save to database
-              const [activity] = await db
-                .insert(activities)
-                .values(activityData)
-                .returning();
+              // Validate with schema before inserting
+              const parsedData = insertActivitySchema.safeParse(activityData);
+              if (!parsedData.success) {
+                logger.error("Activity validation failed:", parsedData.error.errors);
+                throw new Error("Invalid activity data format");
+              }
+
+              // Save to database using the storage function
+              savedActivity = await storage.createActivity(parsedData.data);
               
-              savedActivity = activity;
-              logger.info(`Auto-saved activity: Week ${extractedWeek}, Day ${extractedDay}`);
+              logger.info(`Auto-saved activity: Week ${extractedWeek}, Day ${extractedDay}, ID: ${savedActivity.id}`);
             } catch (dbError) {
-              logger.warn("Could not auto-save activity to database:", dbError);
-              // Continue without auto-saving
+              logger.error("Could not auto-save activity to database:", dbError);
+              // Continue without auto-saving but log the error details
             }
           }
         }
