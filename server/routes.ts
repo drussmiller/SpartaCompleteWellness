@@ -4999,7 +4999,29 @@ export const registerRoutes = async (
         const docxBuffer = req.file.buffer;
         const result = await mammoth.convertToHtml({ buffer: docxBuffer });
 
-        res.json({ content: result.value });
+        // Optionally save the original file to Object Storage
+        let originalFileUrl = null;
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const objectStorage = new Client();
+          
+          const timestamp = Date.now();
+          const cleanFilename = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const storageKey = `shared/documents/${timestamp}-${cleanFilename}`;
+          
+          await objectStorage.uploadFromBytes(storageKey, docxBuffer);
+          originalFileUrl = `/api/object-storage/direct-download?storageKey=${storageKey}`;
+          
+          logger.info(`Original document saved to Object Storage: ${storageKey}`);
+        } catch (storageError) {
+          logger.warn("Could not save original document to storage:", storageError);
+          // Continue without saving the original file
+        }
+
+        res.json({ 
+          content: result.value,
+          originalFileUrl: originalFileUrl
+        });
       } catch (error) {
         logger.error("Error processing document:", error);
         // Ensure we still return JSON on error
