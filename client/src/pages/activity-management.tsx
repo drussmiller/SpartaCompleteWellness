@@ -37,7 +37,8 @@ export default function ActivityManagementPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
-  const [extractedWeekDay, setExtractedWeekDay] = useState<{week: number, day: number} | null>(null);
+  const [extractedWeek, setExtractedWeek] = useState<number | null>(null);
+  const [extractedDay, setExtractedDay] = useState<number | null>(null);
   const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
@@ -184,31 +185,28 @@ export default function ActivityManagementPage() {
 
     // Extract week and day from filename
     const filename = file.name.replace('.docx', '');
-    const numberMatches = filename.match(/\b(\d+)\b/g);
+    const numbers = filename.match(/\d+/g);
     
-    if (!numberMatches || numberMatches.length < 2) {
+    if (!numbers || numbers.length < 2) {
       toast({
-        title: "Invalid filename format",
-        description: "Please ensure the filename contains at least 2 numbers (week and day)",
+        title: "Invalid filename",
+        description: "Filename must contain at least 2 numbers (week and day). Example: 'Week1Day2.docx'",
         variant: "destructive"
       });
       return;
     }
 
-    const extractedWeek = parseInt(numberMatches[0]);
-    const extractedDay = parseInt(numberMatches[1]);
+    const extractedWeek = parseInt(numbers[0]);
+    const extractedDay = parseInt(numbers[1]);
 
-    if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 0 || extractedDay > 7) {
+    if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 0) {
       toast({
-        title: "Invalid week/day numbers",
-        description: "Week must be >= 1 and day must be 0-7 (0 for week overview)",
+        title: "Invalid numbers",
+        description: "Week must be >= 1 and day must be >= 0",
         variant: "destructive"
       });
       return;
     }
-
-    // Set the selected week for the week overview form
-    setSelectedWeek(extractedWeek);
 
     const formData = new FormData();
     formData.append('document', file);
@@ -245,9 +243,14 @@ export default function ActivityManagementPage() {
 
       setContentFields(newFields);
 
+      // Store the extracted numbers
+      setExtractedWeek(extractedWeek);
+      setExtractedDay(extractedDay);
+      setSelectedWeek(extractedWeek);
+
       toast({
         title: "Success",
-        description: `Document processed successfully. Week: ${extractedWeek}, Day: ${extractedDay}`
+        description: `Document processed successfully. Detected Week ${extractedWeek}, Day ${extractedDay}`
       });
     } catch (error) {
       console.error('Error processing document:', error);
@@ -272,24 +275,24 @@ export default function ActivityManagementPage() {
 
     // Extract week and day from filename
     const filename = file.name.replace('.docx', '');
-    const numberMatches = filename.match(/\b(\d+)\b/g);
+    const numbers = filename.match(/\d+/g);
     
-    if (!numberMatches || numberMatches.length < 2) {
+    if (!numbers || numbers.length < 2) {
       toast({
-        title: "Invalid filename format",
-        description: "Please ensure the filename contains at least 2 numbers (week and day)",
+        title: "Invalid filename",
+        description: "Filename must contain at least 2 numbers (week and day). Example: 'Week1Day2.docx'",
         variant: "destructive"
       });
       return;
     }
 
-    const extractedWeek = parseInt(numberMatches[0]);
-    const extractedDay = parseInt(numberMatches[1]);
+    const extractedWeek = parseInt(numbers[0]);
+    const extractedDay = parseInt(numbers[1]);
 
-    if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 0 || extractedDay > 7) {
+    if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 1 || extractedDay > 7) {
       toast({
-        title: "Invalid week/day numbers",
-        description: "Week must be >= 1 and day must be 0-7 (0 for week overview)",
+        title: "Invalid numbers",
+        description: "Week must be >= 1 and day must be between 1-7",
         variant: "destructive"
       });
       return;
@@ -330,12 +333,13 @@ export default function ActivityManagementPage() {
 
       setContentFields(newFields);
 
-      // Store extracted week and day for form submission
-      setExtractedWeekDay({ week: extractedWeek, day: extractedDay });
+      // Store the extracted numbers
+      setExtractedWeek(extractedWeek);
+      setExtractedDay(extractedDay);
 
       toast({
         title: "Success",
-        description: `Document processed successfully. Week: ${extractedWeek}, Day: ${extractedDay}`
+        description: `Document processed successfully. Detected Week ${extractedWeek}, Day ${extractedDay}`
       });
     } catch (error) {
       console.error('Error processing document:', error);
@@ -433,7 +437,8 @@ export default function ActivityManagementPage() {
               />
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Upload a Word document to automatically create content with embedded videos
+              Upload a Word document to automatically create content with embedded videos. 
+              Filename should contain week and day numbers (e.g., "Week1Day2.docx" or "1-2-activity.docx")
             </p>
           </div>
 
@@ -472,11 +477,8 @@ export default function ActivityManagementPage() {
             <form onSubmit={async (e) => {
               e.preventDefault();
 
-              // Use extracted week from filename, fallback to selectedWeek
-              const weekToUse = extractedWeekDay?.week || selectedWeek;
-
               // Format a title that includes "Week X" format for week content
-              const weekTitle = `Week ${weekToUse} Overview`;
+              const weekTitle = `Week ${selectedWeek} Overview`;
 
               // Update content fields to include week number in title if they don't already
               const updatedContentFields = contentFields.map(field => ({
@@ -485,8 +487,8 @@ export default function ActivityManagementPage() {
               }));
 
               const data = {
-                week: weekToUse,
-                day: 0, // Use day 0 to indicate week-only content
+                week: extractedWeek || selectedWeek,
+                day: extractedDay || 0, // Use extracted day or 0 for week-only content
                 contentFields: updatedContentFields
               };
 
@@ -500,12 +502,11 @@ export default function ActivityManagementPage() {
 
                 toast({
                   title: "Success",
-                  description: `Week ${weekToUse} information created successfully`
+                  description: `Week ${selectedWeek} information created successfully`
                 });
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
                 setContentFields([]);
-                setExtractedWeekDay(null);
                 (e.target as HTMLFormElement).reset();
               } catch (error) {
                 toast({
@@ -544,23 +545,10 @@ export default function ActivityManagementPage() {
           <CardContent className="space-y-6">
             <form onSubmit={async (e) => {
               e.preventDefault();
-              
-              let week, day;
-              
-              if (extractedWeekDay) {
-                // Use extracted values from filename
-                week = extractedWeekDay.week;
-                day = extractedWeekDay.day;
-              } else {
-                // Fallback to form values if no file was uploaded
-                const formData = new FormData(e.target as HTMLFormElement);
-                week = parseInt(formData.get('week') as string);
-                day = parseInt(formData.get('day') as string);
-              }
-
+              const formData = new FormData(e.target as HTMLFormElement);
               const data = {
-                week,
-                day,
+                week: extractedWeek || parseInt(formData.get('week') as string),
+                day: extractedDay || parseInt(formData.get('day') as string),
                 contentFields
               };
 
@@ -579,7 +567,6 @@ export default function ActivityManagementPage() {
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
                 setContentFields([]);
-                setExtractedWeekDay(null);
                 (e.target as HTMLFormElement).reset();
               } catch (error) {
                 toast({
@@ -595,15 +582,11 @@ export default function ActivityManagementPage() {
                   <Input 
                     type="number" 
                     name="week" 
-                    value={extractedWeekDay?.week || ''} 
-                    onChange={(e) => {
-                      if (!extractedWeekDay) return;
-                      setExtractedWeekDay({...extractedWeekDay, week: parseInt(e.target.value) || 1});
-                    }}
                     required 
-                    min="1" 
-                    placeholder={extractedWeekDay ? String(extractedWeekDay.week) : "Week number"}
-                    readOnly={!!extractedWeekDay}
+                    min="1"
+                    value={extractedWeek || ''}
+                    onChange={(e) => setExtractedWeek(parseInt(e.target.value) || null)}
+                    placeholder={extractedWeek ? `${extractedWeek}` : "Enter week number"}
                   />
                 </div>
                 <div>
@@ -611,25 +594,15 @@ export default function ActivityManagementPage() {
                   <Input 
                     type="number" 
                     name="day" 
-                    value={extractedWeekDay?.day || ''} 
-                    onChange={(e) => {
-                      if (!extractedWeekDay) return;
-                      setExtractedWeekDay({...extractedWeekDay, day: parseInt(e.target.value) || 1});
-                    }}
                     required 
                     min="1" 
-                    max="7" 
-                    placeholder={extractedWeekDay ? String(extractedWeekDay.day) : "Day number"}
-                    readOnly={!!extractedWeekDay}
+                    max="7"
+                    value={extractedDay || ''}
+                    onChange={(e) => setExtractedDay(parseInt(e.target.value) || null)}
+                    placeholder={extractedDay ? `${extractedDay}` : "Enter day number"}
                   />
                 </div>
               </div>
-
-              {extractedWeekDay && (
-                <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-                  Week and day numbers extracted from filename: Week {extractedWeekDay.week}, Day {extractedWeekDay.day}
-                </div>
-              )}
 
               {contentFields.length > 0 && (
                 <div className="space-y-4">
