@@ -105,51 +105,90 @@ export function removeDuplicateVideos(content: string): string {
   
   console.log('Processing content for duplicate videos');
   
-  // Find all video wrapper patterns with YouTube embed
+  // Find all video patterns - both wrapped and unwrapped
   const videoWrapperPattern = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
+  const iframePattern = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
   
-  // Find all video IDs and their positions
-  const videoMap = new Map();
+  // Track all video occurrences with their positions
+  const videoOccurrences = [];
   let match;
-  let hasRemovals = false;
   
+  // Find wrapped videos
   while ((match = videoWrapperPattern.exec(content)) !== null) {
-    const videoId = match[1];
-    const fullMatch = match[0];
+    videoOccurrences.push({
+      videoId: match[1],
+      fullMatch: match[0],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+      type: 'wrapped'
+    });
+  }
+  
+  // Reset regex and find unwrapped iframes (not already captured in wrapped videos)
+  iframePattern.lastIndex = 0;
+  while ((match = iframePattern.exec(content)) !== null) {
+    const startIndex = match.index;
+    const endIndex = match.index + match[0].length;
     
-    if (videoMap.has(videoId)) {
-      // This is a duplicate - we'll remove it
-      videoMap.get(videoId).duplicates.push(fullMatch);
-      hasRemovals = true;
-    } else {
-      // First occurrence - keep it
-      videoMap.set(videoId, {
-        firstMatch: fullMatch,
-        duplicates: []
+    // Check if this iframe is already part of a wrapped video
+    const isAlreadyWrapped = videoOccurrences.some(v => 
+      v.type === 'wrapped' && startIndex >= v.startIndex && endIndex <= v.endIndex
+    );
+    
+    if (!isAlreadyWrapped) {
+      videoOccurrences.push({
+        videoId: match[1],
+        fullMatch: match[0],
+        startIndex: startIndex,
+        endIndex: endIndex,
+        type: 'iframe'
       });
     }
   }
   
-  if (!hasRemovals) {
+  if (videoOccurrences.length === 0) {
+    console.log('No videos found in content');
+    return content;
+  }
+  
+  console.log(`Found ${videoOccurrences.length} total video occurrences`);
+  
+  // Group by video ID and identify duplicates
+  const videoGroups = new Map();
+  videoOccurrences.forEach(video => {
+    if (!videoGroups.has(video.videoId)) {
+      videoGroups.set(video.videoId, []);
+    }
+    videoGroups.get(video.videoId).push(video);
+  });
+  
+  // Collect videos to remove (keep first occurrence of each)
+  const videosToRemove = [];
+  videoGroups.forEach((occurrences, videoId) => {
+    if (occurrences.length > 1) {
+      console.log(`Found ${occurrences.length} occurrences of video ${videoId} - keeping first, removing ${occurrences.length - 1}`);
+      // Sort by position and remove all but the first
+      occurrences.sort((a, b) => a.startIndex - b.startIndex);
+      videosToRemove.push(...occurrences.slice(1)); // Remove all except first
+    }
+  });
+  
+  if (videosToRemove.length === 0) {
     console.log('No duplicate videos found');
     return content;
   }
   
-  // Remove duplicates
-  let processedContent = content;
-  let totalRemoved = 0;
+  // Remove duplicates in reverse order to maintain correct indices
+  videosToRemove.sort((a, b) => b.startIndex - a.startIndex);
   
-  videoMap.forEach((videoInfo, videoId) => {
-    if (videoInfo.duplicates.length > 0) {
-      console.log(`Removing ${videoInfo.duplicates.length} duplicate(s) of video ${videoId}`);
-      
-      videoInfo.duplicates.forEach(duplicateMatch => {
-        processedContent = processedContent.replace(duplicateMatch, '');
-        totalRemoved++;
-      });
-    }
+  let processedContent = content;
+  videosToRemove.forEach(video => {
+    const before = processedContent.substring(0, video.startIndex);
+    const after = processedContent.substring(video.endIndex);
+    processedContent = before + after;
+    console.log(`Removed duplicate ${video.type} video: ${video.videoId}`);
   });
   
-  console.log(`Total videos removed: ${totalRemoved}`);
+  console.log(`Total duplicate videos removed: ${videosToRemove.length}`);
   return processedContent;
 }
