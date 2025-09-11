@@ -40,6 +40,12 @@ function removeDuplicateVideosFromLastField(content: string): string {
   
   console.log('Processing content for duplicate videos in last field');
   
+  // First, remove any ">" symbols that appear before or after video content
+  let processedContent = content.replace(/>\s*<div class="video-wrapper">/g, '<div class="video-wrapper">');
+  processedContent = processedContent.replace(/<\/iframe><\/div>\s*>/g, '</iframe></div>');
+  processedContent = processedContent.replace(/>\s*<iframe/g, '<iframe');
+  processedContent = processedContent.replace(/>\s*>/g, '>');
+  
   // Simple approach: find all YouTube iframes and remove only exact duplicates
   const iframeRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
   const foundIframes = [];
@@ -48,7 +54,7 @@ function removeDuplicateVideosFromLastField(content: string): string {
   // Reset regex lastIndex to ensure we find all matches
   iframeRegex.lastIndex = 0;
   
-  while ((match = iframeRegex.exec(content)) !== null) {
+  while ((match = iframeRegex.exec(processedContent)) !== null) {
     foundIframes.push({
       fullMatch: match[0],
       videoId: match[1],
@@ -59,8 +65,8 @@ function removeDuplicateVideosFromLastField(content: string): string {
   console.log(`Found ${foundIframes.length} total iframes in content`);
   
   if (foundIframes.length <= 1) {
-    console.log('No duplicates found, returning original content');
-    return content;
+    console.log('No duplicates found, returning processed content');
+    return processedContent;
   }
   
   // Track which video IDs we've seen
@@ -79,7 +85,6 @@ function removeDuplicateVideosFromLastField(content: string): string {
   });
   
   // Remove duplicates
-  let processedContent = content;
   iframesToRemove.forEach(iframeHtml => {
     // Only remove the first occurrence of this exact HTML
     const index = processedContent.indexOf(iframeHtml);
