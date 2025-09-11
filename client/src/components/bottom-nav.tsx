@@ -50,8 +50,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const items = [
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
-    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount },
     { icon: HelpCircle, label: "Help", href: "/help" },
+    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount },
   ];
 
   return (
