@@ -40,13 +40,10 @@ function removeDuplicateVideosFromLastField(content: string): string {
   
   console.log('Processing content for duplicate videos in last field');
   
-  // First, remove any ">" symbols that appear before or after video content
-  let processedContent = content.replace(/>\s*<div class="video-wrapper">/g, '<div class="video-wrapper">');
-  processedContent = processedContent.replace(/<\/iframe><\/div>\s*>/g, '</iframe></div>');
-  processedContent = processedContent.replace(/>\s*<iframe/g, '<iframe');
-  processedContent = processedContent.replace(/>\s*>/g, '>');
+  // First, remove any stray ">" symbols that appear around video content
+  let processedContent = content.replace(/>\s*>/g, '>');
   
-  // Simple approach: find all YouTube iframes and remove only exact duplicates
+  // Find all YouTube iframes with their surrounding context
   const iframeRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
   const foundIframes = [];
   let match;
@@ -62,50 +59,46 @@ function removeDuplicateVideosFromLastField(content: string): string {
     });
   }
   
-  console.log(`Found ${foundIframes.length} total iframes in content`);
+  console.log(`Found ${foundIframes.length} total iframes in last field`);
   
   if (foundIframes.length <= 1) {
-    console.log('No duplicates found, returning processed content');
+    console.log('No duplicates to process');
     return processedContent;
   }
   
-  // Track which video IDs we've seen
-  const seenVideoIds = new Set();
-  const iframesToRemove = [];
-  
-  // Keep first occurrence of each video ID, mark others for removal
+  // Group videos by ID to find actual duplicates
+  const videoGroups = new Map();
   foundIframes.forEach(iframe => {
-    if (seenVideoIds.has(iframe.videoId)) {
-      console.log(`Marking duplicate of video ${iframe.videoId} for removal`);
-      iframesToRemove.push(iframe.fullMatch);
-    } else {
-      console.log(`Keeping first occurrence of video ${iframe.videoId}`);
-      seenVideoIds.add(iframe.videoId);
+    if (!videoGroups.has(iframe.videoId)) {
+      videoGroups.set(iframe.videoId, []);
+    }
+    videoGroups.get(iframe.videoId).push(iframe);
+  });
+  
+  // Only remove if there are actual duplicates (more than 1 of the same video)
+  let hasRemovedDuplicates = false;
+  videoGroups.forEach((occurrences, videoId) => {
+    if (occurrences.length > 1) {
+      console.log(`Found ${occurrences.length} duplicates of video ${videoId}, removing extras`);
+      
+      // Remove all but the first occurrence
+      for (let i = 1; i < occurrences.length; i++) {
+        const iframe = occurrences[i];
+        // Look for the iframe within a larger context to remove cleanly
+        const beforeIframe = processedContent.substring(Math.max(0, iframe.index - 50), iframe.index);
+        const afterIframe = processedContent.substring(iframe.index + iframe.fullMatch.length, iframe.index + iframe.fullMatch.length + 50);
+        
+        // Simple removal of just the iframe
+        processedContent = processedContent.replace(iframe.fullMatch, '');
+        hasRemovedDuplicates = true;
+        console.log(`Removed duplicate iframe for video ${videoId}`);
+      }
     }
   });
   
-  // Remove duplicates
-  iframesToRemove.forEach(iframeHtml => {
-    // Only remove the first occurrence of this exact HTML
-    const index = processedContent.indexOf(iframeHtml);
-    if (index !== -1) {
-      processedContent = processedContent.substring(0, index) + 
-                       processedContent.substring(index + iframeHtml.length);
-      console.log('Removed duplicate iframe');
-    }
-  });
-  
-  // Verify what's left
-  const finalRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
-  const finalMatches = [];
-  let finalMatch;
-  finalRegex.lastIndex = 0;
-  
-  while ((finalMatch = finalRegex.exec(processedContent)) !== null) {
-    finalMatches.push(finalMatch[1]);
+  if (!hasRemovedDuplicates) {
+    console.log('No duplicate videos found to remove');
   }
-  
-  console.log(`After processing: ${finalMatches.length} videos remaining:`, finalMatches);
   
   return processedContent;
 }
