@@ -483,50 +483,44 @@ export default function ActivityPage() {
             <CardContent className="p-6">
               <div className="prose max-w-none">
                 {currentActivity.contentFields?.map((field: ContentField, index: number) => {
-                  // Process daily content - only remove actual duplicates within the same content field
+                  // Process daily content to remove duplicate videos
                   let processedContent = field.content;
 
-                  // Only process content with embedded videos and only if there are actual duplicates
+                  // Only process content with embedded videos
                   if (processedContent && processedContent.includes('class="video-wrapper"')) {
+                    // Make sure we don't have duplicate video wrappers
+                    const uniqueVideos = new Set();
                     // Extract all video IDs using a regex pattern
                     const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
-                    const videoIds = [];
                     let match;
+                    const videoIds = [];
 
                     while ((match = videoRegex.exec(processedContent)) !== null) {
                       videoIds.push(match[1]);
                     }
 
-                    // Only process if there are actual duplicates in this content field
-                    const videoCounts = {};
-                    videoIds.forEach(id => {
-                      videoCounts[id] = (videoCounts[id] || 0) + 1;
-                    });
+                    // Process each unique video ID
+                    videoIds.forEach(videoId => {
+                      if (uniqueVideos.has(videoId)) {
+                        // This is a duplicate - remove all instances after the first
+                        const videoPattern = new RegExp(
+                          `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
+                          'g'
+                        );
+                        let found = false;
 
-                    const hasDuplicates = Object.values(videoCounts).some(count => count > 1);
-                    
-                    if (hasDuplicates) {
-                      console.log('Found duplicate videos in content field, removing duplicates:', videoCounts);
-                      
-                      // Only remove duplicates of the same video ID within this content field
-                      Object.keys(videoCounts).forEach(videoId => {
-                        if (videoCounts[videoId] > 1) {
-                          // Remove duplicate instances, keeping only the first
-                          const videoPattern = new RegExp(
-                            `<div class="video-wrapper"><iframe[^>]*src="[^"]*${videoId}[^"]*"[^>]*><\\/iframe><\\/div>`,
-                            'g'
-                          );
-                          let firstFound = false;
-                          processedContent = processedContent.replace(videoPattern, (match) => {
-                            if (!firstFound) {
-                              firstFound = true;
-                              return match; // Keep the first instance
-                            }
-                            return ''; // Remove duplicates
-                          });
-                        }
-                      });
-                    }
+                        // Replace content keeping only the first instance
+                        processedContent = processedContent.replace(videoPattern, (match) => {
+                          if (!found) {
+                            found = true;
+                            return match; // Keep the first instance
+                          }
+                          return ''; // Remove duplicates
+                        });
+                      } else {
+                        uniqueVideos.add(videoId);
+                      }
+                    });
                   }
 
                   return (
