@@ -635,6 +635,9 @@ export default function ActivityManagementPage() {
                     });
 
                     // Process each file sequentially
+                    let processedCount = 0;
+                    let skippedCount = 0;
+
                     for (let i = 0; i < files.length; i++) {
                       const file = files[i];
                       
@@ -644,6 +647,7 @@ export default function ActivityManagementPage() {
                         const numbers = filename.match(/\d+/g);
                         
                         if (!numbers || numbers.length < 2) {
+                          skippedCount++;
                           toast({
                             title: `Skipping ${file.name}`,
                             description: "Filename must contain at least 2 numbers (week and day)",
@@ -656,6 +660,7 @@ export default function ActivityManagementPage() {
                         const extractedDay = parseInt(numbers[1]);
 
                         if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 1 || extractedDay > 7) {
+                          skippedCount++;
                           toast({
                             title: `Skipping ${file.name}`,
                             description: "Week must be >= 1 and day must be between 1-7",
@@ -708,6 +713,7 @@ export default function ActivityManagementPage() {
                           throw new Error(errorData.message || `Failed to create activity for ${file.name}`);
                         }
 
+                        processedCount++;
                         toast({
                           title: "Success",
                           description: `Processed ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
@@ -729,9 +735,14 @@ export default function ActivityManagementPage() {
                     // Clear the file input
                     event.target.value = '';
                     
+                    // Show completion message with accurate counts
+                    const summaryMessage = skippedCount > 0 
+                      ? `Processed ${processedCount} files successfully, ${skippedCount} files skipped`
+                      : `Successfully processed ${processedCount} files`;
+
                     toast({
                       title: "Batch Processing Complete",
-                      description: `Finished processing ${files.length} files`
+                      description: summaryMessage
                     });
                   }}
                   className="flex-1"
