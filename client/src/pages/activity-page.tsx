@@ -62,16 +62,23 @@ function removeDuplicateVideosFromLastField(content: string): string {
     videoGroups.get(iframe.videoId).push(iframe);
   });
   
-  // For each video ID that has duplicates, keep only the first occurrence
+  // For each video ID that has duplicates, keep only the best occurrence
   let processedContent = content;
   videoGroups.forEach((occurrences, videoId) => {
     if (occurrences.length > 1) {
-      console.log(`Found ${occurrences.length} duplicates of video ${videoId} in last field, keeping first`);
+      console.log(`Found ${occurrences.length} duplicates of video ${videoId} in last field, keeping best one`);
       
-      // Remove all but the first occurrence
-      for (let i = 1; i < occurrences.length; i++) {
-        processedContent = processedContent.replace(occurrences[i].fullMatch, '');
-      }
+      // Find the best iframe (longest one, most likely to have proper attributes)
+      const bestIframe = occurrences.reduce((best, current) => {
+        return current.fullMatch.length > best.fullMatch.length ? current : best;
+      });
+      
+      // Remove all occurrences except the best one
+      occurrences.forEach(iframe => {
+        if (iframe !== bestIframe) {
+          processedContent = processedContent.replace(iframe.fullMatch, '');
+        }
+      });
     }
   });
   
