@@ -105,33 +105,51 @@ export function removeDuplicateVideos(content: string): string {
   
   console.log('Processing content for duplicate videos');
   
-  // Simple approach - just look for the specific problematic video ID that appears multiple times
-  const videoId = 'JT49h1zSD6I'; // Week 3 warmup video
-  const videoPattern = new RegExp(`<div class="video-wrapper"><iframe[^>]*src="[^"]*${videoId}[^"]*"[^>]*></iframe></div>`, 'g');
+  // Find all video wrapper patterns with YouTube embed
+  const videoWrapperPattern = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
   
-  const matches = [...content.matchAll(videoPattern)];
+  // Find all video IDs and their positions
+  const videoMap = new Map();
+  let match;
+  let hasRemovals = false;
   
-  if (matches.length <= 1) {
-    console.log(`Found ${matches.length} instances of video ${videoId} - no duplicates to remove`);
+  while ((match = videoWrapperPattern.exec(content)) !== null) {
+    const videoId = match[1];
+    const fullMatch = match[0];
+    
+    if (videoMap.has(videoId)) {
+      // This is a duplicate - we'll remove it
+      videoMap.get(videoId).duplicates.push(fullMatch);
+      hasRemovals = true;
+    } else {
+      // First occurrence - keep it
+      videoMap.set(videoId, {
+        firstMatch: fullMatch,
+        duplicates: []
+      });
+    }
+  }
+  
+  if (!hasRemovals) {
+    console.log('No duplicate videos found');
     return content;
   }
   
-  console.log(`Found ${matches.length} instances of video ${videoId} - removing duplicates`);
-  
-  // Keep only the first occurrence
+  // Remove duplicates
   let processedContent = content;
-  let replacementCount = 0;
+  let totalRemoved = 0;
   
-  processedContent = processedContent.replace(videoPattern, (match) => {
-    if (replacementCount === 0) {
-      replacementCount++;
-      return match; // Keep the first instance
+  videoMap.forEach((videoInfo, videoId) => {
+    if (videoInfo.duplicates.length > 0) {
+      console.log(`Removing ${videoInfo.duplicates.length} duplicate(s) of video ${videoId}`);
+      
+      videoInfo.duplicates.forEach(duplicateMatch => {
+        processedContent = processedContent.replace(duplicateMatch, '');
+        totalRemoved++;
+      });
     }
-    replacementCount++;
-    return ''; // Remove subsequent instances
   });
   
-  console.log(`Removed ${replacementCount - 1} duplicate instances of video ${videoId}`);
-  
+  console.log(`Total videos removed: ${totalRemoved}`);
   return processedContent;
 }
