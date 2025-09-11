@@ -21,11 +21,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
+import { YouTubePlayer } from "@/components/ui/youtube-player";
 import { Activity } from "@shared/schema";
 import "@/components/ui/activity-content.css";
-import { DuplicateVideoDetector, FixWeek3WarmupVideo, FixWeek9WarmupVideo } from "@/components/ui/duplicate-video-detector";
-import "@/components/ui/fix-duplicate-video.css"; // Special CSS to handle duplicates
+
 
 // Define the interface for content fields
 interface ContentField {
@@ -254,10 +253,7 @@ export default function ActivityPage() {
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 pt-28">
-      {/* Add our duplicate video detection components */}
-      <DuplicateVideoDetector />
-      {selectedWeek === 3 && <FixWeek3WarmupVideo />}
-      {selectedWeek === 9 && <FixWeek9WarmupVideo />}
+      
 
       <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
         {/* This div is an empty spacer, which you can style as necessary */}
@@ -306,78 +302,26 @@ export default function ActivityPage() {
                     !field.title?.includes('Day')
                   );
 
-                  // Special handling for Week 3 warmup video
-                  if (selectedWeek === 3 && weekOverviewActivity.week === 3 && weekOverviewActivity.day === 0) {
-                    // Process each field to render only once
-                    return relevantFields.map((field: ContentField, index: number) => {
-                      // Clean embedded content of duplicate videos
-                      let processedContent = field.content;
-
-                      // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
-                      if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
-                        // First, extract all video iframes
-                        const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
-                        const matches = processedContent.match(iframeRegex);
-
-                        if (matches && matches.length > 1) {
-                          // We have multiple videos with the same ID
-                          console.log(`Found ${matches.length} instances of Week 3 warmup video`);
-
-                          // Remove all video wrappers
-                          processedContent = processedContent.replace(
-                            /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
-                            ''
-                          );
-
-                          // Add back just one video after "WARM UP VIDEO" text
-                          if (processedContent.includes('WARM UP VIDEO')) {
-                            processedContent = processedContent.replace(
-                              'WARM UP VIDEO',
-                              `WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div><p>`
-                            );
-                          } else {
-                            // If no "WARM UP VIDEO" text, just add at the beginning
-                            processedContent = `<div class="video-wrapper">${matches[0]}</div>${processedContent}`;
-                          }
-                        }
+                  // Process and deduplicate videos at content level
+                  const processContentForVideos = (content: string): string => {
+                    if (!content) return content;
+                    
+                    // Extract all video IDs from content to track duplicates
+                    const videoWrapperRegex = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
+                    const seenVideos = new Set<string>();
+                    
+                    return content.replace(videoWrapperRegex, (match, videoId) => {
+                      if (seenVideos.has(videoId)) {
+                        console.log(`Removing duplicate video: ${videoId}`);
+                        return ''; // Remove duplicate
                       }
-
-                      // Create unique rendered element
-                      return (
-                        <div key={index} className="mb-4">
-                          {field.title && (
-                            <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
-                          )}
-                          {field.type === 'video' ? (
-                            <div className="mt-4 mb-4">
-                              <YouTubePlayer videoId={field.content} />
-                            </div>
-                          ) : (
-                            <div 
-                              className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
-                              style={{ 
-                                wordWrap: 'break-word',
-                                overflowWrap: 'break-word'
-                              }}
-                              dangerouslySetInnerHTML={{ 
-                                __html: processedContent 
-                              }}
-                            />
-                          )}
-                        </div>
-                      );
+                      seenVideos.add(videoId);
+                      return match; // Keep first instance
                     });
-                  }
+                  };
 
-                  // Standard rendering for other weeks
                   return relevantFields.map((field: ContentField, index: number) => {
-                    // Process content for all weeks to prevent duplicate videos
-                    let processedContent = field.content;
-
-                    // Simply display all videos without duplicate removal
-                      if (processedContent && processedContent.includes('class="video-wrapper"')) {
-                        // Display content as-is without duplicate video filtering
-                      }
+                    const processedContent = processContentForVideos(field.content);
 
                     return (
                       <div key={index} className="mb-4">
@@ -449,23 +393,39 @@ export default function ActivityPage() {
           <Card>
             <CardContent className="p-6">
               <div className="prose max-w-none">
-                {currentActivity.contentFields?.map((field: ContentField, index: number) => {
-                  // For daily content, don't remove any videos - display all content as-is
-                  let processedContent = field.content;
+                {(() => {
+                  // Process daily content with same deduplication logic
+                  const processContentForVideos = (content: string): string => {
+                    if (!content) return content;
+                    
+                    const videoWrapperRegex = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
+                    const seenVideos = new Set<string>();
+                    
+                    return content.replace(videoWrapperRegex, (match, videoId) => {
+                      if (seenVideos.has(videoId)) {
+                        console.log(`Removing duplicate video from daily content: ${videoId}`);
+                        return '';
+                      }
+                      seenVideos.add(videoId);
+                      return match;
+                    });
+                  };
 
-                  return (
-                    <div key={index} className="mb-8">
-                      {field.title && 
-                       field.title !== `Week ${selectedWeek} - Day ${selectedDay}` &&
-                       !field.title.match(/^Week\s*\d+\s*Day\s*\d+/i) && (
-                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
-                      )}
-                      {field.type === 'video' ? (
-                        <div className="mt-4 mb-6">
-                          <YouTubePlayer videoId={field.content} />
-                        </div>
-                      ) : (
-                        <>
+                  return currentActivity.contentFields?.map((field: ContentField, index: number) => {
+                    const processedContent = processContentForVideos(field.content);
+
+                    return (
+                      <div key={index} className="mb-8">
+                        {field.title && 
+                         field.title !== `Week ${selectedWeek} - Day ${selectedDay}` &&
+                         !field.title.match(/^Week\s*\d+\s*Day\s*\d+/i) && (
+                          <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                        )}
+                        {field.type === 'video' ? (
+                          <div className="mt-4 mb-6">
+                            <YouTubePlayer videoId={field.content} />
+                          </div>
+                        ) : (
                           <div 
                             className="rich-text-content prose-sm text-lg overflow-hidden daily-content" 
                             style={{ 
@@ -476,11 +436,11 @@ export default function ActivityPage() {
                               __html: processedContent 
                             }}
                           />
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </CardContent>
           </Card>
