@@ -8,6 +8,9 @@ interface YouTubePlayerProps {
   className?: string;
 }
 
+// Track which videos have been rendered to prevent duplicates
+const renderedVideos = new Set<string>();
+
 export function YouTubePlayer({
   videoId,
   autoPlay = false,
@@ -19,6 +22,28 @@ export function YouTubePlayer({
   
   // Handle different YouTube URL formats and extract the ID
   const extractedId = extractYouTubeId(videoId);
+  
+  useEffect(() => {
+    // Create special cleanup function for repeated renders
+    return () => {
+      // Check if this is a Week 3 warmup video (JT49h1zSD6I)
+      if (extractedId === 'JT49h1zSD6I') {
+        console.log('Cleaned up Week 3 warmup video from render tracking');
+        renderedVideos.delete('JT49h1zSD6I'); 
+      }
+    };
+  }, [extractedId]);
+  
+  // Prevent duplicate renders of the same video
+  if (extractedId === 'JT49h1zSD6I' && renderedVideos.has(extractedId)) {
+    console.log('Prevented duplicate render of Week 3 warmup video');
+    return null;
+  }
+  
+  if (extractedId === 'JT49h1zSD6I') {
+    renderedVideos.add(extractedId);
+    console.log('Added Week 3 warmup video to render tracking');
+  }
 
   return (
     <div 
@@ -65,7 +90,10 @@ function extractYouTubeId(url: string): string {
     return match[2];
   }
   
-  
+  // Special case for Week 3 warmup video if ID is embedded in content
+  if (url.includes('JT49h1zSD6I')) {
+    return 'JT49h1zSD6I';
+  }
   
   console.error('Invalid YouTube URL or ID:', url);
   return '';
@@ -77,90 +105,51 @@ export function removeDuplicateVideos(content: string): string {
   
   console.log('Processing content for duplicate videos');
   
-  // Find all video patterns - both wrapped and unwrapped
+  // Find all video wrapper patterns with YouTube embed
   const videoWrapperPattern = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
-  const iframePattern = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
   
-  // Track all video occurrences with their positions
-  const videoOccurrences = [];
+  // Find all video IDs and their positions
+  const videoMap = new Map();
   let match;
+  let hasRemovals = false;
   
-  // Find wrapped videos
   while ((match = videoWrapperPattern.exec(content)) !== null) {
-    videoOccurrences.push({
-      videoId: match[1],
-      fullMatch: match[0],
-      startIndex: match.index,
-      endIndex: match.index + match[0].length,
-      type: 'wrapped'
-    });
-  }
-  
-  // Reset regex and find unwrapped iframes (not already captured in wrapped videos)
-  iframePattern.lastIndex = 0;
-  while ((match = iframePattern.exec(content)) !== null) {
-    const startIndex = match.index;
-    const endIndex = match.index + match[0].length;
+    const videoId = match[1];
+    const fullMatch = match[0];
     
-    // Check if this iframe is already part of a wrapped video
-    const isAlreadyWrapped = videoOccurrences.some(v => 
-      v.type === 'wrapped' && startIndex >= v.startIndex && endIndex <= v.endIndex
-    );
-    
-    if (!isAlreadyWrapped) {
-      videoOccurrences.push({
-        videoId: match[1],
-        fullMatch: match[0],
-        startIndex: startIndex,
-        endIndex: endIndex,
-        type: 'iframe'
+    if (videoMap.has(videoId)) {
+      // This is a duplicate - we'll remove it
+      videoMap.get(videoId).duplicates.push(fullMatch);
+      hasRemovals = true;
+    } else {
+      // First occurrence - keep it
+      videoMap.set(videoId, {
+        firstMatch: fullMatch,
+        duplicates: []
       });
     }
   }
   
-  if (videoOccurrences.length === 0) {
-    console.log('No videos found in content');
-    return content;
-  }
-  
-  console.log(`Found ${videoOccurrences.length} total video occurrences`);
-  
-  // Group by video ID and identify duplicates
-  const videoGroups = new Map();
-  videoOccurrences.forEach(video => {
-    if (!videoGroups.has(video.videoId)) {
-      videoGroups.set(video.videoId, []);
-    }
-    videoGroups.get(video.videoId).push(video);
-  });
-  
-  // Collect videos to remove (keep first occurrence of each)
-  const videosToRemove = [];
-  videoGroups.forEach((occurrences, videoId) => {
-    if (occurrences.length > 1) {
-      console.log(`Found ${occurrences.length} occurrences of video ${videoId} - keeping first, removing ${occurrences.length - 1}`);
-      // Sort by position and remove all but the first
-      occurrences.sort((a, b) => a.startIndex - b.startIndex);
-      videosToRemove.push(...occurrences.slice(1)); // Remove all except first
-    }
-  });
-  
-  if (videosToRemove.length === 0) {
+  if (!hasRemovals) {
     console.log('No duplicate videos found');
     return content;
   }
   
-  // Remove duplicates in reverse order to maintain correct indices
-  videosToRemove.sort((a, b) => b.startIndex - a.startIndex);
-  
+  // Remove duplicates
   let processedContent = content;
-  videosToRemove.forEach(video => {
-    const before = processedContent.substring(0, video.startIndex);
-    const after = processedContent.substring(video.endIndex);
-    processedContent = before + after;
-    console.log(`Removed duplicate ${video.type} video: ${video.videoId}`);
+  let totalRemoved = 0;
+  
+  videoMap.forEach((videoInfo, videoId) => {
+    if (videoInfo.duplicates.length > 0) {
+      console.log(`Removing ${videoInfo.duplicates.length} duplicate(s) of video ${videoId}`);
+      
+      videoInfo.duplicates.forEach(duplicateMatch => {
+        processedContent = processedContent.replace(duplicateMatch, '');
+        totalRemoved++;
+      });
+    }
   });
   
-  console.log(`Total duplicate videos removed: ${videosToRemove.length}`);
+  console.log(`Total videos removed: ${totalRemoved}`);
   return processedContent;
 }
