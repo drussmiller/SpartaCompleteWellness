@@ -523,7 +523,9 @@ export default function ActivityPage() {
 
                   return (
                     <div key={index} className="mb-8">
-                      {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
+                      {field.title && 
+                       field.title !== `Week ${selectedWeek} - Day ${selectedDay}` &&
+                       !field.title.match(/^Week\s*\d+\s*Day\s*\d+/i) && (
                         <h2 className="text-xl font-bold mb-4">{field.title}</h2>
                       )}
                       {field.type === 'video' ? (
