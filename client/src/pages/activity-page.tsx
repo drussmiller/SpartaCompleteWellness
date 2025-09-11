@@ -483,45 +483,8 @@ export default function ActivityPage() {
             <CardContent className="p-6">
               <div className="prose max-w-none">
                 {currentActivity.contentFields?.map((field: ContentField, index: number) => {
-                  // Process daily content to remove duplicate videos
+                  // For daily content, don't remove any videos - display all content as-is
                   let processedContent = field.content;
-
-                  // Only process content with embedded videos
-                  if (processedContent && processedContent.includes('class="video-wrapper"')) {
-                    // Make sure we don't have duplicate video wrappers
-                    const uniqueVideos = new Set();
-                    // Extract all video IDs using a regex pattern
-                    const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
-                    let match;
-                    const videoIds = [];
-
-                    while ((match = videoRegex.exec(processedContent)) !== null) {
-                      videoIds.push(match[1]);
-                    }
-
-                    // Process each unique video ID
-                    videoIds.forEach(videoId => {
-                      if (uniqueVideos.has(videoId)) {
-                        // This is a duplicate - remove all instances after the first
-                        const videoPattern = new RegExp(
-                          `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
-                          'g'
-                        );
-                        let found = false;
-
-                        // Replace content keeping only the first instance
-                        processedContent = processedContent.replace(videoPattern, (match) => {
-                          if (!found) {
-                            found = true;
-                            return match; // Keep the first instance
-                          }
-                          return ''; // Remove duplicates
-                        });
-                      } else {
-                        uniqueVideos.add(videoId);
-                      }
-                    });
-                  }
 
                   return (
                     <div key={index} className="mb-8">
