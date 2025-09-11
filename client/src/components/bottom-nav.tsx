@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Calendar, Bell, Menu } from "lucide-react";
+import { Home, Calendar, Bell, Menu, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -51,6 +51,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
     { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount },
+    { icon: HelpCircle, label: "Help", href: "/help" },
   ];
 
   return (
