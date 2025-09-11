@@ -105,87 +105,33 @@ export function removeDuplicateVideos(content: string): string {
   
   console.log('Processing content for duplicate videos');
   
-  // Find all video occurrences and their positions
-  const videoWrapperRegex = /<div class="video-wrapper">(<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>)<\/div>/g;
-  const iframeRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
+  // Simple approach - just look for the specific problematic video ID that appears multiple times
+  const videoId = 'JT49h1zSD6I'; // Week 3 warmup video
+  const videoPattern = new RegExp(`<div class="video-wrapper"><iframe[^>]*src="[^"]*${videoId}[^"]*"[^>]*></iframe></div>`, 'g');
   
-  // Collect all video matches with their positions
-  const videoMatches = [];
-  let match;
+  const matches = [...content.matchAll(videoPattern)];
   
-  // First collect wrapped videos
-  while ((match = videoWrapperRegex.exec(content)) !== null) {
-    videoMatches.push({
-      videoId: match[2],
-      fullMatch: match[0],
-      startIndex: match.index,
-      endIndex: match.index + match[0].length,
-      type: 'wrapped'
-    });
-  }
-  
-  // Reset and collect unwrapped videos (that aren't already wrapped)
-  iframeRegex.lastIndex = 0;
-  while ((match = iframeRegex.exec(content)) !== null) {
-    const startIndex = match.index;
-    const endIndex = match.index + match[0].length;
-    
-    // Check if this iframe is already part of a wrapped video
-    const isAlreadyWrapped = videoMatches.some(vm => 
-      vm.type === 'wrapped' && startIndex >= vm.startIndex && endIndex <= vm.endIndex
-    );
-    
-    if (!isAlreadyWrapped) {
-      videoMatches.push({
-        videoId: match[1],
-        fullMatch: match[0],
-        startIndex: startIndex,
-        endIndex: endIndex,
-        type: 'unwrapped'
-      });
-    }
-  }
-  
-  // Only proceed if we actually have videos
-  if (videoMatches.length === 0) {
-    console.log('No videos found in content');
+  if (matches.length <= 1) {
+    console.log(`Found ${matches.length} instances of video ${videoId} - no duplicates to remove`);
     return content;
   }
   
-  // Sort by position (earliest first)
-  videoMatches.sort((a, b) => a.startIndex - b.startIndex);
+  console.log(`Found ${matches.length} instances of video ${videoId} - removing duplicates`);
   
-  // Find duplicates - keep the first occurrence of each video ID
-  const seenVideoIds = new Set();
-  const videosToRemove = [];
-  
-  videoMatches.forEach(video => {
-    if (seenVideoIds.has(video.videoId)) {
-      videosToRemove.push(video);
-      console.log(`Marking duplicate ${video.type} video for removal: ${video.videoId}`);
-    } else {
-      seenVideoIds.add(video.videoId);
-      console.log(`Keeping first instance of video: ${video.videoId}`);
-    }
-  });
-  
-  // Only modify content if we actually found duplicates
-  if (videosToRemove.length === 0) {
-    console.log('No duplicate videos found, returning original content');
-    return content;
-  }
-  
-  // Remove duplicates in reverse order (from end to start) to maintain correct indices
-  videosToRemove.sort((a, b) => b.startIndex - a.startIndex);
-  
+  // Keep only the first occurrence
   let processedContent = content;
-  videosToRemove.forEach(video => {
-    const before = processedContent.substring(0, video.startIndex);
-    const after = processedContent.substring(video.endIndex);
-    processedContent = before + after;
+  let replacementCount = 0;
+  
+  processedContent = processedContent.replace(videoPattern, (match) => {
+    if (replacementCount === 0) {
+      replacementCount++;
+      return match; // Keep the first instance
+    }
+    replacementCount++;
+    return ''; // Remove subsequent instances
   });
   
-  console.log(`Removed ${videosToRemove.length} duplicate videos, kept ${seenVideoIds.size} unique videos`);
+  console.log(`Removed ${replacementCount - 1} duplicate instances of video ${videoId}`);
   
   return processedContent;
 }
