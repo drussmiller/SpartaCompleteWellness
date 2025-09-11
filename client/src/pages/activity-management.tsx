@@ -194,7 +194,7 @@ export default function ActivityManagementPage() {
     // Extract week and day from filename
     const filename = file.name.replace('.docx', '');
     const numbers = filename.match(/\d+/g);
-    
+
     if (!numbers || numbers.length < 2) {
       toast({
         title: "Invalid filename",
@@ -284,7 +284,7 @@ export default function ActivityManagementPage() {
     // Extract week and day from filename
     const filename = file.name.replace('.docx', '');
     const numbers = filename.match(/\d+/g);
-    
+
     if (!numbers || numbers.length < 2) {
       toast({
         title: "Invalid filename",
@@ -323,7 +323,8 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      // Enhanced YouTube regex to catch more URL formats
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
       let content = data.content;
 
       // Replace URLs with iframes directly in their original position
@@ -626,7 +627,7 @@ export default function ActivityManagementPage() {
                   onChange={async (event) => {
                     const files = event.target.files;
                     if (!files || files.length === 0) return;
-                    
+
                     console.log(`Selected ${files.length} files:`, Array.from(files).map(f => f.name));
 
                     toast({
@@ -640,12 +641,12 @@ export default function ActivityManagementPage() {
 
                     for (let i = 0; i < files.length; i++) {
                       const file = files[i];
-                      
+
                       try {
                         // Extract week and day from filename
                         const filename = file.name.replace('.docx', '');
                         const numbers = filename.match(/\d+/g);
-                        
+
                         if (!numbers || numbers.length < 2) {
                           skippedCount++;
                           toast({
@@ -731,10 +732,10 @@ export default function ActivityManagementPage() {
 
                     // Refresh the activities list
                     queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-                    
+
                     // Clear the file input
                     event.target.value = '';
-                    
+
                     // Show completion message with accurate counts
                     const summaryMessage = skippedCount > 0 
                       ? `Processed ${processedCount} files successfully, ${skippedCount} files skipped`
