@@ -2260,6 +2260,55 @@ export const registerRoutes = async (
     }
   });
 
+  router.patch("/api/user/activity-type", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { activityTypeId } = req.body;
+      console.log(`Updating activity type for user ${req.user.id} to:`, activityTypeId);
+
+      // Validate activityTypeId
+      if (typeof activityTypeId !== "number" || activityTypeId < 1) {
+        return res.status(400).json({ message: "Activity type ID must be a positive number" });
+      }
+
+      // Verify workout type exists
+      const [workoutType] = await db
+        .select()
+        .from(workoutTypes)
+        .where(eq(workoutTypes.id, activityTypeId))
+        .limit(1);
+
+      if (!workoutType) {
+        return res.status(400).json({ message: "Activity type not found" });
+      }
+
+      // Update the user's preferred activity type
+      const [updatedUser] = await db
+        .update(users)
+        .set({ preferredActivityTypeId: activityTypeId })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log("User activity type updated successfully:", updatedUser.preferredActivityTypeId);
+
+      res.json({
+        message: "Activity type updated successfully",
+        preferredActivityTypeId: updatedUser.preferredActivityTypeId
+      });
+    } catch (error) {
+      logger.error("Error updating activity type:", error);
+      res.status(500).json({
+        message: "Failed to update activity type",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Update daily score check endpoint
   // Added a GET endpoint for testing as well as the main POST endpoint
   router.get("/api/check-daily-scores", async (req, res) => {

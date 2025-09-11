@@ -21,6 +21,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { BottomNav } from "@/components/bottom-nav";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Edit } from "lucide-react";
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -55,6 +57,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     setPreferredNameValue(user?.preferredName || "");
   }, [user?.preferredName]);
 
+  useEffect(() => {
+    setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
+  }, [user?.preferredActivityTypeId]);
+
   const updatePreferredNameMutation = useMutation({
     mutationFn: async (preferredName: string) => {
       console.log("Updating preferred name to:", preferredName);
@@ -82,6 +88,38 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to update preferred name",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateActivityTypeMutation = useMutation({
+    mutationFn: async (activityTypeId: number) => {
+      console.log("Updating activity type to:", activityTypeId);
+      const res = await apiRequest("PATCH", "/api/user/activity-type", { activityTypeId });
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to update activity type:", errorText);
+        throw new Error("Failed to update activity type");
+      }
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      console.log("Activity type update successful:", data);
+      // Invalidate and refetch user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await refetchUser();
+      setIsEditingActivityType(false);
+      toast({
+        title: "Success",
+        description: "Activity type updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Activity type update error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update activity type",
         variant: "destructive",
       });
     },
@@ -133,6 +171,16 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     },
     enabled: !!user?.id,
   });
+
+  // Add workout types query
+  const { data: workoutTypes } = useQuery({
+    queryKey: ["/api/workout-types"],
+    enabled: !!authUser,
+  });
+
+  // Activity type selection state
+  const [isEditingActivityType, setIsEditingActivityType] = useState(false);
+  const [selectedActivityTypeId, setSelectedActivityTypeId] = useState(user?.preferredActivityTypeId || 1);
 
   useEffect(() => {
     console.log('Profile page user data updated:', user);
@@ -416,6 +464,66 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                             </div>
                           </>
                         )}
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg text-muted-foreground">Activity Type</span>
+                          {isEditingActivityType ? (
+                            <div className="flex items-center gap-2">
+                              <Select 
+                                value={selectedActivityTypeId.toString()} 
+                                onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {workoutTypes?.map((workoutType) => (
+                                    <SelectItem key={workoutType.id} value={workoutType.id.toString()}>
+                                      {workoutType.type}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                size="sm"
+                                onClick={() => updateActivityTypeMutation.mutate(selectedActivityTypeId)}
+                                disabled={updateActivityTypeMutation.isPending}
+                                className="h-6 px-2 text-xs"
+                              >
+                                {updateActivityTypeMutation.isPending ? "..." : "Save"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
+                                  setIsEditingActivityType(false);
+                                }}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {workoutTypes?.find(wt => wt.id === (user?.preferredActivityTypeId || 1))?.type || 'Bands'}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
+                                  setIsEditingActivityType(true);
+                                }}
+                                className="h-6 px-2 text-xs"
+                                data-testid="button-edit-activity-type"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </>
                     )}
                   </>
