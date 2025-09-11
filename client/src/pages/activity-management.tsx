@@ -469,15 +469,35 @@ export default function ActivityManagementPage() {
               </div>
 
               {contentFields.length > 0 && (
-                <div className="mb-8 p-4 border rounded-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <Label>Content</Label>
-                  </div>
-                  <RichTextEditor
-                    content={contentFields[0].content}
-                    onChange={(newContent) => updateContentField(contentFields[0].id, 'content', newContent)}
-                  />
-                </div>
+                <Collapsible className="border rounded-md mb-6">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="flex w-full justify-between p-4">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="font-medium">File Contents: {contentFields[0].title}</span>
+                      </div>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="p-4 bg-muted/10">
+                    <div className="mb-4">
+                      <Label className="text-sm font-medium">Extracted Content Preview</Label>
+                      <div className="mt-2 p-4 bg-background border rounded-md max-h-96 overflow-y-auto">
+                        <div 
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: contentFields[0].content }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Edit Content</Label>
+                      <RichTextEditor
+                        content={contentFields[0].content}
+                        onChange={(newContent) => updateContentField(contentFields[0].id, 'content', newContent)}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </CollapsibleContent>
           </Collapsible>
