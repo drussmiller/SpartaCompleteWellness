@@ -136,6 +136,13 @@ export const videos = pgTable("videos", {
   teamId: integer("team_id"), // Videos belong to teams
 });
 
+// Workout types table
+export const workoutTypes = pgTable("workout_types", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   week: integer("week").notNull(),
@@ -144,6 +151,7 @@ export const activities = pgTable("activities", {
   isComplete: boolean("is_complete").default(false),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  activityTypeId: integer("activity_type_id").default(1), // Default to "Bands" workout type
 });
 
 export const workoutVideos = pgTable("workout_videos", {
@@ -209,6 +217,18 @@ export const userRelations = relations(users, ({ one }) => ({
   team: one(teams, {
     fields: [users.teamId],
     references: [teams.id],
+  }),
+}));
+
+// Add relations for activities and workout types
+export const workoutTypeRelations = relations(workoutTypes, ({ many }) => ({
+  activities: many(activities),
+}));
+
+export const activityRelations = relations(activities, ({ one }) => ({
+  workoutType: one(workoutTypes, {
+    fields: [activities.activityTypeId],
+    references: [workoutTypes.id],
   }),
 }));
 
@@ -285,6 +305,15 @@ export const insertNotificationSchema = createInsertSchema(notifications)
     sound: z.string().optional()
   });
 export const insertVideoSchema = createInsertSchema(videos);
+export const insertWorkoutTypeSchema = createInsertSchema(workoutTypes)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    type: z.string().min(1, "Workout type is required"),
+  });
+
 export const insertActivitySchema = createInsertSchema(activities)
   .extend({
     contentFields: z.array(
@@ -294,7 +323,8 @@ export const insertActivitySchema = createInsertSchema(activities)
         content: z.string(),
         title: z.string()
       })
-    ).default([])
+    ).default([]),
+    activityTypeId: z.number().default(1),
   });
 
 export const insertWorkoutVideoSchema = createInsertSchema(workoutVideos);
@@ -314,6 +344,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type WorkoutType = typeof workoutTypes.$inferSelect;
+export type InsertWorkoutType = z.infer<typeof insertWorkoutTypeSchema>;
 export type Activity = typeof activities.$inferSelect & {
   contentFields: Array<{
     id: string;

@@ -31,6 +31,7 @@ import {
   reactions,
   achievementTypes,
   userAchievements,
+  workoutTypes,
   insertTeamSchema,
   insertGroupSchema,
   insertOrganizationSchema,
@@ -42,6 +43,7 @@ import {
   insertUserSchema,
   insertAchievementTypeSchema,
   insertUserAchievementSchema,
+  insertWorkoutTypeSchema,
   messages,
   insertMessageSchema,
 } from "@shared/schema";
@@ -1649,6 +1651,92 @@ export const registerRoutes = async (
       logger.error(`Error updating group ${req.params.id}:`, error);
       res.status(500).json({
         message: "Failed to update group",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Workout Types endpoints
+  router.get("/api/workout-types", authenticate, async (req, res) => {
+    try {
+      const workoutTypes = await storage.getWorkoutTypes();
+      res.json(workoutTypes);
+    } catch (error) {
+      logger.error("Error fetching workout types:", error);
+      res.status(500).json({ message: "Failed to fetch workout types" });
+    }
+  });
+
+  router.post("/api/workout-types", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const parsedData = insertWorkoutTypeSchema.safeParse(req.body);
+      if (!parsedData.success) {
+        return res.status(400).json({
+          message: "Invalid workout type data",
+          errors: parsedData.error.errors,
+        });
+      }
+
+      const workoutType = await storage.createWorkoutType(parsedData.data);
+      logger.info(`Created workout type: ${workoutType.type} by user ${req.user.id}`);
+      res.status(201).json(workoutType);
+    } catch (error) {
+      logger.error("Error creating workout type:", error);
+      res.status(500).json({
+        message: "Failed to create workout type",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  router.delete("/api/workout-types/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const workoutTypeId = parseInt(req.params.id);
+      if (isNaN(workoutTypeId)) {
+        return res.status(400).json({ message: "Invalid workout type ID" });
+      }
+
+      await storage.deleteWorkoutType(workoutTypeId);
+      logger.info(`Deleted workout type ${workoutTypeId} by user ${req.user.id}`);
+      res.status(200).json({ message: "Workout type deleted successfully" });
+    } catch (error) {
+      logger.error(`Error deleting workout type ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to delete workout type",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  router.patch("/api/workout-types/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const workoutTypeId = parseInt(req.params.id);
+      if (isNaN(workoutTypeId)) {
+        return res.status(400).json({ message: "Invalid workout type ID" });
+      }
+
+      logger.info(`Updating workout type ${workoutTypeId} with data:`, req.body);
+
+      const updatedWorkoutType = await storage.updateWorkoutType(workoutTypeId, req.body);
+
+      logger.info(`Workout type ${workoutTypeId} updated successfully by user ${req.user.id}`);
+      res.status(200).json(updatedWorkoutType);
+    } catch (error) {
+      logger.error(`Error updating workout type ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to update workout type",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }

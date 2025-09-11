@@ -11,6 +11,7 @@ import {
   notifications,
   measurements,
   workoutVideos,
+  workoutTypes,
   type Post,
   type Team,
   type Group,
@@ -21,9 +22,11 @@ import {
   type Notification,
   type Measurement,
   type WorkoutVideo,
+  type WorkoutType,
   type InsertTeam,
   type InsertGroup,
-  type InsertOrganization
+  type InsertOrganization,
+  type InsertWorkoutType
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
@@ -794,6 +797,52 @@ export const storage = {
       return await db.select().from(teams).where(eq(teams.groupId, groupId));
     } catch (error) {
       logger.error(`Failed to get teams for group ${groupId}: ${error}`);
+      throw error;
+    }
+  },
+
+  // Workout Types
+  async getWorkoutTypes(): Promise<WorkoutType[]> {
+    try {
+      return await db.select().from(workoutTypes);
+    } catch (error) {
+      logger.error(`Failed to get workout types: ${error}`);
+      throw error;
+    }
+  },
+
+  async createWorkoutType(data: InsertWorkoutType): Promise<WorkoutType> {
+    try {
+      const [workoutType] = await db
+        .insert(workoutTypes)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return workoutType;
+    } catch (error) {
+      logger.error(`Failed to create workout type: ${error}`);
+      throw error;
+    }
+  },
+
+  async updateWorkoutType(id: number, data: Partial<Omit<WorkoutType, "id" | "createdAt">>): Promise<WorkoutType> {
+    try {
+      const [workoutType] = await db
+        .update(workoutTypes)
+        .set(data)
+        .where(eq(workoutTypes.id, id))
+        .returning();
+      return workoutType;
+    } catch (error) {
+      logger.error('Database error updating workout type:', error);
+      throw error;
+    }
+  },
+
+  async deleteWorkoutType(id: number): Promise<void> {
+    try {
+      await db.delete(workoutTypes).where(eq(workoutTypes.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete workout type ${id}: ${error}`);
       throw error;
     }
   }

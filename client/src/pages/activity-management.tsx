@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Activity } from "@shared/schema";
+import { Activity, WorkoutType } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Collapsible,
   CollapsibleContent,
@@ -44,6 +45,8 @@ export default function ActivityManagementPage() {
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [extractedWeek, setExtractedWeek] = useState<number | null>(null);
   const [extractedDay, setExtractedDay] = useState<number | null>(null);
+  const [selectedActivityTypeId, setSelectedActivityTypeId] = useState<number>(1); // Default to "Bands"
+  const [editingActivityTypeId, setEditingActivityTypeId] = useState<number>(1);
   const [isContentPanelOpen, setIsContentPanelOpen] = useState(true);
   const [isWeekInfoPanelOpen, setIsWeekInfoPanelOpen] = useState(false);
   const [isDailyActivityPanelOpen, setIsDailyActivityPanelOpen] = useState(false);
@@ -51,6 +54,10 @@ export default function ActivityManagementPage() {
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
     queryKey: ["/api/activities"]
+  });
+
+  const { data: workoutTypes } = useQuery<WorkoutType[]>({
+    queryKey: ["/api/workout-types"]
   });
 
   const updateActivityMutation = useMutation({
@@ -125,6 +132,7 @@ export default function ActivityManagementPage() {
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     setEditingContentFields(activity.contentFields || []);
+    setEditingActivityTypeId(activity.activityTypeId || 1);
     setEditActivityOpen(true);
   };
 
@@ -760,7 +768,8 @@ export default function ActivityManagementPage() {
               const data = {
                 week: extractedWeek || parseInt(formData.get('week') as string),
                 day: extractedDay || parseInt(formData.get('day') as string),
-                contentFields
+                contentFields,
+                activityTypeId: selectedActivityTypeId
               };
 
               try {
@@ -813,6 +822,25 @@ export default function ActivityManagementPage() {
                     placeholder={extractedDay ? `${extractedDay}` : "Enter day number"}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="activityType">Activity Type</Label>
+                <Select 
+                  value={selectedActivityTypeId.toString()} 
+                  onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select activity type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workoutTypes?.map((workoutType) => (
+                      <SelectItem key={workoutType.id} value={workoutType.id.toString()}>
+                        {workoutType.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {contentFields.length > 0 && (
@@ -885,7 +913,8 @@ export default function ActivityManagementPage() {
                 const data = {
                   week: parseInt(formData.get('week') as string),
                   day: parseInt(formData.get('day') as string),
-                  contentFields: editingContentFields
+                  contentFields: editingContentFields,
+                  activityTypeId: editingActivityTypeId
                 };
                 updateActivityMutation.mutate(data);
               }} className="space-y-4">
@@ -916,6 +945,25 @@ export default function ActivityManagementPage() {
                       </p>
                     )}
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="editActivityType">Activity Type</Label>
+                  <Select 
+                    value={editingActivityTypeId.toString()} 
+                    onValueChange={(value) => setEditingActivityTypeId(parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select activity type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workoutTypes?.map((workoutType) => (
+                        <SelectItem key={workoutType.id} value={workoutType.id.toString()}>
+                          {workoutType.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-4">
