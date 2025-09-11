@@ -103,33 +103,67 @@ function extractYouTubeId(url: string): string {
 export function removeDuplicateVideos(content: string): string {
   if (!content) return '';
   
-  // Special handling for Week 3 warmup video
-  if (content.includes('JT49h1zSD6I')) {
-    // Extract all iframes with this video ID
-    const warmupVideoRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
-    const matches = content.match(warmupVideoRegex);
+  console.log('Processing content for duplicate videos');
+  
+  // Find all YouTube iframes and remove duplicates
+  const iframeRegex = /<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>/g;
+  const videoWrapperRegex = /<div class="video-wrapper">(<iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe>)<\/div>/g;
+  
+  // Track video IDs we've seen
+  const seenVideoIds = new Set();
+  let processedContent = content;
+  
+  // First, handle wrapped videos
+  let match;
+  const wrappedVideosToRemove = [];
+  
+  while ((match = videoWrapperRegex.exec(content)) !== null) {
+    const videoId = match[2];
+    const fullMatch = match[0];
     
-    if (matches && matches.length > 1) {
-      console.log(`Found ${matches.length} occurrences of Week 3 warmup video, keeping only one`);
-      
-      // Remove all video wrappers with this ID
-      let cleanedContent = content.replace(
-        /<div class="video-wrapper">(<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>)<\/div>/g,
-        ''
-      );
-      
-      // If there's a place marker for the warmup video, put it there
-      if (cleanedContent.includes('WARM UP VIDEO')) {
-        return cleanedContent.replace(
-          /<p>(<em>)?WARM UP VIDEO(<\/em>)?<\/p>/,
-          `<p>WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div>`
-        );
-      }
-      
-      // Otherwise add it to the beginning
-      return `<div class="video-wrapper">${matches[0]}</div>${cleanedContent}`;
+    if (seenVideoIds.has(videoId)) {
+      // This is a duplicate - mark for removal
+      wrappedVideosToRemove.push(fullMatch);
+      console.log(`Found duplicate wrapped video: ${videoId}`);
+    } else {
+      seenVideoIds.add(videoId);
     }
   }
   
-  return content;
+  // Remove duplicate wrapped videos
+  wrappedVideosToRemove.forEach(videoHtml => {
+    const index = processedContent.indexOf(videoHtml);
+    if (index !== -1) {
+      processedContent = processedContent.substring(0, index) + processedContent.substring(index + videoHtml.length);
+    }
+  });
+  
+  // Reset regex for unwrapped videos
+  iframeRegex.lastIndex = 0;
+  const unwrappedVideosToRemove = [];
+  
+  while ((match = iframeRegex.exec(processedContent)) !== null) {
+    const videoId = match[1];
+    const fullMatch = match[0];
+    
+    if (seenVideoIds.has(videoId)) {
+      // This is a duplicate - mark for removal
+      unwrappedVideosToRemove.push(fullMatch);
+      console.log(`Found duplicate unwrapped video: ${videoId}`);
+    } else {
+      seenVideoIds.add(videoId);
+    }
+  }
+  
+  // Remove duplicate unwrapped videos
+  unwrappedVideosToRemove.forEach(videoHtml => {
+    const index = processedContent.indexOf(videoHtml);
+    if (index !== -1) {
+      processedContent = processedContent.substring(0, index) + processedContent.substring(index + videoHtml.length);
+    }
+  });
+  
+  console.log(`Removed ${wrappedVideosToRemove.length + unwrappedVideosToRemove.length} duplicate videos`);
+  
+  return processedContent;
 }
