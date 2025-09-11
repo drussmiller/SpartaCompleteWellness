@@ -621,7 +621,8 @@ export default function ActivityManagementPage() {
                   id="multiFileUpload"
                   type="file"
                   accept=".docx"
-                  multiple
+                  multiple={true}
+                  webkitdirectory={false}
                   onChange={async (event) => {
                     const files = event.target.files;
                     if (!files || files.length === 0) return;
