@@ -184,7 +184,13 @@ export default function ActivityPage() {
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
                                 }}
-                                dangerouslySetInnerHTML={{ __html: item.content || '' }} 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: (item.content || '')
+                                    .replace(/&gt;/g, '') // Remove HTML encoded >
+                                    .replace(/>/g, '') // Remove any stray > symbols
+                                    .replace(/&lt;/g, '<') // Fix < symbols
+                                    .replace(/&amp;/g, '&') // Fix & symbols
+                                }} 
                               />
                             </div>
                           )}
@@ -257,7 +263,13 @@ export default function ActivityPage() {
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
                                 }}
-                                dangerouslySetInnerHTML={{ __html: item.content || '' }} 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: (item.content || '')
+                                    .replace(/&gt;/g, '') // Remove HTML encoded >
+                                    .replace(/>/g, '') // Remove any stray > symbols
+                                    .replace(/&lt;/g, '<') // Fix < symbols
+                                    .replace(/&amp;/g, '&') // Fix & symbols
+                                }} 
                               />
                             </div>
                           )}
