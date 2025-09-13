@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useRef } from 'react';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -7,9 +8,6 @@ interface YouTubePlayerProps {
   height?: number;
   className?: string;
 }
-
-// Track which videos have been rendered to prevent duplicates
-const renderedVideos = new Set<string>();
 
 export function YouTubePlayer({
   videoId,
@@ -23,22 +21,27 @@ export function YouTubePlayer({
   // Handle different YouTube URL formats and extract the ID
   const extractedId = extractYouTubeId(videoId);
 
-
+  if (!extractedId) {
+    return <div>Invalid YouTube video ID</div>;
+  }
 
   return (
     <div 
-      className="video-wrapper"
+      ref={containerRef}
+      className={`youtube-video-container ${className}`}
       style={{
         position: 'relative',
         width: '100%',
         maxWidth: '560px',
-        aspectRatio: '16/9',
-        margin: '15px 0',
+        paddingBottom: '56.25%', // 16:9 aspect ratio
+        height: 0,
+        overflow: 'hidden',
+        margin: '15px auto',
         display: 'block'
       }}
     >
       <iframe
-        src={`https://www.youtube.com/embed/${extractedId}`}
+        src={`https://www.youtube.com/embed/${extractedId}${autoPlay ? '?autoplay=1' : ''}`}
         title="YouTube video player"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -70,8 +73,6 @@ function extractYouTubeId(url: string): string {
   if (match && match[2].length === 11) {
     return match[2];
   }
-
-
 
   console.error('Invalid YouTube URL or ID:', url);
   return '';
