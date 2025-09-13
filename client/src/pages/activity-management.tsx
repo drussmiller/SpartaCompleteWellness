@@ -244,16 +244,8 @@ export default function ActivityManagementPage() {
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
 
-      // Track processed video IDs to avoid duplicates
-      const processedVideoIds = new Set();
-
       // Replace URLs with iframes directly in their original position
       content = content.replace(youtubeRegex, (match, videoId) => {
-        // Skip if we've already processed this video ID
-        if (processedVideoIds.has(videoId)) {
-          return ''; // Remove duplicate occurrences
-        }
-        processedVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
@@ -339,20 +331,12 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      // Enhanced YouTube regex to catch more URL formats but avoid duplicates
+      // Enhanced YouTube regex to catch more URL formats
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
       let content = data.content;
 
-      // Track processed video IDs to avoid duplicates
-      const processedVideoIds = new Set();
-
       // Replace URLs with iframes directly in their original position
       content = content.replace(youtubeRegex, (match, videoId) => {
-        // Skip if we've already processed this video ID
-        if (processedVideoIds.has(videoId)) {
-          return ''; // Remove duplicate occurrences
-        }
-        processedVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
@@ -604,10 +588,9 @@ export default function ActivityManagementPage() {
                   throw new Error(errorData.message || 'Failed to create activity');
                 }
 
-                const responseData = await res.json();
                 toast({
                   title: "Success",
-                  description: responseData.message || `Week ${selectedWeek} information saved successfully`
+                  description: `Week ${selectedWeek} information created successfully`
                 });
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
@@ -735,16 +718,8 @@ export default function ActivityManagementPage() {
                         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
                         let content = uploadData.content;
 
-                        // Track processed video IDs to avoid duplicates
-                        const processedVideoIds = new Set();
-
                         // Replace URLs with iframes directly in their original position
                         content = content.replace(youtubeRegex, (match, videoId) => {
-                          // Skip if we've already processed this video ID
-                          if (processedVideoIds.has(videoId)) {
-                            return ''; // Remove duplicate occurrences
-                          }
-                          processedVideoIds.add(videoId);
                           return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
                         });
 
@@ -760,18 +735,17 @@ export default function ActivityManagementPage() {
                           }]
                         };
 
-                        // Create or update the activity
+                        // Create the activity
                         const activityRes = await apiRequest("POST", "/api/activities", activityData);
                         if (!activityRes.ok) {
                           const errorData = await activityRes.json();
-                          throw new Error(errorData.message || `Failed to save activity for ${file.name}`);
+                          throw new Error(errorData.message || `Failed to create activity for ${file.name}`);
                         }
 
-                        const responseData = await activityRes.json();
                         processedCount++;
                         toast({
                           title: "Success",
-                          description: `${responseData.message ? 'Updated' : 'Created'} ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
+                          description: `Processed ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
                         });
 
                       } catch (error) {
@@ -826,10 +800,9 @@ export default function ActivityManagementPage() {
                   throw new Error(errorData.message || 'Failed to create activity');
                 }
 
-                const responseData = await res.json();
                 toast({
                   title: "Success",
-                  description: responseData.message || "Activity saved successfully"
+                  description: "Activity created successfully"
                 });
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });

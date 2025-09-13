@@ -1,156 +1,533 @@
-
-import React from 'react';
-import { useQuery } from "@tanstack/react-query";
-import { Activity } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { BottomNav } from "@/components/bottom-nav";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { AppLayout } from "@/components/app-layout";
-import { YouTubePlayer } from "@/components/ui/youtube-player";
-import { ChevronLeft } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Loader2, 
+  ChevronDown, 
+  ChevronUp,
+  CalendarDays,
+  BookText,
+  Target
+} from "lucide-react";
+import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
+import { Activity } from "@shared/schema";
+import "@/components/ui/activity-content.css";
+import { DuplicateVideoDetector, FixWeek3WarmupVideo, FixWeek9WarmupVideo } from "@/components/ui/duplicate-video-detector";
+import "@/components/ui/fix-duplicate-video.css"; // Special CSS to handle duplicates
+
+// Define the interface for content fields
+interface ContentField {
+  id: string;
+  type: 'text' | 'video';
+  content: string;
+  title?: string;
+}
+
+// Function to extract YouTube video IDs from HTML content, but only for plain URLs
+// (not already embedded videos)
+function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
+  if (!content) return { id: null, url: null };
+
+  // Check if content already has embedded YouTube iframes
+  const hasEmbeddedVideos = content.includes('<iframe src="https://www.youtube.com/embed/');
+
+  // If the content already has embedded videos, don't extract additional videos
+  if (hasEmbeddedVideos) {
+    return { id: null, url: null };
+  }
+
+  // More comprehensive regex to find YouTube URLs in various formats
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+
+  // Extract all matches and use the first valid one
+  const matches = content.match(youtubeRegex);
+  if (matches && matches[1]) {
+    console.log('Found YouTube URL in content:', matches[0]);
+    return { id: matches[1], url: matches[0] };
+  }
+
+  // Also look for bare YouTube IDs surrounded by non-URL text
+  // Check if there's any text that might be a YouTube ID but not part of a biblical reference or other text
+  const youtubeSpecificIdPattern = /\b([A-Za-z0-9_-]{11})\b/;
+  const bareMatches = content.match(youtubeSpecificIdPattern);
+
+  if (bareMatches && bareMatches[1]) {
+    const possibleId = bareMatches[1];
+    // Make sure it's not a biblical reference or other common text
+    const notYouTubeIdPatterns = /(Corinthians|Testament|Scripture|Genesis|Exodus|Matthew|Chapter)/i;
+
+    if (possibleId.length === 11 && !notYouTubeIdPatterns.test(possibleId) && /[0-9]/.test(possibleId)) {
+      console.log('Found possible YouTube ID in content:', possibleId);
+      return { id: possibleId, url: null };
+    }
+  }
+
+  return { id: null, url: null };
+}
+
+// Define progress interface
+interface ActivityProgress {
+  currentWeek: number;
+  currentDay: number;
+  daysSinceStart: number;
+  progressDays: number;
+  debug?: {
+    timezone: string;
+    localTime: string;
+  };
+}
 
 export default function ActivityPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: activityStatus } = useQuery({
-    queryKey: ["/api/activities/current"],
-    queryFn: async () => {
-      const response = await fetch(`/api/activities/current?tzOffset=${new Date().getTimezoneOffset()}`);
-      if (!response.ok) throw new Error("Failed to fetch activity status");
-      return response.json();
-    },
-    enabled: !!user?.teamId,
-  });
+  // Get timezone offset for the current user (in minutes)
+  const tzOffset = new Date().getTimezoneOffset();
 
-  // Get current week and day activities based on user's activity type preference
-  const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useQuery<Activity[]>({
-    queryKey: ["/api/activities", user?.preferredActivityTypeId],
+  // Debug timezone information
+  useEffect(() => {
+    console.log('Timezone:', {
+      name: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      offset: -tzOffset/60
+    });
+  }, [tzOffset]);
+
+  // Get current week and day from the server
+  const { data: currentProgress, isLoading: isProgressLoading } = useQuery<ActivityProgress>({
+    queryKey: ["/api/activities/current", { tzOffset }],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (user?.preferredActivityTypeId) {
-        params.append('activityTypeId', user.preferredActivityTypeId.toString());
+      const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch current progress');
       }
-      const response = await fetch(`/api/activities?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to fetch activities");
       return response.json();
     },
-    enabled: !!user?.teamId,
+    enabled: !!user,
   });
 
-  if (activitiesLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <p>Loading activities...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  useEffect(() => {
+    if (currentProgress) {
+      setSelectedWeek(currentProgress.currentWeek);
+      setSelectedDay(currentProgress.currentDay);
+    }
+  }, [currentProgress]);
 
-  if (activitiesError) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-6">
-              <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
-              <p className="text-gray-600">{activitiesError instanceof Error ? activitiesError.message : 'An error occurred'}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </AppLayout>
-    );
-  }
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [loadedWeeks, setLoadedWeeks] = useState<Set<number>>(new Set());
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Find current day activity
-  const currentWeek = activityStatus?.currentWeek;
-  const currentDay = activityStatus?.currentDay;
-  
-  const currentActivity = activities?.find(activity => 
-    activity.week === currentWeek && activity.day === currentDay
+  // Calculate initial weeks to load (current week + previous 4)
+  const getInitialWeeks = (currentWeek: number) => {
+    const weeks = [];
+    for (let i = Math.max(1, currentWeek - 4); i <= currentWeek; i++) {
+      weeks.push(i);
+    }
+    return weeks;
+  };
+
+  // Initial load of ONLY current week for fastest loading
+  const { isLoading: isActivitiesLoading } = useQuery<Activity[]>({
+    queryKey: ["/api/activities", "current", currentProgress?.currentWeek, user?.preferredActivityTypeId],
+    queryFn: async () => {
+      if (!currentProgress) return [];
+
+      // Load only the current week initially
+      const currentWeek = currentProgress.currentWeek;
+      const activityTypeParam = user?.preferredActivityTypeId ? `&activityTypeId=${user.preferredActivityTypeId}` : '';
+      const response = await fetch(`/api/activities?weeks=${currentWeek}${activityTypeParam}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
+
+      const data = await response.json();
+      setActivities(data);
+      setLoadedWeeks(new Set([currentWeek]));
+
+      console.log(`Loaded current week: ${currentWeek}${user?.preferredActivityTypeId ? ` with activity type: ${user.preferredActivityTypeId}` : ''}`);
+      return data;
+    },
+    enabled: !!currentProgress && !!user,
+  });
+
+  // Function to load additional weeks when needed
+  const loadWeek = async (week: number) => {
+    if (loadedWeeks.has(week) || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const activityTypeParam = user?.preferredActivityTypeId ? `&activityTypeId=${user.preferredActivityTypeId}` : '';
+      const response = await fetch(`/api/activities?weeks=${week}${activityTypeParam}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch additional week');
+      }
+
+      const newActivities = await response.json();
+      setActivities(prev => [...prev, ...newActivities]);
+      setLoadedWeeks(prev => new Set([...Array.from(prev), week]));
+
+      console.log(`Lazy loaded week: ${week}${user?.preferredActivityTypeId ? ` with activity type: ${user.preferredActivityTypeId}` : ''}`);
+    } catch (error) {
+      console.error('Failed to load week:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Load week when user navigates to it
+  React.useEffect(() => {
+    if (selectedWeek && !loadedWeeks.has(selectedWeek)) {
+      loadWeek(selectedWeek);
+    }
+  }, [selectedWeek, loadedWeeks]);
+
+  // Get current activity for selected day
+  const currentActivity = activities?.find(
+    (a: Activity) => a.week === selectedWeek && a.day === selectedDay
   );
-  
+
+  // Get week activities - all activities for the selected week
+  const weekActivities = activities?.filter(
+    (a: Activity) => a.week === selectedWeek
+  );
+
+  // Find the first activity of the week to use as the week overview
+  const weekOverviewActivity = weekActivities?.[0];
+
+  // State for collapsible section
+  const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
+
+  const navigatePrevDay = async () => {
+    if (selectedDay > 1) {
+      setSelectedDay(selectedDay - 1);
+    } else if (selectedWeek > 1) {
+      const prevWeek = selectedWeek - 1;
+
+      // Load the previous week if it's not already loaded
+      if (!loadedWeeks.has(prevWeek)) {
+        await loadWeek(prevWeek);
+      }
+
+      setSelectedWeek(prevWeek);
+      const maxDay = 7;
+      setSelectedDay(maxDay);
+    }
+  };
+
+  const navigateNextDay = () => {
+    // Only allow navigating up to current calculated day
+    if (!currentProgress) return;
+
+    const isLastDayOfWeek = selectedDay >= 7;
+
+    if (!isLastDayOfWeek) {
+      setSelectedDay(selectedDay + 1);
+    } else if (selectedWeek < currentProgress.currentWeek) {
+      setSelectedWeek(selectedWeek + 1);
+      setSelectedDay(1);
+    }
+  };
+
+  if (isProgressLoading || isActivitiesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading activities...</span>
+      </div>
+    );
+  }
+
   return (
-    <AppLayout>
-      <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="flex items-center mb-6">
+    <div className="min-h-screen pb-20 lg:pb-0 pt-28">
+      {/* Add our duplicate video detection components */}
+      <DuplicateVideoDetector />
+      {selectedWeek === 3 && <FixWeek3WarmupVideo />}
+      {selectedWeek === 9 && <FixWeek9WarmupVideo />}
+
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <header className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
+        <div className="p-4">
+          <h1 className="text-xl font-bold pl-0">Daily Activity</h1>
+        </div>
+      </header>
+      <main className="p-4 max-w-[1000px] mx-auto w-full space-y-4 md:px-44 md:pl-56">
+        {/* Loading status for current week */}
+        {!loadedWeeks.has(selectedWeek) && (
+          <div className="text-center p-4 bg-muted/50 rounded-md">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading Week {selectedWeek}...</p>
+          </div>
+        )}
+
+        {/* Week Content Collapsible Section */}
+        <Collapsible 
+          open={isWeekOverviewOpen} 
+          onOpenChange={setIsWeekOverviewOpen}
+          className="border rounded-md">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="flex w-full justify-between p-4">
+              <div className="flex items-center gap-2">
+                <BookText className="h-4 w-4" />
+                <span className="font-medium">Week {selectedWeek} Content</span>
+              </div>
+              {isWeekOverviewOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-4 bg-muted/20">
+            {weekOverviewActivity ? (
+              <div className="prose max-w-none">
+                {/* Process the content to eliminate duplicate videos in weekly content */}
+                {(() => {
+                  // Filter relevant content fields
+                  const relevantFields = weekOverviewActivity.contentFields?.filter((field: ContentField) => 
+                    // For week 0 entries or entries where day is 0, include them
+                    (field.title?.includes(`Week ${selectedWeek}`) || weekOverviewActivity.day === 0) && 
+                    !field.title?.includes('Day')
+                  );
+
+                  // Special handling for Week 3 warmup video
+                  if (selectedWeek === 3 && weekOverviewActivity.week === 3 && weekOverviewActivity.day === 0) {
+                    // Process each field to render only once
+                    return relevantFields.map((field: ContentField, index: number) => {
+                      // Clean embedded content of duplicate videos
+                      let processedContent = field.content;
+
+                      // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
+                      if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
+                        // First, extract all video iframes
+                        const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
+                        const matches = processedContent.match(iframeRegex);
+
+                        if (matches && matches.length > 1) {
+                          // We have multiple videos with the same ID
+                          console.log(`Found ${matches.length} instances of Week 3 warmup video`);
+
+                          // Remove all video wrappers
+                          processedContent = processedContent.replace(
+                            /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
+                            ''
+                          );
+
+                          // Add back just one video after "WARM UP VIDEO" text
+                          if (processedContent.includes('WARM UP VIDEO')) {
+                            processedContent = processedContent.replace(
+                              'WARM UP VIDEO',
+                              `WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div><p>`
+                            );
+                          } else {
+                            // If no "WARM UP VIDEO" text, just add at the beginning
+                            processedContent = `<div class="video-wrapper">${matches[0]}</div>${processedContent}`;
+                          }
+                        }
+                      }
+
+                      // Create unique rendered element
+                      return (
+                        <div key={index} className="mb-4">
+                          {field.title && (
+                            <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
+                          )}
+                          {field.type === 'video' ? (
+                            <div className="mt-4 mb-4">
+                              <YouTubePlayer videoId={field.content} />
+                            </div>
+                          ) : (
+                            <div 
+                              className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
+                              style={{ 
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word'
+                              }}
+                              dangerouslySetInnerHTML={{ 
+                                __html: removeDuplicateVideos(processedContent) 
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    });
+                  }
+
+                  // Standard rendering for other weeks
+                  return relevantFields.map((field: ContentField, index: number) => {
+                    // Process content for all weeks to prevent duplicate videos
+                    let processedContent = field.content;
+
+                    // General solution to prevent duplicate videos in any week's content
+                    if (processedContent && processedContent.includes('class="video-wrapper"')) {
+                      // Make sure we don't have duplicate video wrappers
+                      const uniqueVideos = new Set();
+                      // Extract all video IDs using a regex pattern
+                      const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
+                      let match;
+                      const videoIds = [];
+
+                      while ((match = videoRegex.exec(processedContent)) !== null) {
+                        videoIds.push(match[1]);
+                      }
+
+                      // For any duplicated videos, keep only the first instance
+                      videoIds.forEach(videoId => {
+                        if (uniqueVideos.has(videoId)) {
+                          // This is a duplicate - remove all instances after the first
+                          const videoPattern = new RegExp(
+                            `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
+                            'g'
+                          );
+                          let replacement = '';
+                          let found = false;
+
+                          // Replace the processedContent with each match replaced properly
+                          processedContent = processedContent.replace(videoPattern, (match) => {
+                            if (!found) {
+                              found = true;
+                              return match; // Keep the first instance
+                            }
+                            return ''; // Remove duplicates
+                          });
+                        } else {
+                          uniqueVideos.add(videoId);
+                        }
+                      });
+                    }
+
+                    return (
+                      <div key={index} className="mb-4">
+                        {field.title && (
+                          <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
+                        )}
+                        {field.type === 'video' ? (
+                          <div className="mt-4 mb-4">
+                            <YouTubePlayer videoId={field.content} />
+                          </div>
+                        ) : (
+                          <div 
+                            className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: removeDuplicateVideos(processedContent) 
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
+                  (field.title?.includes(`Week ${selectedWeek}`) || 
+                   weekOverviewActivity.day === 0) && 
+                  !field.title?.includes('Day')).length === 0 && (
+                  <p className="text-muted-foreground text-center py-2">No week content available</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-2">No week content available</p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Day Navigation */}
+        <div className="flex items-center justify-center gap-4 mt-2">
           <Button
-            variant="ghost"
-            onClick={() => window.history.back()}
-            className="p-2 mr-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            variant="outline"
+            size="icon"
+            onClick={navigatePrevDay}
+            disabled={selectedWeek === 1 && selectedDay === 1}
           >
-            <ChevronLeft className="h-8 w-8" />
-            <span className="sr-only">Back</span>
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">
-            {currentWeek && currentDay ? `Week ${currentWeek} - Day ${currentDay}` : "Today's Activity"}
-          </h1>
+          <span className="font-medium text-lg">
+            Week {selectedWeek} - Day {selectedDay}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={navigateNextDay}
+            disabled={
+              !currentProgress ||
+              (selectedWeek === currentProgress.currentWeek && 
+               selectedDay >= currentProgress.currentDay)
+            }
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
 
+        {/* Daily Content Card */}
         {currentActivity ? (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Week {currentActivity.week} - Day {currentActivity.day}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {currentActivity.contentFields?.map((item: any, index: number) => (
-                  <div key={index}>
-                    {item.type === 'text' && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                        <div 
-                          className="rich-text-content daily-content"
-                          style={{
-                            wordBreak: 'break-word',
-                            overflowWrap: 'break-word'
-                          }}
-                          dangerouslySetInnerHTML={{ __html: item.content }} 
-                        />
-                      </div>
-                    )}
-                    {item.type === 'video' && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                        <YouTubePlayer videoId={item.content} />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : activityStatus?.programHasStarted === false ? (
           <Card>
             <CardContent className="p-6">
-              <div className="text-center">
-                <h2 className="text-xl font-semibold mb-2">Program Starting Soon</h2>
-                <p className="text-gray-600 mb-4">
-                  Your program will start on {activityStatus?.programStartDate ? 
-                    new Date(activityStatus.programStartDate).toLocaleDateString() : 'soon'
-                  }
-                </p>
-                {activityStatus?.daysToProgramStart && (
-                  <p className="text-sm text-gray-500">
-                    {activityStatus.daysToProgramStart} days until your program begins
-                  </p>
-                )}
+              <div className="prose max-w-none">
+                {currentActivity.contentFields?.map((field: ContentField, index: number) => {
+                  // For daily content, don't remove any videos - display all content as-is
+                  let processedContent = field.content;
+
+                  return (
+                    <div key={index} className="mb-8">
+                      {field.title && 
+                       field.title !== `Week ${selectedWeek} - Day ${selectedDay}` &&
+                       !field.title.match(/^Week\s*\d+\s*Day\s*\d+/i) && (
+                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
+                      )}
+                      {field.type === 'video' ? (
+                        <div className="mt-4 mb-6">
+                          <YouTubePlayer videoId={field.content} />
+                        </div>
+                      ) : (
+                        <>
+                          <div 
+                            className="rich-text-content prose-sm text-lg overflow-hidden daily-content" 
+                            style={{ 
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word'
+                            }}
+                            dangerouslySetInnerHTML={{ 
+                              __html: removeDuplicateVideos(processedContent) 
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         ) : (
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-gray-600">
-                No activity available for Week {currentWeek}, Day {currentDay}. 
-                Check with your coach if you think this is an error.
-              </p>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              No activity found for this day
             </CardContent>
           </Card>
         )}
+      </main>
+      <div className="md:hidden">
+        <BottomNav orientation="horizontal" />
       </div>
-    </AppLayout>
+    </div>
   );
 }

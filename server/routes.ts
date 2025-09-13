@@ -1782,7 +1782,7 @@ export const registerRoutes = async (
       }
 
       logger.info(
-        "Creating/updating activity with data:",
+        "Creating activity with data:",
         JSON.stringify(req.body, null, 2),
       );
 
@@ -1801,50 +1801,20 @@ export const registerRoutes = async (
       );
 
       try {
-        // Check if an activity already exists for this week and day
-        const existingActivity = await db
-          .select()
-          .from(activities)
-          .where(
-            and(
-              eq(activities.week, parsedData.data.week),
-              eq(activities.day, parsedData.data.day)
-            )
-          )
-          .limit(1);
-
-        let activity;
-        if (existingActivity.length > 0) {
-          // Update existing activity
-          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
-          [activity] = await db
-            .update(activities)
-            .set(parsedData.data)
-            .where(eq(activities.id, existingActivity[0].id))
-            .returning();
-          
-          res.status(200).json({ 
-            ...activity, 
-            message: "Activity updated successfully" 
-          });
-        } else {
-          // Create new activity
-          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
-          activity = await storage.createActivity(parsedData.data);
-          res.status(201).json(activity);
-        }
+        const activity = await storage.createActivity(parsedData.data);
+        res.status(201).json(activity);
       } catch (dbError) {
         logger.error("Database error:", dbError);
         res.status(500).json({
-          message: "Failed to create/update activity in database",
+          message: "Failed to create activity in database",
           error: dbError instanceof Error ? dbError.message : "Unknown error",
         });
       }
     } catch (error) {
-      logger.error("Error creating/updating activity:", error);
+      logger.error("Error creating activity:", error);
       res.status(500).json({
         message:
-          error instanceof Error ? error.message : "Failed to create/update activity",
+          error instanceof Error ? error.message : "Failed to create activity",
         error: error instanceof Error ? error.stack : undefined,
       });
     }
