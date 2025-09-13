@@ -33,9 +33,7 @@ export function YouTubePlayer({
         position: 'relative',
         width: '100%',
         maxWidth: '560px',
-        paddingBottom: '56.25%', // 16:9 aspect ratio
-        height: 0,
-        overflow: 'hidden',
+        aspectRatio: '16/9',
         margin: '15px auto',
         display: 'block'
       }}
@@ -48,9 +46,6 @@ export function YouTubePlayer({
         referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
           width: '100%',
           height: '100%',
           border: 'none'
