@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
@@ -69,12 +68,12 @@ export default function ActivityPage() {
   const goToNextDay = () => {
     const currentWeek = activityStatus?.currentWeek || 1;
     const currentDay = activityStatus?.currentDay || 1;
-    
+
     // Don't allow going beyond current day
     if (selectedWeek === currentWeek && selectedDay >= currentDay) {
       return;
     }
-    
+
     if (selectedDay === 7) {
       // Go to next week's day 1
       setSelectedWeek(selectedWeek + 1);
@@ -128,7 +127,7 @@ export default function ActivityPage() {
   const selectedActivity = activities?.find(activity => 
     activity.week === selectedWeek && activity.day === selectedDay
   );
-  
+
   return (
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
@@ -185,7 +184,7 @@ export default function ActivityPage() {
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
                                 }}
-                                dangerouslySetInnerHTML={{ __html: item.content }} 
+                                dangerouslySetInnerHTML={{ __html: item.content?.replace(/&gt;/g, '') || '' }} 
                               />
                             </div>
                           )}
@@ -258,7 +257,7 @@ export default function ActivityPage() {
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
                                 }}
-                                dangerouslySetInnerHTML={{ __html: item.content }} 
+                                dangerouslySetInnerHTML={{ __html: item.content?.replace(/&gt;/g, '') || '' }} 
                               />
                             </div>
                           )}
