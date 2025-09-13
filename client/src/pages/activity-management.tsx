@@ -244,8 +244,16 @@ export default function ActivityManagementPage() {
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
       let content = data.content;
 
+      // Track processed video IDs to avoid duplicates
+      const processedVideoIds = new Set();
+
       // Replace URLs with iframes directly in their original position
       content = content.replace(youtubeRegex, (match, videoId) => {
+        // Skip if we've already processed this video ID
+        if (processedVideoIds.has(videoId)) {
+          return ''; // Remove duplicate occurrences
+        }
+        processedVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
@@ -331,12 +339,20 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      // Enhanced YouTube regex to catch more URL formats
+      // Enhanced YouTube regex to catch more URL formats but avoid duplicates
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
       let content = data.content;
 
+      // Track processed video IDs to avoid duplicates
+      const processedVideoIds = new Set();
+
       // Replace URLs with iframes directly in their original position
       content = content.replace(youtubeRegex, (match, videoId) => {
+        // Skip if we've already processed this video ID
+        if (processedVideoIds.has(videoId)) {
+          return ''; // Remove duplicate occurrences
+        }
+        processedVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
@@ -718,8 +734,16 @@ export default function ActivityManagementPage() {
                         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
                         let content = uploadData.content;
 
+                        // Track processed video IDs to avoid duplicates
+                        const processedVideoIds = new Set();
+
                         // Replace URLs with iframes directly in their original position
                         content = content.replace(youtubeRegex, (match, videoId) => {
+                          // Skip if we've already processed this video ID
+                          if (processedVideoIds.has(videoId)) {
+                            return ''; // Remove duplicate occurrences
+                          }
+                          processedVideoIds.add(videoId);
                           return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
                         });
 
