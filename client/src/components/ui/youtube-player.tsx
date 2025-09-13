@@ -19,30 +19,30 @@ export function YouTubePlayer({
   className = ""
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Handle different YouTube URL formats and extract the ID
   const extractedId = extractYouTubeId(videoId);
-  
-  
+
+
 
   return (
     <div 
-      ref={containerRef}
-      className={`video-wrapper ${className}`} 
-      style={{ 
+      className="video-wrapper"
+      style={{
         position: 'relative',
-        width: `${width}px`,
-        height: `${height}px`,
-        maxWidth: '100%',
+        width: '100%',
+        maxWidth: '560px',
+        aspectRatio: '16/9',
+        margin: '15px 0',
+        display: 'block'
       }}
     >
       <iframe
-        width={width}
-        height={height}
-        src={`https://www.youtube.com/embed/${extractedId}${autoPlay ? '?autoplay=1' : ''}`}
+        src={`https://www.youtube.com/embed/${extractedId}`}
         title="YouTube video player"
         frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
         style={{
           position: 'absolute',
@@ -50,8 +50,9 @@ export function YouTubePlayer({
           left: 0,
           width: '100%',
           height: '100%',
+          border: 'none'
         }}
-      ></iframe>
+      />
     </div>
   );
 }
@@ -61,17 +62,17 @@ function extractYouTubeId(url: string): string {
   if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
     return url;
   }
-  
+
   // Handle various YouTube URL formats
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
-  
+
   if (match && match[2].length === 11) {
     return match[2];
   }
-  
-  
-  
+
+
+
   console.error('Invalid YouTube URL or ID:', url);
   return '';
 }
@@ -79,21 +80,21 @@ function extractYouTubeId(url: string): string {
 // Function to be called from activity-page.tsx to handle duplicate videos in HTML content
 export function removeDuplicateVideos(content: string): string {
   if (!content) return '';
-  
+
   console.log('Processing content for duplicate videos');
-  
+
   // Find all video wrapper patterns with YouTube embed
   const videoWrapperPattern = /<div class="video-wrapper"><iframe[^>]*src="[^"]*youtube\.com\/embed\/([a-zA-Z0-9_-]{11})[^"]*"[^>]*><\/iframe><\/div>/g;
-  
+
   // Find all video IDs and their positions
   const videoMap = new Map();
   let match;
   let hasRemovals = false;
-  
+
   while ((match = videoWrapperPattern.exec(content)) !== null) {
     const videoId = match[1];
     const fullMatch = match[0];
-    
+
     if (videoMap.has(videoId)) {
       // This is a duplicate - we'll remove it
       videoMap.get(videoId).duplicates.push(fullMatch);
@@ -106,27 +107,27 @@ export function removeDuplicateVideos(content: string): string {
       });
     }
   }
-  
+
   if (!hasRemovals) {
     console.log('No duplicate videos found');
     return content;
   }
-  
+
   // Remove duplicates
   let processedContent = content;
   let totalRemoved = 0;
-  
+
   videoMap.forEach((videoInfo, videoId) => {
     if (videoInfo.duplicates.length > 0) {
       console.log(`Removing ${videoInfo.duplicates.length} duplicate(s) of video ${videoId}`);
-      
+
       videoInfo.duplicates.forEach(duplicateMatch => {
         processedContent = processedContent.replace(duplicateMatch, '');
         totalRemoved++;
       });
     }
   });
-  
+
   console.log(`Total videos removed: ${totalRemoved}`);
   return processedContent;
 }
