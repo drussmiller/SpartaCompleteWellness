@@ -186,10 +186,8 @@ export default function ActivityPage() {
                                 }}
                                 dangerouslySetInnerHTML={{ 
                                   __html: (item.content || '')
-                                    .replace(/&gt;/g, '') // Remove HTML encoded >
-                                    .replace(/>/g, '') // Remove any stray > symbols
-                                    .replace(/&lt;/g, '<') // Fix < symbols
-                                    .replace(/&amp;/g, '&') // Fix & symbols
+                                    .replace(/(?<!<[^>]*):>/g, '') // Remove stray :> symbols but preserve HTML tags
+                                    .replace(/^\s*>\s*/gm, '') // Remove lines that start with >
                                 }} 
                               />
                             </div>
@@ -265,10 +263,8 @@ export default function ActivityPage() {
                                 }}
                                 dangerouslySetInnerHTML={{ 
                                   __html: (item.content || '')
-                                    .replace(/&gt;/g, '') // Remove HTML encoded >
-                                    .replace(/>/g, '') // Remove any stray > symbols
-                                    .replace(/&lt;/g, '<') // Fix < symbols
-                                    .replace(/&amp;/g, '&') // Fix & symbols
+                                    .replace(/(?<!<[^>]*):>/g, '') // Remove stray :> symbols but preserve HTML tags
+                                    .replace(/^\s*>\s*/gm, '') // Remove lines that start with >
                                 }} 
                               />
                             </div>
