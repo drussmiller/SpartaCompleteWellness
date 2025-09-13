@@ -604,9 +604,10 @@ export default function ActivityManagementPage() {
                   throw new Error(errorData.message || 'Failed to create activity');
                 }
 
+                const responseData = await res.json();
                 toast({
                   title: "Success",
-                  description: `Week ${selectedWeek} information created successfully`
+                  description: responseData.message || `Week ${selectedWeek} information saved successfully`
                 });
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
@@ -759,17 +760,18 @@ export default function ActivityManagementPage() {
                           }]
                         };
 
-                        // Create the activity
+                        // Create or update the activity
                         const activityRes = await apiRequest("POST", "/api/activities", activityData);
                         if (!activityRes.ok) {
                           const errorData = await activityRes.json();
-                          throw new Error(errorData.message || `Failed to create activity for ${file.name}`);
+                          throw new Error(errorData.message || `Failed to save activity for ${file.name}`);
                         }
 
+                        const responseData = await activityRes.json();
                         processedCount++;
                         toast({
                           title: "Success",
-                          description: `Processed ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
+                          description: `${responseData.message ? 'Updated' : 'Created'} ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
                         });
 
                       } catch (error) {
@@ -824,9 +826,10 @@ export default function ActivityManagementPage() {
                   throw new Error(errorData.message || 'Failed to create activity');
                 }
 
+                const responseData = await res.json();
                 toast({
                   title: "Success",
-                  description: "Activity created successfully"
+                  description: responseData.message || "Activity saved successfully"
                 });
 
                 queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
