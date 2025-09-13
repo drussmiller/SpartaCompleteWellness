@@ -4,9 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
@@ -53,6 +52,46 @@ export default function ActivityPage() {
     }
   }, [activityStatus]);
 
+  // Navigation functions
+  const goToPreviousDay = () => {
+    if (selectedDay === 1) {
+      // Go to previous week's day 7
+      const prevWeek = selectedWeek - 1;
+      if (prevWeek >= 1) {
+        setSelectedWeek(prevWeek);
+        setSelectedDay(7);
+      }
+    } else {
+      setSelectedDay(selectedDay - 1);
+    }
+  };
+
+  const goToNextDay = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    const currentDay = activityStatus?.currentDay || 1;
+    
+    // Don't allow going beyond current day
+    if (selectedWeek === currentWeek && selectedDay >= currentDay) {
+      return;
+    }
+    
+    if (selectedDay === 7) {
+      // Go to next week's day 1
+      setSelectedWeek(selectedWeek + 1);
+      setSelectedDay(1);
+    } else {
+      setSelectedDay(selectedDay + 1);
+    }
+  };
+
+  // Check if we can navigate
+  const canGoToPrevious = selectedWeek > 1 || selectedDay > 1;
+  const canGoToNext = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    const currentDay = activityStatus?.currentDay || 1;
+    return !(selectedWeek === currentWeek && selectedDay >= currentDay);
+  };
+
   if (activitiesLoading) {
     return (
       <AppLayout>
@@ -80,12 +119,6 @@ export default function ActivityPage() {
     );
   }
 
-  // Get unique weeks for dropdown
-  const availableWeeks = Array.from(new Set(activities?.map(a => a.week) || [])).sort((a, b) => a - b);
-  
-  // Get available days for selected week
-  const availableDaysForWeek = activities?.filter(a => a.week === selectedWeek && a.day > 0).map(a => a.day).sort((a, b) => a - b) || [];
-  
   // Find week content (day 0)
   const weekContent = activities?.find(activity => 
     activity.week === selectedWeek && activity.day === 0
@@ -116,24 +149,24 @@ export default function ActivityPage() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Week</label>
-                    <Select value={selectedWeek.toString()} onValueChange={(value) => {
-                      setSelectedWeek(parseInt(value));
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select week" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableWeeks.map((week) => (
-                          <SelectItem key={week} value={week.toString()}>
-                            Week {week}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToPreviousDay}
+                    disabled={!canGoToPrevious}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="text-lg font-semibold">Week {selectedWeek}</h3>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToNextDay}
+                    disabled={!canGoToNext()}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Week Content Display */}
@@ -189,43 +222,24 @@ export default function ActivityPage() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Week</label>
-                    <Select value={selectedWeek.toString()} onValueChange={(value) => {
-                      setSelectedWeek(parseInt(value));
-                      if (availableDaysForWeek.length > 0) {
-                        setSelectedDay(availableDaysForWeek[0]);
-                      }
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select week" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableWeeks.map((week) => (
-                          <SelectItem key={week} value={week.toString()}>
-                            Week {week}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Day</label>
-                    <Select value={selectedDay.toString()} onValueChange={(value) => setSelectedDay(parseInt(value))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select day" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableDaysForWeek.map((day) => (
-                          <SelectItem key={day} value={day.toString()}>
-                            Day {day}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToPreviousDay}
+                    disabled={!canGoToPrevious}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="text-lg font-semibold">Week {selectedWeek} - Day {selectedDay}</h3>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToNextDay}
+                    disabled={!canGoToNext()}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {/* Daily Activity Content Display */}
