@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React from 'react';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -12,12 +12,8 @@ interface YouTubePlayerProps {
 export function YouTubePlayer({
   videoId,
   autoPlay = false,
-  width = 560,
-  height = 315,
   className = ""
 }: YouTubePlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   // Handle different YouTube URL formats and extract the ID
   const extractedId = extractYouTubeId(videoId);
 
@@ -26,20 +22,7 @@ export function YouTubePlayer({
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className={`youtube-video-container ${className}`}
-      style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: '560px',
-        paddingBottom: '56.25%', // 16:9 aspect ratio
-        height: 0,
-        overflow: 'hidden',
-        margin: '15px auto',
-        display: 'block'
-      }}
-    >
+    <div className={`youtube-video-container ${className}`}>
       <iframe
         src={`https://www.youtube.com/embed/${extractedId}${autoPlay ? '?autoplay=1' : ''}`}
         title="YouTube video player"
@@ -47,14 +30,6 @@ export function YouTubePlayer({
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          border: 'none'
-        }}
       />
     </div>
   );
