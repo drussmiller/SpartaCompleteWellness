@@ -735,13 +735,6 @@ export default function ActivityManagementPage() {
                         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
                         let content = uploadData.content;
 
-                        // Clean up content formatting
-                        content = content
-                          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-                          .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1\n$2') // Add line breaks between paragraphs
-                          .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
-                          .trim();
-
                         // Track processed video IDs to avoid duplicates
                         const processedVideoIds = new Set();
 
