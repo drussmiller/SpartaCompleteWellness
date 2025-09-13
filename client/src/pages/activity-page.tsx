@@ -252,7 +252,7 @@ export default function ActivityPage() {
                             <div>
                               <h4 className="text-md font-medium mb-2">{item.title}</h4>
                               <div 
-                                className="rich-text-content daily-content"
+                                className="rich-text-content daily-content prose prose-sm max-w-none"
                                 style={{
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
