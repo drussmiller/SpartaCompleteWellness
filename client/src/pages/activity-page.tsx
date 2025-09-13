@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
@@ -11,6 +12,8 @@ import { ChevronLeft } from "lucide-react";
 
 export default function ActivityPage() {
   const { user } = useAuth();
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [selectedDay, setSelectedDay] = useState<number>(0); // 0 for week content, 1-7 for daily
 
   const { data: activityStatus } = useQuery({
     queryKey: ["/api/activities/current"],
@@ -22,7 +25,7 @@ export default function ActivityPage() {
     enabled: !!user?.teamId,
   });
 
-  // Get current week and day activities based on user's activity type preference
+  // Get all activities based on user's activity type preference
   const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useQuery<Activity[]>({
     queryKey: ["/api/activities", user?.preferredActivityTypeId],
     queryFn: async () => {
@@ -36,6 +39,16 @@ export default function ActivityPage() {
     },
     enabled: !!user?.teamId,
   });
+
+  // Set initial values based on current week/day
+  React.useEffect(() => {
+    if (activityStatus?.currentWeek && selectedWeek === 1) {
+      setSelectedWeek(activityStatus.currentWeek);
+    }
+    if (activityStatus?.currentDay && selectedDay === 0) {
+      setSelectedDay(activityStatus.currentDay);
+    }
+  }, [activityStatus]);
 
   if (activitiesLoading) {
     return (
@@ -64,12 +77,15 @@ export default function ActivityPage() {
     );
   }
 
-  // Find current day activity
-  const currentWeek = activityStatus?.currentWeek;
-  const currentDay = activityStatus?.currentDay;
+  // Get unique weeks for dropdown
+  const availableWeeks = Array.from(new Set(activities?.map(a => a.week) || [])).sort((a, b) => a - b);
   
-  const currentActivity = activities?.find(activity => 
-    activity.week === currentWeek && activity.day === currentDay
+  // Get available days for selected week
+  const availableDaysForWeek = activities?.filter(a => a.week === selectedWeek).map(a => a.day).sort((a, b) => a - b) || [];
+  
+  // Find selected activity
+  const selectedActivity = activities?.find(activity => 
+    activity.week === selectedWeek && activity.day === selectedDay
   );
   
   return (
@@ -84,19 +100,71 @@ export default function ActivityPage() {
             <ChevronLeft className="h-8 w-8" />
             <span className="sr-only">Back</span>
           </Button>
-          <h1 className="text-2xl font-bold">
-            {currentWeek && currentDay ? `Week ${currentWeek} - Day ${currentDay}` : "Today's Activity"}
-          </h1>
+          <h1 className="text-2xl font-bold">Daily Activity</h1>
         </div>
 
-        {currentActivity ? (
+        {/* Week and Day Selection */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Select Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-2 block">Week</label>
+                <Select value={selectedWeek.toString()} onValueChange={(value) => {
+                  setSelectedWeek(parseInt(value));
+                  setSelectedDay(0); // Reset to week content when week changes
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select week" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableWeeks.map((week) => (
+                      <SelectItem key={week} value={week.toString()}>
+                        Week {week}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-2 block">Content</label>
+                <Select value={selectedDay.toString()} onValueChange={(value) => setSelectedDay(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select content" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDaysForWeek.includes(0) && (
+                      <SelectItem value="0">Week {selectedWeek} Information</SelectItem>
+                    )}
+                    {[1, 2, 3, 4, 5, 6, 7].filter(day => availableDaysForWeek.includes(day)).map((day) => (
+                      <SelectItem key={day} value={day.toString()}>
+                        Day {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Activity Content */}
+        {selectedActivity ? (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Week {currentActivity.week} - Day {currentActivity.day}</CardTitle>
+              <CardTitle>
+                {selectedActivity.day === 0 
+                  ? `Week ${selectedActivity.week} Information` 
+                  : `Week ${selectedActivity.week} - Day ${selectedActivity.day}`
+                }
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {currentActivity.contentFields?.map((item: any, index: number) => (
+                {selectedActivity.contentFields?.map((item: any, index: number) => (
                   <div key={index}>
                     {item.type === 'text' && (
                       <div>
@@ -144,7 +212,11 @@ export default function ActivityPage() {
           <Card>
             <CardContent className="p-6">
               <p className="text-center text-gray-600">
-                No activity available for Week {currentWeek}, Day {currentDay}. 
+                {selectedDay === 0 
+                  ? `No week information available for Week ${selectedWeek}.`
+                  : `No activity available for Week ${selectedWeek}, Day ${selectedDay}.`
+                }
+                <br />
                 Check with your coach if you think this is an error.
               </p>
             </CardContent>
