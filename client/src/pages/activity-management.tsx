@@ -241,8 +241,12 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
       let content = data.content;
+
+      // Clean up invalid HTML symbols that may be added during document conversion
+      content = content
+        .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
 
       // Track processed video IDs to avoid duplicates
       const processedVideoIds = new Set();
@@ -342,6 +346,10 @@ export default function ActivityManagementPage() {
       // Enhanced YouTube regex to catch more URL formats but avoid duplicates
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
       let content = data.content;
+
+      // Clean up invalid HTML symbols that may be added during document conversion
+      content = content
+        .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
 
       // Track processed video IDs to avoid duplicates
       const processedVideoIds = new Set();
@@ -732,21 +740,16 @@ export default function ActivityManagementPage() {
                         const uploadData = await uploadRes.json();
                         let title = filename;
 
-                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
                         let content = uploadData.content;
 
-                        // Clean up content formatting
+                        // Clean up invalid HTML symbols that may be added during document conversion
                         content = content
+                          .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
                           .replace(/\s+/g, ' ') // Replace multiple spaces with single space
                           .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1\n$2') // Add line breaks between paragraphs
                           .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
                           .trim();
-
-                        // Clean up invalid HTML symbols that may be added during document conversion
-                        content = content
-                          .replace(/\\?">/g, '') // Remove \"> sequences specifically
-                          .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
-
 
                         // Track processed video IDs to avoid duplicates
                         const processedVideoIds = new Set();
