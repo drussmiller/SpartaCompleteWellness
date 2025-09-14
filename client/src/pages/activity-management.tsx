@@ -259,6 +259,7 @@ export default function ActivityManagementPage() {
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
+        .replace(/\\?">\s*/g, '') // Remove \"> sequences (escaped or not)
         .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
         .replace(/(<\/[^>]+>)\s*">\s*/g, '$1') // Remove "> after any closing tag
         .replace(/>\s*">\s*/g, '>') // Remove any standalone "> sequences
@@ -365,6 +366,7 @@ export default function ActivityManagementPage() {
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
+        .replace(/\\?">\s*/g, '') // Remove \"> sequences (escaped or not)
         .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
         .replace(/(<\/[^>]+>)\s*">\s*/g, '$1') // Remove "> after any closing tag
         .replace(/>\s*">\s*/g, '>') // Remove any standalone "> sequences
@@ -764,6 +766,7 @@ export default function ActivityManagementPage() {
 
                         // Clean up invalid HTML symbols that may be added during document conversion
                         content = content
+                          .replace(/\\?">\s*/g, '') // Remove \"> sequences (escaped or not)
                           .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
                           .replace(/(<\/[^>]+>)\s*">\s*/g, '$1') // Remove "> after any closing tag
                           .replace(/>\s*">\s*/g, '>') // Remove any standalone "> sequences
