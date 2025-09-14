@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -452,8 +452,8 @@ export default function ActivityManagementPage() {
             </Button>
             <h1 className="text-2xl font-bold">Activity Management</h1>
           </div>
-          <Collapsible 
-            open={isContentPanelOpen} 
+          <Collapsible
+            open={isContentPanelOpen}
             onOpenChange={setIsContentPanelOpen}
             className="border rounded-md mb-6">
             <CollapsibleTrigger asChild>
@@ -488,7 +488,7 @@ export default function ActivityManagementPage() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Upload a Word document to automatically create content with embedded videos. 
+                  Upload a Word document to automatically create content with embedded videos.
                   Filename should contain week and day numbers (e.g., "Week1Day2.docx" or "1-2-activity.docx")
                 </p>
               </div>
@@ -508,7 +508,7 @@ export default function ActivityManagementPage() {
                     <div className="mb-4">
                       <Label className="text-sm font-medium">Extracted Content Preview</Label>
                       <div className="mt-2 p-4 bg-background border rounded-md max-h-96 overflow-y-auto">
-                        <div 
+                        <div
                           className="prose prose-sm max-w-none"
                           dangerouslySetInnerHTML={{ __html: contentFields[0].content }}
                         />
@@ -527,8 +527,8 @@ export default function ActivityManagementPage() {
             </CollapsibleContent>
           </Collapsible>
 
-        <Collapsible 
-          open={isWeekInfoPanelOpen} 
+        <Collapsible
+          open={isWeekInfoPanelOpen}
           onOpenChange={setIsWeekInfoPanelOpen}
           className="border rounded-md mb-6">
           <CollapsibleTrigger asChild>
@@ -641,8 +641,8 @@ export default function ActivityManagementPage() {
           </CollapsibleContent>
         </Collapsible>
 
-        <Collapsible 
-          open={isDailyActivityPanelOpen} 
+        <Collapsible
+          open={isDailyActivityPanelOpen}
           onOpenChange={setIsDailyActivityPanelOpen}
           className="border rounded-md">
           <CollapsibleTrigger asChild>
@@ -742,6 +742,12 @@ export default function ActivityManagementPage() {
                           .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
                           .trim();
 
+                        // Clean up invalid HTML symbols that may be added during document conversion
+                        content = content
+                          .replace(/\\?">/g, '') // Remove \"> sequences specifically
+                          .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
+
+
                         // Track processed video IDs to avoid duplicates
                         const processedVideoIds = new Set();
 
@@ -798,7 +804,7 @@ export default function ActivityManagementPage() {
                     event.target.value = '';
 
                     // Show completion message with accurate counts
-                    const summaryMessage = skippedCount > 0 
+                    const summaryMessage = skippedCount > 0
                       ? `Processed ${processedCount} files successfully, ${skippedCount} files skipped`
                       : `Successfully processed ${processedCount} files`;
 
@@ -853,10 +859,10 @@ export default function ActivityManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-4">
                   <Label htmlFor="week" className="flex-shrink-0 w-12">Week</Label>
-                  <Input 
-                    type="number" 
-                    name="week" 
-                    required 
+                  <Input
+                    type="number"
+                    name="week"
+                    required
                     min="1"
                     className="flex-1"
                     value={extractedWeek || ''}
@@ -866,11 +872,11 @@ export default function ActivityManagementPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <Label htmlFor="day" className="flex-shrink-0 w-12">Day</Label>
-                  <Input 
-                    type="number" 
-                    name="day" 
-                    required 
-                    min="1" 
+                  <Input
+                    type="number"
+                    name="day"
+                    required
+                    min="1"
                     max="7"
                     className="flex-1"
                     value={extractedDay || ''}
@@ -882,8 +888,8 @@ export default function ActivityManagementPage() {
 
               <div className="flex items-center gap-4">
                 <Label htmlFor="activityType" className="flex-shrink-0">Activity Type</Label>
-                <Select 
-                  value={selectedActivityTypeId.toString()} 
+                <Select
+                  value={selectedActivityTypeId.toString()}
                   onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
                 >
                   <SelectTrigger className="flex-1">
@@ -1005,8 +1011,8 @@ export default function ActivityManagementPage() {
 
                 <div>
                   <Label htmlFor="editActivityType">Activity Type</Label>
-                  <Select 
-                    value={editingActivityTypeId.toString()} 
+                  <Select
+                    value={editingActivityTypeId.toString()}
                     onValueChange={(value) => setEditingActivityTypeId(parseInt(value))}
                   >
                     <SelectTrigger>
