@@ -1660,29 +1660,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Function to clean up malformed video links created by mammoth
-  function cleanupVideoLinks(html: string): string {
-    // Fix malformed anchor tags that wrap YouTube iframes
-    // Pattern: <a href="<div class="video-wrapper">...iframe...</div>"><div class="video-wrapper">...iframe...</div></a>
-    const malformedVideoPattern = /<a\s+href="([^"]*<div\s+class="video-wrapper">.*?<\/div>)"[^>]*>(<div\s+class="video-wrapper">.*?<\/div>)<\/a>/gi;
-    
-    let cleanedHtml = html;
-    
-    // Replace malformed anchor-wrapped videos with just the clean video wrapper
-    cleanedHtml = cleanedHtml.replace(malformedVideoPattern, (match, hrefContent, videoDiv) => {
-      logger.info('Cleaning up malformed video link:', match.substring(0, 100) + '...');
-      // Return just the clean video div without the anchor wrapper
-      return videoDiv;
-    });
-
-    // Also clean up any stray ">" characters that might remain after videos
-    // This pattern looks for ">" that appears right after closing iframe or video wrapper tags
-    cleanedHtml = cleanedHtml.replace(/(<\/iframe><\/div>)\s*>\s*/gi, '$1');
-    cleanedHtml = cleanedHtml.replace(/(<\/div>)\s*>\s*(?=<|\s|$)/gi, '$1');
-    
-    return cleanedHtml;
-  }
-
   // Activities endpoints
   // Add endpoint to handle document upload for activities
   router.post("/api/activities/upload-doc", authenticate, docUpload.single('document'), async (req, res) => {
@@ -1704,15 +1681,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       try {
         // Convert to HTML instead of raw text to preserve formatting
         const result = await mammoth.convertToHtml({ path: filePath });
-        let content = result.value; // The HTML content
+        const content = result.value; // The HTML content
         const messages = result.messages; // Any messages during conversion
 
         if (messages.length > 0) {
           logger.info('Mammoth conversion messages:', { messages });
         }
-
-        // Clean up malformed video links that mammoth creates
-        content = cleanupVideoLinks(content);
 
         logger.info(`Successfully extracted HTML from document: ${req.file.originalname}`);
         

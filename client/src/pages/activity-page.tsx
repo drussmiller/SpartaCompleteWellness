@@ -186,8 +186,8 @@ export default function ActivityPage() {
                                 }}
                                 dangerouslySetInnerHTML={{ 
                                   __html: (item.content || '')
-                                    .replace(/\\?">\s*/g, '') // Remove \" sequences (escaped or not)
-                                    .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
+                                    .replace(/(?<!<[^>]*):>/g, '') // Remove stray :> symbols but preserve HTML tags
+                                    .replace(/^\s*>\s*/gm, '') // Remove lines that start with >
                                 }} 
                               />
                             </div>
@@ -256,15 +256,15 @@ export default function ActivityPage() {
                             <div>
                               <h4 className="text-md font-medium mb-2">{item.title}</h4>
                               <div 
-                                className="rich-text-content daily-content"
+                                className="rich-text-content daily-content prose prose-sm max-w-none"
                                 style={{
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
                                 }}
                                 dangerouslySetInnerHTML={{ 
                                   __html: (item.content || '')
-                                    .replace(/\\?">\s*/g, '') // Remove \" sequences (escaped or not)
-                                    .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
+                                    .replace(/(?<!<[^>]*):>/g, '') // Remove stray :> symbols but preserve HTML tags
+                                    .replace(/^\s*>\s*/gm, '') // Remove lines that start with >
                                 }} 
                               />
                             </div>
