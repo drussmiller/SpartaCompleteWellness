@@ -257,6 +257,13 @@ export default function ActivityManagementPage() {
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
 
+      // Clean up invalid HTML symbols that may be added during document conversion
+      content = content
+        .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
+        .replace(/(<\/[^>]+>)\s*">\s*/g, '$1') // Remove "> after any closing tag
+        .replace(/>\s*">\s*/g, '>') // Remove any standalone "> sequences
+        .replace(/"\s*>\s*"/g, '"') // Clean up quote sequences
+
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
@@ -355,6 +362,13 @@ export default function ActivityManagementPage() {
         processedVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
       });
+
+      // Clean up invalid HTML symbols that may be added during document conversion
+      content = content
+        .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
+        .replace(/(<\/[^>]+>)\s*">\s*/g, '$1') // Remove "> after any closing tag
+        .replace(/>\s*">\s*/g, '>') // Remove any standalone "> sequences
+        .replace(/"\s*>\s*"/g, '"') // Clean up quote sequences
 
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
@@ -747,6 +761,13 @@ export default function ActivityManagementPage() {
                           processedVideoIds.add(videoId);
                           return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
                         });
+
+                        // Clean up invalid HTML symbols that may be added during document conversion
+                        content = content
+                          .replace(/(<\/div>)\s*">\s*/g, '$1') // Remove "> after closing div tags
+                          .replace(/(<\/[^>]+>)\s*">\s*/g, '$1') // Remove "> after any closing tag
+                          .replace(/>\s*">\s*/g, '>') // Remove any standalone "> sequences
+                          .replace(/"\s*>\s*"/g, '"') // Clean up quote sequences
 
                         // Create activity data
                         const activityData = {
