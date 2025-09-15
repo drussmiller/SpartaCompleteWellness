@@ -576,7 +576,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     );
   }
 
-  if (!user?.isAdmin) {
+  if (!user?.isAdmin && !user?.isGroupAdmin) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -886,7 +886,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </div>
               </div>
 
-              {/* Organizations Section */}
+              {/* Organizations Section - Only show for full admins */}
+              {user?.isAdmin && (
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-semibold">Organizations</h2>
@@ -1022,6 +1023,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Groups Section */}
               <div className="border rounded-lg p-4">
