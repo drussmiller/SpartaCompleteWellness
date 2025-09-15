@@ -247,41 +247,19 @@ export default function ActivityManagementPage() {
       content = content
         .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
 
-      // First pass: collect all video IDs and their positions
-      const videoMatches = [];
+      // Extract and deduplicate YouTube videos
       const seenVideoIds = new Set();
-      let match;
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
-      const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
-
-      while ((match = regex.exec(content)) !== null) {
-        const videoId = match[1];
-        const fullMatch = match[0];
-        const startIndex = match.index;
-
-        // Only keep the first occurrence of each video ID
+      
+      // Replace YouTube URLs with embedded iframes, but only keep first occurrence of each video
+      content = content.replace(youtubeRegex, (fullMatch, videoId) => {
         if (!seenVideoIds.has(videoId)) {
           seenVideoIds.add(videoId);
-          videoMatches.push({
-            videoId,
-            fullMatch,
-            startIndex,
-            replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-          });
+          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
         } else {
-          // Mark duplicate for removal
-          videoMatches.push({
-            videoId,
-            fullMatch,
-            startIndex,
-            replacement: '' // Remove duplicates completely
-          });
+          // Remove duplicate video URLs completely
+          return '';
         }
-      }
-
-      // Second pass: replace all matches from end to beginning to preserve indices
-      videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
-        content = content.replace(fullMatch, replacement);
       });
 
       // Create single content field with embedded videos in correct positions
