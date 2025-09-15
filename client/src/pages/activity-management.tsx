@@ -558,10 +558,19 @@ export default function ActivityManagementPage() {
 
             <form onSubmit={async (e) => {
               e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
+              
+              if (!extractedWeek || !extractedDay) {
+                toast({
+                  title: "Missing Information",
+                  description: "Please upload a document first to extract week and day information",
+                  variant: "destructive"
+                });
+                return;
+              }
+              
               const data = {
-                week: extractedWeek || parseInt(formData.get('week') as string),
-                day: extractedDay || parseInt(formData.get('day') as string),
+                week: extractedWeek,
+                day: extractedDay,
                 contentFields,
                 activityTypeId: selectedActivityTypeId
               };
@@ -591,35 +600,13 @@ export default function ActivityManagementPage() {
                 });
               }
             }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-4">
-                  <Label htmlFor="week" className="flex-shrink-0 w-12">Week</Label>
-                  <Input
-                    type="number"
-                    name="week"
-                    required
-                    min="1"
-                    className="flex-1"
-                    value={extractedWeek || ''}
-                    onChange={(e) => setExtractedWeek(parseInt(e.target.value) || null)}
-                    placeholder={extractedWeek ? `${extractedWeek}` : "Enter week number"}
-                  />
+              {extractedWeek && extractedDay && (
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    Detected from filename: <span className="font-medium">Week {extractedWeek}, Day {extractedDay}</span>
+                  </p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <Label htmlFor="day" className="flex-shrink-0 w-12">Day</Label>
-                  <Input
-                    type="number"
-                    name="day"
-                    required
-                    min="1"
-                    max="7"
-                    className="flex-1"
-                    value={extractedDay || ''}
-                    onChange={(e) => setExtractedDay(parseInt(e.target.value) || null)}
-                    placeholder={extractedDay ? `${extractedDay}` : "Enter day number"}
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="flex items-center gap-4">
                 <Label htmlFor="activityType" className="flex-shrink-0">Activity Type</Label>
