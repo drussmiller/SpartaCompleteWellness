@@ -1376,7 +1376,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="w-full bg-violet-700 text-white hover:bg-violet-800"
+                            className="w-full bg-violet-700 text-white hover:bg-violet-800 hover:text-white"
                             onClick={() => {
                               setSelectedUserId(user.id);
                               setResetPasswordOpen(true);
