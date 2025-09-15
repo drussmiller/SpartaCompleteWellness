@@ -203,22 +203,22 @@ export default function ActivityManagementPage() {
     const filename = file.name.replace('.docx', '');
     const numbers = filename.match(/\d+/g);
 
-    if (!numbers || numbers.length < 2) {
+    if (!numbers || numbers.length < 1) { // Changed from < 2 to < 1 as week info doesn't require day
       toast({
         title: "Invalid filename",
-        description: "Filename must contain at least 2 numbers (week and day). Example: 'Week1Day2.docx'",
+        description: "Filename must contain at least 1 number (week). Example: 'Week1.docx'",
         variant: "destructive"
       });
       return;
     }
 
     const extractedWeek = parseInt(numbers[0]);
-    const extractedDay = parseInt(numbers[1]);
+    const extractedDay = null; // No day extracted for week info
 
-    if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 0) {
+    if (isNaN(extractedWeek) || extractedWeek < 1) {
       toast({
         title: "Invalid numbers",
-        description: "Week must be >= 1 and day must be >= 0",
+        description: "Week must be >= 1",
         variant: "destructive"
       });
       return;
@@ -301,7 +301,7 @@ export default function ActivityManagementPage() {
 
       toast({
         title: "Success",
-        description: `Document processed successfully. Detected Week ${extractedWeek}, Day ${extractedDay}`
+        description: `Week ${extractedWeek} information processed successfully`
       });
     } catch (error) {
       console.error('Error processing document:', error);
