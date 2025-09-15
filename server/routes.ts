@@ -1914,10 +1914,27 @@ export const registerRoutes = async (
 
   router.get("/api/users", authenticate, async (req, res) => {
     try {
-      if (!req.user?.isAdmin) {
+      // Allow both full admins and group admins
+      if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      const users = await storage.getAllUsers();
+      
+      let users = await storage.getAllUsers();
+      
+      // Filter users for group admins - only show users in their group's teams
+      if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
+        // Get teams in the admin's group
+        const groupTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.groupId, req.user.adminGroupId));
+        
+        const teamIds = groupTeams.map(team => team.id);
+        
+        // Filter users to only those in the group's teams
+        users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
+      }
+      
       res.json(users);
     } catch (error) {
       logger.error("Error fetching users:", error);
