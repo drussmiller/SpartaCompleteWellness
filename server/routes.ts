@@ -303,7 +303,15 @@ export const registerRoutes = async (
   });
 
   // WebSocket status endpoint to check real-time connections
-  router.get("/api/ws-status", (req, res) => {
+  router.get("/api/ws-status", authenticate, (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+    } catch (error) {
+      logger.error("Error in ws-status auth check:", error);
+      return res.status(500).json({ message: "Authentication error" });
+    }
     // Count active WebSocket connections
     let totalConnections = 0;
     let activeUsers = 0;
@@ -350,7 +358,15 @@ export const registerRoutes = async (
   });
 
   // Add a test endpoint for triggering notification checks with manual time override
-  router.get("/api/test-notification", async (req, res) => {
+  router.get("/api/test-notification", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+    } catch (error) {
+      logger.error("Error in test-notification auth check:", error);
+      return res.status(500).json({ message: "Authentication error" });
+    }
     // Set a longer timeout for this endpoint as it can be resource-intensive
     req.setTimeout(30000); // 30 seconds timeout
 
@@ -736,9 +752,13 @@ export const registerRoutes = async (
     },
   );
 
-  // Debug endpoint for posts - unprotected for testing
-  router.get("/api/debug/posts", async (req, res) => {
+  // Debug endpoint for posts - Admin only
+  router.get("/api/debug/posts", authenticate, async (req, res) => {
     try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
       // Set content type early to prevent browser confusion
       res.setHeader("Content-Type", "application/json");
 
@@ -1375,9 +1395,13 @@ export const registerRoutes = async (
     },
   );
 
-  // Teams endpoints
+  // Teams endpoints - Admin only
   router.get("/api/teams", authenticate, async (req, res) => {
     try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
       const teams = await storage.getTeams();
       res.json(teams);
     } catch (error) {

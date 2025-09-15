@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeft, Plus, Edit, Trash2, Users, Settings } from "lucide-react";
+import { ChevronLeft, Plus, Edit, Trash2, Users, Settings, UserCheck, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -18,9 +18,26 @@ import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import { z } from "zod";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface TeamWithCount extends Team {
   memberCount: number;
+}
+
+interface UserInGroup {
+  id: number;
+  username: string;
+  email: string;
+  imageUrl: string | null;
+  isTeamLead: boolean;
+  teamId: number | null;
+  teamJoinedAt: Date | null;
+  teamName: string | null;
 }
 
 interface GroupAdminPageProps {
@@ -37,6 +54,9 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamWithCount | null>(null);
+  const [moveUserOpen, setMoveUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserInGroup | null>(null);
+  const [targetTeamId, setTargetTeamId] = useState("");
 
   // Get group information
   const { data: group } = useQuery<Group>({
@@ -48,6 +68,63 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
   const { data: teams, isLoading: teamsLoading } = useQuery<TeamWithCount[]>({
     queryKey: ["/api/group-admin/teams"],
     enabled: !!user?.isGroupAdmin
+  });
+
+  // Get users in the group
+  const { data: users, isLoading: usersLoading } = useQuery<UserInGroup[]>({
+    queryKey: ["/api/group-admin/users"],
+    enabled: !!user?.isGroupAdmin
+  });
+
+  // Move user mutation
+  const moveUserMutation = useMutation({
+    mutationFn: async ({ userId, teamId }: { userId: number; teamId: number }) => {
+      const res = await apiRequest("PATCH", `/api/group-admin/users/${userId}/team`, { teamId });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to move user");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User moved successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
+      setMoveUserOpen(false);
+      setSelectedUser(null);
+      setTargetTeamId("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: number; data: { isTeamLead: boolean } }) => {
+      const res = await apiRequest("PATCH", `/api/group-admin/users/${userId}`, data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update user");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/users"] });
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   // Create team form
@@ -165,6 +242,21 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     });
   };
 
+  const onMoveUserSubmit = () => {
+    if (!selectedUser || !targetTeamId) return;
+    moveUserMutation.mutate({
+      userId: selectedUser.id,
+      teamId: parseInt(targetTeamId)
+    });
+  };
+
+  const onToggleTeamLead = (user: UserInGroup, newValue: boolean) => {
+    updateUserMutation.mutate({
+      userId: user.id,
+      data: { isTeamLead: newValue }
+    });
+  };
+
   // Check if user is a group admin
   if (!user?.isGroupAdmin) {
     return (
@@ -207,7 +299,13 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
               )}
             </div>
 
-            <div className="flex gap-2 mt-4 justify-center">
+            <Tabs defaultValue="teams" className="space-y-4">
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+                <TabsTrigger value="teams" data-testid="tab-teams"><Users className="h-4 w-4 mr-2"/>Teams</TabsTrigger>
+                <TabsTrigger value="users" data-testid="tab-users"><UserCheck className="h-4 w-4 mr-2"/>Users</TabsTrigger>
+              </TabsList>
+              <TabsContent value="teams">
+                <div className="flex gap-2 mt-4 justify-center">
               <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
                 <DialogTrigger asChild>
                   <Button size="default" className="px-4 bg-purple-700 text-white hover:bg-purple-800" data-testid="button-add-team">
@@ -385,6 +483,55 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
           </div>
         </div>
 
+        </TabsContent>
+        <TabsContent value="users">
+          {usersLoading ? (
+            <div className="text-center py-8">Loading users...</div>
+          ) : (
+            <div className="border rounded-lg p-4">
+              <h2 className="text-2xl font-semibold mb-4">Users</h2>
+              <Table data-testid="table-users">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead>Lead</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(users ?? []).map(u => (
+                    <TableRow key={u.id} data-testid={`row-user-${u.id}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={u.imageUrl || ''} />
+                            <AvatarFallback>{u.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium" data-testid={`text-username-${u.id}`}>{u.username}</div>
+                            <div className="text-xs text-muted-foreground">{u.teamJoinedAt ? new Date(u.teamJoinedAt).toLocaleDateString() : '—'}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell data-testid={`text-email-${u.id}`}>{u.email}</TableCell>
+                      <TableCell data-testid={`text-team-${u.id}`}>{u.teamName ?? 'Unassigned'}</TableCell>
+                      <TableCell>
+                        <Switch checked={u.isTeamLead} onCheckedChange={(v) => onToggleTeamLead(u, v)} data-testid={`switch-team-lead-${u.id}`} />
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedUser(u); setTargetTeamId(''); setMoveUserOpen(true); }} data-testid={`button-move-user-${u.id}`}>Move <ArrowRight className="h-4 w-4 ml-1" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
         {/* Edit Team Dialog */}
         <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
             <DialogContent>
@@ -463,6 +610,40 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                   </DialogFooter>
                 </form>
               </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Move User Dialog */}
+          <Dialog open={moveUserOpen} onOpenChange={setMoveUserOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Move User</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">User</div>
+                  <div className="font-medium" data-testid="text-move-username">{selectedUser?.username}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Target Team</div>
+                  <Select value={targetTeamId} onValueChange={setTargetTeamId}>
+                    <SelectTrigger data-testid="select-target-team">
+                      <SelectValue placeholder="Select a team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(teams ?? []).filter(t => t.id !== selectedUser?.teamId).map(t => (
+                        <SelectItem key={t.id} value={String(t.id)} data-testid={`select-item-team-${t.id}`}>
+                          {t.name} ({t.memberCount}/{t.maxSize || 6})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setMoveUserOpen(false)} data-testid="button-cancel-move">Cancel</Button>
+                <Button onClick={onMoveUserSubmit} disabled={!targetTeamId || moveUserMutation.isPending} className="bg-purple-700 text-white hover:bg-purple-800" data-testid="button-confirm-move">Move</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
