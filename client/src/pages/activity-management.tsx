@@ -409,24 +409,34 @@ export default function ActivityManagementPage() {
                         const filename = file.name.replace('.docx', '');
                         const numbers = filename.match(/\d+/g);
 
-                        if (!numbers || numbers.length < 2) {
+                        if (!numbers || numbers.length < 1) {
                           skippedCount++;
                           toast({
                             title: `Skipping ${file.name}`,
-                            description: "Filename must contain at least 2 numbers (week and day)",
+                            description: "Filename must contain at least 1 number (week). Examples: 'Week25.docx' or 'Week1Day2.docx'",
                             variant: "destructive"
                           });
                           continue;
                         }
 
                         const extractedWeek = parseInt(numbers[0]);
-                        const extractedDay = parseInt(numbers[1]);
+                        const extractedDay = numbers.length >= 2 ? parseInt(numbers[1]) : 0; // Default to 0 for week-only content
 
-                        if (isNaN(extractedWeek) || isNaN(extractedDay) || extractedWeek < 1 || extractedDay < 1 || extractedDay > 7) {
+                        if (isNaN(extractedWeek) || extractedWeek < 1) {
                           skippedCount++;
                           toast({
                             title: `Skipping ${file.name}`,
-                            description: "Week must be >= 1 and day must be between 1-7",
+                            description: "Week number must be >= 1",
+                            variant: "destructive"
+                          });
+                          continue;
+                        }
+
+                        if (extractedDay !== 0 && (isNaN(extractedDay) || extractedDay < 1 || extractedDay > 7)) {
+                          skippedCount++;
+                          toast({
+                            title: `Skipping ${file.name}`,
+                            description: "Day number must be between 1-7 (or omit for week-only content)",
                             variant: "destructive"
                           });
                           continue;
@@ -518,9 +528,10 @@ export default function ActivityManagementPage() {
 
                         const responseData = await activityRes.json();
                         processedCount++;
+                        const activityType = extractedDay === 0 ? "Week Information" : `Day ${extractedDay}`;
                         toast({
                           title: "Success",
-                          description: `${responseData.message ? 'Updated' : 'Created'} ${file.name} - Week ${extractedWeek}, Day ${extractedDay}`
+                          description: `${responseData.message ? 'Updated' : 'Created'} ${file.name} - Week ${extractedWeek} ${activityType}`
                         });
 
                       } catch (error) {
@@ -552,7 +563,7 @@ export default function ActivityManagementPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Select multiple Word documents to process in batch. Each filename should contain week and day numbers (e.g., "Week1Day2.docx").
+                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content).
               </p>
             </div>
 
