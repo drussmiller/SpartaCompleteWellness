@@ -36,6 +36,7 @@ export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  status: integer("status").default(1), // 1 = active, 0 = inactive
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -45,6 +46,7 @@ export const groups = pgTable("groups", {
   name: text("name").notNull(),
   description: text("description"),
   organizationId: integer("organization_id").notNull(),
+  status: integer("status").default(1), // 1 = active, 0 = inactive
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -55,6 +57,7 @@ export const teams = pgTable("teams", {
   description: text("description"),
   groupId: integer("group_id").notNull(),
   maxSize: integer("max_size").default(6), // Maximum number of people allowed in the team
+  status: integer("status").default(1), // 1 = active, 0 = inactive
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -62,12 +65,14 @@ export const teams = pgTable("teams", {
 export const insertOrganizationSchema = createInsertSchema(organizations).extend({
   name: z.string().min(1, "Organization name is required"),
   description: z.string().optional(),
+  status: z.number().min(0).max(1).default(1),
 });
 
 export const insertGroupSchema = createInsertSchema(groups).extend({
   name: z.string().min(1, "Group name is required"),
   description: z.string().optional(),
   organizationId: z.number().min(1, "Organization ID is required"),
+  status: z.number().min(0).max(1).default(1),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).extend({
@@ -75,6 +80,7 @@ export const insertTeamSchema = createInsertSchema(teams).extend({
   description: z.string().optional(),
   groupId: z.number().min(1, "Group ID is required"),
   maxSize: z.number().min(1, "Team max size must be at least 1").default(6),
+  status: z.number().min(0).max(1).default(1),
 });
 
 // Types

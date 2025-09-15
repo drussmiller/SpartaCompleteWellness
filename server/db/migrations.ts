@@ -201,6 +201,39 @@ export async function runMigrations() {
       console.error('Error adding max_size column:', columnError);
     }
 
+    // Add status column to organizations table
+    try {
+      await db.execute(sql`
+        ALTER TABLE organizations 
+        ADD COLUMN IF NOT EXISTS status INTEGER DEFAULT 1
+      `);
+      console.log('Added status column to organizations table');
+    } catch (columnError) {
+      console.error('Error adding status column to organizations:', columnError);
+    }
+
+    // Add status column to groups table
+    try {
+      await db.execute(sql`
+        ALTER TABLE groups 
+        ADD COLUMN IF NOT EXISTS status INTEGER DEFAULT 1
+      `);
+      console.log('Added status column to groups table');
+    } catch (columnError) {
+      console.error('Error adding status column to groups:', columnError);
+    }
+
+    // Add status column to teams table
+    try {
+      await db.execute(sql`
+        ALTER TABLE teams 
+        ADD COLUMN IF NOT EXISTS status INTEGER DEFAULT 1
+      `);
+      console.log('Added status column to teams table');
+    } catch (columnError) {
+      console.error('Error adding status column to teams:', columnError);
+    }
+
     // Add achievement_types table if it doesn't exist
     try {
       await db.execute(sql`
