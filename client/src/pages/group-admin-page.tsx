@@ -1,0 +1,501 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronLeft, Plus, Edit, Trash2, Users, Settings } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/use-auth";
+import { insertTeamSchema, type Team, type Group } from "@shared/schema";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
+import { AppLayout } from "@/components/app-layout";
+import { z } from "zod";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+interface TeamWithCount extends Team {
+  memberCount: number;
+}
+
+interface GroupAdminPageProps {
+  onClose?: () => void;
+}
+
+const teamFormSchema = insertTeamSchema.omit({ groupId: true });
+type TeamFormData = z.infer<typeof teamFormSchema>;
+
+export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [editTeamOpen, setEditTeamOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<TeamWithCount | null>(null);
+
+  // Get group information
+  const { data: group } = useQuery<Group>({
+    queryKey: ["/api/group-admin/group"],
+    enabled: !!user?.isGroupAdmin
+  });
+
+  // Get teams in the group
+  const { data: teams, isLoading: teamsLoading } = useQuery<TeamWithCount[]>({
+    queryKey: ["/api/group-admin/teams"],
+    enabled: !!user?.isGroupAdmin
+  });
+
+  // Create team form
+  const createForm = useForm<TeamFormData>({
+    resolver: zodResolver(teamFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      maxSize: 50
+    }
+  });
+
+  // Edit team form
+  const editForm = useForm<TeamFormData>({
+    resolver: zodResolver(teamFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      maxSize: 50
+    }
+  });
+
+  // Create team mutation
+  const createTeamMutation = useMutation({
+    mutationFn: async (data: TeamFormData) => {
+      const res = await apiRequest("POST", "/api/group-admin/teams", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create team");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Team created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
+      setCreateTeamOpen(false);
+      createForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update team mutation
+  const updateTeamMutation = useMutation({
+    mutationFn: async ({ teamId, data }: { teamId: number; data: Partial<TeamFormData> }) => {
+      const res = await apiRequest("PATCH", `/api/group-admin/teams/${teamId}`, data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update team");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Team updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
+      setEditTeamOpen(false);
+      setEditingTeam(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete team mutation
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      const res = await apiRequest("DELETE", `/api/group-admin/teams/${teamId}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to delete team");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Team deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleEditTeam = (team: TeamWithCount) => {
+    setEditingTeam(team);
+    editForm.reset({
+      name: team.name,
+      description: team.description || "",
+      maxSize: team.maxSize || 50
+    });
+    setEditTeamOpen(true);
+  };
+
+  const onCreateSubmit = (data: TeamFormData) => {
+    createTeamMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: TeamFormData) => {
+    if (!editingTeam) return;
+    updateTeamMutation.mutate({
+      teamId: editingTeam.id,
+      data
+    });
+  };
+
+  // Check if user is a group admin
+  if (!user?.isGroupAdmin) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle>Access Denied</CardTitle>
+              <CardDescription>
+                You need Group Admin permissions to access this page.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => setLocation("/menu")}
+                className="w-full"
+              >
+                Return to Menu
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-20">
+        <div className="container mx-auto px-4 py-6">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onClose ? onClose() : setLocation("/menu")}
+              data-testid="button-back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Group Admin Dashboard</h1>
+              <p className="text-sm text-muted-foreground">
+                {group ? `Managing: ${group.name}` : "Loading group..."}
+              </p>
+            </div>
+          </div>
+
+          {/* Group Info Card */}
+          {group && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Group Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div>
+                    <span className="font-medium">Name:</span> {group.name}
+                  </div>
+                  {group.description && (
+                    <div>
+                      <span className="font-medium">Description:</span> {group.description}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-medium">Teams:</span> {teams?.length || 0}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Teams Section */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Teams</h2>
+            <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-purple-700 text-white hover:bg-purple-800" data-testid="button-add-team">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Team
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Team</DialogTitle>
+                </DialogHeader>
+                <Form {...createForm}>
+                  <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                    <FormField
+                      control={createForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Team Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-team-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={createForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} data-testid="input-team-description" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={createForm.control}
+                      name="maxSize"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Maximum Team Size</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="1" 
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              data-testid="input-team-max-size"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCreateTeamOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={createTeamMutation.isPending}
+                        className="bg-purple-700 text-white hover:bg-purple-800"
+                        data-testid="button-create-team"
+                      >
+                        Create Team
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Teams List */}
+          {teamsLoading ? (
+            <div className="text-center py-8">Loading teams...</div>
+          ) : teams && teams.length > 0 ? (
+            <div className="grid gap-4">
+              {teams.map((team) => (
+                <Card key={team.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold">{team.name}</h3>
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {team.memberCount}/{team.maxSize || 50}
+                          </Badge>
+                        </div>
+                        {team.description && (
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {team.description}
+                          </p>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          Max Size: {team.maxSize || 50} members
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditTeam(team)}
+                          data-testid={`button-edit-team-${team.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              data-testid={`button-delete-team-${team.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <DialogHeader>
+                              <AlertDialogTitle>Delete Team</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{team.name}"? This action cannot be undone.
+                                {team.memberCount > 0 && (
+                                  <div className="mt-2 p-2 bg-destructive/10 rounded text-destructive">
+                                    Warning: This team has {team.memberCount} members. Move them to other teams first.
+                                  </div>
+                                )}
+                              </AlertDialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteTeamMutation.mutate(team.id)}
+                                disabled={team.memberCount > 0}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </DialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No teams found in this group.</p>
+                <Button 
+                  onClick={() => setCreateTeamOpen(true)}
+                  className="bg-purple-700 text-white hover:bg-purple-800"
+                >
+                  Create Your First Team
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Edit Team Dialog */}
+          <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Team</DialogTitle>
+              </DialogHeader>
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                  <FormField
+                    control={editForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Team Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-edit-team-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} data-testid="input-edit-team-description" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="maxSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Maximum Team Size</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                            data-testid="input-edit-team-max-size"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        {editingTeam && editingTeam.memberCount > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            Current members: {editingTeam.memberCount}. 
+                            New max size must be at least {editingTeam.memberCount}.
+                          </p>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditTeamOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={updateTeamMutation.isPending}
+                      className="bg-purple-700 text-white hover:bg-purple-800"
+                      data-testid="button-update-team"
+                    >
+                      Update Team
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}

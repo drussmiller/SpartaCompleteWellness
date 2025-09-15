@@ -17,6 +17,7 @@ import HelpPage from "@/pages/help-page";
 import NotificationsPage from "@/pages/notifications-page";
 import ProfilePage from "@/pages/profile-page";
 import AdminPage from "@/pages/admin-page";
+import GroupAdminPage from "@/pages/group-admin-page";
 import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
@@ -129,6 +130,7 @@ function MainContent() {
             <CommentsPage />
           </Route>
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
+          {user.isGroupAdmin && <Route path="/group-admin" component={() => <GroupAdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>
       </div>

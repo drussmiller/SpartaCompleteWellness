@@ -169,6 +169,38 @@ export async function runMigrations() {
       console.error('Error adding notification_time column:', columnError);
     }
 
+    // Add Group Admin columns to users table
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS is_group_admin BOOLEAN DEFAULT false
+      `);
+      console.log('Added is_group_admin column to users table');
+    } catch (columnError) {
+      console.error('Error adding is_group_admin column:', columnError);
+    }
+
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS admin_group_id INTEGER
+      `);
+      console.log('Added admin_group_id column to users table');
+    } catch (columnError) {
+      console.error('Error adding admin_group_id column:', columnError);
+    }
+
+    // Add max_size column to teams table
+    try {
+      await db.execute(sql`
+        ALTER TABLE teams 
+        ADD COLUMN IF NOT EXISTS max_size INTEGER DEFAULT 50
+      `);
+      console.log('Added max_size column to teams table');
+    } catch (columnError) {
+      console.error('Error adding max_size column:', columnError);
+    }
+
     // Add achievement_types table if it doesn't exist
     try {
       await db.execute(sql`
