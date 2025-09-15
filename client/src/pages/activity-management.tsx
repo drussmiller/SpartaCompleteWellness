@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, FileText, Calendar, PlayCircle, ChevronUp, ChevronDown } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,14 +16,8 @@ import { RichTextEditor } from "@/components/rich-text-editor";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AppLayout } from "@/components/app-layout";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 type ContentField = {
   id: string;
@@ -47,9 +41,6 @@ export default function ActivityManagementPage() {
   const [extractedDay, setExtractedDay] = useState<number | null>(null);
   const [selectedActivityTypeId, setSelectedActivityTypeId] = useState<number>(1); // Default to "Bands"
   const [editingActivityTypeId, setEditingActivityTypeId] = useState<number>(1);
-  const [isContentPanelOpen, setIsContentPanelOpen] = useState(true);
-  const [isWeekInfoPanelOpen, setIsWeekInfoPanelOpen] = useState(false);
-  const [isDailyActivityPanelOpen, setIsDailyActivityPanelOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
@@ -188,108 +179,6 @@ export default function ActivityManagementPage() {
   };
 
 
-  const handleWeekFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !file.name.endsWith('.docx')) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a Word document (.docx)",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Extract week and day from filename
-    const filename = file.name.replace('.docx', '');
-    const numbers = filename.match(/\d+/g);
-
-    if (!numbers || numbers.length < 1) { // Changed from < 2 to < 1 as week info doesn't require day
-      toast({
-        title: "Invalid filename",
-        description: "Filename must contain at least 1 number (week). Example: 'Week1.docx'",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const extractedWeek = parseInt(numbers[0]);
-    const extractedDay = null; // No day extracted for week info
-
-    if (isNaN(extractedWeek) || extractedWeek < 1) {
-      toast({
-        title: "Invalid numbers",
-        description: "Week must be >= 1",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('document', file);
-
-    try {
-      const res = await fetch('/api/activities/upload-doc', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to process document');
-      }
-
-      const data = await res.json();
-      let title = filename;
-
-      let content = data.content;
-
-      // Clean up invalid HTML symbols that may be added during document conversion
-      content = content
-        .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
-
-      // Extract and deduplicate YouTube videos
-      const seenVideoIds = new Set();
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
-      
-      // Replace YouTube URLs with embedded iframes, but only keep first occurrence of each video
-      content = content.replace(youtubeRegex, (fullMatch, videoId) => {
-        if (!seenVideoIds.has(videoId)) {
-          seenVideoIds.add(videoId);
-          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-        } else {
-          // Remove duplicate video URLs completely
-          return '';
-        }
-      });
-
-      // Create single content field with embedded videos in correct positions
-      const newFields: ContentField[] = [{
-        id: Math.random().toString(36).substring(7),
-        type: 'text',
-        content: content.trim(),
-        title: title
-      }];
-
-      setContentFields(newFields);
-
-      // Store the extracted numbers
-      setExtractedWeek(extractedWeek);
-      setExtractedDay(extractedDay);
-      setSelectedWeek(extractedWeek);
-
-      toast({
-        title: "Success",
-        description: `Week ${extractedWeek} information processed successfully`
-      });
-    } catch (error) {
-      console.error('Error processing document:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process document",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleDailyFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -484,213 +373,9 @@ export default function ActivityManagementPage() {
             </Button>
             <h1 className="text-2xl font-bold">Activity Management</h1>
           </div>
-          <Collapsible
-            open={isContentPanelOpen}
-            onOpenChange={setIsContentPanelOpen}
-            className="border rounded-md mb-6">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="flex w-full justify-between p-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span className="font-medium">Content Management</span>
-                </div>
-                {isContentPanelOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-4 bg-muted/20">
-              <div className="mb-8">
-                <Label htmlFor="weekDocUpload">Upload Week Word Document</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="weekDocUpload"
-                    type="file"
-                    accept=".docx"
-                    onChange={async (event) => {
-                      setContentFields([]);
-                      const file = event.target.files?.[0];
-                      if (file) {
-                        await handleWeekFileUpload(event);
-                      }
-                    }}
-                    className="flex-1"
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upload a Word document for week information. 
-                  Filename should contain week number (e.g., "Week1.docx" or "Week1Info.docx")
-                </p>
-              </div>
-
-              {contentFields.length > 0 && (
-                <Collapsible className="border rounded-md mb-6">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="flex w-full justify-between p-4">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span className="font-medium">File Contents: {contentFields[0].title}</span>
-                      </div>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="p-4 bg-muted/10">
-                    <div className="mb-4">
-                      <Label className="text-sm font-medium">Extracted Content Preview</Label>
-                      <div className="mt-2 p-4 bg-background border rounded-md max-h-96 overflow-y-auto">
-                        <div
-                          className="prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: contentFields[0].content }}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Edit Content</Label>
-                      <RichTextEditor
-                        content={contentFields[0].content}
-                        onChange={(newContent) => updateContentField(contentFields[0].id, 'content', newContent)}
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-
-        <Collapsible
-          open={isWeekInfoPanelOpen}
-          onOpenChange={setIsWeekInfoPanelOpen}
-          className="border rounded-md mb-6">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="flex w-full justify-between p-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span className="font-medium">Week Information Management</span>
-              </div>
-              {isWeekInfoPanelOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="p-4 bg-muted/20">
-            <div className="space-y-4">
-            <div className="flex items-center space-x-4 mb-4">
-              <Label htmlFor="week-number" className="flex-shrink-0">Week Number</Label>
-              <Input
-                id="week-number"
-                type="number"
-                min="1"
-                className="w-24"
-                value={selectedWeek}
-                onChange={handleWeekChange}
-              />
-            </div>
-
-            <div className="flex items-center space-x-4 mb-4">
-              <Label htmlFor="week-activity-type" className="flex-shrink-0">Activity Type</Label>
-              <Select
-                value={selectedActivityTypeId.toString()}
-                onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
-              >
-                <SelectTrigger className="w-48" data-testid="select-week-activity-type">
-                  <SelectValue placeholder="Select activity type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workoutTypes?.map((type) => (
-                    <SelectItem key={type.id} value={type.id.toString()}>
-                      {type.type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-
-              // Format a title that includes "Week X" format for week content
-              const weekTitle = `Week ${selectedWeek} Overview`;
-
-              // Update content fields to include week number in title if they don't already
-              const updatedContentFields = contentFields.map(field => ({
-                ...field,
-                title: field.title || weekTitle
-              }));
-
-              const data = {
-                week: extractedWeek || selectedWeek,
-                day: extractedDay || 0, // Use extracted day or 0 for week-only content
-                activityTypeId: selectedActivityTypeId,
-                contentFields: updatedContentFields
-              };
-
-              try {
-                console.log('Submitting activity data:', data);
-                const res = await apiRequest("POST", "/api/activities", data);
-                if (!res.ok) {
-                  const errorData = await res.json();
-                  throw new Error(errorData.message || 'Failed to create activity');
-                }
-
-                const responseData = await res.json();
-                toast({
-                  title: "Success",
-                  description: responseData.message || `Week ${selectedWeek} information saved successfully`
-                });
-
-                queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-                setContentFields([]);
-                (e.target as HTMLFormElement).reset();
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: error instanceof Error ? error.message : "Failed to create activity",
-                  variant: "destructive"
-                });
-              }
-            }} className="space-y-4">
-              {contentFields.length > 0 && (
-                <div className="space-y-4">
-                  <Input
-                    type="text"
-                    placeholder={`Week ${selectedWeek} Information`}
-                    value={contentFields[0].title}
-                    onChange={(e) => updateContentField(contentFields[0].id, 'title', e.target.value)}
-                  />
-                </div>
-              )}
 
 
-              <Button type="submit" className="bg-violet-700 text-white hover:bg-violet-800">
-                Add Week Information
-              </Button>
-            </form>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        <Collapsible
-          open={isDailyActivityPanelOpen}
-          onOpenChange={setIsDailyActivityPanelOpen}
-          className="border rounded-md">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="flex w-full justify-between p-4">
-              <div className="flex items-center gap-2">
-                <PlayCircle className="h-4 w-4" />
-                <span className="font-medium">Daily Activity Management</span>
-              </div>
-              {isDailyActivityPanelOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="p-4 bg-muted/20">
+        <div className="border rounded-md p-4 bg-muted/20">
             <div className="space-y-6">
             <div className="mb-8">
               <Label htmlFor="multiFileUpload">Upload Multiple Word Documents (Hold Ctrl/Cmd to select multiple)</Label>
@@ -700,7 +385,7 @@ export default function ActivityManagementPage() {
                   type="file"
                   accept=".docx"
                   multiple
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex-1"
                   onChange={async (event) => {
                     const files = event.target.files;
                     if (!files || files.length === 0) return;
@@ -780,6 +465,7 @@ export default function ActivityManagementPage() {
                         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
                         const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
 
+                        let match;
                         while ((match = regex.exec(content)) !== null) {
                           const videoId = match[1];
                           const fullMatch = match[0];
@@ -863,7 +549,6 @@ export default function ActivityManagementPage() {
                       description: summaryMessage
                     });
                   }}
-                  className="flex-1"
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
@@ -1010,8 +695,7 @@ export default function ActivityManagementPage() {
               </div>
             </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+        </div>
 
         <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
           <DialogContent className="max-h-[90vh]">
