@@ -241,24 +241,47 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
       let content = data.content;
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
         .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
 
-      // Track processed video IDs to avoid duplicates
-      const processedVideoIds = new Set();
+      // First pass: collect all video IDs and their positions
+      const videoMatches = [];
+      const seenVideoIds = new Set();
+      let match;
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
+      const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
 
-      // Replace URLs with iframes directly in their original position
-      content = content.replace(youtubeRegex, (match, videoId) => {
-        // Skip if we've already processed this video ID
-        if (processedVideoIds.has(videoId)) {
-          return ''; // Remove duplicate occurrences
+      while ((match = regex.exec(content)) !== null) {
+        const videoId = match[1];
+        const fullMatch = match[0];
+        const startIndex = match.index;
+
+        // Only keep the first occurrence of each video ID
+        if (!seenVideoIds.has(videoId)) {
+          seenVideoIds.add(videoId);
+          videoMatches.push({
+            videoId,
+            fullMatch,
+            startIndex,
+            replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+          });
+        } else {
+          // Mark duplicate for removal
+          videoMatches.push({
+            videoId,
+            fullMatch,
+            startIndex,
+            replacement: '' // Remove duplicates completely
+          });
         }
-        processedVideoIds.add(videoId);
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      }
+
+      // Second pass: replace all matches from end to beginning to preserve indices
+      videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
+        content = content.replace(fullMatch, replacement);
       });
 
       // Create single content field with embedded videos in correct positions
@@ -351,17 +374,40 @@ export default function ActivityManagementPage() {
       content = content
         .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
 
-      // Track processed video IDs to avoid duplicates
-      const processedVideoIds = new Set();
+      // First pass: collect all video IDs and their positions
+      const videoMatches = [];
+      const seenVideoIds = new Set();
+      let match;
+      const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
 
-      // Replace URLs with iframes directly in their original position
-      content = content.replace(youtubeRegex, (match, videoId) => {
-        // Skip if we've already processed this video ID
-        if (processedVideoIds.has(videoId)) {
-          return ''; // Remove duplicate occurrences
+      while ((match = regex.exec(content)) !== null) {
+        const videoId = match[1];
+        const fullMatch = match[0];
+        const startIndex = match.index;
+
+        // Only keep the first occurrence of each video ID
+        if (!seenVideoIds.has(videoId)) {
+          seenVideoIds.add(videoId);
+          videoMatches.push({
+            videoId,
+            fullMatch,
+            startIndex,
+            replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+          });
+        } else {
+          // Mark duplicate for removal
+          videoMatches.push({
+            videoId,
+            fullMatch,
+            startIndex,
+            replacement: '' // Remove duplicates completely
+          });
         }
-        processedVideoIds.add(videoId);
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+      }
+
+      // Second pass: replace all matches from end to beginning to preserve indices
+      videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
+        content = content.replace(fullMatch, replacement);
       });
 
       // Create single content field with embedded videos in correct positions
@@ -740,7 +786,6 @@ export default function ActivityManagementPage() {
                         const uploadData = await uploadRes.json();
                         let title = filename;
 
-                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
                         let content = uploadData.content;
 
                         // Clean up invalid HTML symbols that may be added during document conversion
@@ -751,18 +796,42 @@ export default function ActivityManagementPage() {
                           .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
                           .trim();
 
-                        // Track processed video IDs to avoid duplicates
-                        const processedVideoIds = new Set();
+                        // First pass: collect all video IDs and their positions
+                        const videoMatches = [];
+                        const seenVideoIds = new Set();
+                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
+                        const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
 
-                        // Replace URLs with iframes directly in their original position
-                        content = content.replace(youtubeRegex, (match, videoId) => {
-                          // Skip if we've already processed this video ID
-                          if (processedVideoIds.has(videoId)) {
-                            return ''; // Remove duplicate occurrences
+                        while ((match = regex.exec(content)) !== null) {
+                          const videoId = match[1];
+                          const fullMatch = match[0];
+                          const startIndex = match.index;
+
+                          // Only keep the first occurrence of each video ID
+                          if (!seenVideoIds.has(videoId)) {
+                            seenVideoIds.add(videoId);
+                            videoMatches.push({
+                              videoId,
+                              fullMatch,
+                              startIndex,
+                              replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+                            });
+                          } else {
+                            // Mark duplicate for removal
+                            videoMatches.push({
+                              videoId,
+                              fullMatch,
+                              startIndex,
+                              replacement: '' // Remove duplicates completely
+                            });
                           }
-                          processedVideoIds.add(videoId);
-                          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+                        }
+
+                        // Second pass: replace all matches from end to beginning to preserve indices
+                        videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
+                          content = content.replace(fullMatch, replacement);
                         });
+
 
                         // Create activity data
                         const activityData = {
