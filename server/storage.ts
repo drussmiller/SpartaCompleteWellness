@@ -706,6 +706,93 @@ export const storage = {
       throw error;
     }
   },
+
+  async getTeamsByGroup(groupId: number): Promise<Team[]> {
+    try {
+      return await db.select().from(teams).where(eq(teams.groupId, groupId));
+    } catch (error) {
+      logger.error(`Failed to get teams for group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  async getTeamMemberCount(teamId: number): Promise<number> {
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.teamId, teamId));
+      return result[0]?.count || 0;
+    } catch (error) {
+      logger.error(`Failed to get team member count for team ${teamId}:`, error);
+      throw error;
+    }
+  },
+
+  // Group Admin operations
+  async makeUserGroupAdmin(userId: number, groupId: number): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set({ 
+          isGroupAdmin: true,
+          adminGroupId: groupId 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      logger.error(`Failed to make user ${userId} group admin of group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  async removeUserGroupAdmin(userId: number): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set({ 
+          isGroupAdmin: false,
+          adminGroupId: null 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      logger.error(`Failed to remove group admin status from user ${userId}:`, error);
+      throw error;
+    }
+  },
+
+  async getGroupAdmins(groupId: number): Promise<User[]> {
+    try {
+      return await db
+        .select()
+        .from(users)
+        .where(and(eq(users.isGroupAdmin, true), eq(users.adminGroupId, groupId)));
+    } catch (error) {
+      logger.error(`Failed to get group admins for group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  async isUserGroupAdmin(userId: number, groupId: number): Promise<boolean> {
+    try {
+      const user = await db
+        .select()
+        .from(users)
+        .where(and(
+          eq(users.id, userId),
+          eq(users.isGroupAdmin, true),
+          eq(users.adminGroupId, groupId)
+        ))
+        .limit(1);
+      return user.length > 0;
+    } catch (error) {
+      logger.error(`Failed to check if user ${userId} is group admin of group ${groupId}:`, error);
+      throw error;
+    }
+  },
   
   // Organizations
   async getOrganizations(): Promise<Organization[]> {
