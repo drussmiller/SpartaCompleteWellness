@@ -11,7 +11,9 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
   isTeamLead: boolean("is_team_lead").default(false),
+  isGroupAdmin: boolean("is_group_admin").default(false),
   teamId: integer("team_id"), // Users belong to teams
+  adminGroupId: integer("admin_group_id"), // Group they are admin of (if isGroupAdmin is true)
   points: integer("points").default(0),
   weight: integer("weight"),
   waist: integer("waist"),
@@ -52,6 +54,7 @@ export const teams = pgTable("teams", {
   name: text("name").notNull(),
   description: text("description"),
   groupId: integer("group_id").notNull(),
+  maxSize: integer("max_size").default(50), // Maximum number of people allowed in the team
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -71,6 +74,7 @@ export const insertTeamSchema = createInsertSchema(teams).extend({
   name: z.string().min(1, "Team name is required"),
   description: z.string().optional(),
   groupId: z.number().min(1, "Group ID is required"),
+  maxSize: z.number().min(1, "Team max size must be at least 1").optional(),
 });
 
 // Types
@@ -218,6 +222,10 @@ export const userRelations = relations(users, ({ one }) => ({
   team: one(teams, {
     fields: [users.teamId],
     references: [teams.id],
+  }),
+  adminGroup: one(groups, {
+    fields: [users.adminGroupId],
+    references: [groups.id],
   }),
 }));
 
