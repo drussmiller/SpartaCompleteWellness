@@ -1308,7 +1308,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Roles</p>
-                          <div className="flex flex-wrap gap-2 mr-24">
+                          <div className="flex gap-2 mr-24">
                             <Button
                               variant={user.isAdmin ? "default" : "outline"}
                               size="sm"
