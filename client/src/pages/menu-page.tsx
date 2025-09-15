@@ -6,6 +6,7 @@ import { Menu, Bell, Settings, Trophy, Heart } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
+import GroupAdminPage from "./group-admin-page";
 import { LeaderboardPage } from "./leaderboard-page";
 import { SupportSpartaPage } from "./support-sparta-page";
 import { NotificationSettings } from "@/components/notification-settings";
@@ -16,6 +17,7 @@ export default function MenuPage() {
   const { user } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [groupAdminOpen, setGroupAdminOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
@@ -124,6 +126,21 @@ export default function MenuPage() {
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-[640px] p-0">
                 {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {/* Group Admin Sheet - Only shown for group admin users */}
+          {user.isGroupAdmin && (
+            <Sheet open={groupAdminOpen} onOpenChange={setGroupAdminOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="w-full justify-start" size="lg" data-testid="button-group-admin-dashboard">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Group Admin Dashboard
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+                {groupAdminOpen && <GroupAdminPage onClose={() => setGroupAdminOpen(false)} />}
               </SheetContent>
             </Sheet>
           )}
