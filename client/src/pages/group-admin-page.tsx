@@ -17,7 +17,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import { z } from "zod";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface TeamWithCount extends Team {
   memberCount: number;
@@ -193,63 +193,28 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-20">
-        <div className="container mx-auto px-4 py-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onClose ? onClose() : setLocation("/menu")}
-              data-testid="button-back"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Group Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">
-                {group ? `Managing: ${group.name}` : "Loading group..."}
-              </p>
+      <div className="flex flex-col min-h-screen pb-20">
+        {/* Main content */}
+        <div className="flex-1 p-4 md:px-8">
+          <div className="space-y-6">
+            {/* Page title */}
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-2">Group Admin Dashboard</h1>
+              {group && (
+                <p className="text-muted-foreground">
+                  Managing teams for <span className="font-semibold">{group.name}</span>
+                </p>
+              )}
             </div>
-          </div>
 
-          {/* Group Info Card */}
-          {group && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Group Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div>
-                    <span className="font-medium">Name:</span> {group.name}
-                  </div>
-                  {group.description && (
-                    <div>
-                      <span className="font-medium">Description:</span> {group.description}
-                    </div>
-                  )}
-                  <div>
-                    <span className="font-medium">Teams:</span> {teams?.length || 0}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Teams Section */}
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Teams</h2>
-            <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-purple-700 text-white hover:bg-purple-800" data-testid="button-add-team">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Team
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2 mt-4 justify-center">
+              <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
+                <DialogTrigger asChild>
+                  <Button size="default" className="px-4 bg-purple-700 text-white hover:bg-purple-800" data-testid="button-add-team">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Team
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Team</DialogTitle>
@@ -324,12 +289,15 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
             </Dialog>
           </div>
 
-          {/* Teams List */}
-          {teamsLoading ? (
-            <div className="text-center py-8">Loading teams...</div>
-          ) : teams && teams.length > 0 ? (
-            <div className="grid gap-4">
-              {teams.map((team) => (
+          <div className="grid grid-cols-1 gap-6 mt-6">
+            {/* Teams Section */}
+            <div className="border rounded-lg p-4">
+              <h2 className="text-2xl font-semibold mb-4">Teams</h2>
+              <div className="space-y-4">
+                {teamsLoading ? (
+                  <div className="text-center py-8">Loading teams...</div>
+                ) : teams && teams.length > 0 ? (
+                  teams.map((team) => (
                 <Card key={team.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -371,7 +339,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
-                            <DialogHeader>
+                            <AlertDialogHeader>
                               <AlertDialogTitle>Delete Team</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to delete "{team.name}"? This action cannot be undone.
@@ -381,8 +349,8 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                                   </div>
                                 )}
                               </AlertDialogDescription>
-                            </DialogHeader>
-                            <DialogFooter>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => deleteTeamMutation.mutate(team.id)}
@@ -391,31 +359,34 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                               >
                                 Delete
                               </AlertDialogAction>
-                            </DialogFooter>
+                            </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+                ) : (
+                  <Card>
+                    <CardContent className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">No teams found in this group.</p>
+                      <Button 
+                        onClick={() => setCreateTeamOpen(true)}
+                        className="bg-purple-700 text-white hover:bg-purple-800"
+                      >
+                        Create Your First Team
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No teams found in this group.</p>
-                <Button 
-                  onClick={() => setCreateTeamOpen(true)}
-                  className="bg-purple-700 text-white hover:bg-purple-800"
-                >
-                  Create Your First Team
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          </div>
+        </div>
 
-          {/* Edit Team Dialog */}
-          <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
+        {/* Edit Team Dialog */}
+        <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Edit Team</DialogTitle>
