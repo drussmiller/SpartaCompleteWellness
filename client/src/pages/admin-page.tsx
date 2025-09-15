@@ -735,13 +735,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Form>
                 </DialogContent>
               </Dialog>
-              <Button
-                size="default"
-                className="px-4 bg-violet-700 text-white hover:bg-violet-800"
-                onClick={() => setLocation("/activity-management")}
-              >
-                Activity Management
-              </Button>
+              {/* Activity Management - Only show for full admins */}
+              {user?.isAdmin && (
+                <Button
+                  size="default"
+                  className="px-4 bg-violet-700 text-white hover:bg-violet-800"
+                  onClick={() => setLocation("/activity-management")}
+                >
+                  Activity Management
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
@@ -1036,7 +1039,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </div>
               )}
 
-              {/* Groups Section */}
+              {/* Groups Section - Only show for full admins */}
+              {user?.isAdmin && (
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-semibold">Groups</h2>
@@ -1220,6 +1224,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   ))}
                 </div>
               </div>
+              )}
 
               <div className="border rounded-lg p-4">
                 <h2 className="text-2xl font-semibold mb-4">Users</h2>
