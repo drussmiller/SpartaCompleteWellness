@@ -194,7 +194,7 @@ export async function runMigrations() {
     try {
       await db.execute(sql`
         ALTER TABLE teams 
-        ADD COLUMN IF NOT EXISTS max_size INTEGER DEFAULT 50
+        ADD COLUMN IF NOT EXISTS max_size INTEGER DEFAULT 6
       `);
       console.log('Added max_size column to teams table');
     } catch (columnError) {

@@ -56,7 +56,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      maxSize: 50
+      maxSize: 6
     }
   });
 
@@ -66,7 +66,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      maxSize: 50
+      maxSize: 6
     }
   });
 
@@ -148,7 +148,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     editForm.reset({
       name: team.name,
       description: team.description || "",
-      maxSize: team.maxSize || 50
+      maxSize: team.maxSize || 6
     });
     setEditTeamOpen(true);
   };
@@ -306,7 +306,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                           <h3 className="font-semibold">{team.name}</h3>
                           <Badge variant="outline" className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {team.memberCount}/{team.maxSize || 50}
+                            {team.memberCount}/{team.maxSize || 6}
                           </Badge>
                         </div>
                         {team.description && (
@@ -315,7 +315,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                           </p>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          Max Size: {team.maxSize || 50} members
+                          Max Size: {team.maxSize || 6} members
                         </div>
                       </div>
                       <div className="flex gap-2">
