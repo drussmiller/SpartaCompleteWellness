@@ -127,20 +127,6 @@ export default function MenuPage() {
               </SheetContent>
             </Sheet>
           )}
-
-          {/* Group Admin Button - Only shown for group admin users */}
-          {user.isGroupAdmin && (
-            <Button 
-              variant="outline" 
-              className="w-full justify-start" 
-              size="lg" 
-              onClick={() => navigate("/group-admin")}
-              data-testid="button-group-admin-dashboard"
-            >
-              <Settings className="mr-2 h-5 w-5" />
-              Group Admin Dashboard
-            </Button>
-          )}
         </div>
       </div>
     </AppLayout>
