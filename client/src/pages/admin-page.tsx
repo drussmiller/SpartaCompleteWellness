@@ -1279,11 +1279,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            {user.isAdmin && <Badge variant="default">Admin</Badge>}
-                            {user.isTeamLead && <Badge variant="secondary">Team Lead</Badge>}
-                            {user.isGroupAdmin && <Badge variant="outline" className="border-purple-300 text-purple-700">Group Admin</Badge>}
-                          </div>
+                          
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -1316,7 +1312,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant={user.isAdmin ? "default" : "outline"}
                               size="sm"
-                              className={user.isAdmin ? "bg-violet-700 text-white hover:bg-violet-800" : ""}
+                              className={user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}
                               onClick={() => {
                                 // Prevent removing admin from the admin user with username "admin"
                                 if (user.username === "admin" && user.isAdmin) {
@@ -1339,7 +1335,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant={user.isTeamLead ? "default" : "outline"}
                               size="sm"
-                              className={user.isTeamLead ? "bg-violet-700 text-white hover:bg-violet-800" : ""}
+                              className={user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}
                               onClick={() => {
                                 updateUserRoleMutation.mutate({
                                   userId: user.id,
@@ -1353,7 +1349,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant={user.isGroupAdmin ? "default" : "outline"}
                               size="sm"
-                              className={user.isGroupAdmin ? "bg-purple-700 text-white hover:bg-purple-800" : ""}
+                              className={user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}
                               disabled={!user.teamId}
                               onClick={() => {
                                 if (!user.teamId) {
