@@ -119,6 +119,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       name: "",
       description: "",
       groupId: 0,
+      maxSize: 6,
     },
   });
 
@@ -699,6 +700,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="maxSize"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Maximum Team Size</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="1" 
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                       <Button type="submit" disabled={createTeamMutation.isPending}>
                         {createTeamMutation.isPending ? "Creating..." : "Create Team"}
                       </Button>
@@ -730,6 +748,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const formData = new FormData(e.currentTarget);
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
+                                const maxSize = parseInt(formData.get('maxSize') as string) || 6;
                                 const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
                                 
                                 if (!name || !selectedGroupId) {
@@ -747,6 +766,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     name,
                                     description,
                                     groupId,
+                                    maxSize,
                                   }
                                 });
                               }}>
@@ -773,6 +793,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  <Input
+                                    name="maxSize"
+                                    type="number"
+                                    min="1"
+                                    defaultValue={team.maxSize?.toString() || '6'}
+                                    placeholder="Maximum team size"
+                                    className="text-sm"
+                                  />
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
