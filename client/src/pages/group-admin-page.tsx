@@ -481,8 +481,6 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
               </div>
             </div>
           </div>
-        </div>
-
         </TabsContent>
         <TabsContent value="users">
           {usersLoading ? (
@@ -648,6 +646,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
           </Dialog>
         </div>
       </div>
+    </div>
     </AppLayout>
   );
 }
