@@ -525,25 +525,25 @@ export default function ActivityManagementPage() {
             </CollapsibleTrigger>
             <CollapsibleContent className="p-4 bg-muted/20">
               <div className="mb-8">
-                <Label htmlFor="docUpload">Upload Word Document</Label>
+                <Label htmlFor="weekDocUpload">Upload Week Word Document</Label>
                 <div className="flex items-center gap-2">
                   <Input
-                    id="docUpload"
+                    id="weekDocUpload"
                     type="file"
                     accept=".docx"
                     onChange={async (event) => {
                       setContentFields([]);
                       const file = event.target.files?.[0];
                       if (file) {
-                        await handleDailyFileUpload(event);
+                        await handleWeekFileUpload(event);
                       }
                     }}
                     className="flex-1"
                   />
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Upload a Word document to automatically create content with embedded videos.
-                  Filename should contain week and day numbers (e.g., "Week1Day2.docx" or "1-2-activity.docx")
+                  Upload a Word document for week information. 
+                  Filename should contain week number (e.g., "Week1.docx" or "Week1Info.docx")
                 </p>
               </div>
 
