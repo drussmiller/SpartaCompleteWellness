@@ -200,7 +200,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   const updateUserRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, value }: { userId: number; role: 'isAdmin' | 'isTeamLead'; value: boolean }) => {
+    mutationFn: async ({ userId, role, value }: { userId: number; role: 'isAdmin' | 'isTeamLead' | 'isGroupAdmin'; value: boolean }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role, value });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -1282,6 +1282,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <div className="flex flex-wrap gap-1">
                             {user.isAdmin && <Badge variant="default">Admin</Badge>}
                             {user.isTeamLead && <Badge variant="secondary">Team Lead</Badge>}
+                            {user.isGroupAdmin && <Badge variant="outline" className="border-purple-300 text-purple-700">Group Admin</Badge>}
                           </div>
                         </div>
                       </CardHeader>
@@ -1348,6 +1349,29 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               }}
                             >
                               Team Lead
+                            </Button>
+                            <Button
+                              variant={user.isGroupAdmin ? "default" : "outline"}
+                              size="sm"
+                              className={user.isGroupAdmin ? "bg-purple-700 text-white hover:bg-purple-800" : ""}
+                              disabled={!user.teamId}
+                              onClick={() => {
+                                if (!user.teamId) {
+                                  toast({
+                                    title: "Team Required",
+                                    description: "User must be assigned to a team before becoming a Group Admin.",
+                                    variant: "destructive"
+                                  });
+                                  return;
+                                }
+                                updateUserRoleMutation.mutate({
+                                  userId: user.id,
+                                  role: 'isGroupAdmin',
+                                  value: !user.isGroupAdmin
+                                });
+                              }}
+                            >
+                              Group Admin
                             </Button>
                           </div>
                         </div>
