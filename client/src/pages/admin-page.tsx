@@ -1333,20 +1333,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               Admin
                             </Button>
                             <Button
-                              variant={user.isTeamLead ? "default" : "outline"}
-                              size="sm"
-                              className={user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}
-                              onClick={() => {
-                                updateUserRoleMutation.mutate({
-                                  userId: user.id,
-                                  role: 'isTeamLead',
-                                  value: !user.isTeamLead
-                                });
-                              }}
-                            >
-                              Team Lead
-                            </Button>
-                            <Button
                               variant={user.isGroupAdmin ? "default" : "outline"}
                               size="sm"
                               className={user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}
@@ -1368,6 +1354,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               }}
                             >
                               Group Admin
+                            </Button>
+                            <Button
+                              variant={user.isTeamLead ? "default" : "outline"}
+                              size="sm"
+                              className={user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}
+                              onClick={() => {
+                                updateUserRoleMutation.mutate({
+                                  userId: user.id,
+                                  role: 'isTeamLead',
+                                  value: !user.isTeamLead
+                                });
+                              }}
+                            >
+                              Team Lead
                             </Button>
                           </div>
                         </div>
