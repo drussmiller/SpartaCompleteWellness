@@ -591,10 +591,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     );
   }
 
-  const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name));
+  // Filter teams based on user role
+  const filteredTeams = user?.isAdmin 
+    ? teams || []  // Full admins see all teams
+    : (teams || []).filter(team => team.groupId === user?.adminGroupId);  // Group admins see only their group's teams
+  
+  const sortedTeams = [...filteredTeams].sort((a, b) => a.name.localeCompare(b.name));
   const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedUsers = [...(users || [])].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+  // Filter users based on user role - Group admins only see users in their group's teams
+  const teamIds = filteredTeams.map(team => team.id);  // Get IDs of teams the current user can see
+  const filteredUsers = user?.isAdmin 
+    ? users || []  // Full admins see all users
+    : (users || []).filter(u => u.teamId && teamIds.includes(u.teamId));  // Group admins see only users in their group's teams
+  
+  const sortedUsers = [...filteredUsers].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   const isMobile = window.innerWidth <= 768;
 
