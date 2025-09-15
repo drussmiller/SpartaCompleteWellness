@@ -1375,7 +1375,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </Button>
                           </div>
                         </div>
-                        </div>
 
                         <div className="pt-2">
                           <Button
