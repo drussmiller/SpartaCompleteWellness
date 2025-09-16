@@ -3171,11 +3171,13 @@ export const registerRoutes = async (
         }
       }
 
-      // Prepare update data
-      const updateData = {
-        ...req.body,
-        teamJoinedAt: req.body.teamId ? new Date() : null,
-      };
+      // Prepare update data - explicitly handle falsy values like status=0
+      const updateData: any = { ...req.body };
+      
+      // Fix teamJoinedAt logic to handle teamId=0 properly
+      if (req.body.teamId !== undefined) {
+        updateData.teamJoinedAt = req.body.teamId !== null && req.body.teamId !== 0 ? new Date() : null;
+      }
 
       logger.info(`PATCH /api/users/${userId} - Request body:`, JSON.stringify(req.body));
       logger.info(`PATCH /api/users/${userId} - Update data:`, JSON.stringify(updateData));
