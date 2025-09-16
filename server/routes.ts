@@ -5086,47 +5086,110 @@ export const registerRoutes = async (
       console.log(
         `[serve-file] isThumbnail: ${isThumbnail}, constructed storageKey: ${storageKey}`,
       );
-      const result = await objectStorage.downloadAsBytes(storageKey);
-      console.log(`[serve-file] Object Storage result:`, {
+      let result;
+      let successfulKey = null;
+      
+      // Try different path prefixes to find the file for backward compatibility
+      const pathsToTry = [
+        storageKey, // shared/uploads/filename.jpg (current path)
+        storageKey.replace('shared/uploads/', 'uploads/'), // uploads/filename.jpg  
+        filename, // just filename.jpg (fallback)
+      ];
+      
+      // Only add unique paths to avoid duplicate attempts
+      const uniquePaths = [...new Set(pathsToTry)];
+      
+      for (const keyToTry of uniquePaths) {
+        try {
+          console.log(`[serve-file] Trying Object Storage key: ${keyToTry}`);
+          result = await objectStorage.downloadAsBytes(keyToTry);
+          
+          // Check if we got a successful response
+          if (result && typeof result === "object" && "ok" in result && result.ok === true) {
+            console.log(`[serve-file] SUCCESS! File found at key: ${keyToTry}`);
+            successfulKey = keyToTry;
+            break;
+          } else {
+            console.log(`[serve-file] Key ${keyToTry} returned ok:false or invalid response`);
+          }
+        } catch (error) {
+          console.log(`[serve-file] Key ${keyToTry} threw error:`, error);
+          continue;
+        }
+      }
+      
+      // If Object Storage failed, try serving from local filesystem
+      if (!successfulKey) {
+        console.log(`[serve-file] Object Storage failed for all paths. Attempting local filesystem fallback...`);
+        
+        // Use dynamic imports for ES modules compatibility
+        const path = await import('path');
+        const fs = await import('fs');
+        
+        // Try the same paths but in local filesystem
+        const localPathsToTry = [
+          path.join(process.cwd(), 'shared', 'uploads', filename),
+          path.join(process.cwd(), 'uploads', filename),
+          path.join(process.cwd(), filename)
+        ];
+        
+        for (const localPath of localPathsToTry) {
+          try {
+            if (fs.existsSync(localPath)) {
+              console.log(`[serve-file] SUCCESS! File found locally at: ${localPath}`);
+              
+              // Set proper content type and send file
+              const ext = filename.toLowerCase().split('.').pop();
+              let contentType = 'application/octet-stream';
+              
+              switch (ext) {
+                case 'jpg':
+                case 'jpeg':
+                  contentType = 'image/jpeg';
+                  break;
+                case 'png':
+                  contentType = 'image/png';
+                  break;
+                case 'gif':
+                  contentType = 'image/gif';
+                  break;
+                case 'webp':
+                  contentType = 'image/webp';
+                  break;
+                case 'mov':
+                  contentType = 'video/quicktime';
+                  break;
+                case 'mp4':
+                  contentType = 'video/mp4';
+                  break;
+                case 'webm':
+                  contentType = 'video/webm';
+                  break;
+              }
+              
+              res.setHeader('Content-Type', contentType);
+              res.setHeader('Cache-Control', 'public, max-age=31536000');
+              return res.sendFile(localPath);
+            }
+          } catch (fsError) {
+            console.log(`[serve-file] Local file error for ${localPath}:`, fsError);
+            continue;
+          }
+        }
+        
+        console.log(`[serve-file] File not found in Object Storage or local filesystem:`, uniquePaths.join(', '));
+        return res.status(404).json({
+          error: "File not found",
+          message: `Could not retrieve ${filename} from Object Storage or local filesystem`,
+        });
+      }
+
+      console.log(`[serve-file] Object Storage result for ${successfulKey}:`, {
         type: typeof result,
         hasOk: result && typeof result === "object" && "ok" in result,
         hasValue: result && typeof result === "object" && "value" in result,
-        ok:
-          result && typeof result === "object" && "ok" in result
-            ? result.ok
-            : undefined,
-        valueType:
-          result && typeof result === "object" && "value" in result
-            ? typeof result.value
-            : undefined,
+        ok: result && typeof result === "object" && "ok" in result ? result.ok : undefined,
         isBuffer: Buffer.isBuffer(result),
-        resultKeys:
-          result && typeof result === "object"
-            ? Object.keys(result)
-            : undefined,
-        valueIsArray:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value)
-            ? result.value.length
-            : undefined,
-        firstElementType:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value) &&
-          result.value.length > 0
-            ? typeof result.value[0]
-            : undefined,
-        firstElementIsBuffer:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value) &&
-          result.value.length > 0
-            ? Buffer.isBuffer(result.value[0])
-            : undefined,
       });
 
       // Handle the Object Storage response format - simplified and more robust
