@@ -3177,16 +3177,22 @@ export const registerRoutes = async (
         teamJoinedAt: req.body.teamId ? new Date() : null,
       };
 
-      // Update user
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
+      // Use database transaction for atomic updates
+      const updatedUser = await db.transaction(async (tx) => {
+        const [result] = await tx
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, userId))
+          .returning();
 
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
+        if (!result) {
+          throw new Error("User not found");
+        }
+
+        return result;
+      });
+
+      logger.info(`User ${userId} updated successfully by admin ${req.user.id}`);
 
       // Return sanitized user data
       res.setHeader("Content-Type", "application/json");
