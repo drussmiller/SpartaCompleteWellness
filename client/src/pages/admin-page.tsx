@@ -764,6 +764,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const description = formData.get('description') as string;
                                 const maxSize = parseInt(formData.get('maxSize') as string) || 6;
                                 const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
+                                const status = parseInt(formData.get('status') as string) || 1;
 
                                 if (!name || !selectedGroupId) {
                                   toast({
@@ -781,6 +782,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     description,
                                     groupId,
                                     maxSize,
+                                    status,
                                   }
                                 });
                               }}>
@@ -815,6 +817,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     placeholder="Maximum team size"
                                     className="text-sm"
                                   />
+                                  <Select name="status" defaultValue={team.status?.toString() || "1"}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">Active</SelectItem>
+                                      <SelectItem value="0">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
@@ -833,7 +844,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </form>
                             ) : (
                               <>
-                                <CardTitle className="text-lg">{team.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle className="text-lg">{team.name}</CardTitle>
+                                  <Badge variant={team.status === 1 ? "default" : "secondary"}>
+                                    {team.status === 1 ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
                                 <CardDescription className="line-clamp-2 text-sm">
                                   {team.description}
                                 </CardDescription>
@@ -965,6 +981,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const formData = new FormData(e.currentTarget);
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
+                                const status = parseInt(formData.get('status') as string) || 1;
 
                                 if (!name) {
                                   toast({
@@ -979,7 +996,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   organizationId: organization.id,
                                   data: {
                                     name,
-                                    description: description || undefined
+                                    description: description || undefined,
+                                    status
                                   }
                                 });
                               }} className="space-y-2">
@@ -994,6 +1012,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   defaultValue={organization.description || ''}
                                   placeholder="Description"
                                 />
+                                <Select name="status" defaultValue={organization.status?.toString() || "1"}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">Active</SelectItem>
+                                    <SelectItem value="0">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <div className="flex gap-2">
                                   <Button type="submit" size="sm" disabled={updateOrganizationMutation.isPending}>
                                     {updateOrganizationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1011,7 +1038,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </form>
                             ) : (
                               <div>
-                                <CardTitle>{organization.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle>{organization.name}</CardTitle>
+                                  <Badge variant={organization.status === 1 ? "default" : "secondary"}>
+                                    {organization.status === 1 ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
                                 <CardDescription>{organization.description}</CardDescription>
                               </div>
                             )}
@@ -1128,6 +1160,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
                                 const organizationId = parseInt(formData.get('organizationId') as string);
+                                const status = parseInt(formData.get('status') as string) || 1;
 
                                 if (!name || !organizationId) {
                                   toast({
@@ -1143,7 +1176,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     name,
                                     description: description || undefined,
-                                    organizationId
+                                    organizationId,
+                                    status
                                   }
                                 });
                               }} className="space-y-2">
@@ -1170,6 +1204,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <Select name="status" defaultValue={group.status?.toString() || "1"}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">Active</SelectItem>
+                                    <SelectItem value="0">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <div className="flex gap-2">
                                   <Button type="submit" size="sm" disabled={updateGroupMutation.isPending}>
                                     {updateGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1187,7 +1230,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </form>
                             ) : (
                               <div>
-                                <CardTitle>{group.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle>{group.name}</CardTitle>
+                                  <Badge variant={group.status === 1 ? "default" : "secondary"}>
+                                    {group.status === 1 ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
                                 <CardDescription>{group.description}</CardDescription>
                               </div>
                             )}
@@ -1253,6 +1301,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     username: formData.get('username') as string,
                                     email: formData.get('email') as string,
+                                    status: parseInt(formData.get('status') as string) || 1,
                                   }
                                 });
                               }}>
@@ -1268,6 +1317,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     type="email"
                                     className="text-sm"
                                   />
+                                  <Select name="status" defaultValue={user.status?.toString() || "1"}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">Active</SelectItem>
+                                      <SelectItem value="0">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
@@ -1285,6 +1343,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <>
                                 <div className="flex items-center gap-2">
                                   <CardTitle>{user.preferredName || user.username}</CardTitle>
+                                  <Badge variant={user.status === 1 ? "default" : "secondary"}>
+                                    {user.status === 1 ? "Active" : "Inactive"}
+                                  </Badge>
                                   <div className="flex gap-2">
                                     <Button
                                       variant="outline"
