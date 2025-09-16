@@ -47,6 +47,7 @@ export const groups = pgTable("groups", {
   description: text("description"),
   organizationId: integer("organization_id").notNull(),
   status: integer("status").default(1), // 1 = active, 0 = inactive
+  competitive: boolean("competitive").default(false), // Whether this group is competitive
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -73,6 +74,7 @@ export const insertGroupSchema = createInsertSchema(groups).extend({
   description: z.string().optional(),
   organizationId: z.number().min(1, "Organization ID is required"),
   status: z.number().min(0).max(1).default(1),
+  competitive: z.boolean().default(false),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).extend({

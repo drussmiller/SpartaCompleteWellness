@@ -234,6 +234,17 @@ export async function runMigrations() {
       console.error('Error adding status column to teams:', columnError);
     }
 
+    // Add competitive column to groups table
+    try {
+      await db.execute(sql`
+        ALTER TABLE groups 
+        ADD COLUMN IF NOT EXISTS competitive BOOLEAN DEFAULT false
+      `);
+      console.log('Added competitive column to groups table');
+    } catch (columnError) {
+      console.error('Error adding competitive column to groups:', columnError);
+    }
+
     // Add achievement_types table if it doesn't exist
     try {
       await db.execute(sql`
