@@ -61,6 +61,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
+import { prayerRoutes } from "./prayer-routes";
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
@@ -3716,6 +3717,9 @@ export const registerRoutes = async (
   // Register user role routes
   app.use(userRoleRouter);
   app.use(groupAdminRouter);
+
+  // Register prayer routes
+  app.use(prayerRoutes);
 
   app.use(router);
 
