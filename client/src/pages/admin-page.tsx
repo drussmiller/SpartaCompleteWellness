@@ -595,7 +595,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const filteredTeams = user?.isAdmin 
     ? teams || []  // Full admins see all teams
     : (teams || []).filter(team => team.groupId === user?.adminGroupId);  // Group admins see only their group's teams
-  
+
   const sortedTeams = [...filteredTeams].sort((a, b) => a.name.localeCompare(b.name));
   const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
@@ -604,7 +604,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const filteredUsers = user?.isAdmin 
     ? users || []  // Full admins see all users
     : (users || []).filter(u => u.teamId && teamIds.includes(u.teamId));  // Group admins see only users in their group's teams
-  
+
   const sortedUsers = [...filteredUsers].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   const isMobile = window.innerWidth <= 768;
@@ -764,7 +764,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const description = formData.get('description') as string;
                                 const maxSize = parseInt(formData.get('maxSize') as string) || 6;
                                 const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
-                                
+
                                 if (!name || !selectedGroupId) {
                                   toast({
                                     title: "Error",
@@ -773,7 +773,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   });
                                   return;
                                 }
-                                
+
                                 updateTeamMutation.mutate({
                                   teamId: team.id,
                                   data: {
@@ -894,6 +894,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <span className="font-medium">Members: </span>
                           {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
                         </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Max Size: </span>
+                          {team.maxSize || 6}
+                        </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Status: </span>
+                          <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
+                            {team.status === 1 ? "Active" : "Inactive"}
+                          </span>
+                        </p>
                       </CardContent>
                     </Card>
                   ))}
@@ -906,7 +916,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-semibold">Organizations</h2>
                 </div>
-                
+
                 <Form {...organizationForm}>
                   <form onSubmit={organizationForm.handleSubmit((data) => createOrganizationMutation.mutate(data))} className="space-y-4 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -955,7 +965,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const formData = new FormData(e.currentTarget);
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
-                                
+
                                 if (!name) {
                                   toast({
                                     title: "Error",
@@ -964,7 +974,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   });
                                   return;
                                 }
-                                
+
                                 updateOrganizationMutation.mutate({
                                   organizationId: organization.id,
                                   data: {
@@ -1045,7 +1055,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-semibold">Groups</h2>
                 </div>
-                
+
                 <Form {...groupForm}>
                   <form onSubmit={groupForm.handleSubmit((data) => createGroupMutation.mutate(data))} className="space-y-4 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1118,7 +1128,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
                                 const organizationId = parseInt(formData.get('organizationId') as string);
-                                
+
                                 if (!name || !organizationId) {
                                   toast({
                                     title: "Error",
@@ -1127,7 +1137,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   });
                                   return;
                                 }
-                                
+
                                 updateGroupMutation.mutate({
                                   groupId: group.id,
                                   data: {
@@ -1325,7 +1335,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </>
                             )}
                           </div>
-                          
+
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
