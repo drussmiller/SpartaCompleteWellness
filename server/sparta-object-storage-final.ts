@@ -189,22 +189,88 @@ export class SpartaObjectStorageFinal {
    * Download file from Object Storage
    */
   async downloadFile(storageKey: string): Promise<Buffer> {
-    const result = await this.retryOperation(
-      () => this.objectStorage.downloadAsBytes(storageKey),
-      `Download ${storageKey}`
-    );
-
-    // Handle the result format from Object Storage API
-    if (result && typeof result === 'object' && 'ok' in result) {
-      const typedResult = result as { ok: boolean; data?: Buffer; error?: any };
-      if (typedResult.ok && typedResult.data) {
-        return typedResult.data;
+    try {
+      console.log(`[Debug] Attempting to download: ${storageKey}`);
+      
+      // First check if the file exists
+      const exists = await this.fileExists(storageKey);
+      console.log(`[Debug] File exists check for ${storageKey}:`, exists);
+      
+      if (!exists) {
+        throw new Error(`File does not exist in Object Storage: ${storageKey}`);
       }
-      throw new Error(`Download failed: ${typedResult.error?.message || 'Unknown error'}`);
-    }
+      
+      const result = await this.objectStorage.downloadAsBytes(storageKey);
+      
+      console.log(`[Debug] Download result for ${storageKey}:`, {
+        type: typeof result,
+        hasData: result && 'data' in result,
+        hasOk: result && 'ok' in result,
+        hasValue: result && 'value' in result,
+        isBuffer: Buffer.isBuffer(result),
+        isArray: Array.isArray(result),
+        keys: result && typeof result === 'object' ? Object.keys(result) : 'not object'
+      });
 
-    // Assume it's a Buffer if not in the ok/error format
-    return result as Buffer;
+      // Handle the Result object format from Replit Object Storage API
+      if (result && typeof result === 'object') {
+        // Check for error response first
+        if ('ok' in result && !result.ok) {
+          const errorMsg = result.error?.message || 'Unknown Object Storage error';
+          console.error(`[Debug] Object Storage error for ${storageKey}:`, result);
+          throw new Error(`Object Storage download failed: ${errorMsg}`);
+        }
+        
+        // Check if it's the new Result format with success/data
+        if ('data' in result && result.data) {
+          console.log(`[Debug] Using data field for ${storageKey}`);
+          if (Buffer.isBuffer(result.data)) {
+            return result.data;
+          }
+          if (result.data instanceof Uint8Array) {
+            return Buffer.from(result.data);
+          }
+          if (Array.isArray(result.data)) {
+            return Buffer.from(result.data);
+          }
+        }
+        
+        // Check if it's the legacy ok/value format 
+        if ('ok' in result && result.ok && 'value' in result && result.value) {
+          console.log(`[Debug] Using ok/value format for ${storageKey}`);
+          if (Buffer.isBuffer(result.value)) {
+            return result.value;
+          }
+          if (result.value instanceof Uint8Array) {
+            return Buffer.from(result.value);
+          }
+          if (Array.isArray(result.value)) {
+            return Buffer.from(result.value);
+          }
+        }
+      }
+
+      // If result is directly a buffer/array
+      if (Buffer.isBuffer(result)) {
+        console.log(`[Debug] Result is direct buffer for ${storageKey}`);
+        return result;
+      }
+      if (result instanceof Uint8Array) {
+        console.log(`[Debug] Result is Uint8Array for ${storageKey}`);
+        return Buffer.from(result);
+      }
+      if (Array.isArray(result)) {
+        console.log(`[Debug] Result is Array for ${storageKey}`);
+        return Buffer.from(result);
+      }
+
+      console.error(`[Debug] Unexpected result format for ${storageKey}:`, result);
+      throw new Error(`Unexpected download result format: ${typeof result}, result: ${JSON.stringify(result)}`);
+      
+    } catch (error) {
+      console.error(`[Debug] Download error for ${storageKey}:`, error);
+      throw error;
+    }
   }
 
   /**
