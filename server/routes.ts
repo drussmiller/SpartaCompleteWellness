@@ -3154,16 +3154,30 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid user ID format" });
       }
 
+      // Define update schema with proper status coercion
+      const updateUserSchema = insertUserSchema.pick({ 
+        username: true, 
+        preferredName: true, 
+        email: true, 
+        password: true, 
+        isAdmin: true, 
+        isTeamLead: true, 
+        isGroupAdmin: true, 
+        teamId: true, 
+        status: true 
+      }).partial().extend({ 
+        status: z.coerce.number().int().min(0).max(1).optional() 
+      });
+
+      const parsed = updateUserSchema.parse(req.body);
+
       // Validate teamId if present
-      if (req.body.teamId !== undefined && req.body.teamId !== null) {
-        if (typeof req.body.teamId !== "number") {
-          return res.status(400).json({ message: "Team ID must be a number" });
-        }
+      if (parsed.teamId !== undefined && parsed.teamId !== null) {
         // Verify team exists
         const [team] = await db
           .select()
           .from(teams)
-          .where(eq(teams.id, req.body.teamId))
+          .where(eq(teams.id, parsed.teamId))
           .limit(1);
 
         if (!team) {
@@ -3171,15 +3185,27 @@ export const registerRoutes = async (
         }
       }
 
-      // Prepare update data - explicitly handle falsy values like status=0
-      const updateData: any = { ...req.body };
+      // Build update data with explicit presence checks (avoid truthiness that filters out 0)
+      const updateData: any = {};
+      const b = parsed;
       
-      // Fix teamJoinedAt logic to handle teamId=0 properly
-      if (req.body.teamId !== undefined) {
-        updateData.teamJoinedAt = req.body.teamId !== null && req.body.teamId !== 0 ? new Date() : null;
+      if (Object.prototype.hasOwnProperty.call(b, 'username')) updateData.username = b.username;
+      if (Object.prototype.hasOwnProperty.call(b, 'preferredName')) updateData.preferredName = b.preferredName;
+      if (Object.prototype.hasOwnProperty.call(b, 'email')) updateData.email = b.email;
+      if (Object.prototype.hasOwnProperty.call(b, 'password')) updateData.password = b.password;
+      if (Object.prototype.hasOwnProperty.call(b, 'isAdmin')) updateData.isAdmin = b.isAdmin;
+      if (Object.prototype.hasOwnProperty.call(b, 'isTeamLead')) updateData.isTeamLead = b.isTeamLead;
+      if (Object.prototype.hasOwnProperty.call(b, 'isGroupAdmin')) updateData.isGroupAdmin = b.isGroupAdmin;
+      if (Object.prototype.hasOwnProperty.call(b, 'teamId')) updateData.teamId = b.teamId;
+      if (Object.prototype.hasOwnProperty.call(b, 'status')) updateData.status = b.status; // This preserves 0!
+      
+      // Fix teamJoinedAt logic
+      if (Object.prototype.hasOwnProperty.call(b, 'teamId')) {
+        updateData.teamJoinedAt = b.teamId !== null && b.teamId !== 0 ? new Date() : null;
       }
 
       logger.info(`PATCH /api/users/${userId} - Request body:`, JSON.stringify(req.body));
+      logger.info(`PATCH /api/users/${userId} - Parsed data:`, JSON.stringify(parsed));
       logger.info(`PATCH /api/users/${userId} - Update data:`, JSON.stringify(updateData));
 
       // Use database transaction for atomic updates
