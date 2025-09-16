@@ -3177,6 +3177,9 @@ export const registerRoutes = async (
         teamJoinedAt: req.body.teamId ? new Date() : null,
       };
 
+      logger.info(`PATCH /api/users/${userId} - Request body:`, JSON.stringify(req.body));
+      logger.info(`PATCH /api/users/${userId} - Update data:`, JSON.stringify(updateData));
+
       // Use database transaction for atomic updates
       const updatedUser = await db.transaction(async (tx) => {
         const [result] = await tx
@@ -3189,6 +3192,7 @@ export const registerRoutes = async (
           throw new Error("User not found");
         }
 
+        logger.info(`PATCH /api/users/${userId} - Database result:`, JSON.stringify(result));
         return result;
       });
 
@@ -3205,6 +3209,7 @@ export const registerRoutes = async (
         isTeamLead: updatedUser.isTeamLead,
         imageUrl: updatedUser.imageUrl,
         teamJoinedAt: updatedUser.teamJoinedAt,
+        status: updatedUser.status,
       });
     } catch (error) {
       logger.error("Error updating user:", error);
