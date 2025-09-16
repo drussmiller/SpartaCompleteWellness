@@ -5049,13 +5049,14 @@ export const registerRoutes = async (
       });
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Use Object Storage client with proper error handling
+      // Use Object Storage client with default configuration (no hardcoded bucket)
       const { Client } = await import("@replit/object-storage");
       let objectStorage: any;
       
       try {
+        // Use default configuration - no hardcoded bucket ID
         objectStorage = new Client();
-        console.log('[serve-file] Object Storage client initialized successfully');
+        console.log('[serve-file] Object Storage client initialized with default configuration');
       } catch (initError) {
         console.error('[serve-file] Object Storage client initialization failed:', initError);
         return res.status(503).json({ 

@@ -11,23 +11,15 @@ import { logger } from './logger';
 
 export const objectStorageRouter = express.Router();
 
-// Initialize Object Storage client
+// Initialize Object Storage client with default configuration
 let objectStorage: Client | null = null;
 try {
-  // Try with bucket ID first
-  objectStorage = new Client({
-    bucketId: 'replit-objstore-4b249457-61b0-4fe4-bc15-0408c0209445'
-  });
-  console.log('Object Storage routes initialized successfully with bucket ID');
+  // Use default configuration - no hardcoded bucket ID
+  objectStorage = new Client();
+  console.log('Object Storage routes initialized successfully with default config');
 } catch (error) {
-  try {
-    // Fallback to default initialization (no config)
-    objectStorage = new Client();
-    console.log('Object Storage routes initialized successfully with default config');
-  } catch (fallbackError) {
-    console.log('Object Storage not available for routes:', fallbackError);
-    objectStorage = null;
-  }
+  console.log('Object Storage not available for routes:', error);
+  objectStorage = null;
 }
 
 /**
