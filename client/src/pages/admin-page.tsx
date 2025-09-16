@@ -853,13 +853,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <>
                                 <div className="flex items-center gap-2">
                                   <CardTitle className="text-lg">{team.name}</CardTitle>
-                                  <Badge variant={team.status === 1 ? "default" : "secondary"}>
-                                    {team.status === 1 ? "Active" : "Inactive"}
-                                  </Badge>
                                 </div>
                                 <CardDescription className="line-clamp-2 text-sm">
                                   {team.description}
                                 </CardDescription>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {team.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </>
                             )}
                           </div>
