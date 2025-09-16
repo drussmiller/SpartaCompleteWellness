@@ -1461,7 +1461,11 @@ export const registerRoutes = async (
       const updateData = req.body;
 
       // Update the team in the database
-      const updatedTeam = await storage.updateTeam(teamId, updateData);
+      const [updatedTeam] = await db
+        .update(teams)
+        .set(updateData)
+        .where(eq(teams.id, teamId))
+        .returning();
 
       logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
       res.status(200).json(updatedTeam);
@@ -1559,8 +1563,12 @@ export const registerRoutes = async (
 
       // Use database transaction for atomic updates
       const result = await db.transaction(async (tx) => {
-        // Update the organization
-        const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
+        // Update the organization using transaction
+        const [updatedOrganization] = await tx
+          .update(organizations)
+          .set(req.body)
+          .where(eq(organizations.id, organizationId))
+          .returning();
 
         // If organization status is being set to inactive (0), cascade to all groups, teams, and users
         if (req.body.status === 0) {
@@ -1702,8 +1710,12 @@ export const registerRoutes = async (
 
       // Use database transaction for atomic updates
       const result = await db.transaction(async (tx) => {
-        // Update the group
-        const updatedGroup = await storage.updateGroup(groupId, req.body);
+        // Update the group using transaction
+        const [updatedGroup] = await tx
+          .update(groups)
+          .set(req.body)
+          .where(eq(groups.id, groupId))
+          .returning();
 
         // If group status is being set to inactive (0), cascade to all teams and users
         if (req.body.status === 0) {
