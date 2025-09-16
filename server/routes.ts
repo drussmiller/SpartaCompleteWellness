@@ -1546,42 +1546,61 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid organization ID" });
       }
 
-      logger.info(`Updating organization ${organizationId} with data:`, req.body);
-
-      // Update the organization in the database
-      const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
-
-      // If organization status is being set to inactive (0), cascade to all groups, teams, and users
-      if (req.body.status === 0) {
-        logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
-        
-        // Get all groups in this organization
-        const orgGroups = await storage.getGroupsByOrganization(organizationId);
-        const groupIds = orgGroups.map(g => g.id);
-        
-        // Update all groups in this organization to inactive
-        if (groupIds.length > 0) {
-          await db.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
-          logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
-          
-          // Get all teams in these groups
-          const teamsInGroups = await db.select().from(teams).where(inArray(teams.groupId, groupIds));
-          const teamIds = teamsInGroups.map(t => t.id);
-          
-          // Update all teams in these groups to inactive
-          if (teamIds.length > 0) {
-            await db.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
-            logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
-            
-            // Update all users in these teams to inactive
-            await db.update(users).set({ status: 0 }).where(inArray(users.teamId, teamIds));
-            logger.info(`Set users in teams to inactive for organization ${organizationId}`);
-          }
+      // Validate status field if present
+      if (req.body.status !== undefined) {
+        const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
+        const statusValidation = statusSchema.safeParse({ status: req.body.status });
+        if (!statusValidation.success) {
+          return res.status(400).json({ message: "Status must be 0 or 1" });
         }
       }
 
+      logger.info(`Updating organization ${organizationId} with data:`, req.body);
+
+      // Use database transaction for atomic updates
+      const result = await db.transaction(async (tx) => {
+        // Update the organization
+        const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
+
+        // If organization status is being set to inactive (0), cascade to all groups, teams, and users
+        if (req.body.status === 0) {
+          logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
+          
+          // Get all groups in this organization
+          const orgGroups = await storage.getGroupsByOrganization(organizationId);
+          const groupIds = orgGroups.map(g => g.id);
+          
+          if (groupIds.length > 0) {
+            // Update all groups in this organization to inactive
+            await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
+            logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+            
+            // Get all teams in these groups
+            const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
+            const teamIds = teamsInGroups.map(t => t.id);
+            
+            if (teamIds.length > 0) {
+              // Update all teams in these groups to inactive
+              await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+              logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
+              
+              // Get all users in these teams and update them to inactive
+              const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+              const userIds = usersInTeams.map(u => u.id);
+              
+              if (userIds.length > 0) {
+                await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+                logger.info(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
+              }
+            }
+          }
+        }
+
+        return updatedOrganization;
+      });
+
       logger.info(`Organization ${organizationId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedOrganization);
+      res.status(200).json(result);
     } catch (error) {
       logger.error(`Error updating organization ${req.params.id}:`, error);
       res.status(500).json({
@@ -1670,32 +1689,51 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      logger.info(`Updating group ${groupId} with data:`, req.body);
-
-      // Update the group in the database
-      const updatedGroup = await storage.updateGroup(groupId, req.body);
-
-      // If group status is being set to inactive (0), cascade to all teams and users
-      if (req.body.status === 0) {
-        logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
-        
-        // Get all teams in this group
-        const teamsInGroup = await db.select().from(teams).where(eq(teams.groupId, groupId));
-        const teamIds = teamsInGroup.map(t => t.id);
-        
-        // Update all teams in this group to inactive
-        if (teamIds.length > 0) {
-          await db.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
-          logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
-          
-          // Update all users in these teams to inactive
-          await db.update(users).set({ status: 0 }).where(inArray(users.teamId, teamIds));
-          logger.info(`Set users in teams to inactive for group ${groupId}`);
+      // Validate status field if present
+      if (req.body.status !== undefined) {
+        const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
+        const statusValidation = statusSchema.safeParse({ status: req.body.status });
+        if (!statusValidation.success) {
+          return res.status(400).json({ message: "Status must be 0 or 1" });
         }
       }
 
+      logger.info(`Updating group ${groupId} with data:`, req.body);
+
+      // Use database transaction for atomic updates
+      const result = await db.transaction(async (tx) => {
+        // Update the group
+        const updatedGroup = await storage.updateGroup(groupId, req.body);
+
+        // If group status is being set to inactive (0), cascade to all teams and users
+        if (req.body.status === 0) {
+          logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
+          
+          // Get all teams in this group
+          const teamsInGroup = await tx.select().from(teams).where(eq(teams.groupId, groupId));
+          const teamIds = teamsInGroup.map(t => t.id);
+          
+          if (teamIds.length > 0) {
+            // Update all teams in this group to inactive
+            await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+            logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
+            
+            // Get all users in these teams and update them to inactive
+            const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+            const userIds = usersInTeams.map(u => u.id);
+            
+            if (userIds.length > 0) {
+              await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+              logger.info(`Set ${userIds.length} users to inactive for group ${groupId}`);
+            }
+          }
+        }
+
+        return updatedGroup;
+      });
+
       logger.info(`Group ${groupId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedGroup);
+      res.status(200).json(result);
     } catch (error) {
       logger.error(`Error updating group ${req.params.id}:`, error);
       res.status(500).json({

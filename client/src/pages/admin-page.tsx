@@ -266,7 +266,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Organization updated successfully",
       });
       setEditingOrganization(null);
+      // Invalidate all affected entities since organization status changes can cascade
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -292,7 +296,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Group updated successfully",
       });
       setEditingGroup(null);
+      // Invalidate all affected entities since group status changes can cascade
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -1040,11 +1047,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <div>
                                 <div className="flex items-center gap-2">
                                   <CardTitle>{organization.name}</CardTitle>
-                                  <Badge variant={organization.status === 1 ? "default" : "secondary"}>
-                                    {organization.status === 1 ? "Active" : "Inactive"}
-                                  </Badge>
                                 </div>
                                 <CardDescription>{organization.description}</CardDescription>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={organization.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {organization.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1232,11 +1242,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <div>
                                 <div className="flex items-center gap-2">
                                   <CardTitle>{group.name}</CardTitle>
-                                  <Badge variant={group.status === 1 ? "default" : "secondary"}>
-                                    {group.status === 1 ? "Active" : "Inactive"}
-                                  </Badge>
                                 </div>
                                 <CardDescription>{group.description}</CardDescription>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={group.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {group.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1343,9 +1356,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <>
                                 <div className="flex items-center gap-2">
                                   <CardTitle>{user.preferredName || user.username}</CardTitle>
-                                  <Badge variant={user.status === 1 ? "default" : "secondary"}>
-                                    {user.status === 1 ? "Active" : "Inactive"}
-                                  </Badge>
                                   <div className="flex gap-2">
                                     <Button
                                       variant="outline"
@@ -1393,6 +1403,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   Progress: Week {userProgress[user.id]?.week ?? user.currentWeek},
                                   Day {userProgress[user.id]?.day ?? user.currentDay}
                                 </div>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={user.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {user.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </>
                             )}
                           </div>
