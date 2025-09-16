@@ -771,7 +771,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const description = formData.get('description') as string;
                                 const maxSize = parseInt(formData.get('maxSize') as string) || 6;
                                 const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
-                                const status = parseInt(formData.get('status') as string) || 1;
+                                const statusValue = formData.get('status') as string;
+                                const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
 
                                 if (!name || !selectedGroupId) {
                                   toast({
@@ -789,7 +791,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     description,
                                     groupId,
                                     maxSize,
-                                    status,
+                                    status: Number(status),
                                   }
                                 });
                               }}>
@@ -991,7 +993,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const formData = new FormData(e.currentTarget);
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
-                                const status = parseInt(formData.get('status') as string) || 1;
+                                const statusValue = formData.get('status') as string;
+                                const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
 
                                 if (!name) {
                                   toast({
@@ -1007,7 +1011,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     name,
                                     description: description || undefined,
-                                    status
+                                    status: Number(status)
                                   }
                                 });
                               }} className="space-y-2">
@@ -1173,7 +1177,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
                                 const organizationId = parseInt(formData.get('organizationId') as string);
-                                const status = parseInt(formData.get('status') as string) || 1;
+                                const statusValue = formData.get('status') as string;
+                                const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
 
                                 if (!name || !organizationId) {
                                   toast({
@@ -1190,7 +1196,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     name,
                                     description: description || undefined,
                                     organizationId,
-                                    status
+                                    status: Number(status)
                                   }
                                 });
                               }} className="space-y-2">
@@ -1317,7 +1323,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     username: formData.get('username') as string,
                                     email: formData.get('email') as string,
-                                    status: parseInt(formData.get('status') as string) || 1,
+                                    status: ((statusValue) => {
+                                      const parsed = statusValue ? parseInt(statusValue) : 1;
+                                      return (parsed === 0 || parsed === 1) ? parsed : 1;
+                                    })(formData.get('status') as string),
                                   }
                                 });
                               }}>
