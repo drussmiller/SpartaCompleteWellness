@@ -5049,9 +5049,20 @@ export const registerRoutes = async (
       });
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Use Object Storage client
+      // Use Object Storage client with proper error handling
       const { Client } = await import("@replit/object-storage");
-      const objectStorage = new Client();
+      let objectStorage: any;
+      
+      try {
+        objectStorage = new Client();
+        console.log('[serve-file] Object Storage client initialized successfully');
+      } catch (initError) {
+        console.error('[serve-file] Object Storage client initialization failed:', initError);
+        return res.status(503).json({ 
+          error: "Storage service unavailable", 
+          message: "Unable to initialize storage client" 
+        });
+      }
 
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === "true";
