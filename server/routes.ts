@@ -61,7 +61,6 @@ import { WebSocketServer, WebSocket } from "ws";
 import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
-import { prayerRoutes } from "./prayer-routes";
 
 // Configure multer for memory storage (no local files)
 const upload = multer({
@@ -3718,9 +3717,6 @@ export const registerRoutes = async (
   app.use(userRoleRouter);
   app.use(groupAdminRouter);
 
-  // Register prayer routes
-  app.use(prayerRoutes);
-
   app.use(router);
 
   // Create HTTP server
@@ -5065,7 +5061,7 @@ export const registerRoutes = async (
       }
 
       // Download the file from Object Storage
-      const result = await spartaObjectStorage.downloadFile(storageKey);
+      const result = await spartaObjectStorage.downloadAsBytes(storageKey);
 
       // Handle the Object Storage response format
       let fileBuffer: Buffer;
