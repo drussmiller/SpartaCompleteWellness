@@ -1551,6 +1551,35 @@ export const registerRoutes = async (
       // Update the organization in the database
       const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
 
+      // If organization status is being set to inactive (0), cascade to all groups, teams, and users
+      if (req.body.status === 0) {
+        logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
+        
+        // Get all groups in this organization
+        const orgGroups = await storage.getGroupsByOrganization(organizationId);
+        const groupIds = orgGroups.map(g => g.id);
+        
+        // Update all groups in this organization to inactive
+        if (groupIds.length > 0) {
+          await db.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
+          logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+          
+          // Get all teams in these groups
+          const teamsInGroups = await db.select().from(teams).where(inArray(teams.groupId, groupIds));
+          const teamIds = teamsInGroups.map(t => t.id);
+          
+          // Update all teams in these groups to inactive
+          if (teamIds.length > 0) {
+            await db.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+            logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
+            
+            // Update all users in these teams to inactive
+            await db.update(users).set({ status: 0 }).where(inArray(users.teamId, teamIds));
+            logger.info(`Set users in teams to inactive for organization ${organizationId}`);
+          }
+        }
+      }
+
       logger.info(`Organization ${organizationId} updated successfully by user ${req.user.id}`);
       res.status(200).json(updatedOrganization);
     } catch (error) {
@@ -1645,6 +1674,25 @@ export const registerRoutes = async (
 
       // Update the group in the database
       const updatedGroup = await storage.updateGroup(groupId, req.body);
+
+      // If group status is being set to inactive (0), cascade to all teams and users
+      if (req.body.status === 0) {
+        logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
+        
+        // Get all teams in this group
+        const teamsInGroup = await db.select().from(teams).where(eq(teams.groupId, groupId));
+        const teamIds = teamsInGroup.map(t => t.id);
+        
+        // Update all teams in this group to inactive
+        if (teamIds.length > 0) {
+          await db.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+          logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
+          
+          // Update all users in these teams to inactive
+          await db.update(users).set({ status: 0 }).where(inArray(users.teamId, teamIds));
+          logger.info(`Set users in teams to inactive for group ${groupId}`);
+        }
+      }
 
       logger.info(`Group ${groupId} updated successfully by user ${req.user.id}`);
       res.status(200).json(updatedGroup);
