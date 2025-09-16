@@ -3171,22 +3171,11 @@ export const registerRoutes = async (
         }
       }
 
-      // Build update data - handle status=0 explicitly to prevent filtering
-      const updateData: any = {};
+      // Prepare update data - explicitly handle falsy values like status=0
+      const updateData: any = { ...req.body };
       
-      // Explicitly check for presence of each field to preserve falsy values like status=0
-      if ('username' in req.body) updateData.username = req.body.username;
-      if ('preferredName' in req.body) updateData.preferredName = req.body.preferredName;
-      if ('email' in req.body) updateData.email = req.body.email;
-      if ('password' in req.body) updateData.password = req.body.password;
-      if ('isAdmin' in req.body) updateData.isAdmin = req.body.isAdmin;
-      if ('isTeamLead' in req.body) updateData.isTeamLead = req.body.isTeamLead;
-      if ('isGroupAdmin' in req.body) updateData.isGroupAdmin = req.body.isGroupAdmin;
-      if ('teamId' in req.body) updateData.teamId = req.body.teamId;
-      if ('status' in req.body) updateData.status = req.body.status; // This preserves 0!
-      
-      // Fix teamJoinedAt logic
-      if ('teamId' in req.body) {
+      // Fix teamJoinedAt logic to handle teamId=0 properly
+      if (req.body.teamId !== undefined) {
         updateData.teamJoinedAt = req.body.teamId !== null && req.body.teamId !== 0 ? new Date() : null;
       }
 
