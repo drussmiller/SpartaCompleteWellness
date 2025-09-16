@@ -57,7 +57,7 @@ import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
 import { logger } from "./logger";
 import { WebSocketServer, WebSocket } from "ws";
-import { objectStorageRouter } from "./object-storage-routes";
+// Object Storage routes removed - not needed
 import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
@@ -5024,8 +5024,7 @@ export const registerRoutes = async (
     }
   };
 
-  // Register Object Storage routes
-  app.use("/api/object-storage", objectStorageRouter);
+  // Object Storage routes removed - not needed
 
   // Main file serving route that thumbnails expect
   app.get("/api/serve-file", async (req: Request, res: Response) => {
@@ -5038,255 +5037,55 @@ export const registerRoutes = async (
           .json({ error: "Filename parameter is required" });
       }
 
-      console.log(`[serve-file] Request for filename: ${filename}`);
-      console.log(`[serve-file] Full request details:`, {
-        originalUrl: req.originalUrl,
-        query: req.query,
-        headers: {
-          referer: req.headers.referer,
-          userAgent: req.headers["user-agent"]?.substring(0, 50),
-        },
-      });
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Use Object Storage client with default configuration (no hardcoded bucket)
-      const { Client } = await import("@replit/object-storage");
-      let objectStorage: any;
-      
-      try {
-        // Use default configuration - no hardcoded bucket ID
-        objectStorage = new Client();
-        console.log('[serve-file] Object Storage client initialized with default configuration');
-      } catch (initError) {
-        console.error('[serve-file] Object Storage client initialization failed:', initError);
-        return res.status(503).json({ 
-          error: "Storage service unavailable", 
-          message: "Unable to initialize storage client" 
-        });
-      }
+      // Import the Object Storage utility that was working before
+      const { spartaObjectStorage } = await import(
+        "./sparta-object-storage-final"
+      );
 
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === "true";
 
       // Construct the proper Object Storage key
-      let storageKey;
+      let storageKey: string;
       if (isThumbnail) {
-        storageKey = `shared/uploads/thumbnails/${filename}`;
+        storageKey = filename.includes("thumbnail")
+          ? `shared/uploads/${filename}`
+          : `shared/uploads/thumbnails/${filename}`;
       } else {
-        // For regular files, add the shared/uploads prefix if not already present
+        // For regular files, construct the key as it was stored
         storageKey = filename.startsWith("shared/")
           ? filename
           : `shared/uploads/${filename}`;
       }
 
-      // Download the file from Object Storage with proper error handling
-      console.log(
-        `[serve-file] Attempting to download from Object Storage key: ${storageKey}`,
-      );
-      console.log(
-        `[serve-file] isThumbnail: ${isThumbnail}, constructed storageKey: ${storageKey}`,
-      );
-      let result;
-      let successfulKey = null;
-      
-      // Try different path prefixes to find the file for backward compatibility
-      const pathsToTry = [
-        storageKey, // shared/uploads/filename.jpg (current path)
-        storageKey.replace('shared/uploads/', 'uploads/'), // uploads/filename.jpg  
-        filename, // just filename.jpg (fallback)
-      ];
-      
-      // Only add unique paths to avoid duplicate attempts
-      const uniquePaths = [...new Set(pathsToTry)];
-      
-      for (const keyToTry of uniquePaths) {
-        try {
-          console.log(`[serve-file] Trying Object Storage key: ${keyToTry}`);
-          result = await objectStorage.downloadAsBytes(keyToTry);
-          
-          // Check if we got a successful response
-          if (result && typeof result === "object" && "ok" in result && result.ok === true) {
-            console.log(`[serve-file] SUCCESS! File found at key: ${keyToTry}`);
-            successfulKey = keyToTry;
-            break;
-          } else {
-            console.log(`[serve-file] Key ${keyToTry} returned ok:false or invalid response`);
-          }
-        } catch (error) {
-          console.log(`[serve-file] Key ${keyToTry} threw error:`, error);
-          continue;
-        }
-      }
-      
-      // If Object Storage failed, try serving from local filesystem
-      if (!successfulKey) {
-        console.log(`[serve-file] Object Storage failed for all paths. Attempting local filesystem fallback...`);
-        
-        // Use dynamic imports for ES modules compatibility
-        const path = await import('path');
-        const fs = await import('fs');
-        
-        // Try the same paths but in local filesystem
-        const localPathsToTry = [
-          path.join(process.cwd(), 'shared', 'uploads', filename),
-          path.join(process.cwd(), 'uploads', filename),
-          path.join(process.cwd(), filename)
-        ];
-        
-        for (const localPath of localPathsToTry) {
-          try {
-            if (fs.existsSync(localPath)) {
-              console.log(`[serve-file] SUCCESS! File found locally at: ${localPath}`);
-              
-              // Set proper content type and send file
-              const ext = filename.toLowerCase().split('.').pop();
-              let contentType = 'application/octet-stream';
-              
-              switch (ext) {
-                case 'jpg':
-                case 'jpeg':
-                  contentType = 'image/jpeg';
-                  break;
-                case 'png':
-                  contentType = 'image/png';
-                  break;
-                case 'gif':
-                  contentType = 'image/gif';
-                  break;
-                case 'webp':
-                  contentType = 'image/webp';
-                  break;
-                case 'mov':
-                  contentType = 'video/quicktime';
-                  break;
-                case 'mp4':
-                  contentType = 'video/mp4';
-                  break;
-                case 'webm':
-                  contentType = 'video/webm';
-                  break;
-              }
-              
-              res.setHeader('Content-Type', contentType);
-              res.setHeader('Cache-Control', 'public, max-age=31536000');
-              return res.sendFile(localPath);
-            }
-          } catch (fsError) {
-            console.log(`[serve-file] Local file error for ${localPath}:`, fsError);
-            continue;
-          }
-        }
-        
-        console.log(`[serve-file] File not found in Object Storage or local filesystem:`, uniquePaths.join(', '));
-        return res.status(404).json({
-          error: "File not found",
-          message: `Could not retrieve ${filename} from Object Storage or local filesystem`,
-        });
-      }
+      // Download the file from Object Storage
+      const result = await spartaObjectStorage.downloadAsBytes(storageKey);
 
-      console.log(`[serve-file] Object Storage result for ${successfulKey}:`, {
-        type: typeof result,
-        hasOk: result && typeof result === "object" && "ok" in result,
-        hasValue: result && typeof result === "object" && "value" in result,
-        ok: result && typeof result === "object" && "ok" in result ? result.ok : undefined,
-        isBuffer: Buffer.isBuffer(result),
-      });
-
-      // Handle the Object Storage response format - simplified and more robust
+      // Handle the Object Storage response format
       let fileBuffer: Buffer;
 
       if (Buffer.isBuffer(result)) {
         fileBuffer = result;
-        console.log(
-          `[serve-file] Direct Buffer response, size: ${fileBuffer.length} bytes`,
-        );
-      } else if (result && typeof result === "object") {
-        // Check for value property first (most common case)
-        if (result.value !== undefined) {
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-            console.log(
-              `[serve-file] Object with Buffer value, size: ${fileBuffer.length} bytes`,
-            );
-          } else if (Array.isArray(result.value)) {
-            // Handle array with one Buffer element (common Object Storage format)
-            if (result.value.length === 1 && Buffer.isBuffer(result.value[0])) {
-              fileBuffer = result.value[0];
-              console.log(
-                `[serve-file] Object with array containing Buffer, size: ${fileBuffer.length} bytes`,
-              );
-            } else {
-              // Convert entire array to Buffer
-              fileBuffer = Buffer.from(result.value);
-              console.log(
-                `[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`,
-              );
-            }
-          } else if (typeof result.value === "string") {
-            fileBuffer = Buffer.from(result.value, "base64");
-            console.log(
-              `[serve-file] Object with string value converted from base64, size: ${fileBuffer.length} bytes`,
-            );
-          } else {
-            logger.error(
-              `Unexpected value type from Object Storage for ${storageKey}:`,
-              typeof result.value,
-            );
-            return res
-              .status(404)
-              .json({
-                error: "File not found",
-                message: `Invalid data format for ${storageKey}`,
-              });
-          }
-        } else if ("ok" in result) {
-          // Handle legacy ok/error format
-          if (result.ok === false || !result.value) {
-            console.log(
-              `[serve-file] Object Storage returned error for ${storageKey}:`,
-              result.error || "File not found",
-            );
-            return res
-              .status(404)
-              .json({
-                error: "File not found",
-                message: `Could not retrieve ${storageKey}`,
-              });
-          }
-
-          // If ok is true, try to extract the value
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value)) {
-            fileBuffer = Buffer.from(result.value);
-          } else {
-            fileBuffer = Buffer.from(result.value, "base64");
-          }
-          console.log(
-            `[serve-file] Legacy ok format, Buffer size: ${fileBuffer.length} bytes`,
-          );
+      } else if (result && typeof result === "object" && "value" in result) {
+        if (Buffer.isBuffer(result.value)) {
+          fileBuffer = result.value;
+        } else if (Array.isArray(result.value)) {
+          fileBuffer = Buffer.from(result.value);
         } else {
-          logger.error(
-            `Unknown Object Storage response format for ${storageKey}:`,
-            Object.keys(result),
-          );
-          return res
-            .status(404)
-            .json({
-              error: "File not found",
-              message: `Could not retrieve ${storageKey}`,
-            });
+          fileBuffer = Buffer.from(result.value, "base64");
         }
       } else {
         logger.error(
-          `Invalid response format from Object Storage for ${storageKey}:`,
+          `Unexpected Object Storage response format for ${storageKey}:`,
           typeof result,
         );
         return res
-          .status(500)
+          .status(404)
           .json({
-            error: "Failed to serve file",
-            message: "Invalid response from storage",
+            error: "File not found",
+            message: `Could not retrieve ${storageKey}`,
           });
       }
 
@@ -5323,10 +5122,15 @@ export const registerRoutes = async (
       }
 
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
-      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader(
+        "Access-Control-Allow-Origin",
+        "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev",
+      );
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
       res.setHeader(
         "Access-Control-Allow-Headers",
         "Origin, X-Requested-With, Content-Type, Accept",
@@ -5338,12 +5142,11 @@ export const registerRoutes = async (
       );
       return res.send(fileBuffer);
     } catch (error) {
-      console.error(`[serve-file] ERROR serving file:`, error);
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
       });
-      return res.status(500).json({
-        error: "Failed to serve file",
+      return res.status(404).json({
+        error: "File not found",
         message: error instanceof Error ? error.message : "Unknown error",
       });
     }
