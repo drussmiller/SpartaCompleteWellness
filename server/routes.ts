@@ -5065,7 +5065,7 @@ export const registerRoutes = async (
       }
 
       // Download the file from Object Storage
-      const result = await spartaObjectStorage.downloadAsBytes(storageKey);
+      const result = await spartaObjectStorage.downloadFile(storageKey);
 
       // Handle the Object Storage response format
       let fileBuffer: Buffer;
