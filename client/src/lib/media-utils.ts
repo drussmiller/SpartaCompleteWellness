@@ -104,3 +104,48 @@ export function getVideoThumbnailUrl(mediaUrl: string | null): string | null {
 export function createPosterUrl(videoUrl: string | null): string | null {
   return getVideoThumbnailUrl(videoUrl);
 }
+
+/**
+ * Checks if a URL is a video file based on its extension
+ */
+export function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.flv', '.wmv'];
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return videoExtensions.some(ext => cleanUrl.endsWith(ext));
+}
+
+/**
+ * Creates a media URL for display (alias for createDirectDownloadUrl)
+ */
+export function createMediaUrl(key: string | null): string {
+  return createDirectDownloadUrl(key);
+}
+
+/**
+ * Creates a thumbnail URL for videos
+ */
+export function createThumbnailUrl(videoUrl: string | null): string {
+  if (!videoUrl) return '';
+
+  // Extract filename from video URL
+  let filename = '';
+  if (videoUrl.includes('storageKey=')) {
+    const params = new URLSearchParams(videoUrl.split('?')[1]);
+    const storageKey = params.get('storageKey');
+    if (storageKey) {
+      filename = storageKey.split('/').pop() || '';
+    }
+  } else {
+    filename = videoUrl.split('/').pop() || '';
+  }
+
+  if (!filename) return '';
+
+  // Create thumbnail filename (replace video extension with .jpg)
+  const baseName = filename.substring(0, filename.lastIndexOf('.'));
+  const thumbnailFilename = `${baseName}.jpg`;
+
+  // Return thumbnail URL using Object Storage
+  return createDirectDownloadUrl(`shared/uploads/${thumbnailFilename}`);
+}
