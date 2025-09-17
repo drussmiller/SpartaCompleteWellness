@@ -28,12 +28,16 @@ async function testCurrentObjectStorage() {
       files = listResult;
     } else if (listResult && typeof listResult === 'object' && 'ok' in listResult) {
       files = listResult.ok ? (listResult.value || []) : [];
+    } else if (listResult && typeof listResult === 'object' && 'value' in listResult && Array.isArray(listResult.value)) {
+      files = listResult.value || [];
     } else if (listResult && typeof listResult === 'object' && 'files' in listResult) {
       files = listResult.files || [];
     }
     
     console.log('List successful, found', files.length, 'files');
-    console.log('Sample files:', files.slice(0, 3));
+    if (files.length > 0) {
+      console.log('Sample files:', files.slice(0, 3).map(f => typeof f === 'string' ? f : f.name || f.key || f));
+    }
     
     // Test specific files that should exist
     const testKeys = [
