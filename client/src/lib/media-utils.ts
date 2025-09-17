@@ -1,134 +1,126 @@
-/**
- * Simple Media URL Utilities
- * 
- * This module provides clean, simple media URL handling without recursive patterns.
- */
+
+import { createDirectDownloadUrl } from './object-storage-utils';
 
 /**
- * Extracts a clean filename from any URL or path
- */
-function extractCleanFilename(input: string): string | null {
-  if (!input) return null;
-
-  // If it's a base64 data URL, return null (should be handled separately)
-  if (input.startsWith('data:')) return null;
-
-  // Remove any query parameters first
-  const withoutQuery = input.split('?')[0];
-  
-  // Split by slashes and find the last part that looks like a filename
-  const parts = withoutQuery.split('/');
-  
-  // Look for a part that has a file extension or looks like our filename pattern
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const part = parts[i];
-    if (part && 
-        (part.includes('.') || part.match(/^\d+[-_][a-f0-9]+/)) && 
-        !part.includes('direct-download') && 
-        !part.includes('fileUrl')) {
-      return part;
-    }
-  }
-  
-  return null;
-}
-
-/**
- * Creates a simple, clean media URL
+ * Creates a clean media URL for displaying files
+ * @param mediaUrl The raw media URL from the database
+ * @returns Clean URL for displaying media
  */
 export function createMediaUrl(mediaUrl: string | null): string {
   if (!mediaUrl) return '';
-
+  
   console.log('createMediaUrl called with:', mediaUrl);
-
-  // Handle base64 data URLs directly
-  if (mediaUrl.startsWith('data:')) {
-    console.log('Base64 data URL, returning as-is');
-    return mediaUrl;
-  }
-
-  // Handle full HTTP URLs directly
-  if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
-    console.log('Full HTTP URL, returning as-is');
-    return mediaUrl;
-  }
-
-  // If it's already a serve-file URL, return as-is
-  if (mediaUrl.startsWith('/api/serve-file')) {
-    console.log('Already a serve-file URL, returning as-is');
-    return mediaUrl;
-  }
-
-  // If it's already a direct download URL, return as-is
-  if (mediaUrl.startsWith('/api/object-storage/direct-download')) {
-    console.log('Already a direct download URL, returning as-is');
-    return mediaUrl;
-  }
-
-  // Extract just the filename from the end of the path
-  let filename = mediaUrl;
   
-  // Remove leading slashes and path components
-  if (filename.includes('/')) {
-    filename = filename.split('/').pop() || filename;
+  // Extract filename from various URL formats
+  let filename = '';
+  
+  if (mediaUrl.includes('filename=')) {
+    // Handle /api/serve-file?filename=... format
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
+    filename = urlParams.get('filename') || '';
+  } else if (mediaUrl.includes('storageKey=')) {
+    // Handle Object Storage URL format
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
+    const storageKey = urlParams.get('storageKey') || '';
+    filename = storageKey.split('/').pop() || '';
+  } else if (mediaUrl.startsWith('shared/uploads/')) {
+    // Direct storage key format
+    filename = mediaUrl.split('/').pop() || '';
+  } else {
+    // Direct filename or path
+    filename = mediaUrl.split('/').pop() || mediaUrl;
   }
   
-  // Remove query parameters
-  if (filename.includes('?')) {
-    filename = filename.split('?')[0];
-  }
-
   console.log('Cleaned filename:', filename);
-
-  // Use the /api/serve-file route that works correctly with cache-buster
-  const cacheBuster = Date.now();
-  const result = `/api/serve-file?filename=${encodeURIComponent(filename)}&_cb=${cacheBuster}`;
   
-  console.log('Created clean media URL:', result);
-  return result;
+  // Create Object Storage URL
+  const cleanUrl = createDirectDownloadUrl(`shared/uploads/${filename}`);
+  
+  // Add cache buster to prevent stale images
+  const cacheBuster = Date.now();
+  const separator = cleanUrl.includes('?') ? '&' : '?';
+  const finalUrl = `${cleanUrl}${separator}_cb=${cacheBuster}`;
+  
+  console.log('Created clean media URL:', finalUrl);
+  return finalUrl;
 }
 
 /**
- * Creates a thumbnail URL for a given media file
+ * Creates a simplified poster URL for video thumbnails
+ * @param mediaUrl The media URL to create a poster for
+ * @returns URL for the video poster/thumbnail
  */
-export function createThumbnailUrl(mediaUrl: string | null): string {
+export function createSimplifiedPosterUrl(mediaUrl: string | null): string {
   if (!mediaUrl) return '';
-
-  console.log('createThumbnailUrl called with:', mediaUrl);
-
-  // Handle base64 data URLs - no thumbnails available
-  if (mediaUrl.startsWith('data:')) {
-    return '';
-  }
-
-  // Extract just the filename from the end of the path
-  let filename = mediaUrl;
   
-  // Remove leading slashes and path components
-  if (filename.includes('/')) {
-    filename = filename.split('/').pop() || filename;
+  console.log('createSimplifiedPosterUrl called with:', mediaUrl);
+  
+  // Extract base filename without extension
+  let baseFilename = '';
+  
+  if (mediaUrl.includes('filename=')) {
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
+    const filename = urlParams.get('filename') || '';
+    baseFilename = filename.replace(/\.[^/.]+$/, ''); // Remove extension
+  } else if (mediaUrl.includes('storageKey=')) {
+    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
+    const storageKey = urlParams.get('storageKey') || '';
+    const filename = storageKey.split('/').pop() || '';
+    baseFilename = filename.replace(/\.[^/.]+$/, '');
+  } else {
+    const filename = mediaUrl.split('/').pop() || mediaUrl;
+    baseFilename = filename.replace(/\.[^/.]+$/, '');
   }
   
-  // Remove query parameters
-  if (filename.includes('?')) {
-    filename = filename.split('?')[0];
+  // Create thumbnail filename with .jpg extension
+  const thumbnailFilename = `${baseFilename}.jpg`;
+  
+  // Check if the URL already has the correct JPG format
+  if (mediaUrl.includes(`${thumbnailFilename}`)) {
+    console.log('Video player: URL already has correct JPG format:', mediaUrl);
+    return createDirectDownloadUrl(`shared/uploads/${thumbnailFilename}`);
   }
+  
+  console.log('Video player: Converting to JPG thumbnail:', thumbnailFilename);
+  return createDirectDownloadUrl(`shared/uploads/${thumbnailFilename}`);
+}
 
-  console.log('Creating thumbnail for filename:', filename);
+/**
+ * Checks if a URL is a video based on the file extension
+ * @param url The URL to check
+ * @returns true if the URL appears to be a video
+ */
+export function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+  
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv'];
+  const lowerUrl = url.toLowerCase();
+  
+  return videoExtensions.some(ext => lowerUrl.includes(ext));
+}
 
-  // For video files (.mov, .mp4, etc.), use simplified thumbnail naming
-  if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
-    const baseName = filename.substring(0, filename.lastIndexOf('.'));
-    const thumbnailFilename = `${baseName}.jpg`;
-    const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
-    console.log('Created video thumbnail URL:', result);
-    return result;
-  }
+/**
+ * Gets the file extension from a URL
+ * @param url The URL to extract extension from
+ * @returns The file extension (with dot) or empty string
+ */
+export function getFileExtension(url: string): string {
+  if (!url) return '';
+  
+  const filename = url.split('/').pop() || '';
+  const match = filename.match(/\.[^.]*$/);
+  return match ? match[0] : '';
+}
 
-  // For images, try thumbnail with .poster.jpg suffix
-  const fileBase = filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
-  const thumbnailFilename = `${fileBase}.poster.jpg`;
-  const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
-  console.log('Created image thumbnail URL:', result);
-  return result;
+/**
+ * Creates a cache-busted URL
+ * @param url The base URL
+ * @returns URL with cache buster parameter
+ */
+export function addCacheBuster(url: string): string {
+  if (!url) return '';
+  
+  const cacheBuster = Date.now();
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}_cb=${cacheBuster}`;
 }

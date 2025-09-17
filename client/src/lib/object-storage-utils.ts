@@ -1,3 +1,4 @@
+
 /**
  * Object Storage Utils
  * This file provides utility functions for working with Object Storage
@@ -22,12 +23,6 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // If this is already a serve-file URL, return as-is
-  if (key.startsWith('/api/serve-file')) {
-    console.log('Already a serve-file URL, returning as-is');
-    return key;
-  }
-
   // If this is a full URL (starts with http), return as-is
   if (key.startsWith('http://') || key.startsWith('https://')) {
     console.log('Already a full URL, returning as-is');
@@ -40,7 +35,7 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // Handle /api/serve-file URLs by extracting the filename parameter (legacy support)
+  // Handle /api/serve-file URLs by extracting the filename parameter
   if (key.includes('/api/serve-file') && key.includes('filename=')) {
     const urlParams = new URLSearchParams(key.split('?')[1] || '');
     const filename = urlParams.get('filename');
@@ -133,19 +128,14 @@ export async function testObjectStorage(): Promise<any> {
   }
 }
 
+/**
+ * Creates Object Storage URL from a file path or key
+ * @param path The file path or storage key
+ * @returns Object Storage URL
+ */
 export function getObjectStorageUrl(path: string): string {
   if (!path) return '';
 
-  // Check if this is already an Object Storage URL to prevent nesting
-  if (path.includes('direct-download?fileUrl=')) {
-    return path;
-  }
-
-  // Remove leading slash if present
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-
-  // Add timestamp to prevent caching issues
-  const timestamp = Date.now();
-
-  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}&v=${timestamp}`;
+  // Use the main function to handle all URL conversion
+  return createDirectDownloadUrl(path);
 }
