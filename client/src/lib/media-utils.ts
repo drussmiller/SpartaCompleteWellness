@@ -64,7 +64,7 @@ export function isImageFile(filename: string | null): boolean {
  * For .mov files, looks for .mov.poster.jpg thumbnail
  * For other videos, creates a generic thumbnail URL
  */
-function getVideoThumbnailUrl(mediaUrl: string | null): string | null {
+export function getVideoThumbnailUrl(mediaUrl: string | null): string | null {
   if (!mediaUrl) return null;
 
   try {
