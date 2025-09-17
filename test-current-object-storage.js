@@ -21,8 +21,19 @@ async function testCurrentObjectStorage() {
     // Test list operation (non-intrusive)
     console.log('Testing list operation...');
     const listResult = await client.list({ limit: 5 });
-    console.log('List successful, found', listResult.length, 'files');
-    console.log('Sample files:', listResult.slice(0, 3));
+    
+    // Handle different response formats
+    let files = [];
+    if (Array.isArray(listResult)) {
+      files = listResult;
+    } else if (listResult && typeof listResult === 'object' && 'ok' in listResult) {
+      files = listResult.ok ? (listResult.value || []) : [];
+    } else if (listResult && typeof listResult === 'object' && 'files' in listResult) {
+      files = listResult.files || [];
+    }
+    
+    console.log('List successful, found', files.length, 'files');
+    console.log('Sample files:', files.slice(0, 3));
     
     // Test specific files that should exist
     const testKeys = [
