@@ -29,7 +29,6 @@ export const users = pgTable("users", {
   waiverSignedAt: timestamp("waiver_signed_at"),
   waiverSignature: text("waiver_signature"),
   preferredActivityTypeId: integer("preferred_activity_type_id").default(1), // Default to "Bands" workout type
-  status: integer("status").default(1), // 1 = active, 0 = inactive
 });
 
 // Organizations table (top level)

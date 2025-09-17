@@ -1,4 +1,3 @@
-
 /**
  * Object Storage Utils
  * This file provides utility functions for working with Object Storage
@@ -10,10 +9,7 @@
  * @returns URL for direct download
  */
 export function createDirectDownloadUrl(key: string | null): string {
-  if (!key) {
-    console.log('createDirectDownloadUrl: No key provided');
-    return '';
-  }
+  if (!key) return '';
 
   console.log('createDirectDownloadUrl called with:', key);
 
@@ -35,7 +31,7 @@ export function createDirectDownloadUrl(key: string | null): string {
     return key;
   }
 
-  // Handle /api/serve-file URLs by extracting the filename parameter
+  // Handle /api/serve-file URLs by extracting the filename parameter (legacy support)
   if (key.includes('/api/serve-file') && key.includes('filename=')) {
     const urlParams = new URLSearchParams(key.split('?')[1] || '');
     const filename = urlParams.get('filename');
@@ -50,15 +46,22 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Clean the key - remove leading slash and normalize path
   let cleanKey = key.replace(/^\/+/, '');
 
-  // If the key already starts with shared/uploads/, use Object Storage direct download
+  // If the key already starts with shared/uploads/, use it as-is (this is the new format)
   if (cleanKey.startsWith('shared/uploads/')) {
-    console.log(`Using Object Storage direct download for: ${cleanKey}`);
+    console.log(`Direct Object Storage path: ${cleanKey}`);
     return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(cleanKey)}`;
   }
 
-  // Extract filename and construct proper Object Storage path
-  const filename = cleanKey.split('/').pop() || cleanKey;
-  const storageKey = `shared/uploads/${filename}`;
+  // If the key already starts with shared/uploads/, use it as-is
+  let storageKey;
+  if (cleanKey.startsWith('shared/uploads/')) {
+    storageKey = cleanKey;
+  } else {
+    // Extract just the filename if this looks like a full path
+    const filename = cleanKey.split('/').pop() || cleanKey;
+    storageKey = `shared/uploads/${filename}`;
+  }
+
   console.log(`Creating Object Storage URL: ${key} -> storageKey=${storageKey}`);
 
   return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
@@ -128,14 +131,19 @@ export async function testObjectStorage(): Promise<any> {
   }
 }
 
-/**
- * Creates Object Storage URL from a file path or key
- * @param path The file path or storage key
- * @returns Object Storage URL
- */
 export function getObjectStorageUrl(path: string): string {
   if (!path) return '';
 
-  // Use the main function to handle all URL conversion
-  return createDirectDownloadUrl(path);
+  // Check if this is already an Object Storage URL to prevent nesting
+  if (path.includes('direct-download?fileUrl=')) {
+    return path;
+  }
+
+  // Remove leading slash if present
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+  // Add timestamp to prevent caching issues
+  const timestamp = Date.now();
+
+  return `/api/object-storage/direct-download?fileUrl=${encodeURIComponent(cleanPath)}&v=${timestamp}`;
 }
