@@ -124,3 +124,12 @@ export function addCacheBuster(url: string): string {
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}_cb=${cacheBuster}`;
 }
+
+/**
+ * Creates a thumbnail URL (alias for createSimplifiedPosterUrl)
+ * @param mediaUrl The media URL to create a thumbnail for
+ * @returns URL for the thumbnail
+ */
+export function createThumbnailUrl(mediaUrl: string | null): string {
+  return createSimplifiedPosterUrl(mediaUrl);
+}
