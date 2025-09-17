@@ -75,18 +75,14 @@ export function VideoPlayer({
 
   const [showVideo, setShowVideo] = useState(false);
   const [posterError, setPosterError] = useState(false);
-  const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
+  const [thumbnailLoaded, setThumbnailLoaded] = useState(true);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [location, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize thumbnail loading immediately
-  useEffect(() => {
-    // Always show thumbnails immediately - no loading state
-    setThumbnailLoaded(true);
-  }, [simplifiedPoster]);
+  // No loading effect needed - thumbnails show immediately
 
   // Handle thumbnail click - navigate to video player page
   const handleThumbnailClick = () => {
