@@ -234,7 +234,8 @@ export default function HomePage() {
                   className="w-36 h-auto mx-auto"
                   onError={(e) => {
                     console.error("Error loading logo:", e);
-                    e.currentTarget.src = "/fallback-logo.png";
+                    // Fallback to a different logo if the main one fails
+                    e.currentTarget.src = "/Spartans_LOGO.png";
                   }}
                 />
               </div>
