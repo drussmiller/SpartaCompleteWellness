@@ -266,7 +266,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Organization updated successfully",
       });
       setEditingOrganization(null);
+      // Invalidate all affected entities since organization status changes can cascade
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -292,7 +296,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Group updated successfully",
       });
       setEditingGroup(null);
+      // Invalidate all affected entities since group status changes can cascade
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -764,6 +771,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const description = formData.get('description') as string;
                                 const maxSize = parseInt(formData.get('maxSize') as string) || 6;
                                 const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
+                                const statusValue = formData.get('status') as string;
+                                const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
 
                                 if (!name || !selectedGroupId) {
                                   toast({
@@ -781,6 +791,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     description,
                                     groupId,
                                     maxSize,
+                                    status: Number(status),
                                   }
                                 });
                               }}>
@@ -815,6 +826,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     placeholder="Maximum team size"
                                     className="text-sm"
                                   />
+                                  <Select name="status" defaultValue={team.status?.toString() || "1"}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">Active</SelectItem>
+                                      <SelectItem value="0">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
@@ -833,10 +853,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </form>
                             ) : (
                               <>
-                                <CardTitle className="text-lg">{team.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle className="text-lg">{team.name}</CardTitle>
+                                </div>
                                 <CardDescription className="line-clamp-2 text-sm">
                                   {team.description}
                                 </CardDescription>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {team.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </>
                             )}
                           </div>
@@ -965,6 +993,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const formData = new FormData(e.currentTarget);
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
+                                const statusValue = formData.get('status') as string;
+                                const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
 
                                 if (!name) {
                                   toast({
@@ -979,7 +1010,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   organizationId: organization.id,
                                   data: {
                                     name,
-                                    description: description || undefined
+                                    description: description || undefined,
+                                    status: Number(status)
                                   }
                                 });
                               }} className="space-y-2">
@@ -994,6 +1026,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   defaultValue={organization.description || ''}
                                   placeholder="Description"
                                 />
+                                <Select name="status" defaultValue={organization.status?.toString() || "1"}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">Active</SelectItem>
+                                    <SelectItem value="0">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <div className="flex gap-2">
                                   <Button type="submit" size="sm" disabled={updateOrganizationMutation.isPending}>
                                     {updateOrganizationMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1011,8 +1052,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </form>
                             ) : (
                               <div>
-                                <CardTitle>{organization.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle>{organization.name}</CardTitle>
+                                </div>
                                 <CardDescription>{organization.description}</CardDescription>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={organization.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {organization.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1128,6 +1177,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 const name = formData.get('name') as string;
                                 const description = formData.get('description') as string;
                                 const organizationId = parseInt(formData.get('organizationId') as string);
+                                const statusValue = formData.get('status') as string;
+                                const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
 
                                 if (!name || !organizationId) {
                                   toast({
@@ -1143,7 +1195,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     name,
                                     description: description || undefined,
-                                    organizationId
+                                    organizationId,
+                                    status: Number(status)
                                   }
                                 });
                               }} className="space-y-2">
@@ -1170,6 +1223,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <Select name="status" defaultValue={group.status?.toString() || "1"}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">Active</SelectItem>
+                                    <SelectItem value="0">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <div className="flex gap-2">
                                   <Button type="submit" size="sm" disabled={updateGroupMutation.isPending}>
                                     {updateGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1187,8 +1249,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </form>
                             ) : (
                               <div>
-                                <CardTitle>{group.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle>{group.name}</CardTitle>
+                                </div>
                                 <CardDescription>{group.description}</CardDescription>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={group.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {group.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1253,6 +1323,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   data: {
                                     username: formData.get('username') as string,
                                     email: formData.get('email') as string,
+                                    status: ((statusValue) => {
+                                      const parsed = statusValue ? parseInt(statusValue) : 1;
+                                      return (parsed === 0 || parsed === 1) ? parsed : 1;
+                                    })(formData.get('status') as string),
                                   }
                                 });
                               }}>
@@ -1268,6 +1342,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     type="email"
                                     className="text-sm"
                                   />
+                                  <Select name="status" defaultValue={user.status?.toString() || "1"}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">Active</SelectItem>
+                                      <SelectItem value="0">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                   <div className="flex gap-2">
                                     <Button type="submit" size="sm">Save</Button>
                                     <Button
@@ -1332,6 +1415,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   Progress: Week {userProgress[user.id]?.week ?? user.currentWeek},
                                   Day {userProgress[user.id]?.day ?? user.currentDay}
                                 </div>
+                                <p className="text-sm mt-2">
+                                  <span className="font-medium">Status: </span>
+                                  <span className={user.status === 1 ? "text-green-600" : "text-red-600"}>
+                                    {user.status === 1 ? "Active" : "Inactive"}
+                                  </span>
+                                </p>
                               </>
                             )}
                           </div>

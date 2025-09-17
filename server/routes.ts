@@ -52,11 +52,12 @@ import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
 import { logger } from "./logger";
 import { WebSocketServer, WebSocket } from "ws";
-import { objectStorageRouter } from "./object-storage-routes";
+// Object Storage routes removed - not needed
 import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
@@ -1461,7 +1462,11 @@ export const registerRoutes = async (
       const updateData = req.body;
 
       // Update the team in the database
-      const updatedTeam = await storage.updateTeam(teamId, updateData);
+      const [updatedTeam] = await db
+        .update(teams)
+        .set(updateData)
+        .where(eq(teams.id, teamId))
+        .returning();
 
       logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
       res.status(200).json(updatedTeam);
@@ -1546,13 +1551,65 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid organization ID" });
       }
 
+      // Validate status field if present
+      if (req.body.status !== undefined) {
+        const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
+        const statusValidation = statusSchema.safeParse({ status: req.body.status });
+        if (!statusValidation.success) {
+          return res.status(400).json({ message: "Status must be 0 or 1" });
+        }
+      }
+
       logger.info(`Updating organization ${organizationId} with data:`, req.body);
 
-      // Update the organization in the database
-      const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
+      // Use database transaction for atomic updates
+      const result = await db.transaction(async (tx) => {
+        // Update the organization using transaction
+        const [updatedOrganization] = await tx
+          .update(organizations)
+          .set(req.body)
+          .where(eq(organizations.id, organizationId))
+          .returning();
+
+        // If organization status is being set to inactive (0), cascade to all groups, teams, and users
+        if (req.body.status === 0) {
+          logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
+          
+          // Get all groups in this organization
+          const orgGroups = await storage.getGroupsByOrganization(organizationId);
+          const groupIds = orgGroups.map(g => g.id);
+          
+          if (groupIds.length > 0) {
+            // Update all groups in this organization to inactive
+            await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
+            logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+            
+            // Get all teams in these groups
+            const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
+            const teamIds = teamsInGroups.map(t => t.id);
+            
+            if (teamIds.length > 0) {
+              // Update all teams in these groups to inactive
+              await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+              logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
+              
+              // Get all users in these teams and update them to inactive
+              const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+              const userIds = usersInTeams.map(u => u.id);
+              
+              if (userIds.length > 0) {
+                await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+                logger.info(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
+              }
+            }
+          }
+        }
+
+        return updatedOrganization;
+      });
 
       logger.info(`Organization ${organizationId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedOrganization);
+      res.status(200).json(result);
     } catch (error) {
       logger.error(`Error updating organization ${req.params.id}:`, error);
       res.status(500).json({
@@ -1641,13 +1698,55 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
+      // Validate status field if present
+      if (req.body.status !== undefined) {
+        const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
+        const statusValidation = statusSchema.safeParse({ status: req.body.status });
+        if (!statusValidation.success) {
+          return res.status(400).json({ message: "Status must be 0 or 1" });
+        }
+      }
+
       logger.info(`Updating group ${groupId} with data:`, req.body);
 
-      // Update the group in the database
-      const updatedGroup = await storage.updateGroup(groupId, req.body);
+      // Use database transaction for atomic updates
+      const result = await db.transaction(async (tx) => {
+        // Update the group using transaction
+        const [updatedGroup] = await tx
+          .update(groups)
+          .set(req.body)
+          .where(eq(groups.id, groupId))
+          .returning();
+
+        // If group status is being set to inactive (0), cascade to all teams and users
+        if (req.body.status === 0) {
+          logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
+          
+          // Get all teams in this group
+          const teamsInGroup = await tx.select().from(teams).where(eq(teams.groupId, groupId));
+          const teamIds = teamsInGroup.map(t => t.id);
+          
+          if (teamIds.length > 0) {
+            // Update all teams in this group to inactive
+            await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+            logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
+            
+            // Get all users in these teams and update them to inactive
+            const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+            const userIds = usersInTeams.map(u => u.id);
+            
+            if (userIds.length > 0) {
+              await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+              logger.info(`Set ${userIds.length} users to inactive for group ${groupId}`);
+            }
+          }
+        }
+
+        return updatedGroup;
+      });
 
       logger.info(`Group ${groupId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedGroup);
+      res.status(200).json(result);
     } catch (error) {
       logger.error(`Error updating group ${req.params.id}:`, error);
       res.status(500).json({
@@ -3072,22 +3171,34 @@ export const registerRoutes = async (
         }
       }
 
-      // Prepare update data
-      const updateData = {
-        ...req.body,
-        teamJoinedAt: req.body.teamId ? new Date() : null,
-      };
-
-      // Update user
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
+      // Prepare update data - explicitly handle falsy values like status=0
+      const updateData: any = { ...req.body };
+      
+      // Fix teamJoinedAt logic to handle teamId=0 properly
+      if (req.body.teamId !== undefined) {
+        updateData.teamJoinedAt = req.body.teamId !== null && req.body.teamId !== 0 ? new Date() : null;
       }
+
+      logger.info(`PATCH /api/users/${userId} - Request body:`, JSON.stringify(req.body));
+      logger.info(`PATCH /api/users/${userId} - Update data:`, JSON.stringify(updateData));
+
+      // Use database transaction for atomic updates
+      const updatedUser = await db.transaction(async (tx) => {
+        const [result] = await tx
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, userId))
+          .returning();
+
+        if (!result) {
+          throw new Error("User not found");
+        }
+
+        logger.info(`PATCH /api/users/${userId} - Database result:`, JSON.stringify(result));
+        return result;
+      });
+
+      logger.info(`User ${userId} updated successfully by admin ${req.user.id}`);
 
       // Return sanitized user data
       res.setHeader("Content-Type", "application/json");
@@ -3100,6 +3211,7 @@ export const registerRoutes = async (
         isTeamLead: updatedUser.isTeamLead,
         imageUrl: updatedUser.imageUrl,
         teamJoinedAt: updatedUser.teamJoinedAt,
+        status: updatedUser.status,
       });
     } catch (error) {
       logger.error("Error updating user:", error);
@@ -4912,8 +5024,7 @@ export const registerRoutes = async (
     }
   };
 
-  // Register Object Storage routes
-  app.use("/api/object-storage", objectStorageRouter);
+  // Object Storage routes removed - not needed
 
   // Main file serving route that thumbnails expect
   app.get("/api/serve-file", async (req: Request, res: Response) => {
@@ -4926,180 +5037,55 @@ export const registerRoutes = async (
           .json({ error: "Filename parameter is required" });
       }
 
-      console.log(`[serve-file] Request for filename: ${filename}`);
-      console.log(`[serve-file] Full request details:`, {
-        originalUrl: req.originalUrl,
-        query: req.query,
-        headers: {
-          referer: req.headers.referer,
-          userAgent: req.headers["user-agent"]?.substring(0, 50),
-        },
-      });
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Use Object Storage client
-      const { Client } = await import("@replit/object-storage");
-      const objectStorage = new Client();
+      // Import the Object Storage utility that was working before
+      const { spartaObjectStorage } = await import(
+        "./sparta-object-storage-final"
+      );
 
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === "true";
 
       // Construct the proper Object Storage key
-      let storageKey;
+      let storageKey: string;
       if (isThumbnail) {
-        storageKey = `shared/uploads/thumbnails/${filename}`;
+        storageKey = filename.includes("thumbnail")
+          ? `shared/uploads/${filename}`
+          : `shared/uploads/thumbnails/${filename}`;
       } else {
-        // For regular files, add the shared/uploads prefix if not already present
+        // For regular files, construct the key as it was stored
         storageKey = filename.startsWith("shared/")
           ? filename
           : `shared/uploads/${filename}`;
       }
 
-      // Download the file from Object Storage with proper error handling
-      console.log(
-        `[serve-file] Attempting to download from Object Storage key: ${storageKey}`,
-      );
-      console.log(
-        `[serve-file] isThumbnail: ${isThumbnail}, constructed storageKey: ${storageKey}`,
-      );
-      const result = await objectStorage.downloadAsBytes(storageKey);
-      console.log(`[serve-file] Object Storage result:`, {
-        type: typeof result,
-        hasOk: result && typeof result === "object" && "ok" in result,
-        hasValue: result && typeof result === "object" && "value" in result,
-        ok:
-          result && typeof result === "object" && "ok" in result
-            ? result.ok
-            : undefined,
-        valueType:
-          result && typeof result === "object" && "value" in result
-            ? typeof result.value
-            : undefined,
-        isBuffer: Buffer.isBuffer(result),
-        resultKeys:
-          result && typeof result === "object"
-            ? Object.keys(result)
-            : undefined,
-        valueIsArray:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value)
-            ? result.value.length
-            : undefined,
-        firstElementType:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value) &&
-          result.value.length > 0
-            ? typeof result.value[0]
-            : undefined,
-        firstElementIsBuffer:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value) &&
-          result.value.length > 0
-            ? Buffer.isBuffer(result.value[0])
-            : undefined,
-      });
+      // Download the file from Object Storage
+      const result = await spartaObjectStorage.downloadAsBytes(storageKey);
 
-      // Handle the Object Storage response format - simplified and more robust
+      // Handle the Object Storage response format
       let fileBuffer: Buffer;
 
       if (Buffer.isBuffer(result)) {
         fileBuffer = result;
-        console.log(
-          `[serve-file] Direct Buffer response, size: ${fileBuffer.length} bytes`,
-        );
-      } else if (result && typeof result === "object") {
-        // Check for value property first (most common case)
-        if (result.value !== undefined) {
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-            console.log(
-              `[serve-file] Object with Buffer value, size: ${fileBuffer.length} bytes`,
-            );
-          } else if (Array.isArray(result.value)) {
-            // Handle array with one Buffer element (common Object Storage format)
-            if (result.value.length === 1 && Buffer.isBuffer(result.value[0])) {
-              fileBuffer = result.value[0];
-              console.log(
-                `[serve-file] Object with array containing Buffer, size: ${fileBuffer.length} bytes`,
-              );
-            } else {
-              // Convert entire array to Buffer
-              fileBuffer = Buffer.from(result.value);
-              console.log(
-                `[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`,
-              );
-            }
-          } else if (typeof result.value === "string") {
-            fileBuffer = Buffer.from(result.value, "base64");
-            console.log(
-              `[serve-file] Object with string value converted from base64, size: ${fileBuffer.length} bytes`,
-            );
-          } else {
-            logger.error(
-              `Unexpected value type from Object Storage for ${storageKey}:`,
-              typeof result.value,
-            );
-            return res
-              .status(404)
-              .json({
-                error: "File not found",
-                message: `Invalid data format for ${storageKey}`,
-              });
-          }
-        } else if ("ok" in result) {
-          // Handle legacy ok/error format
-          if (result.ok === false || !result.value) {
-            console.log(
-              `[serve-file] Object Storage returned error for ${storageKey}:`,
-              result.error || "File not found",
-            );
-            return res
-              .status(404)
-              .json({
-                error: "File not found",
-                message: `Could not retrieve ${storageKey}`,
-              });
-          }
-
-          // If ok is true, try to extract the value
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value)) {
-            fileBuffer = Buffer.from(result.value);
-          } else {
-            fileBuffer = Buffer.from(result.value, "base64");
-          }
-          console.log(
-            `[serve-file] Legacy ok format, Buffer size: ${fileBuffer.length} bytes`,
-          );
+      } else if (result && typeof result === "object" && "value" in result) {
+        if (Buffer.isBuffer(result.value)) {
+          fileBuffer = result.value;
+        } else if (Array.isArray(result.value)) {
+          fileBuffer = Buffer.from(result.value);
         } else {
-          logger.error(
-            `Unknown Object Storage response format for ${storageKey}:`,
-            Object.keys(result),
-          );
-          return res
-            .status(404)
-            .json({
-              error: "File not found",
-              message: `Could not retrieve ${storageKey}`,
-            });
+          fileBuffer = Buffer.from(result.value, "base64");
         }
       } else {
         logger.error(
-          `Invalid response format from Object Storage for ${storageKey}:`,
+          `Unexpected Object Storage response format for ${storageKey}:`,
           typeof result,
         );
         return res
-          .status(500)
+          .status(404)
           .json({
-            error: "Failed to serve file",
-            message: "Invalid response from storage",
+            error: "File not found",
+            message: `Could not retrieve ${storageKey}`,
           });
       }
 
@@ -5136,10 +5122,15 @@ export const registerRoutes = async (
       }
 
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
-      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader(
+        "Access-Control-Allow-Origin",
+        "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev",
+      );
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
       res.setHeader(
         "Access-Control-Allow-Headers",
         "Origin, X-Requested-With, Content-Type, Accept",
@@ -5151,12 +5142,11 @@ export const registerRoutes = async (
       );
       return res.send(fileBuffer);
     } catch (error) {
-      console.error(`[serve-file] ERROR serving file:`, error);
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
       });
-      return res.status(500).json({
-        error: "Failed to serve file",
+      return res.status(404).json({
+        error: "File not found",
         message: error instanceof Error ? error.message : "Unknown error",
       });
     }
