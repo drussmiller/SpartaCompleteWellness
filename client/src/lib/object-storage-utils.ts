@@ -55,18 +55,18 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Clean the key - remove leading slash and normalize path
   let cleanKey = key.replace(/^\/+/, '');
 
-  // If the key already starts with shared/uploads/, use serve-file endpoint
+  // If the key already starts with shared/uploads/, use Object Storage direct download
   if (cleanKey.startsWith('shared/uploads/')) {
-    const filename = cleanKey.replace('shared/uploads/', '');
-    console.log(`Using serve-file for Object Storage file: ${filename}`);
-    return `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+    console.log(`Using Object Storage direct download for: ${cleanKey}`);
+    return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(cleanKey)}`;
   }
 
-  // Extract filename and use serve-file endpoint
+  // Extract filename and construct proper Object Storage path
   const filename = cleanKey.split('/').pop() || cleanKey;
-  console.log(`Creating serve-file URL: ${key} -> filename=${filename}`);
+  const storageKey = `shared/uploads/${filename}`;
+  console.log(`Creating Object Storage URL: ${key} -> storageKey=${storageKey}`);
 
-  return `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+  return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
 }
 
 /**

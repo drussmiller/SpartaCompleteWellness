@@ -5026,6 +5026,94 @@ export const registerRoutes = async (
 
   // Object Storage routes removed - not needed
 
+  // Object Storage direct download route
+  app.get("/api/object-storage/direct-download", async (req: Request, res: Response) => {
+    try {
+      const storageKey = req.query.storageKey as string;
+
+      if (!storageKey) {
+        return res.status(400).json({ error: "Storage key parameter is required" });
+      }
+
+      logger.info(`Object Storage direct download: ${storageKey}`);
+
+      // Import Object Storage client
+      const { Client } = await import("@replit/object-storage");
+      const objectStorage = new Client();
+
+      // Download the file from Object Storage
+      const result = await objectStorage.downloadAsBytes(storageKey);
+
+      // Handle the Object Storage response format
+      let fileBuffer: Buffer;
+
+      if (Buffer.isBuffer(result)) {
+        fileBuffer = result;
+      } else if (result && typeof result === "object" && "value" in result) {
+        if (Buffer.isBuffer(result.value)) {
+          fileBuffer = result.value;
+        } else if (Array.isArray(result.value)) {
+          fileBuffer = Buffer.from(result.value);
+        } else {
+          fileBuffer = Buffer.from(result.value, "base64");
+        }
+      } else {
+        logger.error(`Object Storage download failed for ${storageKey}:`, typeof result);
+        return res.status(404).json({ 
+          error: "File not found", 
+          message: `Could not retrieve ${storageKey}` 
+        });
+      }
+
+      // Set appropriate content type
+      const filename = storageKey.split('/').pop() || '';
+      const ext = filename.toLowerCase().split('.').pop();
+      let contentType = "application/octet-stream";
+
+      switch (ext) {
+        case "jpg":
+        case "jpeg":
+          contentType = "image/jpeg";
+          break;
+        case "png":
+          contentType = "image/png";
+          break;
+        case "gif":
+          contentType = "image/gif";
+          break;
+        case "webp":
+          contentType = "image/webp";
+          break;
+        case "svg":
+          contentType = "image/svg+xml";
+          break;
+        case "mp4":
+          contentType = "video/mp4";
+          break;
+        case "mov":
+          contentType = "video/quicktime";
+          break;
+        case "webm":
+          contentType = "video/webm";
+          break;
+      }
+
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("Content-Length", fileBuffer.length);
+
+      logger.info(`Successfully served from Object Storage: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
+
+    } catch (error) {
+      logger.error(`Error serving from Object Storage: ${error}`);
+      return res.status(404).json({
+        error: "File not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Main file serving route that thumbnails expect
   app.get("/api/serve-file", async (req: Request, res: Response) => {
     try {
