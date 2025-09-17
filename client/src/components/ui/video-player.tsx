@@ -78,29 +78,19 @@ export function VideoPlayer({
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
-  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
   const [location, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize with blank placeholder, then load thumbnail
+  // Initialize thumbnail loading immediately
   useEffect(() => {
-    // Start with blank placeholder for a brief moment
-    setShowingBlankPlaceholder(true);
     setThumbnailLoaded(false);
 
-    // After a brief delay, start loading the thumbnail
-    const timer = setTimeout(() => {
-      setShowingBlankPlaceholder(false);
-
-      if (!simplifiedPoster) {
-        // If no poster, show fallback immediately
-        setThumbnailLoaded(true);
-      }
-      // If we have a poster, thumbnailLoaded will be set by onLoad event
-    }, 100); // Very brief delay to prevent video flash
-
-    return () => clearTimeout(timer);
+    if (!simplifiedPoster) {
+      // If no poster, show fallback immediately
+      setThumbnailLoaded(true);
+    }
+    // If we have a poster, thumbnailLoaded will be set by onLoad event
   }, [simplifiedPoster]);
 
   // Handle thumbnail click - navigate to video player page
@@ -213,13 +203,8 @@ export function VideoPlayer({
       {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show blank placeholder first */}
-          {showingBlankPlaceholder && (
-            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
-          )}
-
           {/* Show thumbnail after placeholder, only when loaded */}
-          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
+          {thumbnailLoaded && simplifiedPoster && !posterError && (
             <>
               <div 
                 className="w-full cursor-pointer video-thumbnail-container"
@@ -260,7 +245,7 @@ export function VideoPlayer({
           )}
 
           {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
-          {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
+          {thumbnailLoaded && (!simplifiedPoster || posterError) && (
             <>
               <div 
                 className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -292,7 +277,7 @@ export function VideoPlayer({
           )}
 
           {/* Loading thumbnail (hidden image to trigger load) */}
-          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
+          {!thumbnailLoaded && simplifiedPoster && (
             <img 
               src={simplifiedPoster} 
               alt="Video thumbnail" 
