@@ -3,7 +3,15 @@
  * This file provides utility functions for handling media files and URLs
  */
 
-import { createDirectDownloadUrl } from './object-storage-utils';
+/**
+ * Creates a direct download URL for Object Storage keys
+ */
+export function createDirectDownloadUrl(key: string | null): string {
+  if (!key) return '';
+
+  // Create Object Storage direct download URL
+  return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(key)}`;
+}
 
 /**
  * Creates a clean file URL from various input formats
@@ -23,7 +31,8 @@ export function createCleanFileUrl(url: string | null): string {
  * This is an alias for getVideoThumbnailUrl to maintain compatibility
  */
 export function createThumbnailUrl(mediaUrl: string | null): string | null {
-  return getVideoThumbnailUrl(mediaUrl);
+  const thumbnailUrl = getVideoThumbnailUrl(mediaUrl);
+  return thumbnailUrl || '';
 }
 
 /**
@@ -55,46 +64,34 @@ export function isImageFile(filename: string | null): boolean {
  * For .mov files, looks for .mov.poster.jpg thumbnail
  * For other videos, creates a generic thumbnail URL
  */
-export function getVideoThumbnailUrl(mediaUrl: string | null): string | null {
+function getVideoThumbnailUrl(mediaUrl: string | null): string | null {
   if (!mediaUrl) return null;
 
-  console.log('getVideoThumbnailUrl called with:', mediaUrl);
+  try {
+    // Extract filename from video URL
+    let filename = '';
+    if (mediaUrl.includes('storageKey=')) {
+      const params = new URLSearchParams(mediaUrl.split('?')[1]);
+      const storageKey = params.get('storageKey');
+      if (storageKey) {
+        filename = storageKey.split('/').pop() || '';
+      }
+    } else {
+      filename = mediaUrl.split('/').pop() || '';
+    }
 
-  // Extract the base filename from the media URL
-  let baseFilename: string;
+    if (!filename) return null;
 
-  if (mediaUrl.includes('storageKey=')) {
-    // Extract from Object Storage URL format
-    const urlParams = new URLSearchParams(mediaUrl.split('?')[1] || '');
-    const storageKey = urlParams.get('storageKey');
-    if (!storageKey) return null;
+    // Create thumbnail filename (replace video extension with .jpg)
+    const baseName = filename.substring(0, filename.lastIndexOf('.'));
+    const thumbnailFilename = `${baseName}.jpg`;
 
-    // Get just the filename from the storage key
-    baseFilename = storageKey.split('/').pop() || storageKey;
-  } else if (mediaUrl.includes('/')) {
-    // Extract filename from path
-    baseFilename = mediaUrl.split('/').pop() || mediaUrl;
-  } else {
-    baseFilename = mediaUrl;
+    // Return thumbnail URL using Object Storage
+    return createDirectDownloadUrl(`shared/uploads/${thumbnailFilename}`);
+  } catch (error) {
+    console.error('Error generating video thumbnail URL:', error);
+    return null;
   }
-
-  console.log('Extracted base filename:', baseFilename);
-
-  // For .mov files, create thumbnail URL
-  if (baseFilename.toLowerCase().endsWith('.mov')) {
-    const thumbnailFilename = `${baseFilename}.poster.jpg`;
-    console.log('Creating thumbnail URL for MOV file:', thumbnailFilename);
-
-    // Use Object Storage format for thumbnail
-    const thumbnailStorageKey = `shared/uploads/${thumbnailFilename}`;
-    const thumbnailUrl = `/api/object-storage/direct-download?storageKey=${encodeURIComponent(thumbnailStorageKey)}`;
-
-    console.log('Generated thumbnail URL:', thumbnailUrl);
-    return thumbnailUrl;
-  }
-
-  // For other video types, we might not have thumbnails yet
-  return null;
 }
 
 /**
@@ -120,32 +117,4 @@ export function isVideoUrl(url: string): boolean {
  */
 export function createMediaUrl(key: string | null): string {
   return createDirectDownloadUrl(key);
-}
-
-/**
- * Creates a thumbnail URL for videos
- */
-export function createThumbnailUrl(videoUrl: string | null): string {
-  if (!videoUrl) return '';
-
-  // Extract filename from video URL
-  let filename = '';
-  if (videoUrl.includes('storageKey=')) {
-    const params = new URLSearchParams(videoUrl.split('?')[1]);
-    const storageKey = params.get('storageKey');
-    if (storageKey) {
-      filename = storageKey.split('/').pop() || '';
-    }
-  } else {
-    filename = videoUrl.split('/').pop() || '';
-  }
-
-  if (!filename) return '';
-
-  // Create thumbnail filename (replace video extension with .jpg)
-  const baseName = filename.substring(0, filename.lastIndexOf('.'));
-  const thumbnailFilename = `${baseName}.jpg`;
-
-  // Return thumbnail URL using Object Storage
-  return createDirectDownloadUrl(`shared/uploads/${thumbnailFilename}`);
 }
