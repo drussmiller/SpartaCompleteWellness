@@ -84,13 +84,8 @@ export function VideoPlayer({
 
   // Initialize thumbnail loading immediately
   useEffect(() => {
-    setThumbnailLoaded(false);
-
-    if (!simplifiedPoster) {
-      // If no poster, show fallback immediately
-      setThumbnailLoaded(true);
-    }
-    // If we have a poster, thumbnailLoaded will be set by onLoad event
+    // Always show thumbnails immediately - no loading state
+    setThumbnailLoaded(true);
   }, [simplifiedPoster]);
 
   // Handle thumbnail click - navigate to video player page
@@ -203,8 +198,8 @@ export function VideoPlayer({
       {/* Show content based on current state */}
       {!showVideo && (
         <div className="relative w-full h-full min-h-[200px]">
-          {/* Show thumbnail after placeholder, only when loaded */}
-          {thumbnailLoaded && simplifiedPoster && !posterError && (
+          {/* Show thumbnail immediately if we have a poster */}
+          {simplifiedPoster && !posterError && (
             <>
               <div 
                 className="w-full cursor-pointer video-thumbnail-container"
@@ -229,6 +224,7 @@ export function VideoPlayer({
                     objectFit: 'cover',
                     objectPosition: 'center'
                   }}
+                  onError={handlePosterError}
                 />
               </div>
               {/* Play button overlay on thumbnail */}
@@ -244,8 +240,8 @@ export function VideoPlayer({
             </>
           )}
 
-          {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
-          {thumbnailLoaded && (!simplifiedPoster || posterError) && (
+          {/* Show fallback if no poster or poster failed */}
+          {(!simplifiedPoster || posterError) && (
             <>
               <div 
                 className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
@@ -276,16 +272,7 @@ export function VideoPlayer({
             </>
           )}
 
-          {/* Loading thumbnail (hidden image to trigger load) */}
-          {!thumbnailLoaded && simplifiedPoster && (
-            <img 
-              src={simplifiedPoster} 
-              alt="Video thumbnail" 
-              onLoad={handlePosterLoad}
-              onError={handlePosterError}
-              style={{ display: 'none' }}
-            />
-          )}
+          
         </div>
       )}
 
