@@ -3511,7 +3511,7 @@ export const registerRoutes = async (
           `Attempting to download video from Object Storage: ${videoKey}`,
         );
 
-        const videoResult = await objectStorage.downloadAsBytes(videoKey);
+        const videoResult = await objectStorage.downloadFile(videoKey);
 
         // Handle Object Storage response format
         let videoBuffer: Buffer;
@@ -5061,7 +5061,7 @@ export const registerRoutes = async (
       }
 
       // Download the file from Object Storage
-      const result = await spartaObjectStorage.downloadAsBytes(storageKey);
+      const result = await spartaObjectStorage.downloadFile(storageKey);
 
       // Handle the Object Storage response format
       let fileBuffer: Buffer;
