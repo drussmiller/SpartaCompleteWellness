@@ -3266,6 +3266,80 @@ export const registerRoutes = async (
     },
   );
 
+  // Object Storage direct download endpoint
+  router.get("/api/object-storage/direct-download", async (req, res) => {
+    try {
+      const { storageKey } = req.query;
+      
+      if (!storageKey || typeof storageKey !== 'string') {
+        return res.status(400).json({ message: "Storage key is required" });
+      }
+
+      console.log(`[object-storage] Attempting to download: ${storageKey}`);
+
+      // Import Object Storage client
+      const { Client } = await import('@replit/object-storage');
+      const objectStorage = new Client();
+
+      // Try to download the file
+      const result = await objectStorage.downloadAsBytes(storageKey);
+      
+      // Handle different response formats
+      let fileBuffer: Buffer;
+      if (Buffer.isBuffer(result)) {
+        fileBuffer = result;
+      } else if (result && typeof result === 'object' && 'ok' in result) {
+        if (result.ok === true && result.value && Buffer.isBuffer(result.value)) {
+          fileBuffer = result.value;
+        } else {
+          console.log(`[object-storage] File not found: ${storageKey}`);
+          return res.status(404).json({ message: "File not found" });
+        }
+      } else {
+        console.log(`[object-storage] Invalid response format for: ${storageKey}`);
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Determine content type based on file extension
+      const fileExtension = storageKey.split('.').pop()?.toLowerCase() || '';
+      let contentType = 'application/octet-stream';
+
+      switch (fileExtension) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+      }
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+      res.send(fileBuffer);
+
+      console.log(`[object-storage] Successfully served ${storageKey} (${fileBuffer.length} bytes)`);
+    } catch (error) {
+      console.error(`[object-storage] Error serving file:`, error);
+      res.status(500).json({ message: "Error serving file" });
+    }
+  });
+
   // Add messages endpoints before return statement
   router.post(
     "/api/messages",
