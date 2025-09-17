@@ -178,25 +178,7 @@ app.use('/api', (req, res, next) => {
         }
 
         // Download the file from Object Storage using the correct method
-        const result = await spartaObjectStorage.downloadFile(storageKey);
-
-        // The downloadFile method returns a Buffer directly
-        let fileBuffer: Buffer;
-
-        if (Buffer.isBuffer(result)) {
-          fileBuffer = result;
-        } else {
-          logger.error(
-            `Unexpected Object Storage response format for ${storageKey}:`,
-            typeof result,
-          );
-          return res
-            .status(404)
-            .json({
-              error: "File not found",
-              message: `Could not retrieve ${storageKey}`,
-            });
-        }
+        const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
 
         // If we found and downloaded a file, serve it
         if (fileBuffer && fileBuffer.length > 0) {
@@ -220,22 +202,12 @@ app.use('/api', (req, res, next) => {
             contentType = 'image/webp';
           }
 
-          console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
+          console.log(`SUCCESS: Serving file ${storageKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
 
           // Set headers and send the file
           res.setHeader('Content-Type', contentType);
           res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
           return res.send(fileBuffer);
-        } else {
-          // If fileBuffer is empty or not found
-          console.error(`[serve-file] FILE NOT FOUND or EMPTY: ${filePath} not found or empty in Object Storage.`);
-          console.error(`[serve-file] Attempted keys:`, keysToCheck);
-          return res.status(404).json({
-            success: false,
-            message: 'File not found or empty in Object Storage',
-            path: filePath
-          });
-        }
       } catch (error) {
         console.error('Error serving shared file:', error);
         // Pass error to the next middleware or default error handler
