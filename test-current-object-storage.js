@@ -41,8 +41,8 @@ async function testCurrentObjectStorage() {
     
     // Test specific files that should exist
     const testKeys = [
-      'shared/uploads/1746156624142-b3ece212.jpeg',
-      'uploads/1746156624142-b3ece212.jpeg'
+      'shared/uploads/1749775630019-image.jpeg',
+      'uploads/1749775630019-image.jpeg'
     ];
     
     for (const key of testKeys) {
