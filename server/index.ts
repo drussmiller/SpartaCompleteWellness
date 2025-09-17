@@ -65,8 +65,8 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    if (path.includes('/api/posts/comments/') || 
-        path.includes('/api/posts/counts') || 
+    if (path.includes('/api/posts/comments/') ||
+        path.includes('/api/posts/counts') ||
         req.path === '/api/posts') {
       return;
     }
@@ -152,135 +152,94 @@ app.use('/api', (req, res, next) => {
         const filePath = req.path;
         console.log(`Processing shared file request: ${filePath}`);
 
-        // Import required modules
-        const { Client } = require('@replit/object-storage');
-        const fs = require('fs');
+        // Extract filename from path, handling potential query parameters
+        const filename = path.basename(filePath.split('?')[0]);
+        console.log(`Extracted filename: ${filename}`);
 
-        // Check if Replit Object Storage is available
-        if (!process.env.REPLIT_DB_ID) {
-          console.log(`Object Storage not available, redirecting to local path`);
-          return res.redirect(`/uploads${filePath}`);
+        // Import the Object Storage utility that was working before
+        const { spartaObjectStorage } = await import(
+          "./sparta-object-storage-final"
+        );
+
+        // Check if this is a thumbnail request
+        const isThumbnail = req.query.thumbnail === "true";
+
+        // Construct the proper Object Storage key
+        let storageKey: string;
+        if (isThumbnail) {
+          storageKey = filename.includes("thumbnail")
+            ? `shared/uploads/${filename}`
+            : `shared/uploads/thumbnails/${filename}`;
+        } else {
+          // For regular files, construct the key as it was stored
+          storageKey = filename.startsWith("shared/")
+            ? filename
+            : `shared/uploads/${filename}`;
         }
 
-        // Initialize Object Storage client
-        const objectStorage = new Client();
-        console.log(`Object Storage client initialized`);
+        // Download the file from Object Storage using the correct method
+        const result = await spartaObjectStorage.downloadFile(storageKey);
 
-        // Define all possible key formats to try
-        const keysToCheck = [
-          `shared/uploads${filePath}`,
-          `uploads${filePath}`,
-          `shared${filePath}`,
-          filePath.startsWith('/') ? filePath.substring(1) : filePath
-        ];
+        // The downloadFile method returns a Buffer directly
+        let fileBuffer: Buffer;
 
-        // Try to find the file with any of the keys
-        console.log(`Attempting to download file using the following keys: ${JSON.stringify(keysToCheck)}`);
-        let fileBuffer = null;
-        let usedKey = null;
-
-        // Try each key directly with downloadAsBytes without checking existence first
-        for (const key of keysToCheck) {
-          try {
-            console.log(`Trying to download ${key} directly...`);
-            const result = await objectStorage.downloadAsBytes(key);
-            console.log(`[serve-file] Object Storage result:`, {
-              type: typeof result,
-              hasOk: result && typeof result === 'object' && 'ok' in result,
-              hasValue: result && typeof result === 'object' && 'value' in result,
-              ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
+        if (Buffer.isBuffer(result)) {
+          fileBuffer = result;
+        } else {
+          logger.error(
+            `Unexpected Object Storage response format for ${storageKey}:`,
+            typeof result,
+          );
+          return res
+            .status(404)
+            .json({
+              error: "File not found",
+              message: `Could not retrieve ${storageKey}`,
             });
-
-            // Handle the Object Storage response format
-            let fileBuffer: Buffer;
-
-            if (Buffer.isBuffer(result)) {
-              fileBuffer = result;
-            } else if (result && typeof result === 'object') {
-              // Handle the actual Replit Object Storage response format
-              // Check for 'value' property which contains the actual file data
-              if ('value' in result && result.value) {
-                if (Buffer.isBuffer(result.value)) {
-                  fileBuffer = result.value;
-                } else if (typeof result.value === 'string') {
-                  fileBuffer = Buffer.from(result.value, 'base64');
-                } else if (Array.isArray(result.value)) {
-                  // Handle array of bytes
-                  fileBuffer = Buffer.from(result.value);
-                } else {
-                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
-                  continue; // Try next key
-                }
-              } else if ('ok' in result && result.ok === true && result.value) {
-                // Legacy format check
-                if (Buffer.isBuffer(result.value)) {
-                  fileBuffer = result.value;
-                } else if (typeof result.value === 'string') {
-                  fileBuffer = Buffer.from(result.value, 'base64');
-                } else if (Array.isArray(result.value)) {
-                  fileBuffer = Buffer.from(result.value);
-                } else {
-                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
-                  continue; // Try next key
-                }
-              } else {
-                console.log(`[serve-file] File not found in Object Storage for ${usedKey}:`, result);
-                continue; // Try next key
-              }
-            } else {
-              console.error(`[serve-file] Invalid response format from Object Storage for ${usedKey}:`, typeof result);
-              continue; // Try next key
-            }
-
-            // If we found and downloaded a file, serve it
-            if (fileBuffer && fileBuffer.length > 0) {
-              // Determine content type based on file extension
-              const fileExtension = path.extname(filePath).toLowerCase();
-              let contentType = 'application/octet-stream'; // default
-
-              if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
-                contentType = 'image/jpeg';
-              } else if (fileExtension === '.png') {
-                contentType = 'image/png';
-              } else if (fileExtension === '.gif') {
-                contentType = 'image/gif';
-              } else if (fileExtension === '.mp4') {
-                contentType = 'video/mp4';
-              } else if (fileExtension === '.mov') {
-                contentType = 'video/quicktime';
-              } else if (fileExtension === '.svg') {
-                contentType = 'image/svg+xml';
-              } else if (fileExtension === '.webp') {
-                contentType = 'image/webp';
-              }
-
-              console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
-
-              // Set headers and send the file
-              res.setHeader('Content-Type', contentType);
-              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
-              return res.send(fileBuffer);
-            }
-          } catch (error) {
-            console.error(`[serve-file] FAILED to download ${key}:`, error.message);
-            console.error(`[serve-file] Error details:`, error);
-            // Continue to next key
-          }
         }
 
-        // No longer check filesystem as requested - Object Storage only
-        // Return a proper 404 response
-        console.error(`[serve-file] FILE NOT FOUND: ${filePath} not found in Object Storage and no filesystem fallback as configured`);
-        console.error(`[serve-file] Attempted keys:`, keysToCheck);
-        return res.status(404).json({
-          success: false,
-          message: 'File not found in Object Storage',
-          path: filePath
-        });
+        // If we found and downloaded a file, serve it
+        if (fileBuffer && fileBuffer.length > 0) {
+          // Determine content type based on file extension
+          const fileExtension = path.extname(filePath).toLowerCase();
+          let contentType = 'application/octet-stream'; // default
 
+          if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+            contentType = 'image/jpeg';
+          } else if (fileExtension === '.png') {
+            contentType = 'image/png';
+          } else if (fileExtension === '.gif') {
+            contentType = 'image/gif';
+          } else if (fileExtension === '.mp4') {
+            contentType = 'video/mp4';
+          } else if (fileExtension === '.mov') {
+            contentType = 'video/quicktime';
+          } else if (fileExtension === '.svg') {
+            contentType = 'image/svg+xml';
+          } else if (fileExtension === '.webp') {
+            contentType = 'image/webp';
+          }
+
+          console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
+
+          // Set headers and send the file
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+          return res.send(fileBuffer);
+        } else {
+          // If fileBuffer is empty or not found
+          console.error(`[serve-file] FILE NOT FOUND or EMPTY: ${filePath} not found or empty in Object Storage.`);
+          console.error(`[serve-file] Attempted keys:`, keysToCheck);
+          return res.status(404).json({
+            success: false,
+            message: 'File not found or empty in Object Storage',
+            path: filePath
+          });
+        }
       } catch (error) {
         console.error('Error serving shared file:', error);
-        next();
+        // Pass error to the next middleware or default error handler
+        next(error);
       }
     });
 
