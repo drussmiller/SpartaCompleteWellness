@@ -9,13 +9,22 @@
  * @returns URL for direct download
  */
 export function createDirectDownloadUrl(key: string | null): string {
-  if (!key) return '';
+  if (!key) {
+    console.log('createDirectDownloadUrl: No key provided');
+    return '';
+  }
 
   console.log('createDirectDownloadUrl called with:', key);
 
   // If this is already a complete direct download URL, return as-is
   if (key.startsWith('/api/object-storage/direct-download')) {
     console.log('Already a direct download URL, returning as-is');
+    return key;
+  }
+
+  // If this is already a serve-file URL, return as-is
+  if (key.startsWith('/api/serve-file')) {
+    console.log('Already a serve-file URL, returning as-is');
     return key;
   }
 
@@ -46,25 +55,18 @@ export function createDirectDownloadUrl(key: string | null): string {
   // Clean the key - remove leading slash and normalize path
   let cleanKey = key.replace(/^\/+/, '');
 
-  // If the key already starts with shared/uploads/, use it as-is (this is the new format)
+  // If the key already starts with shared/uploads/, use serve-file endpoint
   if (cleanKey.startsWith('shared/uploads/')) {
-    console.log(`Direct Object Storage path: ${cleanKey}`);
-    return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(cleanKey)}`;
+    const filename = cleanKey.replace('shared/uploads/', '');
+    console.log(`Using serve-file for Object Storage file: ${filename}`);
+    return `/api/serve-file?filename=${encodeURIComponent(filename)}`;
   }
 
-  // If the key already starts with shared/uploads/, use it as-is
-  let storageKey;
-  if (cleanKey.startsWith('shared/uploads/')) {
-    storageKey = cleanKey;
-  } else {
-    // Extract just the filename if this looks like a full path
-    const filename = cleanKey.split('/').pop() || cleanKey;
-    storageKey = `shared/uploads/${filename}`;
-  }
+  // Extract filename and use serve-file endpoint
+  const filename = cleanKey.split('/').pop() || cleanKey;
+  console.log(`Creating serve-file URL: ${key} -> filename=${filename}`);
 
-  console.log(`Creating Object Storage URL: ${key} -> storageKey=${storageKey}`);
-
-  return `/api/object-storage/direct-download?storageKey=${encodeURIComponent(storageKey)}`;
+  return `/api/serve-file?filename=${encodeURIComponent(filename)}`;
 }
 
 /**
