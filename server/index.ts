@@ -208,6 +208,13 @@ app.use('/api', (req, res, next) => {
           res.setHeader('Content-Type', contentType);
           res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
           return res.send(fileBuffer);
+        } else {
+          console.error(`File not found or empty: ${storageKey}`);
+          return res.status(404).json({
+            error: "File not found",
+            message: `Could not retrieve ${storageKey}`
+          });
+        }
       } catch (error) {
         console.error('Error serving shared file:', error);
         // Pass error to the next middleware or default error handler
