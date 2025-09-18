@@ -1569,98 +1569,100 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </CollapsibleTrigger>
                   </div>
                   <CollapsibleContent>
-                    {/* Search and Filter Section */}
-                    <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
-                      <h3 className="text-lg font-medium">Search & Filter Users</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Organization</label>
-                          <Select
-                            value={selectedOrgFilter}
-                            onValueChange={setSelectedOrgFilter}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Organizations" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Organizations</SelectItem>
-                              {sortedOrganizations?.map((org) => (
-                                <SelectItem key={org.id} value={org.id.toString()}>
-                                  {org.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Group</label>
-                          <Select
-                            value={selectedGroupFilter}
-                            onValueChange={setSelectedGroupFilter}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Groups" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Groups</SelectItem>
-                              {filteredGroupsForFilter?.map((group) => (
-                                <SelectItem key={group.id} value={group.id.toString()}>
-                                  {group.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Team</label>
-                          <Select
-                            value={selectedTeamFilter}
-                            onValueChange={setSelectedTeamFilter}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Teams" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Teams</SelectItem>
-                              <SelectItem value="none">No Team</SelectItem>
-                              {filteredTeamsForFilter?.map((team) => (
-                                <SelectItem key={team.id} value={team.id.toString()}>
-                                  {team.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                          id="show-inactive-users"
+                          checked={showInactiveUsers}
+                          onCheckedChange={setShowInactiveUsers}
+                        />
+                        <label
+                          htmlFor="show-inactive-users"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Show inactive users
+                        </label>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="show-inactive-users"
-                            checked={showInactiveUsers}
-                            onCheckedChange={setShowInactiveUsers}
-                          />
-                          <label
-                            htmlFor="show-inactive-users"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Show inactive users
-                          </label>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-sm text-gray-600">
-                            Showing {filteredUsersForDisplay?.length || 0} of {sortedUsers?.length || 0} users
+                      {/* Search and Filter Section */}
+                      <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
+                        <h3 className="text-lg font-medium">Search & Filter Users</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Organization</label>
+                            <Select
+                              value={selectedOrgFilter}
+                              onValueChange={setSelectedOrgFilter}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Organizations" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Organizations</SelectItem>
+                                {sortedOrganizations?.map((org) => (
+                                  <SelectItem key={org.id} value={org.id.toString()}>
+                                    {org.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedOrgFilter("all");
-                              setSelectedGroupFilter("all");
-                              setSelectedTeamFilter("all");
-                            }}
-                          >
-                            Clear Filters
-                          </Button>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <Select
+                              value={selectedGroupFilter}
+                              onValueChange={setSelectedGroupFilter}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Groups" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Groups</SelectItem>
+                                {filteredGroupsForFilter?.map((group) => (
+                                  <SelectItem key={group.id} value={group.id.toString()}>
+                                    {group.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Team</label>
+                            <Select
+                              value={selectedTeamFilter}
+                              onValueChange={setSelectedTeamFilter}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Teams" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Teams</SelectItem>
+                                <SelectItem value="none">No Team</SelectItem>
+                                {filteredTeamsForFilter?.map((team) => (
+                                  <SelectItem key={team.id} value={team.id.toString()}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-4">
+                            <div className="text-sm text-gray-600">
+                              Showing {filteredUsersForDisplay?.length || 0} of {sortedUsers?.length || 0} users
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedOrgFilter("all");
+                                setSelectedGroupFilter("all");
+                                setSelectedTeamFilter("all");
+                              }}
+                            >
+                              Clear Filters
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
