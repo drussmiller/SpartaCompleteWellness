@@ -222,7 +222,9 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       
       // Replace video extension with .jpg
       const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
-      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
+      // Add cache-busting timestamp to force reload of previously failed thumbnails
+      const cacheBuster = Date.now();
+      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${cacheBuster}`;
     }
 
     // For non-video files, use the existing thumbnail logic
