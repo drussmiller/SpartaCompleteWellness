@@ -61,6 +61,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [, setLocation] = useLocation();
   const [userProgress, setUserProgress] = useState<Record<number, { week: number; day: number }>>({});
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>("all");
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>("all");
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
@@ -614,6 +617,45 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     : (users || []).filter(u => u.teamId && teamIds.includes(u.teamId));  // Group admins see only users in their group's teams
 
   const sortedUsers = [...filteredUsers].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+  // Filter logic for search
+  const filteredGroupsForFilter = selectedOrgFilter === "all" 
+    ? sortedGroups 
+    : sortedGroups?.filter(g => g.organizationId.toString() === selectedOrgFilter);
+
+  const filteredTeamsForFilter = selectedGroupFilter === "all"
+    ? filteredTeams
+    : filteredTeams.filter(t => t.groupId.toString() === selectedGroupFilter);
+
+  const filteredUsersForDisplay = sortedUsers?.filter(user => {
+    // Organization filter
+    if (selectedOrgFilter !== "all") {
+      const userTeam = sortedTeams.find(t => t.id === user.teamId);
+      const userGroup = userTeam ? sortedGroups?.find(g => g.id === userTeam.groupId) : null;
+      if (!userGroup || userGroup.organizationId.toString() !== selectedOrgFilter) {
+        return false;
+      }
+    }
+
+    // Group filter
+    if (selectedGroupFilter !== "all") {
+      const userTeam = sortedTeams.find(t => t.id === user.teamId);
+      if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
+        return false;
+      }
+    }
+
+    // Team filter
+    if (selectedTeamFilter !== "all") {
+      if (selectedTeamFilter === "none") {
+        return !user.teamId;
+      } else {
+        return user.teamId?.toString() === selectedTeamFilter;
+      }
+    }
+
+    return true;
+  });
 
   const isMobile = window.innerWidth <= 768;
 
@@ -1372,9 +1414,99 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </Collapsible>
 
               <div className="border rounded-lg p-4">
-                <h2 className="text-2xl font-semibold mb-4">Users</h2>
-                <div className="space-y-4">
-                  {sortedUsers?.map((user) => (
+                <Collapsible className="w-full">
+                  <div className="mb-4">
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
+                        Users
+                        <ChevronDown className="h-5 w-5 ml-2" />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    {/* Search and Filter Section */}
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
+                      <h3 className="text-lg font-medium">Search & Filter Users</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Organization</label>
+                          <Select
+                            value={selectedOrgFilter}
+                            onValueChange={setSelectedOrgFilter}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Organizations" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Organizations</SelectItem>
+                              {sortedOrganizations?.map((org) => (
+                                <SelectItem key={org.id} value={org.id.toString()}>
+                                  {org.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Group</label>
+                          <Select
+                            value={selectedGroupFilter}
+                            onValueChange={setSelectedGroupFilter}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Groups" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Groups</SelectItem>
+                              {filteredGroupsForFilter?.map((group) => (
+                                <SelectItem key={group.id} value={group.id.toString()}>
+                                  {group.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Team</label>
+                          <Select
+                            value={selectedTeamFilter}
+                            onValueChange={setSelectedTeamFilter}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Teams" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Teams</SelectItem>
+                              <SelectItem value="none">No Team</SelectItem>
+                              {filteredTeamsForFilter?.map((team) => (
+                                <SelectItem key={team.id} value={team.id.toString()}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-600">
+                          Showing {filteredUsersForDisplay?.length || 0} of {sortedUsers?.length || 0} users
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedOrgFilter("all");
+                            setSelectedGroupFilter("all");
+                            setSelectedTeamFilter("all");
+                          }}
+                        >
+                          Clear Filters
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                  {filteredUsersForDisplay?.map((user) => (
                     <Card key={user.id}>
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
@@ -1600,6 +1732,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </Card>
                   ))}
                 </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </div>
           </div>
