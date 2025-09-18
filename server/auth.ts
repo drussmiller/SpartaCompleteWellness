@@ -6,10 +6,6 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import { db } from "./db";
-import { users } from "@shared/schema";
-import { logger } from "./logger";
-import { eq } from "drizzle-orm";
 
 declare global {
   namespace Express {
@@ -21,45 +17,11 @@ const scryptAsync = promisify(scrypt);
 const KEY_LENGTH = 64;
 
 // Authentication middleware
-export async function authenticate(req: Request, res: Response, next: NextFunction) {
-  try {
-    if (!req.session?.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const [user] = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        preferredName: users.preferredName,
-        isAdmin: users.isAdmin,
-        isTeamLead: users.isTeamLead,
-        isGroupAdmin: users.isGroupAdmin,
-        adminGroupId: users.adminGroupId,
-        teamId: users.teamId,
-        groupId: users.groupId,
-        status: users.status,
-        currentWeek: users.currentWeek,
-        currentDay: users.currentDay,
-        waiverSigned: users.waiverSigned,
-        createdAt: users.createdAt,
-        timezone: users.timezone
-      })
-      .from(users)
-      .where(eq(users.id, req.session.userId))
-      .limit(1);
-
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    logger.error('Authentication error:', error);
-    res.status(500).json({ message: "Authentication failed" });
+export function authenticate(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
+  next();
 }
 
 export async function hashPassword(password: string) {
@@ -272,37 +234,22 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Get current user
-  app.get("/api/user", authenticate, async (req: Request, res: Response) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      // Fetch fresh user data to ensure we have all fields including adminGroupId
-      const [freshUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!freshUser) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      res.json(freshUser);
-    } catch (error) {
-      logger.error('Error fetching fresh user data:', error);
-      // Fallback to req.user if database query fails
-      res.json(req.user);
+  app.get("/api/user", (req, res) => {
+    console.log('GET /api/user - Session:', req.sessionID);
+    console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
+    if (!req.isAuthenticated()) {
+      console.log('Unauthenticated request to /api/user');
+      return res.sendStatus(401);
     }
+    console.log('Authenticated user:', req.user?.id);
+    res.json(req.user);
   });
 
   // Password change endpoint for authenticated users
   app.post("/api/user/change-password", authenticate, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;
-
+      
       if (!req.user?.id) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -335,7 +282,7 @@ export function setupAuth(app: Express) {
 
       console.log(`Password changed successfully for user: ${user.username}`);
       res.json({ message: "Password changed successfully" });
-
+      
     } catch (error) {
       console.error('Error changing password:', error);
       res.status(500).json({ message: "Failed to change password" });
@@ -347,7 +294,7 @@ export function setupAuth(app: Express) {
     try {
       const { newPassword } = req.body;
       const targetUserId = parseInt(req.params.userId);
-
+      
       if (!req.user?.id) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -380,7 +327,7 @@ export function setupAuth(app: Express) {
 
       console.log(`Password reset by admin ${adminUser.username} for user: ${targetUser.username}`);
       res.json({ message: "Password reset successfully" });
-
+      
     } catch (error) {
       console.error('Error resetting password:', error);
       res.status(500).json({ message: "Failed to reset password" });
