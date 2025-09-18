@@ -667,106 +667,106 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       <ChevronDown className="h-5 w-5 ml-2" />
                     </Button>
                   </CollapsibleTrigger>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="ml-4 mt-2 px-3 bg-violet-700 text-white hover:bg-violet-800">
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Team
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <div className="flex items-center mb-2 relative">
-                        <DialogPrimitive.Close asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
-                          >
-                            <span className="sr-only">Close</span>
-                            <span className="text-lg font-semibold">×</span>
-                          </Button>
-                        </DialogPrimitive.Close>
-                        <DialogTitle className="w-full text-center">Create New Team</DialogTitle>
-                      </div>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Name</FormLabel>
-                                <FormControl>
-                                  <Input {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl>
-                                  <Textarea {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="groupId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Group</FormLabel>
-                                <FormControl>
-                                  <Select
-                                    value={field.value?.toString() || ""}
-                                    onValueChange={(value) => field.onChange(parseInt(value))}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a group" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {sortedGroups?.map((group) => (
-                                        <SelectItem key={group.id} value={group.id.toString()}>
-                                          {group.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="maxSize"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Maximum Team Size</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    {...field}
-                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <Button type="submit" disabled={createTeamMutation.isPending}>
-                            {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                          </Button>
-                        </form>
-                      </Form>
-                    </DialogContent>
-                  </Dialog>
                 </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="mb-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
+                          <Plus className="h-4 w-4 mr-2" />
+                          New Team
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <div className="flex items-center mb-2 relative">
+                          <DialogPrimitive.Close asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
+                            >
+                              <span className="sr-only">Close</span>
+                              <span className="text-lg font-semibold">×</span>
+                            </Button>
+                          </DialogPrimitive.Close>
+                          <DialogTitle className="w-full text-center">Create New Team</DialogTitle>
+                        </div>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Name</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="description"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description</FormLabel>
+                                  <FormControl>
+                                    <Textarea {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="groupId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Group</FormLabel>
+                                  <FormControl>
+                                    <Select
+                                      value={field.value?.toString() || ""}
+                                      onValueChange={(value) => field.onChange(parseInt(value))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a group" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {sortedGroups?.map((group) => (
+                                          <SelectItem key={group.id} value={group.id.toString()}>
+                                            {group.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="maxSize"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Maximum Team Size</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      {...field}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <Button type="submit" disabled={createTeamMutation.isPending}>
+                              {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                            </Button>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
                     {sortedTeams?.map((team) => (
                       <Card key={team.id}>
                         <CardHeader className="pb-2">
