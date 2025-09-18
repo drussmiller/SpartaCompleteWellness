@@ -1528,7 +1528,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   });
                                   return;
                                 }
-                                updateUserRoleMutation.mutate({
+                               updateUserRoleMutation.mutate({
                                   userId: user.id,
                                   role: 'isAdmin',
                                   value: !user.isAdmin
