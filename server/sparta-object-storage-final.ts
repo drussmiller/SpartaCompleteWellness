@@ -217,10 +217,16 @@ export class SpartaObjectStorageFinal {
 
     // Handle the result format from Object Storage API
     if (result && typeof result === 'object' && 'ok' in result) {
-      const typedResult = result as { ok: boolean; data?: Buffer; value?: Buffer; error?: any };
+      const typedResult = result as { ok: boolean; data?: Buffer | Buffer[]; value?: Buffer | Buffer[]; error?: any };
       if (typedResult.ok) {
         // Try different property names for the data
-        const data = typedResult.data || typedResult.value;
+        let data = typedResult.data || typedResult.value;
+        
+        // Check if data is an array (Object Storage returns value as [Buffer])
+        if (Array.isArray(data) && data.length > 0 && Buffer.isBuffer(data[0])) {
+          data = data[0];
+        }
+        
         if (data && Buffer.isBuffer(data)) {
           console.log(`Successfully downloaded ${storageKey}, size: ${data.length} bytes`);
           return data;
