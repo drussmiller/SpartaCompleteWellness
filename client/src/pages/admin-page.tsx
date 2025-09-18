@@ -625,14 +625,29 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const filteredUsers = currentUser?.isAdmin
     ? users || []  // Full admins see all users
     : currentUser?.isGroupAdmin
-    ? (users || []).filter(u => {
+    ? (() => {
         // For Group Admins, show all users who have teams in their organization
-        // This includes users with teamId that matches any team in the organization
-        if (u.teamId && teamIds.includes(u.teamId)) {
-          return true;
-        }
-        return false;
-      })
+        // Get all teams in the organization, not just the ones they can manage
+        const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
+        const userOrgId = adminGroup?.organizationId;
+        
+        if (!userOrgId) return [];
+        
+        // Get all teams in the organization
+        const orgTeams = sortedTeams.filter(team => {
+          const teamGroup = sortedGroups.find(g => g.id === team.groupId);
+          return teamGroup && teamGroup.organizationId === userOrgId;
+        });
+        const orgTeamIds = orgTeams.map(team => team.id);
+        
+        // Return users who are in any team in the organization
+        return (users || []).filter(u => {
+          if (u.teamId && orgTeamIds.includes(u.teamId)) {
+            return true;
+          }
+          return false;
+        });
+      })()
     : [];  // Non-admins see no users
 
   const sortedUsers = [...filteredUsers].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
@@ -1452,7 +1467,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
-                            {(users || []).filter((u) => u.teamId === team.id).length || 0}
+                            {(() => {
+                              // For team member counts, we need to use all users that the current user can see
+                              // Group Admins should see all users in their organization's teams
+                              if (currentUser?.isAdmin) {
+                                return (users || []).filter((u) => u.teamId === team.id).length || 0;
+                              } else if (currentUser?.isGroupAdmin) {
+                                // For Group Admins, count all users in the team regardless of filteredUsers restrictions
+                                return (users || []).filter((u) => u.teamId === team.id).length || 0;
+                              }
+                              return 0;
+                            })()}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Max Size: </span>
