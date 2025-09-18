@@ -602,6 +602,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     );
   }
 
+  const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
+  
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []  // Full admins see all teams
@@ -614,8 +617,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     : [];  // Non-admins see no teams
 
   const sortedTeams = [...filteredTeams].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
   // Filter users based on user role - Group admins see users in their organization's teams
   const teamIds = filteredTeams.map(team => team.id);  // Get IDs of teams the current user can see
   const filteredUsers = currentUser?.isAdmin
