@@ -612,7 +612,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? (teams || []).filter(team => {
         // Group admins see all teams in their organization
         const teamGroup = sortedGroups.find(g => g.id === team.groupId);
-        return teamGroup && teamGroup.organizationId === currentUser.organizationId;
+        // Find the admin's group to get the organization ID
+        const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
+        const userOrgId = adminGroup?.organizationId;
+        return teamGroup && userOrgId && teamGroup.organizationId === userOrgId;
       })
     : [];  // Non-admins see no teams
 
@@ -670,7 +673,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   // Filter groups based on the current user's organization if they are a Group Admin
   const filteredGroups = currentUser?.isGroupAdmin
-    ? sortedGroups.filter(group => group.organizationId === currentUser.organizationId)
+    ? (() => {
+        // Find the admin's group to get the organization ID
+        const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
+        const userOrgId = adminGroup?.organizationId;
+        return userOrgId ? sortedGroups.filter(group => group.organizationId === userOrgId) : [];
+      })()
     : sortedGroups;
 
 
