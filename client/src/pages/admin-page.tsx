@@ -660,7 +660,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               <Collapsible className="w-full border rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
+                <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
                       Teams
@@ -669,7 +669,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </CollapsibleTrigger>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button size="sm" className="px-3 bg-violet-700 text-white hover:bg-violet-800">
+                      <Button size="sm" className="ml-4 mt-2 px-3 bg-violet-700 text-white hover:bg-violet-800">
                         <Plus className="h-4 w-4 mr-2" />
                         New Team
                       </Button>
@@ -951,7 +951,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               {/* Organizations Section - Only show for full admins */}
               {user?.isAdmin && (
                 <Collapsible className="w-full border rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
                         Organizations
@@ -960,7 +960,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </CollapsibleTrigger>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button size="sm" className="px-3 bg-violet-700 text-white hover:bg-violet-800">
+                        <Button size="sm" className="ml-4 mt-2 px-3 bg-violet-700 text-white hover:bg-violet-800">
                           <Plus className="h-4 w-4 mr-2" />
                           New Organization
                         </Button>
@@ -1136,7 +1136,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               {/* Groups Section - Only show for full admins */}
               {user?.isAdmin && (
                 <Collapsible className="w-full border rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
                         Groups
@@ -1145,7 +1145,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </CollapsibleTrigger>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button size="sm" className="px-3 bg-violet-700 text-white hover:bg-violet-800">
+                        <Button size="sm" className="ml-4 mt-2 px-3 bg-violet-700 text-white hover:bg-violet-800">
                           <Plus className="h-4 w-4 mr-2" />
                           New Group
                         </Button>
