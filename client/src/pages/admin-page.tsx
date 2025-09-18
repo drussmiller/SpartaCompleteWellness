@@ -610,7 +610,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? teams || []  // Full admins see all teams
     : currentUser?.isGroupAdmin
     ? (teams || []).filter(team => {
-        // Group admins see all teams in their organization
+        // Group admins see all teams in their organization (not just their group)
         const teamGroup = sortedGroups.find(g => g.id === team.groupId);
         // Find the admin's group to get the organization ID
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
@@ -1250,7 +1250,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <SelectContent>
                                         {filteredGroups?.map((group) => (
                                           <SelectItem key={group.id} value={group.id.toString()}>
-                                            {group.name}
+                                            {group.name} (Org: {sortedOrganizations?.find(o => o.id === group.organizationId)?.name})
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
