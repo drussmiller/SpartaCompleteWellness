@@ -654,12 +654,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         const orgTeamIds = orgTeams.map(team => team.id);
         console.log('DEBUG: orgTeamIds:', orgTeamIds);
         
-        // Return ALL users who are in any team in the organization
+        // Return ALL users who are in any team in the organization, including users without teams
         const filteredUsersResult = (users || []).filter(u => {
-          return u.teamId && orgTeamIds.includes(u.teamId);
+          // Include users who are in teams within this organization
+          if (u.teamId && orgTeamIds.includes(u.teamId)) {
+            return true;
+          }
+          
+          // Also include users who have no team but belong to this organization via other means
+          // For now, we'll focus on team-based filtering
+          return false;
         });
         console.log('DEBUG: filteredUsersResult count:', filteredUsersResult.length);
         console.log('DEBUG: filteredUsersResult:', filteredUsersResult.map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
+        console.log('DEBUG: All available users:', (users || []).map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
         
         return filteredUsersResult;
       })()

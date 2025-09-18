@@ -2020,18 +2020,60 @@ export const registerRoutes = async (
       
       let users = await storage.getAllUsers();
       
-      // Filter users for group admins - only show users in their group's teams
+      // Filter users for group admins - only show users in their organization
       if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
-        // Get teams in the admin's group
-        const groupTeams = await db
+        logger.info(`Group Admin ${req.user.id} requesting users for adminGroupId: ${req.user.adminGroupId}`);
+        
+        // Get the admin's group to find the organization
+        const [adminGroup] = await db
+          .select()
+          .from(groups)
+          .where(eq(groups.id, req.user.adminGroupId))
+          .limit(1);
+          
+        if (!adminGroup) {
+          logger.warn(`Admin group ${req.user.adminGroupId} not found for user ${req.user.id}`);
+          return res.json([]);
+        }
+        
+        logger.info(`Admin group found: ${adminGroup.name} in organization ${adminGroup.organizationId}`);
+        
+        // Get ALL teams in the same organization (across all groups)
+        const orgGroups = await db
+          .select({ id: groups.id })
+          .from(groups)
+          .where(eq(groups.organizationId, adminGroup.organizationId));
+          
+        const orgGroupIds = orgGroups.map(g => g.id);
+        logger.info(`Found ${orgGroupIds.length} groups in organization ${adminGroup.organizationId}:`, orgGroupIds);
+        
+        const orgTeams = await db
           .select({ id: teams.id })
           .from(teams)
-          .where(eq(teams.groupId, req.user.adminGroupId));
+          .where(inArray(teams.groupId, orgGroupIds));
         
-        const teamIds = groupTeams.map(team => team.id);
+        const teamIds = orgTeams.map(team => team.id);
+        logger.info(`Found ${teamIds.length} teams in organization ${adminGroup.organizationId}:`, teamIds);
         
-        // Filter users to only those in the group's teams
+        // Get team details for debugging
+        const teamDetails = await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            groupId: teams.groupId
+          })
+          .from(teams)
+          .where(inArray(teams.id, teamIds));
+        logger.info(`Team details in organization:`, teamDetails);
+        
+        // Filter users to only those in the organization's teams
+        const originalUserCount = users.length;
+        const allUsersWithTeams = users.filter(user => user.teamId);
+        logger.info(`Users with team assignments (before org filter):`, allUsersWithTeams.map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
+        
         users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
+        logger.info(`Filtered users from ${originalUserCount} to ${users.length} for Group Admin ${req.user.id}`);
+        logger.info(`Filtered user details:`, users.map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
       }
       
       res.json(users);
