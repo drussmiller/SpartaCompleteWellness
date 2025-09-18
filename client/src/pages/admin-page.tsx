@@ -626,13 +626,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? users || []  // Full admins see all users
     : currentUser?.isGroupAdmin
     ? (users || []).filter(u => {
-        // Include users with teams in the organization, plus users without teams but in the same organization
+        // For Group Admins, show all users who have teams in their organization
+        // This includes users with teamId that matches any team in the organization
         if (u.teamId && teamIds.includes(u.teamId)) {
           return true;
         }
-        // Also include users without teams if they belong to the same organization
-        // This requires checking if user has a groupId that matches the admin's organization
-        return false; // For now, only show users with teams
+        return false;
       })
     : [];  // Non-admins see no users
 
@@ -1453,7 +1452,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
-                            {filteredUsers?.filter((u) => u.teamId === team.id).length || 0}
+                            {(users || []).filter((u) => u.teamId === team.id).length || 0}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Max Size: </span>
