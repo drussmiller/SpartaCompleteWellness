@@ -273,28 +273,27 @@ export function setupAuth(app: Express) {
   });
 
   // Get current user
-  app.get("/api/user", authenticate, async (req: Request, res: Response) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    // Fetch fresh user data to ensure we have all fields including adminGroupId
+  app.get("/api/user", async (req: Request, res: Response) => {
     try {
-      const [freshUser] = await db
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Fetch fresh user data directly from database using session userId
+      const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.id, req.user.id))
+        .where(eq(users.id, req.session.userId))
         .limit(1);
 
-      if (!freshUser) {
+      if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
 
-      res.json(freshUser);
+      res.json(user);
     } catch (error) {
-      logger.error('Error fetching fresh user data:', error);
-      // Fallback to req.user if database query fails
-      res.json(req.user);
+      logger.error('Error fetching user data:', error);
+      res.status(500).json({ message: "Failed to fetch user data" });
     }
   });
 
