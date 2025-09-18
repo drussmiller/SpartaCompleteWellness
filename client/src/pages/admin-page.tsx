@@ -659,295 +659,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <Collapsible className="w-full border rounded-lg p-4">
-                <div className="mb-4">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
-                      Teams
-                      <ChevronDown className="h-5 w-5 ml-2" />
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent>
-                  <div className="space-y-4">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="mb-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
-                          <Plus className="h-4 w-4 mr-2" />
-                          New Team
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <div className="flex items-center mb-2 relative">
-                          <DialogPrimitive.Close asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
-                            >
-                              <span className="sr-only">Close</span>
-                              <span className="text-lg font-semibold">×</span>
-                            </Button>
-                          </DialogPrimitive.Close>
-                          <DialogTitle className="w-full text-center">Create New Team</DialogTitle>
-                        </div>
-                        <Form {...form}>
-                          <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Name</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="description"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Description</FormLabel>
-                                  <FormControl>
-                                    <Textarea {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="groupId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Group</FormLabel>
-                                  <FormControl>
-                                    <Select
-                                      value={field.value?.toString() || ""}
-                                      onValueChange={(value) => field.onChange(parseInt(value))}
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select a group" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {sortedGroups?.map((group) => (
-                                          <SelectItem key={group.id} value={group.id.toString()}>
-                                            {group.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="maxSize"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Maximum Team Size</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      {...field}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <Button type="submit" disabled={createTeamMutation.isPending}>
-                              {createTeamMutation.isPending ? "Creating..." : "Create Team"}
-                            </Button>
-                          </form>
-                        </Form>
-                      </DialogContent>
-                    </Dialog>
-                    {sortedTeams?.map((team) => (
-                      <Card key={team.id}>
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              {editingTeam?.id === team.id ? (
-                                <form onSubmit={(e) => {
-                                  e.preventDefault();
-                                  const formData = new FormData(e.currentTarget);
-                                  const name = formData.get('name') as string;
-                                  const description = formData.get('description') as string;
-                                  const maxSize = parseInt(formData.get('maxSize') as string) || 6;
-                                  const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
-                                  const statusValue = formData.get('status') as string;
-                                  const parsedStatus = statusValue ? parseInt(statusValue) : 1;
-                                  const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
-
-                                  if (!name || !selectedGroupId) {
-                                    toast({
-                                      title: "Error",
-                                      description: "Please fill in all required fields",
-                                      variant: "destructive"
-                                    });
-                                    return;
-                                  }
-
-                                  updateTeamMutation.mutate({
-                                    teamId: team.id,
-                                    data: {
-                                      name,
-                                      description,
-                                      groupId,
-                                      maxSize,
-                                      status: Number(status),
-                                    }
-                                  });
-                                }}>
-                                  <div className="space-y-2">
-                                    <Input
-                                      name="name"
-                                      defaultValue={team.name}
-                                      className="font-semibold"
-                                    />
-                                    <Textarea
-                                      name="description"
-                                      defaultValue={team.description || ''}
-                                      className="text-sm"
-                                    />
-                                    <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select a group" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {sortedGroups?.map((group) => (
-                                          <SelectItem key={group.id} value={group.id.toString()}>
-                                            {group.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <Input
-                                      name="maxSize"
-                                      type="number"
-                                      min="1"
-                                      defaultValue={team.maxSize?.toString() || '6'}
-                                      placeholder="Maximum team size"
-                                      className="text-sm"
-                                    />
-                                    <Select name="status" defaultValue={team.status?.toString() || "1"}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="1">Active</SelectItem>
-                                        <SelectItem value="0">Inactive</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <div className="flex gap-2">
-                                      <Button type="submit" size="sm">Save</Button>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          setEditingTeam(null);
-                                          setSelectedGroupId("");
-                                        }}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </form>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-2">
-                                    <CardTitle className="text-lg">{team.name}</CardTitle>
-                                  </div>
-                                  <CardDescription className="line-clamp-2 text-sm">
-                                    {team.description}
-                                  </CardDescription>
-                                  <p className="text-sm mt-2">
-                                    <span className="font-medium">Status: </span>
-                                    <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
-                                      {team.status === 1 ? "Active" : "Inactive"}
-                                    </span>
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingTeam(team);
-                                  setSelectedGroupId(team.groupId?.toString() || "");
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogTitle>Delete Team?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the team "{team.name}"? This action cannot be undone.
-                                    {sortedUsers?.filter((u) => u.teamId === team.id).length > 0 && (
-                                      <p className="mt-2 text-amber-600 font-medium">
-                                        Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members.
-                                        Deleting it will remove these users from the team.
-                                      </p>
-                                    )}
-                                  </AlertDialogDescription>
-                                  <div className="flex items-center justify-end gap-2 mt-4">
-                                    <AlertDialogCancel className="h-10 px-4 py-2 flex items-center justify-center">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center"
-                                      onClick={() => deleteTeamMutation.mutate(team.id)}
-                                    >
-                                      Delete Team
-                                    </AlertDialogAction>
-                                  </div>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm">
-                            <span className="font-medium">Group: </span>
-                            {sortedGroups?.find((g) => g.id === team.groupId)?.name || "No Group"}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Members: </span>
-                            {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Max Size: </span>
-                            {team.maxSize || 6}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Status: </span>
-                            <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
-                              {team.status === 1 ? "Active" : "Inactive"}
-                            </span>
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
               {/* Organizations Section - Only show for full admins */}
               {user?.isAdmin && (
                 <Collapsible className="w-full border rounded-lg p-4">
@@ -1370,6 +1081,295 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </div>
                 </Collapsible>
               )}
+
+              <Collapsible className="w-full border rounded-lg p-4">
+                <div className="mb-4">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
+                      Teams
+                      <ChevronDown className="h-5 w-5 ml-2" />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <div className="space-y-4">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="mb-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
+                          <Plus className="h-4 w-4 mr-2" />
+                          New Team
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <div className="flex items-center mb-2 relative">
+                          <DialogPrimitive.Close asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
+                            >
+                              <span className="sr-only">Close</span>
+                              <span className="text-lg font-semibold">×</span>
+                            </Button>
+                          </DialogPrimitive.Close>
+                          <DialogTitle className="w-full text-center">Create New Team</DialogTitle>
+                        </div>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit((data) => createTeamMutation.mutate(data))} className="space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Name</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="description"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description</FormLabel>
+                                  <FormControl>
+                                    <Textarea {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="groupId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Group</FormLabel>
+                                  <FormControl>
+                                    <Select
+                                      value={field.value?.toString() || ""}
+                                      onValueChange={(value) => field.onChange(parseInt(value))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a group" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {sortedGroups?.map((group) => (
+                                          <SelectItem key={group.id} value={group.id.toString()}>
+                                            {group.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="maxSize"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Maximum Team Size</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      {...field}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <Button type="submit" disabled={createTeamMutation.isPending}>
+                              {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+                            </Button>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
+                    {sortedTeams?.map((team) => (
+                      <Card key={team.id}>
+                        <CardHeader className="pb-2">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              {editingTeam?.id === team.id ? (
+                                <form onSubmit={(e) => {
+                                  e.preventDefault();
+                                  const formData = new FormData(e.currentTarget);
+                                  const name = formData.get('name') as string;
+                                  const description = formData.get('description') as string;
+                                  const maxSize = parseInt(formData.get('maxSize') as string) || 6;
+                                  const groupId = selectedGroupId ? parseInt(selectedGroupId) : undefined;
+                                  const statusValue = formData.get('status') as string;
+                                  const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                  const status = (parsedStatus === 0 || parsedStatus === 1) ? parsedStatus : 1;
+
+                                  if (!name || !selectedGroupId) {
+                                    toast({
+                                      title: "Error",
+                                      description: "Please fill in all required fields",
+                                      variant: "destructive"
+                                    });
+                                    return;
+                                  }
+
+                                  updateTeamMutation.mutate({
+                                    teamId: team.id,
+                                    data: {
+                                      name,
+                                      description,
+                                      groupId,
+                                      maxSize,
+                                      status: Number(status),
+                                    }
+                                  });
+                                }}>
+                                  <div className="space-y-2">
+                                    <Input
+                                      name="name"
+                                      defaultValue={team.name}
+                                      className="font-semibold"
+                                    />
+                                    <Textarea
+                                      name="description"
+                                      defaultValue={team.description || ''}
+                                      className="text-sm"
+                                    />
+                                    <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select a group" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {sortedGroups?.map((group) => (
+                                          <SelectItem key={group.id} value={group.id.toString()}>
+                                            {group.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Input
+                                      name="maxSize"
+                                      type="number"
+                                      min="1"
+                                      defaultValue={team.maxSize?.toString() || '6'}
+                                      placeholder="Maximum team size"
+                                      className="text-sm"
+                                    />
+                                    <Select name="status" defaultValue={team.status?.toString() || "1"}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="1">Active</SelectItem>
+                                        <SelectItem value="0">Inactive</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <div className="flex gap-2">
+                                      <Button type="submit" size="sm">Save</Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingTeam(null);
+                                          setSelectedGroupId("");
+                                        }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </form>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <CardTitle className="text-lg">{team.name}</CardTitle>
+                                  </div>
+                                  <CardDescription className="line-clamp-2 text-sm">
+                                    {team.description}
+                                  </CardDescription>
+                                  <p className="text-sm mt-2">
+                                    <span className="font-medium">Status: </span>
+                                    <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
+                                      {team.status === 1 ? "Active" : "Inactive"}
+                                    </span>
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingTeam(team);
+                                  setSelectedGroupId(team.groupId?.toString() || "");
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogTitle>Delete Team?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the team "{team.name}"? This action cannot be undone.
+                                    {sortedUsers?.filter((u) => u.teamId === team.id).length > 0 && (
+                                      <p className="mt-2 text-amber-600 font-medium">
+                                        Warning: This team has {sortedUsers?.filter((u) => u.teamId === team.id).length} members.
+                                        Deleting it will remove these users from the team.
+                                      </p>
+                                    )}
+                                  </AlertDialogDescription>
+                                  <div className="flex items-center justify-end gap-2 mt-4">
+                                    <AlertDialogCancel className="h-10 px-4 py-2 flex items-center justify-center">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center"
+                                      onClick={() => deleteTeamMutation.mutate(team.id)}
+                                    >
+                                      Delete Team
+                                    </AlertDialogAction>
+                                  </div>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <span className="font-medium">Group: </span>
+                            {sortedGroups?.find((g) => g.id === team.groupId)?.name || "No Group"}
+                          </p>
+                          <p className="text-sm">
+                            <span className="font-medium">Members: </span>
+                            {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
+                          </p>
+                          <p className="text-sm">
+                            <span className="font-medium">Max Size: </span>
+                            {team.maxSize || 6}
+                          </p>
+                          <p className="text-sm">
+                            <span className="font-medium">Status: </span>
+                            <span className={team.status === 1 ? "text-green-600" : "text-red-600"}>
+                              {team.status === 1 ? "Active" : "Inactive"}
+                            </span>
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               <div className="border rounded-lg p-4">
                 <h2 className="text-2xl font-semibold mb-4">Users</h2>
