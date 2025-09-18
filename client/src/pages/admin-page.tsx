@@ -672,7 +672,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const isMobile = window.innerWidth <= 768;
 
   // Filter groups based on the current user's organization if they are a Group Admin
-  const filteredGroups = currentUser?.isGroupAdmin
+  const filteredGroups = currentUser?.isGroupAdmin && !currentUser?.isAdmin
     ? (() => {
         // Find the admin's group to get the organization ID
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
