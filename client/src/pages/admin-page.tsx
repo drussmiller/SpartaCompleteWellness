@@ -1651,52 +1651,58 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Roles</p>
                           <div className="flex gap-2 mr-24">
-                            <Button
-                              variant={user.isAdmin ? "default" : "outline"}
-                              size="sm"
-                              className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                              onClick={() => {
-                                // Prevent removing admin from the admin user with username "admin"
-                                if (user.username === "admin" && user.isAdmin) {
-                                  toast({
-                                    title: "Cannot Remove Admin",
-                                    description: "This is the main administrator account and cannot have admin rights removed.",
-                                    variant: "destructive"
+                            {/* Only show Admin button if current user is a full admin */}
+                            {user?.isAdmin && (
+                              <Button
+                                variant={user.isAdmin ? "default" : "outline"}
+                                size="sm"
+                                className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                onClick={() => {
+                                  // Prevent removing admin from the admin user with username "admin"
+                                  if (user.username === "admin" && user.isAdmin) {
+                                    toast({
+                                      title: "Cannot Remove Admin",
+                                      description: "This is the main administrator account and cannot have admin rights removed.",
+                                      variant: "destructive"
+                                    });
+                                    return;
+                                  }
+                                 updateUserRoleMutation.mutate({
+                                    userId: user.id,
+                                    role: 'isAdmin',
+                                    value: !user.isAdmin
                                   });
-                                  return;
-                                }
-                               updateUserRoleMutation.mutate({
-                                  userId: user.id,
-                                  role: 'isAdmin',
-                                  value: !user.isAdmin
-                                });
-                              }}
-                            >
-                              Admin
-                            </Button>
-                            <Button
-                              variant={user.isGroupAdmin ? "default" : "outline"}
-                              size="sm"
-                              className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                              disabled={!user.teamId}
-                              onClick={() => {
-                                if (!user.teamId) {
-                                  toast({
-                                    title: "Team Required",
-                                    description: "User must be assigned to a team before becoming a Group Admin.",
-                                    variant: "destructive"
+                                }}
+                              >
+                                Admin
+                              </Button>
+                            )}
+                            {/* Only show Group Admin button if current user is a full admin */}
+                            {user?.isAdmin && (
+                              <Button
+                                variant={user.isGroupAdmin ? "default" : "outline"}
+                                size="sm"
+                                className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                disabled={!user.teamId}
+                                onClick={() => {
+                                  if (!user.teamId) {
+                                    toast({
+                                      title: "Team Required",
+                                      description: "User must be assigned to a team before becoming a Group Admin.",
+                                      variant: "destructive"
+                                    });
+                                    return;
+                                  }
+                                  updateUserRoleMutation.mutate({
+                                    userId: user.id,
+                                    role: 'isGroupAdmin',
+                                    value: !user.isGroupAdmin
                                   });
-                                  return;
-                                }
-                                updateUserRoleMutation.mutate({
-                                  userId: user.id,
-                                  role: 'isGroupAdmin',
-                                  value: !user.isGroupAdmin
-                                });
-                              }}
-                            >
-                              Group Admin
-                            </Button>
+                                }}
+                              >
+                                Group Admin
+                              </Button>
+                            )}
                             <Button
                               variant={user.isTeamLead ? "default" : "outline"}
                               size="sm"
