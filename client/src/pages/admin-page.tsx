@@ -613,9 +613,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         // Group admins see ALL teams in their organization (across all groups in the org)
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
         const userOrgId = adminGroup?.organizationId;
-        
+
         if (!userOrgId) return false;
-        
+
         // Check if this team's group belongs to the same organization
         const teamGroup = sortedGroups.find(g => g.id === team.groupId);
         return teamGroup && teamGroup.organizationId === userOrgId;
@@ -632,35 +632,35 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         // Get the organization ID for the Group Admin
         console.log('DEBUG: currentUser.adminGroupId:', currentUser.adminGroupId);
         console.log('DEBUG: sortedGroups:', sortedGroups);
-        
+
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
         console.log('DEBUG: adminGroup found:', adminGroup);
-        
+
         const userOrgId = adminGroup?.organizationId;
         console.log('DEBUG: userOrgId:', userOrgId);
-        
+
         if (!userOrgId) {
           console.log('DEBUG: No userOrgId found, returning empty array');
           return [];
         }
-        
+
         // Get ALL teams that belong to ANY group in the same organization
         const orgTeams = (teams || []).filter(team => {
           const teamGroup = sortedGroups.find(g => g.id === team.groupId);
           return teamGroup && teamGroup.organizationId === userOrgId;
         });
         console.log('DEBUG: orgTeams found:', orgTeams);
-        
+
         const orgTeamIds = orgTeams.map(team => team.id);
         console.log('DEBUG: orgTeamIds:', orgTeamIds);
-        
+
         // Return ALL users who are in any team in the organization, including users without teams
         const filteredUsersResult = (users || []).filter(u => {
           // Include users who are in teams within this organization
           if (u.teamId && orgTeamIds.includes(u.teamId)) {
             return true;
           }
-          
+
           // Also include users who have no team but belong to this organization via other means
           // For now, we'll focus on team-based filtering
           return false;
@@ -668,53 +668,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         console.log('DEBUG: filteredUsersResult count:', filteredUsersResult.length);
         console.log('DEBUG: filteredUsersResult:', filteredUsersResult.map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
         console.log('DEBUG: All available users:', (users || []).map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
-        
+
         return filteredUsersResult;
       })()
     : [];  // Non-admins see no users
 
   const sortedUsers = [...filteredUsers].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
-
-  // Filter logic for search
-  const filteredGroupsForFilter = selectedOrgFilter === "all"
-    ? sortedGroups
-    : sortedGroups?.filter(g => g.organizationId.toString() === selectedOrgFilter);
-
-  const filteredTeamsForFilter = selectedGroupFilter === "all"
-    ? filteredTeams
-    : filteredTeams.filter(t => t.groupId.toString() === selectedGroupFilter);
-
-  const filteredUsersForDisplay = sortedUsers?.filter(user => {
-    // Organization filter
-    if (selectedOrgFilter !== "all") {
-      const userTeam = sortedTeams.find(t => t.id === user.teamId);
-      const userGroup = userTeam ? sortedGroups?.find(g => g.id === userTeam.groupId) : null;
-      if (!userGroup || userGroup.organizationId.toString() !== selectedOrgFilter) {
-        return false;
-      }
-    }
-
-    // Group filter
-    if (selectedGroupFilter !== "all") {
-      const userTeam = sortedTeams.find(t => t.id === user.teamId);
-      if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
-        return false;
-      }
-    }
-
-    // Team filter
-    if (selectedTeamFilter !== "all") {
-      if (selectedTeamFilter === "none") {
-        return !user.teamId;
-      } else {
-        return user.teamId?.toString() === selectedTeamFilter;
-      }
-    }
-
-    return true;
-  });
-
-  const isMobile = window.innerWidth <= 768;
 
   // Filter groups based on the current user's organization if they are a Group Admin
   const filteredGroups = currentUser?.isGroupAdmin && !currentUser?.isAdmin
@@ -1490,7 +1449,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
-                            {(users || []).filter((u) => u.teamId === team.id).length || 0}
+                            {filteredUsers.filter((u) => u.teamId === team.id).length || 0}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Max Size: </span>
