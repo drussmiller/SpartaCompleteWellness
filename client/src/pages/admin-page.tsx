@@ -610,7 +610,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? teams || []  // Full admins see all teams
     : currentUser?.isGroupAdmin
     ? (teams || []).filter(team => {
-        // Group admins see all teams in their organization (all groups in the org)
+        // Group admins see ALL teams in their organization (across all groups in the org)
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
         const userOrgId = adminGroup?.organizationId;
         
@@ -628,21 +628,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? users || []  // Full admins see all users
     : currentUser?.isGroupAdmin
     ? (() => {
-        // For Group Admins, show all users who have teams in their organization
+        // For Group Admins, show ALL users in their organization
         // Get the organization ID for the Group Admin
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
         const userOrgId = adminGroup?.organizationId;
         
         if (!userOrgId) return [];
         
-        // Get ALL teams that belong to groups in the same organization
+        // Get ALL teams that belong to ANY group in the same organization
         const orgTeams = (teams || []).filter(team => {
           const teamGroup = sortedGroups.find(g => g.id === team.groupId);
           return teamGroup && teamGroup.organizationId === userOrgId;
         });
         const orgTeamIds = orgTeams.map(team => team.id);
         
-        // Return users who are in any team in the organization
+        // Return ALL users who are in any team in the organization
         return (users || []).filter(u => {
           return u.teamId && orgTeamIds.includes(u.teamId);
         });
