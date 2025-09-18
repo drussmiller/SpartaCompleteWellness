@@ -1214,6 +1214,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </DialogContent>
                       </Dialog>
                     </div>
+                  </div>
                   <CollapsibleContent>
                     <div className="space-y-4">
                       {sortedGroups?.map((group) => (
@@ -1370,7 +1371,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <form onSubmit={(e) => {
                                 e.preventDefault();
                                 const formData = new FormData(e.currentTarget);
-                                updateUserMutation.mutate({
+                               updateUserMutation.mutate({
                                   userId: user.id,
                                   data: {
                                     username: formData.get('username') as string,
