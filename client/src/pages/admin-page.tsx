@@ -1445,7 +1445,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
-                            {sortedUsers?.filter((u) => u.teamId === team.id).length || 0}
+                            {filteredUsers?.filter((u) => u.teamId === team.id).length || 0}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Max Size: </span>
